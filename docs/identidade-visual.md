@@ -36,7 +36,7 @@ Não há cores decorativas, nem verde. Os avatares são monogramas cinza.
 - **Barra lateral** (`Layout.tsx`): coluna sólida de grafite, de 192px, até as bordas da janela. De cima para baixo: a faixa dos botões da janela e do botão de recolher, a assinatura vetorial da Auri em branco, o menu e o aviso "Salvo neste computador".
 - **Item ativo:** preenchimento mais claro e texto branco, além de `aria-current="page"`.
 - **Recolher:** um botão só, sempre no mesmo lugar (depois dos botões da janela no Mac; no canto no Windows e na web). Atalho ⌃⌘S no Mac e Ctrl+B nos outros. A escolha fica salva pelo processo main (`preferencias.json`, ao lado do banco), que a entrega pronta na abertura; o `localStorage` fazia a primeira tela esperar o disco.
-- **Cabeçalho da página** (`Page`): uma linha só de 48px, em fluxo normal. Título de 20px à esquerda; ferramentas e ação principal à direita. Sem filete embaixo. O selo é desenhado pelo `Page` (as páginas passam só o texto) e o botão principal não leva a tecla de atalho desenhada (ela aparece na dica). A barra é um `@container`: abaixo de 860px o título encolhe e o botão principal da agenda vira só o "+"; abaixo de 960px some o selo. Testado de 1000px (largura mínima) a 1280px.
+- **Cabeçalho da página** (`Page`): uma linha só de 48px, em fluxo normal. À esquerda, a **trilha** (`trail`), como um caminho: passos anteriores em `ink-faint` e clicáveis (levam àquela tela), separados por "/", e o atual em `ink`, peso médio, que é o `h1` da página (ex.: "Pacientes / Pedro Souza Oliveira", "Agenda / 4 a 10 de outubro 2026"). Sem botão Voltar: o passo anterior faz esse papel. Ferramentas e ação principal à direita. Sem filete embaixo. Sem selo ao lado da trilha (contagem, número da semana). O botão principal não leva a tecla de atalho desenhada (ela aparece na dica). A barra é um `@container`: abaixo de 860px o botão principal da agenda vira só o "+". Testado de 1000px (largura mínima) a 1280px.
 - **Mac:** barra de título integrada; os botões da janela ficam sobre o grafite, centralizados nos 48px do cabeçalho (`trafficLightPosition` y = 17, ou seja, (48 − 14) / 2). **Windows e web:** o mesmo layout, sem o espaço dos botões.
 
 ## Escala (densidade)
@@ -83,7 +83,7 @@ Teste: olhe a tela de longe, com os olhos semicerrados. Os itens de um grupo dev
 | ------------------------------------- | ---------------------------------------------- |
 | Nome na ficha                         | 26px, semibold                                 |
 | Marca "auri" (faixa da janela)        | Vetor de 48px, centro visual alinhado ao botão |
-| Título da página                      | 20px, semibold (18px com a janela estreita)    |
+| Trilha do cabeçalho                   | 14px; passo atual em peso médio                |
 | Título de diálogo                     | 17px, semibold                                 |
 | Título de seção da ficha              | 15px, semibold                                 |
 | Título de estado vazio e de erro      | 16px, semibold                                 |
@@ -160,7 +160,7 @@ Não distorça nem gire a marca. Ela não é usada como marcador de item ativo n
 - `ui/toast.tsx`: `ToastProvider` (já no `Layout`) e, em `lib/toast.ts`, `useToast()`.
 - `ui/segmented.tsx`: `Segmented`, seletor de uma opção entre poucas, com o bloco branco deslizante (medido na opção ativa, sem deslize na abertura).
 - `ui/kbd.tsx`: tecla de atalho. Use `MOD_KEY` de `lib/platform.ts` para ⌘ ou Ctrl.
-- `Layout.tsx`: `Layout` (barra lateral recolhível e área do conteúdo) e `Page` (cabeçalho de uma linha com `title`, `lead`, `badge`, `toolbar` e `actions`).
+- `Layout.tsx`: `Layout` (barra lateral recolhível e área do conteúdo) e `Page` (cabeçalho de uma linha com `trail`, `badge`, `toolbar` e `actions`; subtelas passam o caminho inteiro, ex.: `[{ label: 'Pacientes', to: '/pacientes' }, { label: nome }]`).
 
 ### Agenda
 
@@ -175,7 +175,7 @@ Não distorça nem gire a marca. Ela não é usada como marcador de item ativo n
 
 - **Busca:** placeholder curto ("Nome, mãe ou CPF") e botão de limpar próprio (o "x" nativo é azul e some com `appearance: none`).
 - **Lista:** quatro colunas, cada célula com duas linhas: paciente e idade; mãe e celular; escola e série; entrada. Linhas de 56px com hover em quadrado arredondado; a contagem fica no cabeçalho. Nome e complementos cortados têm `title` com o texto inteiro.
-- **Ficha:** enquanto carrega (ou se falhar) só aparecem o cabeçalho e o `Loading`/`ErrorState`, nunca o formulário vazio com "Novo paciente". Sem cartões. Cada seção é separada só por espaço, com título e descrição fixos à esquerda (`sticky`) e os campos à direita. O cabeçalho da página diz "Novo paciente" ou "Ficha do paciente"; o nome grande fica no corpo.
+- **Ficha:** enquanto carrega (ou se falhar) só aparecem o cabeçalho e o `Loading`/`ErrorState`, nunca o formulário vazio com "Novo paciente". Sem cartões. Cada seção é separada só por espaço, com título e descrição fixos à esquerda (`sticky`) e os campos à direita. A trilha diz "Pacientes / Novo paciente" ou "Pacientes / <nome salvo>"; o nome grande (que acompanha o que se digita) fica no corpo.
 
 ## Acessibilidade
 

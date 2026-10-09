@@ -14,7 +14,6 @@ import {
   startOfMonth,
   startOfWeek,
   differenceInMinutes,
-  getWeek,
   isToday
 } from 'date-fns'
 import { ptBR } from 'date-fns/locale/pt-BR'
@@ -492,12 +491,16 @@ export function AgendaPage(): React.JSX.Element {
   return (
     <Page
       // key: o período novo entra com um fade, para a mudança de data ser notada além da grade
-      title={
-        <span key={period} className="animate-fade-in">
-          {period}
-        </span>
-      }
-      badge={view !== Views.MONTH ? `Semana ${getWeek(date, WEEK_OPTIONS)}` : undefined}
+      trail={[
+        { label: 'Agenda' },
+        {
+          label: (
+            <span key={period} className="animate-fade-in">
+              {period}
+            </span>
+          )
+        }
+      ]}
       toolbar={<AgendaControls view={view} onNavigate={navigate} onView={setView} />}
       actions={
         // Janela estreita: só o "+" (a barra é um contêiner; ver Page)

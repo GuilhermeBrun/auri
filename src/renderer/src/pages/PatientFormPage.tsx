@@ -1,9 +1,9 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Archive, ChevronLeft } from 'lucide-react'
+import { Archive } from 'lucide-react'
 import { useEffect, useId, type ReactNode } from 'react'
 import { Controller, useForm, useWatch, type Control } from 'react-hook-form'
-import { Link, useNavigate, useParams } from 'react-router'
+import { useNavigate, useParams } from 'react-router'
 import { formatAge, toIsoDate } from '@shared/dates'
 import { formatCpf, formatPhone } from '@shared/masks'
 import {
@@ -84,19 +84,8 @@ function MaskedInput({
   )
 }
 
-/** Botão de voltar da barra da página. */
-function BackLink(): React.JSX.Element {
-  return (
-    <Link
-      to="/pacientes"
-      aria-label="Voltar para pacientes"
-      title="Voltar para pacientes"
-      className="no-drag grid size-8 place-items-center rounded-control bg-surface text-ink-soft shadow-[inset_0_0_0_1px_var(--color-line-strong)] transition-colors hover:bg-canvas hover:text-ink pointer-coarse:size-11 [&_svg]:size-4 [&_svg]:stroke-[1.75]"
-    >
-      <ChevronLeft aria-hidden="true" />
-    </Link>
-  )
-}
+/** Volta à lista; o resto da trilha é o paciente aberto. */
+const PATIENTS_CRUMB = { label: 'Pacientes', to: '/pacientes' }
 
 export function PatientFormRoute(): React.JSX.Element {
   const { id } = useParams()
@@ -171,7 +160,7 @@ function PatientFormPage({ patientId }: { patientId: number | null }): React.JSX
   // formulário vazio com o título "Novo paciente".
   if (!isNew && !patient) {
     return (
-      <Page lead={<BackLink />} title="Ficha do paciente">
+      <Page trail={[PATIENTS_CRUMB, { label: 'Ficha do paciente' }]}>
         {loadError ? (
           <ErrorState
             title="Não foi possível abrir a ficha"
@@ -195,8 +184,11 @@ function PatientFormPage({ patientId }: { patientId: number | null }): React.JSX
   return (
     <form onSubmit={handleSubmit((values) => save.mutate(values))} noValidate className="h-full">
       <Page
-        lead={<BackLink />}
-        title={isNew ? 'Novo paciente' : 'Ficha do paciente'}
+        trail={[
+          PATIENTS_CRUMB,
+          // o nome salvo, não o que está sendo digitado (esse aparece grande no corpo)
+          { label: isNew ? 'Novo paciente' : (patient?.nome ?? 'Ficha do paciente') }
+        ]}
         actions={
           <>
             {!isNew && patient && (
@@ -208,9 +200,6 @@ function PatientFormPage({ patientId }: { patientId: number | null }): React.JSX
                 {patient.ativo ? 'Inativar' : 'Reativar'}
               </Button>
             )}
-            <Button variant="outline" onClick={() => navigate('/pacientes')}>
-              Cancelar
-            </Button>
             <Button type="submit" loading={save.isPending} disabled={!isNew && !isDirty}>
               {isNew ? 'Cadastrar paciente' : 'Salvar alterações'}
             </Button>

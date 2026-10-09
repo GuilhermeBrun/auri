@@ -213,12 +213,7 @@ export function PatientsPage(): React.JSX.Element {
 
   return (
     <Page
-      title="Pacientes"
-      badge={
-        !isPending && patients.length > 0
-          ? `${patients.length} ${patients.length === 1 ? 'paciente' : 'pacientes'}${searching ? ' encontrados' : ''}`
-          : undefined
-      }
+      trail={[{ label: 'Pacientes' }]}
       actions={
         <Button onClick={newPatient}>
           <Plus /> Novo paciente

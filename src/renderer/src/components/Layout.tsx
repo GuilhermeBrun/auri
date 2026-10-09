@@ -1,6 +1,6 @@
 import { CalendarDays, HardDrive, PanelLeft, Users } from 'lucide-react'
-import { useCallback, useEffect, useState, type ReactNode } from 'react'
-import { matchPath, NavLink, Outlet, useLocation } from 'react-router'
+import { Fragment, useCallback, useEffect, useState, type ReactNode } from 'react'
+import { Link, matchPath, NavLink, Outlet, useLocation } from 'react-router'
 import { Button } from '@renderer/components/ui/button'
 import { AuriLogo } from '@renderer/components/ui/brand'
 import { ToastProvider } from '@renderer/components/ui/toast'
@@ -184,12 +184,18 @@ function RouteFade(): React.JSX.Element {
   )
 }
 
+/** Um passo da trilha do cabeçalho. Com `to`, vira link para aquela tela. */
+export type Crumb = {
+  label: ReactNode
+  to?: string
+}
+
 type PageProps = {
-  title: ReactNode
-  /** Antes do título (ex.: botão Voltar) */
-  lead?: ReactNode
-  /** Selo ao lado do título (ex.: "Semana 41", "12 pacientes"); some em janela estreita */
-  badge?: string
+  /**
+   * Caminho até a tela atual, do mais geral ao mais específico (ex.: Pacientes / Maria Souza). O
+   * último passo é o título da página; os anteriores com `to` levam de volta àquela tela.
+   */
+  trail: Crumb[]
   /** Ação principal, no fim da linha */
   actions?: ReactNode
   /** Ferramentas da página (busca, filtros, navegação), antes da ação principal */
@@ -199,17 +205,60 @@ type PageProps = {
 }
 
 /**
- * Página: uma barra de uma linha só (título à esquerda; ferramentas e ação principal à direita) e,
+ * Trilha do cabeçalho, como o caminho de um app de produtividade: passos anteriores apagados e
+ * clicáveis, separados por "/", e o atual em destaque (é o `h1` da página). Os passos anteriores não
+ * encolhem; quem corta, se faltar espaço, é o atual.
+ */
+function Breadcrumbs({ trail }: { trail: Crumb[] }): React.JSX.Element {
+  return (
+    <nav aria-label="Caminho" className="min-w-0">
+      <ol className="flex min-w-0 items-center gap-1.5 text-sm">
+        {trail.map((crumb, i) => {
+          const current = i === trail.length - 1
+          return (
+            <Fragment key={i}>
+              {i > 0 && (
+                <li aria-hidden="true" className="shrink-0 text-ink-faint/60 select-none">
+                  /
+                </li>
+              )}
+              <li className={cn('flex', current ? 'min-w-0' : 'shrink-0')}>
+                {current ? (
+                  <h1
+                    aria-current="page"
+                    className="truncate font-medium text-ink first-letter:uppercase"
+                  >
+                    {crumb.label}
+                  </h1>
+                ) : crumb.to ? (
+                  <Link
+                    to={crumb.to}
+                    className="no-drag -mx-1 rounded-chip px-1 py-0.5 text-ink-faint transition-colors hover:bg-fill hover:text-ink"
+                  >
+                    {crumb.label}
+                  </Link>
+                ) : (
+                  <span className="text-ink-faint">{crumb.label}</span>
+                )}
+              </li>
+            </Fragment>
+          )
+        })}
+      </ol>
+    </nav>
+  )
+}
+
+/**
+ * Página: uma barra de uma linha só (trilha à esquerda; ferramentas e ação principal à direita) e,
  * abaixo, o conteúdo, que rola sozinho. Sem filete entre as duas partes, em nenhuma tela: a
- * separação vem do espaço. O selo tem um estilo só; as ferramentas e a ação principal usam a mesma altura (32px).
+ * separação vem do espaço. As ferramentas e a ação principal usam a mesma altura (32px).
  * A barra é um contêiner (`@container`), então os itens podem se encolher conforme a largura
  * (ex.: `@min-[860px]:`); elementos `sticky top-0` do conteúdo (cabeçalho de tabela) param no topo
  * da área de rolagem, logo abaixo da barra.
  */
 export function Page({
-  title,
-  lead,
-  badge,
+  trail,
   actions,
   toolbar,
   children,
@@ -238,17 +287,7 @@ export function Page({
             style={{ left: TOGGLE_LEFT - 4, width: TOGGLE_SIZE + 8 }}
           />
         )}
-        <div className="flex min-w-0 items-center gap-2.5">
-          {lead}
-          <h1 className="truncate text-xl leading-tight font-semibold tracking-tight first-letter:uppercase @max-[860px]:text-lg">
-            {title}
-          </h1>
-          {badge && (
-            <span className="hidden shrink-0 rounded-chip bg-fill px-2 py-0.5 text-xs font-medium text-ink-soft tabular-nums @min-[960px]:inline">
-              {badge}
-            </span>
-          )}
-        </div>
+        <Breadcrumbs trail={trail} />
         <div className="no-drag ml-auto flex shrink-0 items-center gap-2">
           {toolbar}
           {actions}
