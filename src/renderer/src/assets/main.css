@@ -274,14 +274,6 @@
 }
 
 @layer components {
-  /* Seta do <select> desenhada no CSS, igual em Mac e Windows */
-  .select-chevron {
-    appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%235b5b68' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m4.5 6.5 3.5 3.5 3.5-3.5'/%3E%3C/svg%3E");
-    background-position: right 8px center;
-    background-repeat: no-repeat;
-  }
-
   /* Áreas que arrastam a janela no Mac (barra de título integrada) */
   .drag {
     -webkit-app-region: drag;

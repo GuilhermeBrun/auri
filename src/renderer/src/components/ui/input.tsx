@@ -1,11 +1,5 @@
 import { CircleAlert } from 'lucide-react'
-import type {
-  InputHTMLAttributes,
-  ReactNode,
-  Ref,
-  SelectHTMLAttributes,
-  TextareaHTMLAttributes
-} from 'react'
+import type { InputHTMLAttributes, ReactNode, Ref, TextareaHTMLAttributes } from 'react'
 import { controlClass } from '@renderer/components/ui/field-style'
 import { cn } from '@renderer/lib/utils'
 
@@ -34,20 +28,6 @@ export function Textarea({
     <textarea
       ref={ref}
       className={cn(controlClass, 'min-h-16 resize-y py-2', className)}
-      {...props}
-    />
-  )
-}
-
-export function Select({
-  className,
-  ref,
-  ...props
-}: SelectHTMLAttributes<HTMLSelectElement> & { ref?: Ref<HTMLSelectElement> }): React.JSX.Element {
-  return (
-    <select
-      ref={ref}
-      className={cn(controlClass, 'select-chevron h-9 pr-8 pointer-coarse:h-11', className)}
       {...props}
     />
   )

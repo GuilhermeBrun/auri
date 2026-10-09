@@ -19,7 +19,7 @@ import {
 } from 'date-fns'
 import { ptBR } from 'date-fns/locale/pt-BR'
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
-import { memo, useCallback, useEffect, useMemo, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import {
   Calendar,
   dateFnsLocalizer,
@@ -32,6 +32,7 @@ import {
   type SlotInfo,
   type View
 } from 'react-big-calendar'
+import { DAY_END_HOUR, DAY_START_HOUR } from '@shared/agenda'
 import { formatTime, parseIsoLocalDateTime, toIsoLocalDateTime } from '@shared/dates'
 import { shortName } from '@shared/names'
 import type { Appointment } from '@shared/schemas'
@@ -39,7 +40,7 @@ import { AppointmentDialog, type AppointmentDraft } from '@renderer/components/A
 import { Page } from '@renderer/components/Layout'
 import { Button } from '@renderer/components/ui/button'
 import { ErrorState } from '@renderer/components/ui/error'
-import { Kbd } from '@renderer/components/ui/kbd'
+import { Segmented } from '@renderer/components/ui/segmented'
 import { appointmentsQuery } from '@renderer/lib/queries'
 import { cn } from '@renderer/lib/utils'
 
@@ -66,9 +67,11 @@ localizer.inRange = (day, min, max, unit = 'day') =>
     ? defaultInRange(day, min, max, unit)
     : (!min || dayNumber(day) >= dayNumber(min)) && (!max || dayNumber(day) <= dayNumber(max))
 
-const DAY_START_HOUR = 7
-const DAY_END_HOUR = 20
 const DEFAULT_DURATION = 30
+/** Faixa do rodapé da janela onde o aviso aparece (altura + margem): a sessão nova não pode ficar embaixo dele. */
+const TOAST_CLEARANCE = 72
+/** Por quanto tempo a sessão recém-salva fica marcada; o destaque dura menos que isso. */
+const ARRIVED_MS = 3000
 
 const messages: Messages<CalendarEvent> = {
   today: 'Hoje',
@@ -139,11 +142,15 @@ function visibleRange(date: Date, view: View): { de: string; ate: string } {
   return { de: toIsoLocalDateTime(startOfDay(start)), ate: toIsoLocalDateTime(startOfDay(end)) }
 }
 
-/** Próximo horário cheio ou meia hora a partir de agora, dentro do expediente. */
+/** Próximo horário cheio ou meia hora a partir de agora, dentro do expediente (à noite, o início de amanhã). */
 function nextSlot(now: Date): Date {
   const minutes = now.getMinutes() < 30 ? 30 : 60
   const slot = setMinutes(setHours(startOfDay(now), now.getHours()), minutes)
   if (slot.getHours() < DAY_START_HOUR) return setHours(startOfDay(now), DAY_START_HOUR)
+  // sem lugar para uma sessão padrão antes das 20:00: a grade não tem esse horário
+  if (differenceInMinutes(setHours(startOfDay(now), DAY_END_HOUR), slot) < DEFAULT_DURATION) {
+    return setHours(startOfDay(addDays(now, 1)), DAY_START_HOUR)
+  }
   return slot
 }
 
@@ -263,22 +270,7 @@ function AgendaControls({ view, onNavigate, onView }: AgendaControlsProps): Reac
           <ChevronRight />
         </Button>
       </div>
-      <div className="flex rounded-control bg-fill p-0.5" role="group" aria-label="Visualização">
-        {VIEW_LABELS.map(([v, text]) => (
-          <button
-            key={v}
-            type="button"
-            onClick={() => onView(v)}
-            aria-pressed={view === v}
-            className={cn(
-              'h-7 rounded-chip px-3 text-xs font-medium text-ink-soft transition-[background-color,color,box-shadow] hover:text-ink pointer-coarse:h-10',
-              view === v && 'bg-surface text-ink shadow-lift'
-            )}
-          >
-            {text}
-          </button>
-        ))}
-      </div>
+      <Segmented label="Visualização" value={view} options={VIEW_LABELS} onChange={onView} />
     </>
   )
 }
@@ -312,6 +304,8 @@ type AgendaCalendarProps = {
   onNavigate: (date: Date) => void
   onView: (view: View) => void
   onDraft: (draft: AppointmentDraft) => void
+  /** Sessão recém-salva, que entra com destaque (ver `.event-arrived`). Um ref, para a grade não redesenhar ao marcar. */
+  arrivedRef: RefObject<number | null>
 }
 
 /**
@@ -325,7 +319,8 @@ const AgendaCalendar = memo(function AgendaCalendar({
   view,
   onNavigate,
   onView,
-  onDraft
+  onDraft,
+  arrivedRef
 }: AgendaCalendarProps): React.JSX.Element {
   const { min, max, scrollToTime } = useMemo(() => {
     const base = startOfDay(new Date())
@@ -365,34 +360,58 @@ const AgendaCalendar = memo(function AgendaCalendar({
     [onDraft]
   )
 
+  // Sessão recém-salva fora da área visível da grade (ex.: 19:30 numa janela baixa) ou sob o aviso:
+  // rola até ela, deixando-a no meio, para o destaque ser visto. Só nas visões com grade de horas.
+  const rootRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (arrivedRef.current === null) return
+    const arrived = rootRef.current?.querySelector<HTMLElement>('.event-arrived')
+    const scroller = arrived?.closest<HTMLElement>('.rbc-time-content')
+    if (!arrived || !scroller) return
+    const box = arrived.getBoundingClientRect()
+    const view = scroller.getBoundingClientRect()
+    if (box.top >= view.top && box.bottom <= view.bottom - TOAST_CLEARANCE) return
+    scroller.scrollTop += box.top + box.height / 2 - (view.top + view.height / 2)
+  }, [events, arrivedRef])
+
+  // Lido na hora de desenhar a sessão: a que acabou de ser salva ganha a classe de destaque
+  const eventPropGetter = useCallback(
+    (event: CalendarEvent): { className?: string } =>
+      event.id === arrivedRef.current ? { className: 'event-arrived' } : {},
+    [arrivedRef]
+  )
+
   return (
-    <Calendar<CalendarEvent>
-      localizer={localizer}
-      culture="pt-BR"
-      events={events}
-      date={date}
-      view={view}
-      onNavigate={onNavigate}
-      onView={onView}
-      views={VIEWS}
-      toolbar={false}
-      step={30}
-      timeslots={2}
-      min={min}
-      max={max}
-      scrollToTime={scrollToTime}
-      messages={messages}
-      formats={formats}
-      components={COMPONENTS}
-      dayPropGetter={dayPropGetter}
-      selectable
-      popup
-      onSelectSlot={onSelectSlot}
-      onSelectEvent={onSelectEvent}
-      tooltipAccessor={tooltip}
-      className={`agenda-${view}`}
-      style={CALENDAR_STYLE}
-    />
+    <div ref={rootRef} className="h-full">
+      <Calendar<CalendarEvent>
+        localizer={localizer}
+        culture="pt-BR"
+        events={events}
+        date={date}
+        view={view}
+        onNavigate={onNavigate}
+        onView={onView}
+        views={VIEWS}
+        toolbar={false}
+        step={30}
+        timeslots={2}
+        min={min}
+        max={max}
+        scrollToTime={scrollToTime}
+        messages={messages}
+        formats={formats}
+        components={COMPONENTS}
+        dayPropGetter={dayPropGetter}
+        eventPropGetter={eventPropGetter}
+        selectable
+        popup
+        onSelectSlot={onSelectSlot}
+        onSelectEvent={onSelectEvent}
+        tooltipAccessor={tooltip}
+        className={`agenda-${view}`}
+        style={CALENDAR_STYLE}
+      />
+    </div>
   )
 })
 
@@ -400,6 +419,15 @@ export function AgendaPage(): React.JSX.Element {
   const [date, setDate] = useState(() => new Date())
   const [view, setView] = useState<View>(Views.WEEK)
   const [draft, setDraft] = useState<AppointmentDraft | null>(null)
+  // Sessão recém-salva: destacada quando a grade a desenha, e esquecida em seguida para que voltar a
+  // esta semana mais tarde não repita o destaque
+  const arrivedRef = useRef<number | null>(null)
+  const markArrived = useCallback((appointment: Appointment): void => {
+    arrivedRef.current = appointment.id
+    setTimeout(() => {
+      if (arrivedRef.current === appointment.id) arrivedRef.current = null
+    }, ARRIVED_MS)
+  }, [])
 
   const queryClient = useQueryClient()
   const { data, error, refetch } = useQuery({
@@ -459,9 +487,16 @@ export function AgendaPage(): React.JSX.Element {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [openNew])
 
+  const period = periodLabel(date, view)
+
   return (
     <Page
-      title={periodLabel(date, view)}
+      // key: o período novo entra com um fade, para a mudança de data ser notada além da grade
+      title={
+        <span key={period} className="animate-fade-in">
+          {period}
+        </span>
+      }
       badge={view !== Views.MONTH ? `Semana ${getWeek(date, WEEK_OPTIONS)}` : undefined}
       toolbar={<AgendaControls view={view} onNavigate={navigate} onView={setView} />}
       actions={
@@ -475,9 +510,6 @@ export function AgendaPage(): React.JSX.Element {
         >
           <Plus />
           <span className="hidden @min-[860px]:inline">Novo agendamento</span>
-          <Kbd className="-mr-1 ml-1 hidden bg-white/15 text-white/90 @min-[960px]:inline-grid">
-            N
-          </Kbd>
         </Button>
       }
       bodyClassName="flex flex-col overflow-hidden"
@@ -499,10 +531,11 @@ export function AgendaPage(): React.JSX.Element {
             onNavigate={setDate}
             onView={setView}
             onDraft={setDraft}
+            arrivedRef={arrivedRef}
           />
         </div>
       )}
-      <AppointmentDialog draft={draft} onClose={() => setDraft(null)} />
+      <AppointmentDialog draft={draft} onClose={() => setDraft(null)} onSaved={markArrived} />
     </Page>
   )
 }
