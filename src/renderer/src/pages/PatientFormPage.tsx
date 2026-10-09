@@ -15,7 +15,7 @@ import {
 } from '@shared/schemas'
 import { Page } from '@renderer/components/Layout'
 import { Avatar } from '@renderer/components/ui/avatar'
-import { Loading } from '@renderer/components/ui/bars'
+import { Loading } from '@renderer/components/ui/loading'
 import { Button } from '@renderer/components/ui/button'
 import { ErrorState } from '@renderer/components/ui/error'
 import { Field, Input, Textarea } from '@renderer/components/ui/input'

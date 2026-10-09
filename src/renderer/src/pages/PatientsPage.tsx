@@ -8,7 +8,7 @@ import type { Patient } from '@shared/schemas'
 import { createPatientSearch } from '@shared/search'
 import { Page } from '@renderer/components/Layout'
 import { Avatar } from '@renderer/components/ui/avatar'
-import { Loading } from '@renderer/components/ui/bars'
+import { Loading } from '@renderer/components/ui/loading'
 import { Button } from '@renderer/components/ui/button'
 import { EmptyState } from '@renderer/components/ui/empty'
 import { ErrorState } from '@renderer/components/ui/error'
@@ -186,13 +186,9 @@ export function PatientsPage(): React.JSX.Element {
     <Page
       title="Pacientes"
       badge={
-        !isPending &&
-        patients.length > 0 && (
-          <span className="hidden rounded-chip bg-fill px-2 py-0.5 text-xs font-medium text-ink-soft tabular-nums @min-[960px]:inline">
-            {patients.length} {patients.length === 1 ? 'paciente' : 'pacientes'}
-            {searching && ' encontrados'}
-          </span>
-        )
+        !isPending && patients.length > 0
+          ? `${patients.length} ${patients.length === 1 ? 'paciente' : 'pacientes'}${searching ? ' encontrados' : ''}`
+          : undefined
       }
       actions={
         <Button onClick={newPatient}>

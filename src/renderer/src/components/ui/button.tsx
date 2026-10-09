@@ -1,14 +1,15 @@
 import { cva, type VariantProps } from 'class-variance-authority'
 import type { ButtonHTMLAttributes } from 'react'
-import { Bars } from '@renderer/components/ui/bars'
+import { AuriSymbol } from '@renderer/components/ui/brand'
 import { cn } from '@renderer/lib/utils'
 
-// Botões retangulares de cantos arredondados (`rounded-control`). Só o principal é cheio (grafite). `outline` é o botão comum das barras de
+// Botões retangulares de cantos arredondados (`rounded-control`). Ao pressionar encolhem 3% (150ms,
+// interrompível) e ao habilitar/desabilitar o preenchimento se desfaz aos poucos. Só o principal é cheio (grafite). `outline` é o botão comum das barras de
 // ferramentas; `secondary` (preenchimento neutro) vai dentro de diálogos; `night` é para a barra
 // lateral escura. O destrutivo usa vermelho no texto, nunca como botão principal. Em tela de toque
 // (`pointer-coarse`) os alvos crescem para 44px.
 const buttonVariants = cva(
-  'inline-flex items-center justify-center gap-1.5 rounded-control font-medium whitespace-nowrap transition-[background-color,color,box-shadow] disabled:pointer-events-none disabled:opacity-40 data-[loading=true]:disabled:opacity-100 [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:stroke-[1.75]',
+  'inline-flex items-center justify-center gap-1.5 rounded-control font-medium whitespace-nowrap transition-[background-color,color,box-shadow,opacity,scale] duration-150 active:scale-[0.97] disabled:pointer-events-none disabled:opacity-40 data-[loading=true]:disabled:opacity-100 [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:stroke-[1.75]',
   {
     variants: {
       variant: {
@@ -35,7 +36,7 @@ const buttonVariants = cva(
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> &
   VariantProps<typeof buttonVariants> & {
-    /** Ação em andamento: mantém a largura, mostra as barras à esquerda do rótulo e bloqueia o clique. */
+    /** Ação em andamento: mostra o símbolo da marca à esquerda do rótulo e bloqueia o clique. */
     loading?: boolean
   }
 
@@ -58,7 +59,7 @@ export function Button({
       aria-busy={loading || undefined}
       {...props}
     >
-      {loading && <Bars animated className="h-3.5" />}
+      {loading && <AuriSymbol animated />}
       {children}
     </button>
   )

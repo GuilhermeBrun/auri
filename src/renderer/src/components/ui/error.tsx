@@ -24,7 +24,7 @@ export function ErrorState({
   return (
     <div
       role="alert"
-      className="flex h-full min-h-80 flex-col items-center justify-center px-6 text-center"
+      className="flex h-full min-h-80 animate-fade-in flex-col items-center justify-center px-6 text-center"
     >
       <span className="mb-3 grid size-10 place-items-center rounded-card bg-danger/8 text-danger [&_svg]:size-[18px] [&_svg]:stroke-[1.75]">
         <TriangleAlert aria-hidden="true" />

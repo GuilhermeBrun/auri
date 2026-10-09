@@ -462,13 +462,7 @@ export function AgendaPage(): React.JSX.Element {
   return (
     <Page
       title={periodLabel(date, view)}
-      badge={
-        view !== Views.MONTH && (
-          <span className="hidden rounded-chip bg-fill px-2 py-0.5 text-xs font-medium text-ink-soft tabular-nums @min-[960px]:inline">
-            Semana {getWeek(date, WEEK_OPTIONS)}
-          </span>
-        )
-      }
+      badge={view !== Views.MONTH ? `Semana ${getWeek(date, WEEK_OPTIONS)}` : undefined}
       toolbar={<AgendaControls view={view} onNavigate={navigate} onView={setView} />}
       actions={
         // Janela estreita: só o "+" (a barra é um contêiner; ver Page)

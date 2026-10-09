@@ -1,72 +1,84 @@
 import { CalendarDays, HardDrive, PanelLeft, Users } from 'lucide-react'
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
-import { NavLink, Outlet } from 'react-router'
+import { matchPath, NavLink, Outlet, useLocation } from 'react-router'
 import { Button } from '@renderer/components/ui/button'
+import { AuriLogo } from '@renderer/components/ui/brand'
+import { ToastProvider } from '@renderer/components/ui/toast'
 import { isMac, SIDEBAR_SHORTCUT } from '@renderer/lib/platform'
 import { SidebarContext, useSidebar } from '@renderer/lib/sidebar'
 import { cn } from '@renderer/lib/utils'
 
-/** Marca: as três barras do ícone do app (ondas de som) e o nome em minúsculas. */
-function Wordmark(): React.JSX.Element {
-  return (
-    <div className="flex items-center gap-2.5">
-      <svg viewBox="0 0 24 24" className="size-6" aria-hidden="true">
-        <rect x="4" y="9.5" width="3.6" height="5" rx="1.8" fill="currentColor" />
-        <rect x="10.2" y="5" width="3.6" height="14" rx="1.8" fill="currentColor" />
-        <rect x="16.4" y="7.5" width="3.6" height="9" rx="1.8" fill="currentColor" />
-      </svg>
-      <span className="text-[22px] leading-none font-semibold tracking-tight">auri</span>
-    </div>
-  )
-}
+/** Altura de cada item do menu e o vão entre eles (`h-[34px]` e `gap-0.5`): o indicador anda de 36 em 36px. */
+const NAV_ITEM_HEIGHT = 34
+const NAV_GAP = 2
 
-function NavItem({
-  to,
-  icon,
-  children
-}: {
-  to: string
-  icon: ReactNode
-  children: ReactNode
-}): React.JSX.Element {
+const NAV_ITEMS = [
+  { to: '/agenda', label: 'Agenda', icon: <CalendarDays /> },
+  { to: '/pacientes', label: 'Pacientes', icon: <Users /> }
+]
+
+/**
+ * Menu principal. O fundo do item ativo é um bloco só, que desliza de um item ao outro (só
+ * `transform`); o item guarda apenas o texto e o ícone em branco. A rota ativa é a que casa com o
+ * começo do caminho, então a ficha de um paciente mantém "Pacientes" marcado.
+ */
+function SidebarNav(): React.JSX.Element {
+  const { pathname } = useLocation()
+  const active = NAV_ITEMS.findIndex(({ to }) => matchPath({ path: to, end: false }, pathname))
   return (
-    <NavLink
-      to={to}
-      className={({ isActive }) =>
-        cn(
-          'flex h-[34px] items-center gap-2.5 rounded-control px-3 text-[13px] font-medium text-night-soft transition-colors hover:bg-white/[0.07] hover:text-night-ink [&_svg]:size-4 [&_svg]:stroke-[1.75]',
-          // item ativo: preenchimento mais claro e texto branco (e aria-current, que o NavLink põe)
-          isActive && 'bg-white/[0.12] text-night-ink hover:bg-white/[0.12]'
-        )
-      }
-    >
-      {icon}
-      {children}
-    </NavLink>
+    <nav className="relative flex flex-col gap-0.5" aria-label="Principal">
+      {active >= 0 && (
+        <span
+          aria-hidden="true"
+          className="absolute inset-x-0 top-0 rounded-control bg-white/[0.12] transition-transform duration-250 ease-slide"
+          style={{
+            height: NAV_ITEM_HEIGHT,
+            transform: `translateY(${active * (NAV_ITEM_HEIGHT + NAV_GAP)}px)`
+          }}
+        />
+      )}
+      {NAV_ITEMS.map(({ to, label, icon }) => (
+        <NavLink
+          key={to}
+          to={to}
+          className={({ isActive }) =>
+            cn(
+              'relative flex h-[34px] items-center gap-2.5 rounded-control px-3 text-[13px] font-medium text-night-soft transition-colors hover:bg-white/[0.07] hover:text-night-ink [&_svg]:size-4 [&_svg]:stroke-[1.75]',
+              // ativo: texto branco (e aria-current, que o NavLink põe); o fundo é o indicador
+              isActive && 'text-night-ink hover:bg-transparent'
+            )
+          }
+        >
+          {icon}
+          {label}
+        </NavLink>
+      ))}
+    </nav>
   )
 }
 
 const SIDEBAR_WIDTH = 192
 
 /** Onde fica o botão de recolher: logo depois dos botões da janela (Mac) ou no canto (Windows e web). */
-const TOGGLE_LEFT = isMac ? 96 : 16
+const TOGGLE_LEFT = isMac ? 84 : 12
 /** Lado do botão de recolher (`size-8`), em px. */
 const TOGGLE_SIZE = 32
 /** Espaço que o cabeçalho reserva à esquerda quando a barra está recolhida: botão da janela + botão. */
-const HEADER_PAD_COLLAPSED = isMac ? 'pl-[148px]' : 'pl-[68px]'
+const HEADER_PAD_COLLAPSED = isMac ? 'pl-[136px]' : 'pl-[64px]'
 
 /**
  * Botão de mostrar/ocultar a barra lateral. Fica sempre no mesmo lugar, ao lado dos botões da
- * janela, aberta ou recolhida a barra. Sobre o grafite é claro; solto sobre o conteúdo, com contorno.
+ * janela, aberta ou recolhida a barra. Só o ícone, sem caixa nem contorno (o fundo aparece no
+ * hover).
  */
 function SidebarToggle(): React.JSX.Element {
   const { open, toggle } = useSidebar()
   const label = open ? 'Ocultar barra lateral' : 'Mostrar barra lateral'
   return (
     <Button
-      variant={open ? 'night' : 'outline'}
+      variant={open ? 'night' : 'ghost'}
       size="icon"
-      className="no-drag"
+      className="no-drag [&_svg]:size-[18px]"
       onClick={toggle}
       aria-label={label}
       aria-expanded={open}
@@ -110,46 +122,65 @@ export function Layout(): React.JSX.Element {
 
   return (
     <SidebarContext value={{ open, toggle }}>
-      <div className="relative h-full overflow-hidden bg-surface">
-        <aside
-          id="sidebar"
-          inert={!open}
-          style={{ width: SIDEBAR_WIDTH }}
-          className={cn(
-            'on-night absolute inset-y-0 left-0 z-20 flex flex-col bg-night px-3 pb-4 text-night-ink transition-[translate] duration-200 ease-out',
-            !open && '-translate-x-full'
-          )}
-        >
-          {/* faixa dos botões da janela e do botão de recolher (que fica por cima, ver abaixo) */}
-          <div className="drag h-12 shrink-0" />
-          <div className="px-3 pt-1 pb-5">
-            <Wordmark />
+      <ToastProvider>
+        <div className="relative h-full overflow-hidden bg-surface">
+          <aside
+            id="sidebar"
+            inert={!open}
+            style={{ width: SIDEBAR_WIDTH }}
+            className={cn(
+              'on-night absolute inset-y-0 left-0 z-20 flex flex-col bg-night px-3 pb-4 text-night-ink transition-[translate] duration-200 ease-out',
+              !open && '-translate-x-full'
+            )}
+          >
+            {/*
+              faixa do título da janela: botões da janela, botão de recolher (que fica por cima, ver
+              abaixo) e a marca logo depois dele, como o título de um app do Mac
+            */}
+            <div
+              className="drag flex h-12 shrink-0 items-center"
+              style={{ paddingLeft: TOGGLE_LEFT + TOGGLE_SIZE + 8 - 12 }}
+            >
+              {/* O centro visual das letras acompanha o ícone do botão ao lado. */}
+              <AuriLogo className="w-12 -translate-y-0.5" />
+            </div>
+            <div className="h-3 shrink-0" />
+            <SidebarNav />
+            {/* mesmos px e gap dos itens do menu, para o ícone ficar na mesma coluna */}
+            <p className="mt-auto flex items-center gap-2.5 px-3 text-xs leading-snug text-night-faint">
+              <HardDrive className="size-[18px] shrink-0 stroke-[1.75]" aria-hidden="true" />
+              Salvo neste computador
+            </p>
+          </aside>
+          <div
+            className={cn('absolute top-2 z-30', open && 'on-night')}
+            style={{ left: TOGGLE_LEFT }}
+          >
+            <SidebarToggle />
           </div>
-          <nav className="flex flex-col gap-0.5" aria-label="Principal">
-            <NavItem to="/agenda" icon={<CalendarDays />}>
-              Agenda
-            </NavItem>
-            <NavItem to="/pacientes" icon={<Users />}>
-              Pacientes
-            </NavItem>
-          </nav>
-          {/* mesmos px e gap dos itens do menu, para o ícone ficar na mesma coluna */}
-          <p className="mt-auto flex items-center gap-2.5 px-3 text-xs leading-snug text-night-faint">
-            <HardDrive className="size-[18px] shrink-0 stroke-[1.75]" aria-hidden="true" />
-            Salvo neste computador
-          </p>
-        </aside>
-        <div className="on-night absolute top-2 z-30" style={{ left: TOGGLE_LEFT }}>
-          <SidebarToggle />
+          <main
+            className="h-full min-w-0 overflow-hidden transition-[padding] duration-200 ease-out"
+            style={{ paddingLeft: open ? SIDEBAR_WIDTH : 0 }}
+          >
+            <RouteFade />
+          </main>
         </div>
-        <main
-          className="h-full min-w-0 overflow-hidden transition-[padding] duration-200 ease-out"
-          style={{ paddingLeft: open ? SIDEBAR_WIDTH : 0 }}
-        >
-          <Outlet />
-        </main>
-      </div>
+      </ToastProvider>
     </SidebarContext>
+  )
+}
+
+/**
+ * A tela da rota atual, que entra com um fade curto e uma subida de 6px a cada troca de tela. A
+ * `key` recria o contêiner só quando o caminho muda (navegar dentro da agenda não repete a
+ * entrada). Vive aqui, e não no `Layout`, para só ele redesenhar a cada mudança de rota.
+ */
+function RouteFade(): React.JSX.Element {
+  const { pathname } = useLocation()
+  return (
+    <div key={pathname} className="h-full animate-page-in">
+      <Outlet />
+    </div>
   )
 }
 
@@ -157,8 +188,8 @@ type PageProps = {
   title: ReactNode
   /** Antes do título (ex.: botão Voltar) */
   lead?: ReactNode
-  /** Selo ao lado do título (ex.: "Semana 41") */
-  badge?: ReactNode
+  /** Selo ao lado do título (ex.: "Semana 41", "12 pacientes"); some em janela estreita */
+  badge?: string
   /** Ação principal, no fim da linha */
   actions?: ReactNode
   /** Ferramentas da página (busca, filtros, navegação), antes da ação principal */
@@ -169,7 +200,8 @@ type PageProps = {
 
 /**
  * Página: uma barra de uma linha só (título à esquerda; ferramentas e ação principal à direita) e,
- * abaixo, o conteúdo, que rola sozinho. Um filete separa as duas partes quando o conteúdo rolou.
+ * abaixo, o conteúdo, que rola sozinho. Sem filete entre as duas partes, em nenhuma tela: a
+ * separação vem do espaço. O selo tem um estilo só; as ferramentas e a ação principal usam a mesma altura (32px).
  * A barra é um contêiner (`@container`), então os itens podem se encolher conforme a largura
  * (ex.: `@min-[860px]:`); elementos `sticky top-0` do conteúdo (cabeçalho de tabela) param no topo
  * da área de rolagem, logo abaixo da barra.
@@ -184,13 +216,11 @@ export function Page({
   bodyClassName
 }: PageProps): React.JSX.Element {
   const { open } = useSidebar()
-  const [scrolled, setScrolled] = useState(false)
   return (
     <div className="flex h-full flex-col">
       <header
         className={cn(
-          '@container drag relative flex h-12 shrink-0 items-center gap-3 border-b px-6 transition-[padding,border-color] duration-200 ease-out',
-          scrolled ? 'border-line' : 'border-transparent',
+          '@container drag relative flex h-12 shrink-0 items-center gap-3 px-6 transition-[padding] duration-200 ease-out',
           // barra lateral recolhida: dar lugar aos botões da janela e ao botão de recolher
           !open && HEADER_PAD_COLLAPSED
         )}
@@ -213,19 +243,18 @@ export function Page({
           <h1 className="truncate text-xl leading-tight font-semibold tracking-tight first-letter:uppercase @max-[860px]:text-lg">
             {title}
           </h1>
-          {badge}
+          {badge && (
+            <span className="hidden shrink-0 rounded-chip bg-fill px-2 py-0.5 text-xs font-medium text-ink-soft tabular-nums @min-[960px]:inline">
+              {badge}
+            </span>
+          )}
         </div>
         <div className="no-drag ml-auto flex shrink-0 items-center gap-2">
           {toolbar}
           {actions}
         </div>
       </header>
-      <div
-        className={cn('min-h-0 flex-1 overflow-auto', bodyClassName)}
-        onScroll={(e) => setScrolled(e.currentTarget.scrollTop > 0)}
-      >
-        {children}
-      </div>
+      <div className={cn('min-h-0 flex-1 overflow-auto', bodyClassName)}>{children}</div>
     </div>
   )
 }

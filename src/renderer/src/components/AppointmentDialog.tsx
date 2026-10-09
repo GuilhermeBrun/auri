@@ -79,20 +79,19 @@ function summary(values: FormValues): string | null {
 type Props = { draft: AppointmentDraft | null; onClose: () => void }
 
 export function AppointmentDialog({ draft, onClose }: Props): React.JSX.Element {
+  // Ao fechar, `draft` vira null mas o diálogo ainda anima a saída: ele continua mostrando o último
+  // rascunho (e não uma folha vazia) até sumir. `opening` conta as aberturas: cada uma é um
+  // formulário novo, mesmo que reabra o mesmo horário durante a saída.
+  const [shown, setShown] = useState({ draft, opening: 0 })
+  if (draft && draft !== shown.draft) setShown({ draft, opening: shown.opening + 1 })
+  const current = shown.draft
   return (
     <Dialog
       open={draft !== null}
       onOpenChange={(open) => !open && onClose()}
-      title={draft?.mode === 'edit' ? 'Editar agendamento' : 'Novo agendamento'}
+      title={current?.mode === 'edit' ? 'Editar agendamento' : 'Novo agendamento'}
     >
-      {/* key: cada abertura começa com o formulário limpo */}
-      {draft && (
-        <AppointmentForm
-          key={draft.mode === 'edit' ? draft.appointment.id : draft.inicio.getTime()}
-          draft={draft}
-          onClose={onClose}
-        />
-      )}
+      {current && <AppointmentForm key={shown.opening} draft={current} onClose={onClose} />}
     </Dialog>
   )
 }
