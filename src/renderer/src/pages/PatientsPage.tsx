@@ -1,0 +1,283 @@
+import { useQuery } from '@tanstack/react-query'
+import { format } from 'date-fns'
+import { Archive, Check, Plus, Search, UserRoundPlus, X } from 'lucide-react'
+import { memo, useMemo, useRef, useState } from 'react'
+import { Link, useNavigate } from 'react-router'
+import { formatAge, isIsoDate, parseIsoDate } from '@shared/dates'
+import type { Patient } from '@shared/schemas'
+import { createPatientSearch } from '@shared/search'
+import { Page } from '@renderer/components/Layout'
+import { Avatar } from '@renderer/components/ui/avatar'
+import { Loading } from '@renderer/components/ui/bars'
+import { Button } from '@renderer/components/ui/button'
+import { EmptyState } from '@renderer/components/ui/empty'
+import { ErrorState } from '@renderer/components/ui/error'
+import { Input } from '@renderer/components/ui/input'
+import { useVirtualRows } from '@renderer/lib/hooks'
+import { patientsQuery } from '@renderer/lib/queries'
+import { cn } from '@renderer/lib/utils'
+
+function formatDate(value: string): string {
+  return isIsoDate(value) ? format(parseIsoDate(value), 'dd/MM/yyyy') : ''
+}
+
+const COLUMNS: { label: string; className?: string }[] = [
+  { label: 'Paciente', className: 'w-[36%]' },
+  { label: 'Mãe', className: 'w-[26%]' },
+  { label: 'Escola' },
+  { label: 'Entrada', className: 'w-[13%]' }
+]
+
+/** Altura de cada linha da tabela. Fixa, para a lista montar só as linhas visíveis. */
+const ROW_HEIGHT = 56
+
+/** Valor vazio: um traço, que o leitor de tela anuncia como "não informado". */
+function Blank(): React.JSX.Element {
+  return (
+    <span className="text-ink-faint" aria-label="não informado">
+      —
+    </span>
+  )
+}
+
+/** Texto principal e, embaixo, o complemento em cinza (a célula tem duas linhas). */
+function TwoLines({
+  main,
+  sub
+}: {
+  main: React.ReactNode
+  sub?: React.ReactNode
+}): React.JSX.Element {
+  return (
+    <span className="flex min-w-0 flex-col">
+      <span className="truncate" title={typeof main === 'string' ? main : undefined}>
+        {main}
+      </span>
+      {sub && <span className="truncate text-xs text-ink-soft tabular-nums">{sub}</span>}
+    </span>
+  )
+}
+
+/** Espaço das linhas que não estão no DOM, acima ou abaixo das visíveis. */
+function Spacer({ rows }: { rows: number }): React.JSX.Element {
+  return (
+    <tr aria-hidden="true">
+      <td colSpan={COLUMNS.length} className="p-0" style={{ height: rows * ROW_HEIGHT }} />
+    </tr>
+  )
+}
+
+const PatientRow = memo(function PatientRow({
+  patient: p,
+  index
+}: {
+  patient: Patient
+  index: number
+}): React.JSX.Element {
+  const navigate = useNavigate()
+  return (
+    <tr
+      aria-rowindex={index + 2}
+      onClick={() => navigate(`/pacientes/${p.id}`)}
+      style={{ height: ROW_HEIGHT }}
+      // hover: fundo arredondado na linha inteira
+      className="group cursor-pointer [&>td]:transition-colors [&>td:first-child]:rounded-l-card [&>td:last-child]:rounded-r-card hover:[&>td]:bg-canvas"
+    >
+      <td className="px-3">
+        <span className="flex min-w-0 items-center gap-3">
+          <Avatar name={p.nome} size="md" className={p.ativo ? undefined : 'opacity-60'} />
+          <span className="flex min-w-0 flex-col">
+            <span className="flex min-w-0 items-center gap-2">
+              <Link
+                to={`/pacientes/${p.id}`}
+                className="truncate font-semibold text-ink"
+                title={p.nome}
+                onClick={(e) => e.stopPropagation()}
+              >
+                {p.nome}
+              </Link>
+              {!p.ativo && (
+                <span className="shrink-0 rounded-chip bg-fill px-2 py-px text-xs font-medium text-ink-soft">
+                  Inativo
+                </span>
+              )}
+            </span>
+            <span className="truncate text-xs text-ink-soft tabular-nums">
+              {formatAge(p.data_nascimento) || <Blank />}
+            </span>
+          </span>
+        </span>
+      </td>
+      <td className="px-3">
+        {p.mae_nome || p.mae_celular ? (
+          <TwoLines main={p.mae_nome || <Blank />} sub={p.mae_celular} />
+        ) : (
+          <Blank />
+        )}
+      </td>
+      <td className="px-3">{p.escola ? <TwoLines main={p.escola} sub={p.serie} /> : <Blank />}</td>
+      <td className="px-3 text-ink-soft tabular-nums">{formatDate(p.data_entrada) || <Blank />}</td>
+    </tr>
+  )
+})
+
+/**
+ * Tabela de pacientes. Só as linhas visíveis (e uma folga) vão para o DOM, então abrir a tela,
+ * buscar e recolher a barra lateral custam o mesmo com 50 ou 2.000 pacientes. Com `memo`, digitar
+ * na busca só redesenha a tabela quando o resultado muda, e cada linha só quando o paciente muda.
+ */
+const PatientTable = memo(function PatientTable({
+  patients
+}: {
+  patients: Patient[]
+}): React.JSX.Element {
+  const bodyRef = useRef<HTMLTableSectionElement>(null)
+  const { start, end } = useVirtualRows(bodyRef, patients.length, ROW_HEIGHT)
+  return (
+    <div className="px-4 pb-6">
+      <table
+        aria-rowcount={patients.length + 1}
+        className="w-full table-fixed border-separate border-spacing-0 text-left text-[13px]"
+      >
+        <thead className="sticky top-0 z-[1] bg-surface text-xs text-ink-soft">
+          <tr aria-rowindex={1}>
+            {COLUMNS.map(({ label, className }) => (
+              <th
+                key={label}
+                className={cn('h-9 border-b border-line px-3 font-medium', className)}
+              >
+                {label}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody ref={bodyRef}>
+          {start > 0 && <Spacer rows={start} />}
+          {patients.slice(start, end).map((p, i) => (
+            <PatientRow key={p.id} patient={p} index={start + i} />
+          ))}
+          {end < patients.length && <Spacer rows={patients.length - end} />}
+        </tbody>
+      </table>
+    </div>
+  )
+})
+
+export function PatientsPage(): React.JSX.Element {
+  const navigate = useNavigate()
+  const [busca, setBusca] = useState('')
+  const [incluirInativos, setIncluirInativos] = useState(false)
+
+  const { data, isPending, error, refetch } = useQuery({
+    ...patientsQuery(incluirInativos),
+    placeholderData: (previous) => previous
+  })
+  // A busca filtra a lista em memória: o resultado aparece na mesma tecla, sem esperar o banco
+  const search = useMemo(() => createPatientSearch(data ?? []), [data])
+  const patients = useMemo(() => search(busca), [search, busca])
+
+  const searchRef = useRef<HTMLInputElement>(null)
+  const searching = busca.trim() !== ''
+  const newPatient = (): void => {
+    navigate('/pacientes/novo')
+  }
+
+  return (
+    <Page
+      title="Pacientes"
+      badge={
+        !isPending &&
+        patients.length > 0 && (
+          <span className="hidden rounded-chip bg-fill px-2 py-0.5 text-xs font-medium text-ink-soft tabular-nums @min-[960px]:inline">
+            {patients.length} {patients.length === 1 ? 'paciente' : 'pacientes'}
+            {searching && ' encontrados'}
+          </span>
+        )
+      }
+      actions={
+        <Button onClick={newPatient}>
+          <Plus /> Novo paciente
+        </Button>
+      }
+      toolbar={
+        <>
+          <div className="relative w-52 @min-[960px]:w-64">
+            <Search
+              className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 stroke-[1.75] text-ink-soft"
+              aria-hidden="true"
+            />
+            <Input
+              ref={searchRef}
+              type="search"
+              value={busca}
+              onChange={(e) => setBusca(e.target.value)}
+              placeholder="Nome, mãe ou CPF"
+              // o "x" nativo do navegador é azul e fora da paleta: o botão abaixo o substitui
+              className="h-8 pr-8 pl-9 text-[13px] pointer-coarse:h-11 [&::-webkit-search-cancel-button]:appearance-none"
+              aria-label="Buscar pacientes por nome, mãe ou CPF"
+              autoFocus
+            />
+            {busca !== '' && (
+              <button
+                type="button"
+                aria-label="Limpar busca"
+                onClick={() => {
+                  setBusca('')
+                  searchRef.current?.focus()
+                }}
+                className="absolute top-1/2 right-1.5 grid size-6 -translate-y-1/2 place-items-center rounded-chip text-ink-soft transition-colors hover:bg-fill hover:text-ink pointer-coarse:size-9 [&_svg]:size-4 [&_svg]:stroke-[1.75]"
+              >
+                <X aria-hidden="true" />
+              </button>
+            )}
+          </div>
+          <Button
+            variant="outline"
+            aria-pressed={incluirInativos}
+            onClick={() => setIncluirInativos((v) => !v)}
+            className={cn(
+              'text-ink-soft',
+              // ligado: preenchimento mais forte e ✓ (não só cor), sem competir com o botão principal
+              incluirInativos && 'bg-accent-soft text-ink hover:bg-accent-soft'
+            )}
+          >
+            {incluirInativos ? <Check /> : <Archive />} Mostrar inativos
+          </Button>
+        </>
+      }
+      bodyClassName="flex flex-col"
+    >
+      {error ? (
+        <ErrorState
+          title="Não foi possível carregar os pacientes"
+          detail={error.message}
+          onRetry={() => void refetch()}
+        >
+          Tente de novo. Se o problema continuar, feche e abra o Auri.
+        </ErrorState>
+      ) : isPending ? (
+        <Loading />
+      ) : patients.length === 0 ? (
+        searching ? (
+          <EmptyState icon={<Search />} title={`Nenhum paciente encontrado para “${busca.trim()}”`}>
+            Confira a grafia ou busque pelo nome da mãe ou pelo CPF.
+          </EmptyState>
+        ) : (
+          <EmptyState
+            icon={<UserRoundPlus />}
+            title="Nenhum paciente cadastrado ainda"
+            action={
+              <Button onClick={newPatient}>
+                <Plus /> Cadastrar o primeiro paciente
+              </Button>
+            }
+          >
+            Comece pela ficha de entrada: dados do paciente, dos pais e da escola.
+          </EmptyState>
+        )
+      ) : (
+        <PatientTable patients={patients} />
+      )}
+    </Page>
+  )
+}
