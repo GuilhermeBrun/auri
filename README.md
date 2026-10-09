@@ -15,7 +15,7 @@ Por enquanto não há backup automático. Para não perder dados, copie esse arq
 
 ```bash
 npm install        # também recompila o better-sqlite3 para o Electron
-npm run dev        # abre o app com recarga automática
+npm run dev        # recarrega as telas e reinicia o app ao alterar main/preload
 npm test           # testes (rodam no Node do Electron por causa do better-sqlite3)
 npm run typecheck
 npm run lint
