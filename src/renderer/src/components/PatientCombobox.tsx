@@ -1,10 +1,11 @@
 import { useQuery } from '@tanstack/react-query'
 import { Search } from 'lucide-react'
-import { useId, useMemo, useState } from 'react'
+import { useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { formatAge } from '@shared/dates'
 import { createPatientSearch } from '@shared/search'
 import { Avatar } from '@renderer/components/ui/avatar'
 import { Button } from '@renderer/components/ui/button'
+import { optionClass, popupClass, trailingIconClass } from '@renderer/components/ui/field-style'
 import { Input } from '@renderer/components/ui/input'
 import { patientsQuery } from '@renderer/lib/queries'
 import { cn } from '@renderer/lib/utils'
@@ -26,6 +27,17 @@ export function PatientCombobox({ value, onChange, invalid, autoFocus }: Props):
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(false)
   const [highlight, setHighlight] = useState(0)
+  const chipRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+  // Escolher ou trocar o paciente troca o campo de busca pelo "Trocar" (ou o contrário) com o foco
+  // dentro dele: o foco segue para o que aparece, em vez de cair no diálogo.
+  const refocus = useRef<'chip' | 'input' | null>(null)
+  useLayoutEffect(() => {
+    const target = refocus.current
+    refocus.current = null
+    if (target === 'chip') chipRef.current?.querySelector('button')?.focus()
+    if (target === 'input') inputRef.current?.focus()
+  }, [value])
   // Filtra em memória a lista de pacientes ativos (a mesma da tela Pacientes, já em cache): o
   // resultado sai na mesma tecla, sem piscar "Buscando…", e nunca é de um texto anterior (o Enter
   // escolheria o paciente errado).
@@ -35,7 +47,11 @@ export function PatientCombobox({ value, onChange, invalid, autoFocus }: Props):
 
   if (value) {
     return (
-      <div className="flex h-9 items-center justify-between gap-2 rounded-control border border-line bg-canvas pr-1 pl-2">
+      // o mesmo contorno dos outros campos: escolhido, ele continua sendo um campo
+      <div
+        ref={chipRef}
+        className="flex h-9 animate-fade-in items-center justify-between gap-2 rounded-control border border-control bg-surface pr-1 pl-2.5 pointer-coarse:h-11"
+      >
         <span className="flex min-w-0 items-center gap-2">
           <Avatar name={value.nome} size="xs" />
           <span className="truncate text-[13px] font-semibold">{value.nome}</span>
@@ -45,6 +61,7 @@ export function PatientCombobox({ value, onChange, invalid, autoFocus }: Props):
           size="sm"
           aria-label={`Trocar paciente (${value.nome})`}
           onClick={() => {
+            refocus.current = 'input'
             onChange(null)
             setQuery('')
             setOpen(true)
@@ -57,14 +74,22 @@ export function PatientCombobox({ value, onChange, invalid, autoFocus }: Props):
   }
 
   function select(option: PatientOption): void {
+    refocus.current = 'chip'
     onChange({ id: option.id, nome: option.nome })
     setOpen(false)
   }
 
   return (
     <div className="relative">
-      <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 stroke-[1.75] text-ink-soft" />
+      <Search
+        className={cn(
+          trailingIconClass,
+          'pointer-events-none absolute top-1/2 left-3 -translate-y-1/2'
+        )}
+        aria-hidden="true"
+      />
       <Input
+        ref={inputRef}
         className="pl-9"
         role="combobox"
         aria-label="Paciente"
@@ -98,44 +123,48 @@ export function PatientCombobox({ value, onChange, invalid, autoFocus }: Props):
           }
         }}
       />
-      {open && (
-        <ul
-          id={listId}
-          role="listbox"
-          // Sólida e com sombra: é a única coisa que flutua dentro da folha
-          className="absolute top-full right-0 left-0 z-10 mt-1.5 max-h-60 animate-pop-in overflow-auto rounded-card bg-surface p-1 shadow-pop"
-        >
-          {results.length === 0 ? (
-            <li className="px-2 py-2 text-[13px] text-ink-soft">
-              {isPending ? 'Buscando…' : 'Nenhum paciente ativo encontrado.'}
+      {/* Sempre montada, só escondida: tirar a lista do DOM durante o blur (Tab) faz o diálogo, que
+          vigia remoções, puxar o foco para ele em vez de deixá-lo seguir para o campo seguinte. */}
+      <ul
+        hidden={!open}
+        id={listId}
+        role="listbox"
+        // uma lista que rola é parada do Tab no Chromium: o foco fica sempre no campo
+        tabIndex={-1}
+        onMouseDown={(e) => e.preventDefault()}
+        className={cn(
+          popupClass,
+          'absolute top-full right-0 left-0 z-10 mt-1.5 max-h-60 animate-pop-in overflow-auto'
+        )}
+      >
+        {results.length === 0 ? (
+          <li className="px-2 py-2 text-[13px] text-ink-soft">
+            {isPending ? 'Buscando…' : 'Nenhum paciente ativo encontrado.'}
+          </li>
+        ) : (
+          results.map((p, i) => (
+            <li
+              key={p.id}
+              role="option"
+              aria-selected={i === highlight}
+              data-highlighted={i === highlight || undefined}
+              // mousedown para escolher antes do blur fechar a lista
+              onMouseDown={(e) => {
+                e.preventDefault()
+                select(p)
+              }}
+              onMouseEnter={() => setHighlight(i)}
+              className={optionClass}
+            >
+              <Avatar name={p.nome} size="xs" />
+              <span className="min-w-0 flex-1 truncate font-medium">{p.nome}</span>
+              <span className="shrink-0 text-xs text-ink-soft tabular-nums">
+                {formatAge(p.data_nascimento)}
+              </span>
             </li>
-          ) : (
-            results.map((p, i) => (
-              <li
-                key={p.id}
-                role="option"
-                aria-selected={i === highlight}
-                // mousedown para escolher antes do blur fechar a lista
-                onMouseDown={(e) => {
-                  e.preventDefault()
-                  select(p)
-                }}
-                onMouseEnter={() => setHighlight(i)}
-                className={cn(
-                  'flex h-8 cursor-pointer items-center gap-2 rounded-control px-2 text-[13px]',
-                  i === highlight && 'bg-canvas'
-                )}
-              >
-                <Avatar name={p.nome} size="xs" />
-                <span className="min-w-0 flex-1 truncate font-medium">{p.nome}</span>
-                <span className="shrink-0 text-xs text-ink-soft tabular-nums">
-                  {formatAge(p.data_nascimento)}
-                </span>
-              </li>
-            ))
-          )}
-        </ul>
-      )}
+          ))
+        )}
+      </ul>
     </div>
   )
 }

@@ -1,9 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import {
+  brDateToIso,
   formatAge,
   formatTime,
   isIsoDate,
   isIsoLocalDateTime,
+  isoToBrDate,
+  maskBrDate,
+  maskTime,
+  normalizeTime,
   parseIsoDate,
   parseIsoLocalDateTime
 } from './dates'
@@ -63,5 +68,69 @@ describe('leitura e escrita de datas', () => {
   it('formata o horário com dois dígitos', () => {
     expect(formatTime(new Date(2025, 8, 8, 7, 5))).toBe('07:05')
     expect(formatTime(new Date(2025, 8, 8, 19, 30))).toBe('19:30')
+  })
+})
+
+describe('data digitada (dd/mm/aaaa)', () => {
+  it('converte nos dois sentidos', () => {
+    expect(isoToBrDate('2026-10-07')).toBe('07/10/2026')
+    expect(brDateToIso('07/10/2026')).toBe('2026-10-07')
+  })
+
+  it('devolve vazio para o que não é data', () => {
+    expect(isoToBrDate('')).toBe('')
+    expect(isoToBrDate('2026-02-30')).toBe('')
+    expect(brDateToIso('07/10/26')).toBe('')
+    expect(brDateToIso('30/02/2026')).toBe('')
+    expect(brDateToIso('31/04/2026')).toBe('')
+  })
+
+  it('aplica a máscara enquanto digita', () => {
+    expect(maskBrDate('0')).toBe('0')
+    expect(maskBrDate('071')).toBe('07/1')
+    expect(maskBrDate('07102')).toBe('07/10/2')
+    expect(maskBrDate('07102026')).toBe('07/10/2026')
+    expect(maskBrDate('071020261234')).toBe('07/10/2026')
+    expect(maskBrDate('07/10/2026')).toBe('07/10/2026')
+    expect(maskBrDate('ab')).toBe('')
+  })
+
+  it('completa dia e mês de um dígito quando a barra é digitada', () => {
+    expect(maskBrDate('7/')).toBe('07')
+    expect(maskBrDate('7/10/2026')).toBe('07/10/2026')
+    expect(maskBrDate('07/1/2026')).toBe('07/01/2026')
+    expect(maskBrDate('7/1/2026')).toBe('07/01/2026')
+  })
+})
+
+describe('hora digitada (HH:mm)', () => {
+  it('aplica a máscara enquanto digita', () => {
+    expect(maskTime('1')).toBe('1')
+    expect(maskTime('18')).toBe('18')
+    expect(maskTime('180')).toBe('18:0')
+    expect(maskTime('1800')).toBe('18:00')
+    expect(maskTime('18:00')).toBe('18:00')
+    expect(maskTime('180099')).toBe('18:00')
+  })
+
+  it('põe o zero na hora que começa com 3 a 9, ou com um dígito seguido de separador', () => {
+    expect(maskTime('9')).toBe('09')
+    expect(maskTime('930')).toBe('09:30')
+    expect(maskTime('9:30')).toBe('09:30')
+    expect(maskTime('1:30')).toBe('01:30')
+  })
+
+  it('completa o que falta', () => {
+    expect(normalizeTime('09:30')).toBe('09:30')
+    expect(normalizeTime('09')).toBe('09:00')
+    expect(normalizeTime('9')).toBe('09:00')
+    expect(normalizeTime('09:3')).toBe('09:30')
+    expect(normalizeTime('')).toBeNull()
+  })
+
+  it('recusa horas que não existem', () => {
+    expect(normalizeTime('24:00')).toBeNull()
+    expect(normalizeTime('12:60')).toBeNull()
+    expect(normalizeTime('123456')).toBeNull()
   })
 })

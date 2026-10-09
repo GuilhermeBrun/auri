@@ -6,12 +6,8 @@ import type {
   SelectHTMLAttributes,
   TextareaHTMLAttributes
 } from 'react'
+import { controlClass } from '@renderer/components/ui/field-style'
 import { cn } from '@renderer/lib/utils'
-
-// Campos brancos com contorno de 3:1 (WCAG 1.4.11). No foco o contorno vira grafite com um anel
-// suave; no erro, vermelho (e a mensagem, com ícone, aparece abaixo).
-const controlClass =
-  'w-full rounded-control border border-control bg-surface px-3 text-[13px] text-ink transition-[background-color,border-color,box-shadow] placeholder:text-ink-faint hover:border-ink-soft focus:border-ink focus:ring-[3px] focus:ring-black/10 focus:outline-none aria-[invalid=true]:border-danger aria-[invalid=true]:bg-danger/[0.03] aria-[invalid=true]:focus:ring-danger/15 disabled:border-line disabled:bg-canvas disabled:text-ink-faint pointer-coarse:text-base'
 
 export function Input({
   className,
@@ -68,6 +64,12 @@ type FieldProps = {
    * dentro de um <label>; o controle deve receber aria-label próprio.
    */
   as?: 'label' | 'group'
+  /**
+   * Controle composto com um campo principal (data, hora, duração): o <label> fica ao lado e
+   * aponta para o `id` desse campo, então clicar no texto o foca e ele já ganha o nome.
+   * Tem prioridade sobre `as`.
+   */
+  htmlFor?: string
   children: ReactNode
 }
 
@@ -77,30 +79,39 @@ export function Field({
   hint,
   className,
   as = 'label',
+  htmlFor,
   children
 }: FieldProps): React.JSX.Element {
+  const captionClass = 'flex items-baseline justify-between gap-2 text-xs font-medium text-ink'
   const caption = (
-    <span className="flex items-baseline justify-between gap-2 text-xs font-medium text-ink">
+    <>
       {label}
       {hint && <span className="font-medium text-ink-soft">{hint}</span>}
-    </span>
+    </>
   )
   return (
     <div className={cn('flex min-w-0 flex-col gap-1', className)}>
-      {as === 'label' ? (
+      {htmlFor ? (
+        <>
+          <label htmlFor={htmlFor} className={captionClass}>
+            {caption}
+          </label>
+          {children}
+        </>
+      ) : as === 'label' ? (
         <label className="flex flex-col gap-1">
-          {caption}
+          <span className={captionClass}>{caption}</span>
           {children}
         </label>
       ) : (
         <div role="group" aria-label={label} className="flex flex-col gap-1">
-          {caption}
+          <span className={captionClass}>{caption}</span>
           {children}
         </div>
       )}
       {/* fora do <label> para não virar parte do nome do campo; ícone + texto, nunca só cor */}
       {error && (
-        <span className="flex items-start gap-1.5 text-xs text-danger">
+        <span className="flex animate-error-in items-start gap-1.5 text-xs text-danger">
           <CircleAlert className="mt-0.5 size-3.5 shrink-0 stroke-[2]" aria-hidden="true" />
           {error}
         </span>

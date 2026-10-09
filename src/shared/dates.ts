@@ -70,3 +70,49 @@ export function formatAge(birthDate: string, today: Date = new Date()): string {
   if (years < 1) return plural(months, 'mês', 'meses')
   return plural(years, 'ano', 'anos')
 }
+
+/** "2026-10-07" → "07/10/2026" (como o campo de data mostra); '' se não for uma data válida. */
+export function isoToBrDate(iso: string): string {
+  const m = ISO_DATE.exec(iso)
+  return m && isIsoDate(iso) ? `${m[3]}/${m[2]}/${m[1]}` : ''
+}
+
+/** "07/10/2026" → "2026-10-07"; '' se estiver incompleta ou o dia não existir (30/02). */
+export function brDateToIso(text: string): string {
+  const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(text)
+  const iso = m ? `${m[3]}-${m[2]}-${m[1]}` : ''
+  return isIsoDate(iso) ? iso : ''
+}
+
+/**
+ * Máscara progressiva do campo de data: só dígitos, com as barras postas sozinhas
+ * ("07102026" → "07/10/2026"). Quem digita as barras também é atendido: "7/10/2026" vira
+ * "07/10/2026".
+ */
+export function maskBrDate(value: string): string {
+  const padded = value.replace(/^(\d)\D/, '0$1/').replace(/^(\d{2}\D)(\d)\D/, '$10$2/')
+  const d = padded.replace(/\D/g, '').slice(0, 8)
+  if (d.length <= 2) return d
+  if (d.length <= 4) return `${d.slice(0, 2)}/${d.slice(2)}`
+  return `${d.slice(0, 2)}/${d.slice(2, 4)}/${d.slice(4)}`
+}
+
+/**
+ * Máscara progressiva do campo de hora ("0930" → "09:30"). Um primeiro dígito que não pode ser
+ * de dezena de hora ("9") já ganha o zero, e "9:30" vira "09:30".
+ */
+export function maskTime(value: string): string {
+  let d = value.replace(/\D/g, '')
+  if (d !== '' && (+d[0] > 2 || /^\d\D/.test(value))) d = `0${d}`
+  d = d.slice(0, 4)
+  return d.length <= 2 ? d : `${d.slice(0, 2)}:${d.slice(2)}`
+}
+
+/** Completa o que foi digitado ("9" → "09:00", "093" → "09:30"); null se não for um horário. */
+export function normalizeTime(text: string): string | null {
+  const d = text.replace(/\D/g, '')
+  if (d === '' || d.length > 4) return null
+  const hours = d.length <= 2 ? d.padStart(2, '0') : d.slice(0, 2)
+  const minutes = d.length <= 2 ? '00' : d.slice(2).padEnd(2, '0')
+  return +hours < 24 && +minutes < 60 ? `${hours}:${minutes}` : null
+}
