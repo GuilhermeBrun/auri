@@ -3,12 +3,34 @@ import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { PREFS_ARG } from '../shared/api'
-import type { UiPrefs } from '../shared/schemas'
+import type { Theme, UiPrefs } from '../shared/schemas'
 import { openDatabase, type Db } from './db/connection'
 import { registerIpc } from './ipc'
 import { createPrefsStore } from './prefs'
 
 let db: Db | null = null
+
+/**
+ * Fundo da janela antes da interface desenhar (abrir, redimensionar): o mesmo `--color-surface` do
+ * tema em uso, para não piscar branco no escuro nem preto no claro.
+ */
+function windowBackground(): string {
+  return nativeTheme.shouldUseDarkColors ? '#17171c' : '#ffffff'
+}
+
+/**
+ * O tema vale para o app todo: o `themeSource` decide o `prefers-color-scheme` que o CSS lê (ver
+ * main.css) e os controles nativos. Em "system" ele acompanha o sistema, inclusive quando o sistema
+ * troca sozinho ao anoitecer.
+ */
+function applyTheme(theme: Theme): void {
+  nativeTheme.themeSource = theme
+  syncWindowBackgrounds()
+}
+
+function syncWindowBackgrounds(): void {
+  for (const window of BrowserWindow.getAllWindows()) window.setBackgroundColor(windowBackground())
+}
 
 function createWindow(prefs: UiPrefs): void {
   const mainWindow = new BrowserWindow({
@@ -19,9 +41,9 @@ function createWindow(prefs: UiPrefs): void {
     title: 'Auri',
     show: false,
     autoHideMenuBar: true,
-    // Fundo branco: o conteúdo é branco até a borda e a barra lateral de grafite é desenhada pela interface.
-    backgroundColor: '#ffffff',
-    // Mac: barra de título integrada (os botões da janela ficam sobre a barra lateral de grafite).
+    // O conteúdo vai até a borda; a barra lateral é desenhada pela interface.
+    backgroundColor: windowBackground(),
+    // Mac: barra de título integrada (os botões da janela ficam sobre a barra lateral).
     // O y centraliza os botões (14px) na altura do cabeçalho da página (48px).
     ...(process.platform === 'darwin'
       ? { titleBarStyle: 'hiddenInset' as const, trafficLightPosition: { x: 22, y: 17 } }
@@ -60,10 +82,6 @@ app.whenReady().then(() => {
   // Em desenvolvimento o executável ainda é o Electron; a marca também aparece no Dock.
   if (process.platform === 'darwin') app.dock?.setIcon(icon)
 
-  // O Auri só tem tema claro. Sem isto, no Modo Escuro os controles nativos (barras de rolagem,
-  // seletor de data) ficariam escuros dentro de uma interface clara.
-  nativeTheme.themeSource = 'light'
-
   // F12 abre o DevTools em desenvolvimento; Ctrl/Cmd+R fica desativado em produção.
   app.on('browser-window-created', (_, window) => {
     optimizer.watchWindowShortcuts(window)
@@ -72,8 +90,13 @@ app.whenReady().then(() => {
   const dbFile = join(app.getPath('userData'), 'auri.db')
   db = openDatabase(dbFile)
   console.log(`[db] ${dbFile}`)
-  const prefs = createPrefsStore(join(app.getPath('userData'), 'preferencias.json'))
+  const prefs = createPrefsStore(join(app.getPath('userData'), 'preferencias.json'), (next) =>
+    applyTheme(next.theme)
+  )
   registerIpc(db, prefs)
+  applyTheme(prefs.get().theme)
+  // o sistema trocou de tema (com "system" escolhido)
+  nativeTheme.on('updated', syncWindowBackgrounds)
 
   createWindow(prefs.get())
 

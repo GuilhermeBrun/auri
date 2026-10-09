@@ -1,51 +1,78 @@
-import { CalendarDays, HardDrive, PanelLeft, Users } from 'lucide-react'
-import { Fragment, useCallback, useEffect, useState, type ReactNode } from 'react'
-import { Link, matchPath, NavLink, Outlet, useLocation } from 'react-router'
+import {
+  ArrowLeft,
+  CalendarDays,
+  PanelLeft,
+  PanelLeftClose,
+  Settings,
+  SunMoon,
+  Users
+} from 'lucide-react'
+import { Fragment, useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import { Link, matchPath, NavLink, Outlet, useLocation, useNavigate } from 'react-router'
 import { Button } from '@renderer/components/ui/button'
 import { AuriLogo } from '@renderer/components/ui/brand'
 import { ToastProvider } from '@renderer/components/ui/toast'
-import { isMac, SIDEBAR_SHORTCUT } from '@renderer/lib/platform'
+import { isMac, SETTINGS_SHORTCUT, SIDEBAR_SHORTCUT } from '@renderer/lib/platform'
 import { SidebarContext, useSidebar } from '@renderer/lib/sidebar'
 import { cn } from '@renderer/lib/utils'
 
-/** Altura de cada item do menu e o vão entre eles (`h-[34px]` e `gap-0.5`): o indicador anda de 36 em 36px. */
+/** Altura de cada item do menu e o vão entre eles (`h-[34px]` e `gap-1.5`): o indicador anda de 40 em 40px. */
 const NAV_ITEM_HEIGHT = 34
-const NAV_GAP = 2
+const NAV_GAP = 6
 
-const NAV_ITEMS = [
+/** Item do menu: texto apagado, que escurece no hover; o ativo fica com o texto principal. */
+const navItemClass =
+  'relative flex h-[34px] items-center gap-2.5 rounded-control px-3 text-[13px] font-medium text-ink-soft transition-colors hover:bg-fill hover:text-ink [&_svg]:size-4 [&_svg]:stroke-[1.75]'
+
+type NavItem = { to: string; label: string; icon: ReactNode }
+
+const NAV_ITEMS: NavItem[] = [
   { to: '/agenda', label: 'Agenda', icon: <CalendarDays /> },
   { to: '/pacientes', label: 'Pacientes', icon: <Users /> }
 ]
 
+/** Seções de Configurações, que tomam o lugar do menu principal enquanto se está nelas. */
+const SETTINGS_PATH = '/configuracoes'
+const SETTINGS_ITEMS: NavItem[] = [
+  { to: `${SETTINGS_PATH}/aparencia`, label: 'Aparência', icon: <SunMoon /> }
+]
+
 /**
- * Menu principal. O fundo do item ativo é um bloco só, que desliza de um item ao outro (só
- * `transform`); o item guarda apenas o texto e o ícone em branco. A rota ativa é a que casa com o
+ * Um menu da barra lateral. O fundo do item ativo é um bloco só, que desliza de um item ao outro
+ * (só `transform`); o item guarda apenas o texto e o ícone. A rota ativa é a que casa com o
  * começo do caminho, então a ficha de um paciente mantém "Pacientes" marcado.
  */
-function SidebarNav(): React.JSX.Element {
-  const { pathname } = useLocation()
-  const active = NAV_ITEMS.findIndex(({ to }) => matchPath({ path: to, end: false }, pathname))
+function SidebarNav({
+  items,
+  label,
+  pathname
+}: {
+  items: NavItem[]
+  label: string
+  pathname: string
+}): React.JSX.Element {
+  const active = items.findIndex(({ to }) => matchPath({ path: to, end: false }, pathname))
   return (
-    <nav className="relative flex flex-col gap-0.5" aria-label="Principal">
+    <nav className="relative flex flex-col gap-1.5" aria-label={label}>
       {active >= 0 && (
         <span
           aria-hidden="true"
-          className="absolute inset-x-0 top-0 rounded-control bg-white/[0.12] transition-transform duration-250 ease-slide"
+          className="absolute inset-x-0 top-0 rounded-control bg-fill-hover transition-transform duration-250 ease-slide"
           style={{
             height: NAV_ITEM_HEIGHT,
             transform: `translateY(${active * (NAV_ITEM_HEIGHT + NAV_GAP)}px)`
           }}
         />
       )}
-      {NAV_ITEMS.map(({ to, label, icon }) => (
+      {items.map(({ to, label, icon }) => (
         <NavLink
           key={to}
           to={to}
           className={({ isActive }) =>
             cn(
-              'relative flex h-[34px] items-center gap-2.5 rounded-control px-3 text-[13px] font-medium text-night-soft transition-colors hover:bg-white/[0.07] hover:text-night-ink [&_svg]:size-4 [&_svg]:stroke-[1.75]',
-              // ativo: texto branco (e aria-current, que o NavLink põe); o fundo é o indicador
-              isActive && 'text-night-ink hover:bg-transparent'
+              navItemClass,
+              // ativo: texto principal (e aria-current, que o NavLink põe); o fundo é o indicador
+              isActive && 'text-ink hover:bg-transparent'
             )
           }
         >
@@ -57,7 +84,56 @@ function SidebarNav(): React.JSX.Element {
   )
 }
 
-const SIDEBAR_WIDTH = 192
+/** Largura da barra lateral (alargada em 09/10 para os itens não ficarem apertados). */
+/**
+ * O que a barra lateral mostra abaixo da marca, conforme a tela: o menu principal, com
+ * Configurações no rodapé; ou, dentro de Configurações, as seções dela e "Voltar" no
+ * rodapé, que leva à última tela fora das Configurações (como no T3 Code). Fica num componente
+ * próprio para só ele redesenhar a cada troca de rota, e não o `Layout` inteiro.
+ */
+function SidebarBody(): React.JSX.Element {
+  const { pathname } = useLocation()
+  const navigate = useNavigate()
+  const inSettings = matchPath({ path: SETTINGS_PATH, end: false }, pathname) !== null
+  // última tela fora das Configurações (a de abertura é a agenda)
+  const backTo = useRef('/agenda')
+  useEffect(() => {
+    if (!inSettings) backTo.current = pathname
+  }, [inSettings, pathname])
+
+  if (inSettings) {
+    return (
+      <div key="configuracoes" className="flex flex-1 animate-fade-in flex-col">
+        <SidebarNav items={SETTINGS_ITEMS} label="Configurações" pathname={pathname} />
+        <button
+          type="button"
+          onClick={() => navigate(backTo.current)}
+          className={cn(navItemClass, 'mt-auto w-full')}
+        >
+          <ArrowLeft aria-hidden="true" />
+          Voltar
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <div key="principal" className="flex flex-1 animate-fade-in flex-col">
+      <SidebarNav items={NAV_ITEMS} label="Principal" pathname={pathname} />
+      {/* rodapé: Configurações, com o nome, no mesmo estilo dos itens do menu (e do "Voltar") */}
+      <Link
+        to={SETTINGS_PATH}
+        title={`Configurações (${SETTINGS_SHORTCUT})`}
+        className={cn(navItemClass, 'mt-auto')}
+      >
+        <Settings aria-hidden="true" />
+        Configurações
+      </Link>
+    </div>
+  )
+}
+
+const SIDEBAR_WIDTH = 216
 
 /** Onde fica o botão de recolher: logo depois dos botões da janela (Mac) ou no canto (Windows e web). */
 const TOGGLE_LEFT = isMac ? 84 : 12
@@ -69,14 +145,15 @@ const HEADER_PAD_COLLAPSED = isMac ? 'pl-[136px]' : 'pl-[64px]'
 /**
  * Botão de mostrar/ocultar a barra lateral. Fica sempre no mesmo lugar, ao lado dos botões da
  * janela, aberta ou recolhida a barra. Só o ícone, sem caixa nem contorno (o fundo aparece no
- * hover).
+ * hover). O ícone diz o que o clique faz: aberta, o painel com a seta "‹" (fechar); recolhida, o
+ * painel simples (abrir), como no T3 Code.
  */
 function SidebarToggle(): React.JSX.Element {
   const { open, toggle } = useSidebar()
   const label = open ? 'Ocultar barra lateral' : 'Mostrar barra lateral'
   return (
     <Button
-      variant={open ? 'night' : 'ghost'}
+      variant="ghost"
       size="icon"
       className="no-drag [&_svg]:size-[18px]"
       onClick={toggle}
@@ -85,15 +162,15 @@ function SidebarToggle(): React.JSX.Element {
       aria-controls="sidebar"
       title={`${label} (${SIDEBAR_SHORTCUT})`}
     >
-      <PanelLeft />
+      {open ? <PanelLeftClose /> : <PanelLeft />}
     </Button>
   )
 }
 
 /**
- * Estrutura do app: uma barra lateral sólida de grafite (o mesmo tom do ícone) à esquerda e o
- * conteúdo em branco, sem vidro, sem cartões e sem sombras, para ficar igual no Mac, no Windows e
- * na web. No Mac os botões da janela ficam sobre o grafite. A barra pode ser recolhida (botão ou
+ * Estrutura do app: uma barra lateral sólida à esquerda, um tom abaixo do conteúdo (cinza-claro no
+ * tema claro, quase preto no escuro), separada dele só pelo fundo; sem vidro, sem cartões e sem
+ * sombras, para ficar igual no Mac, no Windows e na web. A barra pode ser recolhida (botão ou
  * atalho); a escolha fica salva.
  */
 export function Layout(): React.JSX.Element {
@@ -101,6 +178,7 @@ export function Layout(): React.JSX.Element {
   // primeira tela esperar o disco
   const [open, setOpen] = useState(() => window.prefs.initial.sidebarOpen)
   const toggle = useCallback(() => setOpen((current) => !current), [])
+  const navigate = useNavigate()
 
   useEffect(() => {
     window.prefs.save({ sidebarOpen: open })
@@ -109,16 +187,19 @@ export function Layout(): React.JSX.Element {
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent): void {
       const key = e.key.toLowerCase()
-      const hit = isMac
+      const sidebar = isMac
         ? e.ctrlKey && e.metaKey && !e.altKey && key === 's'
         : e.ctrlKey && !e.shiftKey && !e.altKey && key === 'b'
-      if (!hit) return
+      const settings =
+        (isMac ? e.metaKey && !e.ctrlKey : e.ctrlKey) && !e.shiftKey && !e.altKey && key === ','
+      if (!sidebar && !settings) return
       e.preventDefault()
-      toggle()
+      if (sidebar) toggle()
+      else navigate(SETTINGS_PATH)
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [toggle])
+  }, [toggle, navigate])
 
   return (
     <SidebarContext value={{ open, toggle }}>
@@ -129,7 +210,7 @@ export function Layout(): React.JSX.Element {
             inert={!open}
             style={{ width: SIDEBAR_WIDTH }}
             className={cn(
-              'on-night absolute inset-y-0 left-0 z-20 flex flex-col bg-night px-3 pb-4 text-night-ink transition-[translate] duration-200 ease-out',
+              'absolute inset-y-0 left-0 z-20 flex flex-col bg-sidebar px-3 pb-3 text-ink transition-[translate] duration-200 ease-out',
               !open && '-translate-x-full'
             )}
           >
@@ -145,17 +226,9 @@ export function Layout(): React.JSX.Element {
               <AuriLogo className="w-12 -translate-y-0.5" />
             </div>
             <div className="h-3 shrink-0" />
-            <SidebarNav />
-            {/* mesmos px e gap dos itens do menu, para o ícone ficar na mesma coluna */}
-            <p className="mt-auto flex items-center gap-2.5 px-3 text-xs leading-snug text-night-faint">
-              <HardDrive className="size-[18px] shrink-0 stroke-[1.75]" aria-hidden="true" />
-              Salvo neste computador
-            </p>
+            <SidebarBody />
           </aside>
-          <div
-            className={cn('absolute top-2 z-30', open && 'on-night')}
-            style={{ left: TOGGLE_LEFT }}
-          >
+          <div className="absolute top-2 z-30" style={{ left: TOGGLE_LEFT }}>
             <SidebarToggle />
           </div>
           <main

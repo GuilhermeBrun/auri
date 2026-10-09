@@ -35,8 +35,15 @@ export type IpcResult<T> = { ok: true; data: T } | { ok: false; error: string }
  */
 export interface AuriPrefs {
   initial: UiPrefs
-  save(prefs: UiPrefs): void
+  /** Grava só os campos informados; os outros ficam como estão. */
+  save(prefs: Partial<UiPrefs>): void
 }
+
+/**
+ * Preferências de quem ainda não escolheu nada. Fica aqui, e não em schemas.ts, porque o preload
+ * (em sandbox) não pode importar o zod.
+ */
+export const DEFAULT_UI_PREFS: UiPrefs = { sidebarOpen: true, theme: 'system' }
 
 /** Argumento da janela que leva as preferências do main ao preload. */
 export const PREFS_ARG = '--auri-prefs='

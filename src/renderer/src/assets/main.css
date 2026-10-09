@@ -5,10 +5,23 @@
   /* Família única; o eixo óptico (opsz) deixa os títulos mais expressivos e o texto miúdo mais firme */
   --font-sans: 'Bricolage Grotesque Variable', ui-sans-serif, system-ui, sans-serif;
 
-  /* Destaque único (grafite). Para trocar a cor do app, mude só estes três. */
+  /*
+   * Cores do tema claro. O escuro troca os mesmos nomes em `prefers-color-scheme: dark` (camada base,
+   * abaixo); quem decide o tema é o main (`nativeTheme.themeSource`, escolhido em Configurações), e o
+   * navegador segue. Componentes usam só estes nomes, nunca uma cor fixa.
+   */
+
+  /* Destaque único (grafite): anel de foco e contornos de seleção. Para trocar a cor do app, mude estes e os do tema escuro. */
   --color-accent: #1b1b22;
-  --color-accent-hover: #34343f;
   --color-accent-soft: #eeeef3;
+  /*
+   * Blocos cheios: botão principal, "hoje", sessão selecionada. No claro é o próprio destaque; no
+   * escuro é um grafite médio (um bloco quase branco ofuscava a tela).
+   */
+  --color-solid: #1b1b22;
+  --color-solid-hover: #34343f;
+  --color-solid-active: #000000;
+  --color-on-solid: #ffffff;
   /* Sessões da agenda: um passo mais escuro que o avatar, para se destacarem da grade */
   --color-session: #e6e6ee;
   --color-session-hover: #dcdce6;
@@ -19,17 +32,17 @@
 
   --color-canvas: #f5f5f8;
   --color-surface: #ffffff;
+  /* O que flutua (diálogos, listas, avisos): no claro é o branco; no escuro, um tom acima do conteúdo */
+  --color-raised: #ffffff;
+  /* Opção ligada ou escolhida sobre o preenchimento neutro (seletor de visão, botão ligado) */
+  --color-selected: #ffffff;
   --color-subtle: #f9f9fb;
+  /* Barra lateral: um tom abaixo do conteúdo, separada só pelo fundo */
+  --color-sidebar: #f4f4f7;
   --color-line: #e6e6ec;
   --color-line-strong: #c9c9d4;
   /* Contorno dos campos: 3:1 contra o branco (WCAG 1.4.11) */
   --color-control: #8e8e9c;
-
-  /* Barra lateral: o grafite do ícone do app, em escala */
-  --color-night: #1b1b22;
-  --color-night-ink: #ffffff;
-  --color-night-soft: #b7b7c6;
-  --color-night-faint: #9c9cae;
 
   --color-danger: #c4271b;
   --color-now: #e5484d;
@@ -37,6 +50,8 @@
   /* Preenchimento de cápsulas e chips neutros */
   --color-fill: rgba(27, 27, 34, 0.055);
   --color-fill-hover: rgba(27, 27, 34, 0.09);
+  /* Fundo que escurece a janela atrás de um diálogo */
+  --color-scrim: rgba(27, 27, 34, 0.45);
 
   /* Tudo é retângulo de cantos arredondados; não há pílulas. Quatro raios, do menor ao maior: */
   --radius-chip: 6px; /* chips, sessões, opção ativa do seletor */
@@ -45,10 +60,8 @@
   --radius-sheet: 16px; /* diálogos */
 
   /* Só o que flutua (diálogos, menus) tem sombra; o resto é plano */
-  --shadow-pop:
-    0 0 0 1px rgba(27, 27, 34, 0.08), 0 20px 44px -14px rgba(27, 27, 34, 0.34),
-    0 2px 6px rgba(27, 27, 34, 0.06);
-  --shadow-lift: 0 0 0 1px rgba(27, 27, 34, 0.06), 0 1px 2px rgba(27, 27, 34, 0.12);
+  --shadow-pop: var(--elevation-pop);
+  --shadow-lift: var(--elevation-lift);
 
   /*
    * Movimento: só em resposta a uma ação (abrir, salvar, trocar de tela) ou para dizer "carregando".
@@ -198,11 +211,79 @@
     pointer-events: auto;
   }
 
+  /*
+   * Valores que mudam com o tema e que o Tailwind não trata como cor: sombras, a cor do texto
+   * selecionado, das barras de rolagem e dos traços finos da agenda.
+   */
+  :root {
+    --elevation-pop:
+      0 0 0 1px rgba(27, 27, 34, 0.08), 0 20px 44px -14px rgba(27, 27, 34, 0.34),
+      0 2px 6px rgba(27, 27, 34, 0.06);
+    --elevation-lift: 0 0 0 1px rgba(27, 27, 34, 0.06), 0 1px 2px rgba(27, 27, 34, 0.12);
+    --selection: #dcdce6;
+    --scrollbar: rgba(27, 27, 34, 0.3);
+    --grid-faint: rgba(27, 27, 34, 0.07);
+    --session-edge: rgba(27, 27, 34, 0.12);
+    --slot-selection: rgba(27, 27, 34, 0.08);
+  }
+
+  /*
+   * Tema escuro: não é o claro invertido. O conteúdo é um grafite quase preto, a barra lateral fica
+   * um tom abaixo dele e o que flutua, um tom acima (no escuro a sombra quase não aparece, então a
+   * profundidade vem do tom e de um contorno claro de 1px). O destaque (foco, contornos) vira o
+   * claro, mas os blocos cheios ficam num grafite médio, para não ofuscar. Contrastes no
+   * docs/identidade-visual.md.
+   */
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --color-accent: #ececf1;
+      --color-accent-soft: #2a2a32;
+      --color-solid: #42424d;
+      --color-solid-hover: #4b4b57;
+      --color-solid-active: #55555f;
+      --color-on-solid: #ececf1;
+      --color-session: #2c2c35;
+      --color-session-hover: #35353f;
+
+      --color-ink: #ececf1;
+      --color-ink-soft: #a9a9b7;
+      --color-ink-faint: #8a8a98;
+
+      --color-canvas: #1f1f25;
+      --color-surface: #17171c;
+      --color-raised: #212128;
+      --color-selected: #34343e;
+      --color-subtle: #1b1b21;
+      --color-sidebar: #101014;
+      --color-line: #2b2b33;
+      --color-line-strong: #3c3c46;
+      --color-control: #6c6c7a;
+
+      --color-danger: #f0675b;
+      --color-now: #ff5a5f;
+
+      --color-fill: rgba(236, 236, 245, 0.06);
+      --color-fill-hover: rgba(236, 236, 245, 0.1);
+      --color-scrim: rgba(0, 0, 0, 0.6);
+
+      --elevation-pop:
+        0 0 0 1px rgba(236, 236, 245, 0.09), 0 20px 44px -14px rgba(0, 0, 0, 0.7),
+        0 2px 6px rgba(0, 0, 0, 0.3);
+      --elevation-lift: 0 0 0 1px rgba(236, 236, 245, 0.08), 0 1px 2px rgba(0, 0, 0, 0.5);
+      --selection: #3a3a46;
+      --scrollbar: rgba(236, 236, 245, 0.25);
+      --grid-faint: rgba(236, 236, 245, 0.06);
+      --session-edge: rgba(236, 236, 245, 0.08);
+      --slot-selection: rgba(236, 236, 245, 0.08);
+    }
+  }
+
   html {
-    color-scheme: light;
+    /* controles nativos (barras de rolagem, autopreenchimento) acompanham o tema */
+    color-scheme: light dark;
     /* barras de rolagem finas e iguais no Mac, no Windows e na web */
     scrollbar-width: thin;
-    scrollbar-color: rgba(27, 27, 34, 0.3) transparent;
+    scrollbar-color: var(--scrollbar) transparent;
   }
 
   body {
@@ -223,13 +304,8 @@
     outline-offset: 2px;
   }
 
-  /* sobre o grafite da barra lateral o anel é branco */
-  .on-night :focus-visible {
-    outline-color: var(--color-night-ink);
-  }
-
   ::selection {
-    background: #dcdce6;
+    background: var(--selection);
   }
 
   /* Aumentar contraste: cada cor de texto e divisória ganha uma variante mais forte */
@@ -241,8 +317,17 @@
       --color-line-strong: #6e6e7c;
       --color-control: #5b5b68;
       --color-danger: #a8190f;
-      --color-night-soft: #e0e0ea;
-      --color-night-faint: #cfcfdb;
+    }
+  }
+
+  @media (prefers-contrast: more) and (prefers-color-scheme: dark) {
+    :root {
+      --color-ink-soft: #c4c4d0;
+      --color-ink-faint: #b0b0be;
+      --color-line: #6c6c7a;
+      --color-line-strong: #8a8a98;
+      --color-control: #9c9caa;
+      --color-danger: #ff8a80;
     }
   }
 
@@ -367,7 +452,7 @@
 }
 
 .rbc-day-slot .rbc-time-slot + .rbc-time-slot {
-  border-top: 1px dashed rgba(27, 27, 34, 0.07);
+  border-top: 1px dashed var(--grid-faint);
 }
 
 .rbc-time-gutter .rbc-timeslot-group {
@@ -435,8 +520,8 @@
 
 .rbc-date-cell.rbc-now > button {
   padding: 0 7px;
-  background: var(--color-accent);
-  color: #fff;
+  background: var(--color-solid);
+  color: var(--color-on-solid);
   font-weight: 600;
 }
 
@@ -451,7 +536,7 @@
   color: var(--color-ink);
   border: 0 !important;
   border-radius: var(--radius-chip);
-  box-shadow: inset 0 0 0 1px rgba(27, 27, 34, 0.12);
+  box-shadow: inset 0 0 0 1px var(--session-edge);
   padding: 3px 6px 3px 8px;
   font-size: 12.5px;
   font-weight: 600;
@@ -503,8 +588,8 @@
 
 .rbc-event.rbc-selected,
 .rbc-day-slot .rbc-selected.rbc-event {
-  background: var(--color-accent);
-  color: #fff;
+  background: var(--color-solid);
+  color: var(--color-on-solid);
   box-shadow: none;
 }
 
@@ -578,7 +663,7 @@
 }
 
 .rbc-slot-selection {
-  background: rgba(27, 27, 34, 0.08);
+  background: var(--slot-selection);
   color: var(--color-ink);
   border-radius: 8px;
   font-size: 12px;
@@ -620,7 +705,7 @@
 .rbc-overlay {
   border: 0;
   border-radius: var(--radius-card);
-  background: var(--color-surface);
+  background: var(--color-raised);
   box-shadow: var(--shadow-pop);
   padding: 6px;
 }

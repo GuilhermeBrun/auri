@@ -3,22 +3,24 @@ import type { ButtonHTMLAttributes } from 'react'
 import { AuriSymbol } from '@renderer/components/ui/brand'
 import { cn } from '@renderer/lib/utils'
 
-// Botões retangulares de cantos arredondados (`rounded-control`). Ao pressionar encolhem 3% (150ms,
-// interrompível) e ao habilitar/desabilitar o preenchimento se desfaz aos poucos. Só o principal é cheio (grafite). `outline` é o botão comum das barras de
-// ferramentas; `secondary` (preenchimento neutro) vai dentro de diálogos; `night` é para a barra
-// lateral escura. O destrutivo usa vermelho no texto, nunca como botão principal. Em tela de toque
-// (`pointer-coarse`) os alvos crescem para 44px.
+// Botões retangulares de cantos arredondados (`rounded-control`), nenhum com contorno. Ao pressionar
+// encolhem 3% (150ms, interrompível) e ao habilitar/desabilitar o preenchimento se desfaz aos poucos.
+// Um padrão só (docs/identidade-visual.md, "Botões e ferramentas"):
+// - `ghost`: só o ícone, sem fundo (fundo no hover), como os ícones da barra lateral. Toda ação do
+//   cabeçalho e os controles da janela. Ligado (`aria-pressed`) fica com o fundo do item ativo do menu.
+// - `primary`: bloco cheio, a ação que conclui um formulário ou diálogo (Salvar, Agendar).
+// - `secondary`: preenchimento neutro, botões com texto ao lado do principal (Cancelar, Inativar).
+// - `danger`/`danger-ghost`: vermelho no texto, nunca como botão principal.
+// Em tela de toque (`pointer-coarse`) os alvos crescem para 44px.
 const buttonVariants = cva(
   'inline-flex items-center justify-center gap-1.5 rounded-control font-medium whitespace-nowrap transition-[background-color,color,box-shadow,opacity,scale] duration-150 active:scale-[0.97] disabled:pointer-events-none disabled:opacity-40 data-[loading=true]:disabled:opacity-100 [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:stroke-[1.75]',
   {
     variants: {
       variant: {
-        primary: 'bg-accent text-white hover:bg-accent-hover active:bg-black',
-        outline:
-          'bg-surface text-ink shadow-[inset_0_0_0_1px_var(--color-line-strong)] hover:bg-canvas active:bg-accent-soft',
+        primary: 'bg-solid text-on-solid hover:bg-solid-hover active:bg-solid-active',
         secondary: 'bg-fill text-ink hover:bg-fill-hover active:bg-fill-hover',
-        ghost: 'text-ink-soft hover:bg-fill hover:text-ink active:bg-fill-hover',
-        night: 'text-night-soft hover:bg-white/10 hover:text-night-ink active:bg-white/15',
+        ghost:
+          'text-ink-soft hover:bg-fill hover:text-ink active:bg-fill-hover aria-pressed:bg-fill-hover aria-pressed:text-ink',
         danger: 'bg-danger/10 text-danger hover:bg-danger/15 active:bg-danger/20',
         'danger-ghost': 'text-danger hover:bg-danger/8 active:bg-danger/15'
       },

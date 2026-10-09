@@ -95,7 +95,12 @@ export const appointmentRangeSchema = z
   .object({ de: localDateTime, ate: localDateTime })
   .refine((r) => r.ate > r.de, 'Intervalo inválido')
 
+/** Tema: o do sistema (muda junto com ele) ou um fixo. */
+export const themeSchema = z.enum(['system', 'light', 'dark'])
+
+export type Theme = z.infer<typeof themeSchema>
+
 /** Preferências da interface (não são dados da clínica). */
-export const uiPrefsSchema = z.object({ sidebarOpen: z.boolean() })
+export const uiPrefsSchema = z.object({ sidebarOpen: z.boolean(), theme: themeSchema })
 
 export type UiPrefs = z.infer<typeof uiPrefsSchema>

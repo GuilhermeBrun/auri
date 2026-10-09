@@ -217,7 +217,7 @@ function DayHeader({ date }: HeaderProps): React.JSX.Element {
       <span
         className={cn(
           'grid size-8 place-items-center rounded-control text-lg leading-none font-semibold tracking-tight tabular-nums',
-          today ? 'bg-accent text-white' : 'text-ink'
+          today ? 'bg-solid text-on-solid' : 'text-ink'
         )}
       >
         {format(date, 'd')}
@@ -237,9 +237,9 @@ type AgendaControlsProps = {
 }
 
 /**
- * Ferramentas da agenda, na barra da página, ambas com 36px de altura. Dois grupos, cada um num
- * único retângulo: "quando" (‹ Hoje ›, num contorno) e "como ver" (Dia, Semana, Mês, num trilho
- * cinza com a opção ativa em branco).
+ * Ferramentas da agenda, na barra da página, com 32px de altura. Dois grupos no mesmo trilho de
+ * preenchimento neutro das outras ferramentas: "quando" (‹ Hoje ›) e "como ver" (Dia, Semana, Mês,
+ * com a opção ativa elevada).
  */
 function AgendaControls({ view, onNavigate, onView }: AgendaControlsProps): React.JSX.Element {
   return (
@@ -247,22 +247,29 @@ function AgendaControls({ view, onNavigate, onView }: AgendaControlsProps): Reac
       <div
         role="group"
         aria-label="Período"
-        className="flex items-center gap-0.5 rounded-control bg-surface p-0.5 shadow-[inset_0_0_0_1px_var(--color-line-strong)]"
+        className="flex items-center gap-0.5 rounded-control bg-fill p-0.5"
       >
         <Button
           variant="ghost"
           size="icon-sm"
+          className="rounded-chip"
           onClick={() => onNavigate('PREV')}
           aria-label="Anterior"
         >
           <ChevronLeft />
         </Button>
-        <Button variant="ghost" size="sm" className="text-ink" onClick={() => onNavigate('TODAY')}>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="rounded-chip text-ink"
+          onClick={() => onNavigate('TODAY')}
+        >
           Hoje
         </Button>
         <Button
           variant="ghost"
           size="icon-sm"
+          className="rounded-chip"
           onClick={() => onNavigate('NEXT')}
           aria-label="Próximo"
         >
@@ -503,16 +510,15 @@ export function AgendaPage(): React.JSX.Element {
       ]}
       toolbar={<AgendaControls view={view} onNavigate={navigate} onView={setView} />}
       actions={
-        // Janela estreita: só o "+" (a barra é um contêiner; ver Page)
         <Button
+          variant="ghost"
+          size="icon"
           onClick={openNew}
           aria-keyshortcuts="N"
           aria-label="Novo agendamento"
           title="Novo agendamento (N)"
-          className="@max-[859px]:size-8 @max-[859px]:px-0"
         >
           <Plus />
-          <span className="hidden @min-[860px]:inline">Novo agendamento</span>
         </Button>
       }
       bodyClassName="flex flex-col overflow-hidden"

@@ -33,7 +33,7 @@ export function ErrorState({
       {children && <p className="mt-1 max-w-[46ch] text-[13px] text-ink-soft">{children}</p>}
       {detail && <p className="mt-2 max-w-[46ch] text-xs text-ink-faint">{detail}</p>}
       {onRetry && (
-        <Button variant="outline" className="mt-4" onClick={onRetry}>
+        <Button variant="secondary" className="mt-4" onClick={onRetry}>
           <RotateCw /> Tentar de novo
         </Button>
       )}

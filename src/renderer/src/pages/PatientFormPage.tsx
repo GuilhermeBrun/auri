@@ -193,7 +193,7 @@ function PatientFormPage({ patientId }: { patientId: number | null }): React.JSX
           <>
             {!isNew && patient && (
               <Button
-                variant="outline"
+                variant="secondary"
                 onClick={() => toggleAtivo.mutate()}
                 loading={toggleAtivo.isPending}
               >

@@ -3,6 +3,7 @@ import { Layout } from './components/Layout'
 import { AgendaPage } from './pages/AgendaPage'
 import { PatientFormRoute } from './pages/PatientFormPage'
 import { PatientsPage } from './pages/PatientsPage'
+import { AppearancePage } from './pages/SettingsPage'
 
 function App(): React.JSX.Element {
   return (
@@ -13,6 +14,9 @@ function App(): React.JSX.Element {
         <Route path="pacientes" element={<PatientsPage />} />
         <Route path="pacientes/novo" element={<PatientFormRoute />} />
         <Route path="pacientes/:id" element={<PatientFormRoute />} />
+        {/* cada seção das Configurações tem o seu endereço; a raiz abre a primeira */}
+        <Route path="configuracoes" element={<Navigate to="aparencia" replace />} />
+        <Route path="configuracoes/aparencia" element={<AppearancePage />} />
         <Route path="*" element={<Navigate to="/agenda" replace />} />
       </Route>
     </Routes>

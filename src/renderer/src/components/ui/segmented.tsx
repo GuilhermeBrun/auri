@@ -50,7 +50,7 @@ export function Segmented<T extends string>({
       {thumb && (
         <span
           aria-hidden="true"
-          className="absolute inset-y-0.5 left-0 rounded-chip bg-surface shadow-lift transition-[translate,width] duration-250 ease-slide"
+          className="absolute inset-y-0.5 left-0 rounded-chip bg-selected shadow-lift transition-[translate,width] duration-250 ease-slide"
           style={{ translate: `${thumb.x}px 0`, width: thumb.width }}
         />
       )}

@@ -15,29 +15,40 @@ Os valores ficam em `src/renderer/src/assets/main.css` (`@theme`). Use sempre os
 
 ## Cores
 
-| Token                                  | Valor                             | Uso                                                                                                                  |
-| -------------------------------------- | --------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `accent`                               | `#1B1B22`                         | Botão principal, "hoje", barra lateral. **Para trocar a cor do app, mude `accent`, `accent-hover` e `accent-soft`.** |
-| `accent-hover` / `accent-soft`         | `#34343F` / `#EEEEF3`             | Hover do botão principal; fundo das sessões e do avatar                                                              |
-| `ink` / `ink-soft` / `ink-faint`       | `#1B1B22` / `#5B5B68` / `#6E6E7C` | Texto principal (17:1), secundário (6,7:1) e placeholders (5,0:1 sobre branco)                                       |
-| `surface` / `canvas` / `subtle`        | `#FFFFFF` / `#F5F5F8` / `#F9F9FB` | Fundo do conteúdo; rodapé do diálogo e hover de linha; fim de semana na agenda                                       |
-| `line` / `line-strong`                 | `#E6E6EC` / `#C9C9D4`             | Contorno dos botões e linhas da grade do calendário; nunca como divisor                                              |
-| `control`                              | `#8E8E9C`                         | Contorno dos campos: 3,2:1 contra o branco (WCAG 1.4.11)                                                             |
-| `night` / `night-soft` / `night-faint` | `#1B1B22` / `#B7B7C6` / `#9C9CAE` | Barra lateral: fundo, texto dos itens (8,6:1) e rodapé (6,3:1)                                                       |
-| `fill` / `fill-hover`                  | grafite a 5,5% / 9%               | Chips e preenchimentos neutros                                                                                       |
-| `session` / `session-hover`            | `#E6E6EE` / `#DCDCE6`             | Sessões na agenda: um passo mais escuro que `accent-soft`, para se destacarem da grade (nome 14:1, horário 6,6:1)    |
-| `danger`                               | `#C4271B`                         | Erros e exclusão (5,0:1 sobre o fundo avermelhado)                                                                   |
-| `now`                                  | `#E5484D`                         | Linha do horário atual na agenda (gráfico: 3,9:1)                                                                    |
+Dois temas, **Claro** e **Escuro**, com os mesmos nomes de token. A escolha fica em **Configurações → Aparência** (Sistema, Claro ou Escuro; o padrão é Sistema) e é salva em `preferencias.json`. Quem aplica é o main (`nativeTheme.themeSource`); o CSS só lê `prefers-color-scheme`, então em "Sistema" o app acompanha o macOS/Windows, inclusive quando ele troca sozinho ao anoitecer. Componentes usam só os tokens, nunca uma cor fixa (a única exceção são as miniaturas da tela de Configurações, que mostram cada tema independente do atual).
+
+| Token                            | Claro                             | Escuro                            | Uso                                                                                                                         |
+| -------------------------------- | --------------------------------- | --------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `accent`                         | `#1B1B22`                         | `#ECECF1`                         | Anel de foco e contornos de seleção. **Para trocar a cor do app, mude `accent`, `accent-soft` e `solid-*` dos dois temas.** |
+| `solid` / `-hover` / `-active`   | `#1B1B22` / `#34343F` / `#000000` | `#42424D` / `#4B4B57` / `#55555F` | Blocos cheios: botão principal, "hoje", sessão selecionada. No escuro, grafite médio: um bloco quase branco ofuscava        |
+| `on-solid`                       | `#FFFFFF`                         | `#ECECF1`                         | Texto e ícone sobre `solid` (17:1 no claro, 8,4:1 no escuro)                                                                |
+| `accent-soft`                    | `#EEEEF3`                         | `#2A2A32`                         | Avatar, filtro ligado                                                                                                       |
+| `ink` / `ink-soft` / `ink-faint` | `#1B1B22` / `#5B5B68` / `#6E6E7C` | `#ECECF1` / `#A9A9B7` / `#8A8A98` | Texto principal, secundário e placeholders (escuro sobre `surface`: 15,2 / 7,7 / 5,3:1)                                     |
+| `surface`                        | `#FFFFFF`                         | `#17171C`                         | Fundo do conteúdo                                                                                                           |
+| `sidebar`                        | `#F4F4F7`                         | `#101014`                         | Barra lateral: um tom abaixo do conteúdo, separada só pelo fundo                                                            |
+| `selected`                       | `#FFFFFF`                         | `#34343E`                         | Opção escolhida num trilho (Dia/Semana/Mês; 10,5:1 com o texto no escuro)                                                   |
+| `raised`                         | `#FFFFFF`                         | `#212128`                         | O que flutua: diálogos, listas, avisos, bloco do seletor (no escuro, um tom acima do conteúdo)                              |
+| `canvas` / `subtle`              | `#F5F5F8` / `#F9F9FB`             | `#1F1F25` / `#1B1B21`             | Rodapé do diálogo e hover de linha; fim de semana na agenda                                                                 |
+| `line` / `line-strong`           | `#E6E6EC` / `#C9C9D4`             | `#2B2B33` / `#3C3C46`             | Contorno dos botões e linhas da grade do calendário; nunca como divisor                                                     |
+| `control`                        | `#8E8E9C`                         | `#6C6C7A`                         | Contorno dos campos: ≥ 3:1 contra o fundo (WCAG 1.4.11)                                                                     |
+| `fill` / `fill-hover`            | grafite a 5,5% / 9%               | branco a 6% / 10%                 | Chips, preenchimentos neutros, item ativo do menu, opção destacada das listas                                               |
+| `scrim`                          | grafite a 45%                     | preto a 60%                       | Fundo atrás de um diálogo                                                                                                   |
+| `session` / `session-hover`      | `#E6E6EE` / `#DCDCE6`             | `#2C2C35` / `#35353F`             | Sessões na agenda                                                                                                           |
+| `danger`                         | `#C4271B`                         | `#F0675B`                         | Erros e exclusão (escuro: 5,8:1)                                                                                            |
+| `now`                            | `#E5484D`                         | `#FF5A5F`                         | Linha do horário atual na agenda                                                                                            |
+
+O escuro **não é o claro invertido**: o conteúdo é um grafite quase preto, a barra lateral fica um tom abaixo e o que flutua, um tom acima; como a sombra quase não aparece no escuro, `shadow-pop` ganha um contorno claro de 1px. O destaque (foco, contornos) vira o claro, mas os blocos cheios (`solid`) ficam num grafite médio, para não ofuscar. Sombras, seleção de texto, barras de rolagem e traços finos da agenda também mudam com o tema (`--elevation-*`, `--selection`, `--scrollbar`, `--grid-faint`, `--session-edge`, em `main.css`). **No tema claro não há nenhuma área escura**: barra lateral, avisos e diálogos são claros.
 
 Não há cores decorativas, nem verde. Os avatares são monogramas cinza.
 
 ## Estrutura da janela
 
-- **Barra lateral** (`Layout.tsx`): coluna sólida de grafite, de 192px, até as bordas da janela. De cima para baixo: a faixa dos botões da janela e do botão de recolher, a assinatura vetorial da Auri em branco, o menu e o aviso "Salvo neste computador".
-- **Item ativo:** preenchimento mais claro e texto branco, além de `aria-current="page"`.
-- **Recolher:** um botão só, sempre no mesmo lugar (depois dos botões da janela no Mac; no canto no Windows e na web). Atalho ⌃⌘S no Mac e Ctrl+B nos outros. A escolha fica salva pelo processo main (`preferencias.json`, ao lado do banco), que a entrega pronta na abertura; o `localStorage` fazia a primeira tela esperar o disco.
+- **Barra lateral** (`Layout.tsx`): coluna sólida em `sidebar` (cinza-claro no claro, quase preto no escuro), de 216px, até as bordas da janela, separada do conteúdo só pelo tom. De cima para baixo: a faixa dos botões da janela e do botão de recolher, a assinatura vetorial da Auri (na cor do texto), o menu (vão de 6px entre os itens) e, no rodapé, o item **Configurações** (engrenagem e nome, no estilo dos itens do menu; atalho ⌘, no Mac, Ctrl+, no Windows).
+- **Em Configurações** a barra lateral mostra onde se está: o menu principal dá lugar às seções de Configurações (hoje só **Aparência**) e o rodapé vira **← Voltar**, que leva à última tela fora das Configurações (como no T3 Code). Cada seção tem endereço próprio (`/configuracoes/aparencia`; `/configuracoes` abre a primeira) e a trilha do cabeçalho segue as outras telas: **Configurações / Aparência**. A página é uma coluna só: descrição em cima, conteúdo embaixo.
+- **Item ativo:** preenchimento `fill-hover` e texto `ink`, além de `aria-current="page"`.
+- **Recolher:** um botão só, sempre no mesmo lugar (depois dos botões da janela no Mac; no canto no Windows e na web). O ícone mostra o que o clique faz: com a barra aberta, `PanelLeftClose` (painel com a seta "‹"); recolhida, `PanelLeft` (painel simples). Atalho ⌃⌘S no Mac e Ctrl+B nos outros. A escolha fica salva pelo processo main (`preferencias.json`, ao lado do banco), que a entrega pronta na abertura; o `localStorage` fazia a primeira tela esperar o disco.
 - **Cabeçalho da página** (`Page`): uma linha só de 48px, em fluxo normal. À esquerda, a **trilha** (`trail`), como um caminho: passos anteriores em `ink-faint` e clicáveis (levam àquela tela), separados por "/", e o atual em `ink`, peso médio, que é o `h1` da página (ex.: "Pacientes / Pedro Souza Oliveira", "Agenda / 4 a 10 de outubro 2026"). Sem botão Voltar: o passo anterior faz esse papel. Ferramentas e ação principal à direita. Sem filete embaixo. Sem selo ao lado da trilha (contagem, número da semana). O botão principal não leva a tecla de atalho desenhada (ela aparece na dica). A barra é um `@container`: abaixo de 860px o botão principal da agenda vira só o "+". Testado de 1000px (largura mínima) a 1280px.
-- **Mac:** barra de título integrada; os botões da janela ficam sobre o grafite, centralizados nos 48px do cabeçalho (`trafficLightPosition` y = 17, ou seja, (48 − 14) / 2). **Windows e web:** o mesmo layout, sem o espaço dos botões.
+- **Mac:** barra de título integrada; os botões da janela ficam sobre a barra lateral, centralizados nos 48px do cabeçalho (`trafficLightPosition` y = 17, ou seja, (48 − 14) / 2). **Windows e web:** o mesmo layout, sem o espaço dos botões.
 
 ## Escala (densidade)
 
@@ -49,7 +60,7 @@ A interface é de **produtividade**, não de toque: tudo foi dimensionado para u
 | Campo de texto, data, hora, duração | 36px (busca da lista: 32px; opção de lista: 32px) |
 | Item do menu lateral                | 34px, ícone de 16px                               |
 | Cabeçalho da página                 | 48px                                              |
-| Barra lateral                       | 192px                                             |
+| Barra lateral                       | 216px                                             |
 | Linha da lista de pacientes         | 56px; avatar de 32px                              |
 | Hora na agenda                      | 56px; número do dia em quadrado de 32px           |
 | Diálogo                             | 480px de largura                                  |
@@ -59,7 +70,7 @@ Para mexer na escala inteira, os pontos são: `body` e os tamanhos de `ui/button
 
 ## Espaço como divisor
 
-**Regra: o que separa conteúdo é o espaço, nunca uma linha.** Sem filete, `border-t`/`border-b` de separação, `divide-y` ou `<hr>`, em nenhuma tela. Quando o espaço não basta, use, nesta ordem: **alinhamento** (colunas que começam no mesmo x), **fundo** (a barra lateral grafite, a faixa cinza do rodapé do diálogo) e **tipografia** (título de seção em peso maior). Linha só onde ela é o próprio conteúdo: a grade do calendário e o contorno de botões e campos.
+**Regra: o que separa conteúdo é o espaço, nunca uma linha.** Sem filete, `border-t`/`border-b` de separação, `divide-y` ou `<hr>`, em nenhuma tela. Quando o espaço não basta, use, nesta ordem: **alinhamento** (colunas que começam no mesmo x), **fundo** (a barra lateral, a faixa cinza do rodapé do diálogo) e **tipografia** (título de seção em peso maior). Linha só onde ela é o próprio conteúdo: a grade do calendário e o contorno de botões e campos.
 
 Por quê: pelo princípio de proximidade (Gestalt), coisas próximas são lidas como um grupo e coisas afastadas como grupos diferentes. O espaço já comunica a separação, e cada linha a mais é ruído que disputa atenção com o conteúdo. O Material só admite divisor "se os elementos não puderem ser separados com espaço em branco"; a Apple cita espaço negativo, contêineres e linhas como opções para agrupar, sem obrigar a linha.
 
@@ -102,7 +113,7 @@ Sem caixa alta em rótulos. Títulos usam `text-wrap: balance`.
   - `card` 12px: alertas, menus, linhas da tabela, avatar grande;
   - `sheet` 16px: diálogos;
   - teclas de atalho (`Kbd`): 6px, por serem minúsculas. O avatar cresce com o tamanho (5, 6, 6 e 12px).
-- **Campos:** brancos, com contorno `control` (3:1). No foco o contorno vira grafite com um anel suave; no erro, vermelho, com ícone e mensagem embaixo (nunca só cor). **Todo campo tem esse visual, inclusive data, hora e duração:** nada de `<input type="date">`, `type="time"` ou `<select>` nativos, que abrem o calendário e o menu do navegador (em inglês, com o azul padrão, diferentes em cada sistema). O que abre de um campo é sempre a mesma lista: branca, `card` de 12px, `shadow-pop`, opções de 32px com o destaque em `canvas` e ✓ à direita na escolhida. Ícone do campo à direita (calendário, relógio, seta), 16px, `ink-soft`.
+- **Campos:** brancos, com contorno `control` (3:1). No foco o contorno vira grafite com um anel suave; no erro, vermelho, com ícone e mensagem embaixo (nunca só cor). **Todo campo tem esse visual, inclusive data, hora e duração:** nada de `<input type="date">`, `type="time"` ou `<select>` nativos, que abrem o calendário e o menu do navegador (em inglês, com o azul padrão, diferentes em cada sistema). O que abre de um campo é sempre a mesma lista: `raised`, `card` de 12px, `shadow-pop`, opções de 32px com o destaque em `fill-hover` e ✓ à direita na escolhida. Ícone do campo à direita (calendário, relógio, seta), 16px, `ink-soft`.
 - **Ícones:** [Lucide](https://lucide.dev), traço 1.75, 16–18px. Só na navegação e em ações, nunca em cabeçalhos de tabela.
 - **Profundidade:** plano. Só diálogos e menus têm sombra (`shadow-pop`); o seletor de visão tem uma sombra mínima (`shadow-lift`) para destacar a opção ativa.
 - **Movimento:** só em resposta a uma ação ou para indicar carregando (as barras pulsam, só com `transform`). Ver "Feedback das ações" abaixo.
@@ -120,12 +131,12 @@ Toda ação do usuário tem uma resposta visível. A regra é a da skill `ui-des
 | Excluir agendamento                | Confirmação em dois passos (o botão troca com fade); aviso com ícone de lixeira                                                                                                                                                |
 | Campo recusado                     | Tremor de 3px (240ms, uma vez) e a mensagem entra de cima (160ms). Um campo que continua inválido não treme de novo                                                                                                            |
 | Trocar de tela                     | Fade e subida de 6px (180ms); no menu o fundo do item ativo **desliza** (250ms) em vez de pular                                                                                                                                |
-| Trocar de visão (Dia/Semana/Mês)   | O bloco branco do seletor desliza até a opção nova                                                                                                                                                                             |
+| Trocar de visão (Dia/Semana/Mês)   | O bloco `selected` do seletor desliza até a opção nova                                                                                                                                                                         |
 | Mudar o período da agenda          | O título entra com fade (140ms)                                                                                                                                                                                                |
 | Escolher o paciente no agendamento | O chip do paciente entra com fade                                                                                                                                                                                              |
 | Tela vazia ou com erro             | Fade                                                                                                                                                                                                                           |
 
-**Avisos** (`ui/toast.tsx`, Radix Toast): grafite (o tom da barra lateral), embaixo no centro, até 3 ao mesmo tempo, 4s de duração. Param enquanto o mouse ou o foco estão em cima e saem por botão, Esc ou deslizando para baixo; o leitor de tela os anuncia sem tirar o foco (F8 vai até eles). O check se desenha por 320ms. Só confirmam o que deu certo: erro de gravação continua inline, no próprio diálogo ou ficha, porque aviso que some sozinho não serve para erro. Use `useToast()` de `lib/toast.ts`; funciona mesmo de uma tela que se fecha logo em seguida.
+**Avisos** (`ui/toast.tsx`, Radix Toast): em `raised` com `shadow-pop` (como os menus; nada escuro no tema claro), embaixo no centro, até 3 ao mesmo tempo, 4s de duração. Param enquanto o mouse ou o foco estão em cima e saem por botão, Esc ou deslizando para baixo; o leitor de tela os anuncia sem tirar o foco (F8 vai até eles). O check se desenha por 320ms. Só confirmam o que deu certo: erro de gravação continua inline, no próprio diálogo ou ficha, porque aviso que some sozinho não serve para erro. Use `useToast()` de `lib/toast.ts`; funciona mesmo de uma tela que se fecha logo em seguida.
 
 **Entrada e saída:** entrar é rápido e desacelera (`cubic-bezier(0.2, 0.8, 0.2, 1)`), sair é mais curto e acelera (`cubic-bezier(0.4, 0, 1, 1)`); deslizar entre posições usa `ease-slide` (`cubic-bezier(0.32, 0.72, 0, 1)`). Diálogo: 140ms entra, 110ms sai; aviso: 220ms entra, 160ms sai. Quem fecha um diálogo precisa manter o conteúdo montado até a saída acabar (ver `AppointmentDialog`).
 
@@ -135,7 +146,7 @@ Toda ação do usuário tem uma resposta visível. A regra é a da skill `ui-des
 
 O símbolo é um “a” orgânico que sugere escuta. Na assinatura, ele substitui a primeira letra e se une a “uri”, com altura e linha de base ajustadas às letras. A assinatura completa e o símbolo são desenhados em vetor em `ui/brand.tsx`, com `currentColor` para acompanhar a superfície. O logo tem nome acessível “Auri”; o símbolo é decorativo, acompanhado do rótulo do estado.
 
-1. **Marca** na barra lateral: assinatura completa em branco, sem depender de fonte instalada.
+1. **Marca** na barra lateral: assinatura completa na cor do texto, sem depender de fonte instalada.
 2. **Carregando** (`ui/loading.tsx`): `Loading` só aparece depois de 400ms, porque o banco é local e um indicador que pisca atrapalha. O símbolo pulsa apenas em opacidade; com movimento reduzido fica estático. No botão com `loading`, fica à esquerda do rótulo.
 3. **Estado vazio de primeiro uso**, com o símbolo estático. Busca sem resultados e erros preservam seus ícones de contexto.
 
@@ -143,22 +154,35 @@ Não distorça nem gire a marca. Ela não é usada como marcador de item ativo n
 
 **Ícone do aplicativo:** o símbolo branco fica centralizado, com aproximadamente 530px de largura, sobre um quadrado grafite de cantos contínuos, com margem transparente de 100px no canvas de 1024px. Um contorno iluminado e uma sombra discreta definem o quadrado sobre o Dock, com escala visual semelhante à dos outros aplicativos. Esse acabamento pertence ao ícone nativo; a assinatura usada na interface continua plana.
 
+## Botões e ferramentas
+
+Um padrão só para tudo que é clicável. **Nenhum botão tem contorno**; contorno é só dos campos de formulário (3:1).
+
+| Nível                      | Visual                                                      | Onde                                                                                                 |
+| -------------------------- | ----------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Ação do cabeçalho e janela | Só o ícone (`ghost`), sem fundo; fundo `fill` só no hover   | **+** de novo paciente e novo agendamento, mostrar inativos, recolher a barra, Configurações, fechar |
+| Ligado                     | Fundo `fill-hover` e ícone `ink`, como o item ativo do menu | Mostrar inativos ligado (`aria-pressed`)                                                             |
+| Conclusão de formulário    | Bloco cheio `solid` (`primary`), um por tela                | Salvar, Cadastrar paciente, Agendar                                                                  |
+| Botão de texto secundário  | Preenchimento neutro `fill` (`secondary`)                   | Cancelar, Inativar, Tentar de novo                                                                   |
+
+Grupos de opções (**‹ Hoje ›** e Dia/Semana/Mês) ficam num trilho `fill`, com a opção ativa em `selected`; a busca do cabeçalho também é `fill` sem contorno e, no foco, ganha o fundo e o contorno de campo. As ações do cabeçalho são **só ícone** (32×32), com `aria-label` e `title` (com o atalho, quando há), e seguem o mesmo estilo dos ícones da barra lateral (pedido do usuário: "gosto deles sem fundo igual do menu lateral"). Placeholder sobre o preenchimento: 4,5:1 nos dois temas.
+
 ## Componentes
 
-- `ui/button.tsx`: `primary` (grafite), `outline` (padrão das barras de ferramentas; branco com contorno), `secondary` (preenchimento neutro), `ghost`, `night` (sobre a barra lateral), `danger`, `danger-ghost`. Prop `loading`: mostra o símbolo da Auri à esquerda do rótulo e bloqueia o clique. Um botão principal por tela. Alturas 28/32/36px (`sm`/`md`/`lg`); em tela de toque (`pointer-coarse`) crescem para 40–48px.
+- `ui/button.tsx`: `ghost` (só ícone, sem fundo; ligado com `aria-pressed`), `primary` (bloco cheio), `secondary` (preenchimento neutro), `danger`, `danger-ghost`; ver "Botões e ferramentas". Prop `loading`: mostra o símbolo da Auri à esquerda do rótulo e bloqueia o clique. Um botão principal por tela. Alturas 28/32/36px (`sm`/`md`/`lg`); em tela de toque (`pointer-coarse`) crescem para 40–48px.
 - `ui/input.tsx`: `Input`, `Textarea` e `Field` (rótulo sempre visível acima do campo; erro com ícone fora do `<label>`; controles compostos com um campo principal usam `Field htmlFor`, e os sem campo principal, `Field as="group"`).
 - `ui/field-style.ts`: o visual que todos os campos e listas compartilham (`controlClass`, `popupClass`, `optionClass`, `openClass`). Campo novo usa estes, não classes próprias.
 - `ui/date-field.tsx` + `ui/calendar.tsx`: data digitada com máscara (dd/mm/aaaa; essencial para data de nascimento) ou escolhida no calendário (botão ou seta ↓). O valor é AAAA-MM-DD; enquanto o texto é uma data incompleta ou inexistente, o valor é o próprio texto, para o formulário recusar em vez de gravar vazio. Calendário de 6 semanas, teclado do padrão WAI-ARIA (setas, Home/End, PageUp/PageDown, Shift para o ano), "Hoje" no rodapé.
 - `ui/time-field.tsx`: hora digitada com máscara ("9" vira 09, "930" vira 09:30) ou escolhida numa lista de 15 em 15 minutos do expediente (`TIME_SLOTS`, em `shared/agenda.ts`). Combobox: o foco fica no campo; Enter escolhe o destacado pelas setas, e sem setas só confirma o digitado.
 - `ui/select.tsx`: escolha entre poucas opções (Radix Select), no lugar do `<select>` nativo.
 - `ui/avatar.tsx`: monograma cinza em quadrado arredondado, com o raio proporcional ao tamanho.
-- `ui/dialog.tsx`: folha branca sólida, escurecendo o resto da janela (`night` a 45%). Rodapé em faixa cinza, sem filete: atalho ⌘/Ctrl+↵ à esquerda, botões à direita.
+- `ui/dialog.tsx`: folha sólida em `raised`, escurecendo o resto da janela (`scrim`). Rodapé em faixa cinza, sem filete: atalho ⌘/Ctrl+↵ à esquerda, botões à direita.
 - `ui/empty.tsx`: `EmptyState` (título, explicação e próximo passo).
 - `ui/error.tsx`: `ErrorState` (ícone vermelho, título, texto técnico em cinza e "Tentar de novo"). Falha de tela inteira usa este componente, nunca um parágrafo solto. Não promete que os dados estão salvos: a falha de leitura não garante isso.
 - `ui/brand.tsx`: `AuriLogo` e `AuriSymbol`.
 - `ui/loading.tsx`: `Loading`.
 - `ui/toast.tsx`: `ToastProvider` (já no `Layout`) e, em `lib/toast.ts`, `useToast()`.
-- `ui/segmented.tsx`: `Segmented`, seletor de uma opção entre poucas, com o bloco branco deslizante (medido na opção ativa, sem deslize na abertura).
+- `ui/segmented.tsx`: `Segmented`, seletor de uma opção entre poucas, com o bloco `selected` deslizante (medido na opção ativa, sem deslize na abertura).
 - `ui/kbd.tsx`: tecla de atalho. Use `MOD_KEY` de `lib/platform.ts` para ⌘ ou Ctrl.
 - `Layout.tsx`: `Layout` (barra lateral recolhível e área do conteúdo) e `Page` (cabeçalho de uma linha com `trail`, `badge`, `toolbar` e `actions`; subtelas passam o caminho inteiro, ex.: `[{ label: 'Pacientes', to: '/pacientes' }, { label: nome }]`).
 
@@ -167,7 +191,7 @@ Não distorça nem gire a marca. Ela não é usada como marcador de item ativo n
 - **Dias:** o dia da semana em três letras, pequeno, e o número grande embaixo; "hoje" é um quadrado arredondado grafite.
 - **Grade:** 56px por hora (a semana de 07:00 às 20:00 cabe numa janela de 820px sem rolar), linha da meia hora tracejada e bem fraca, fim de semana levemente sombreado, linha do horário atual em `now`.
 - **Sessões:** bloco cinza (`session`) com contorno fino. Em **Semana e Mês** mostram o **nome curto** (os dois primeiros nomes, sem "de/da/do": "Maria Eduarda", `shared/names.ts`), porque as colunas são estreitas e o nome cortado ("Helena Pra…") não identifica ninguém; na visão **Dia** mostram o nome completo e, nas curtas, o horário à direita. O balão ao passar o mouse mostra horário, nome completo e observação. Sessões de menos de 45 min ficam em uma linha, sem horário (ele já está na grade); as maiores mostram o intervalo embaixo. No mês o horário vem antes do nome. Com a janela estreita (visão com menos de 800px) o texto vai a 12px.
-- **Controles:** dois grupos de 32px: **‹ Hoje ›** num contorno único e **Dia/Semana/Mês** (`Segmented`) num trilho cinza com a opção ativa em branco, que desliza. Atalho **N** para novo agendamento.
+- **Controles:** dois grupos de 32px no mesmo trilho de preenchimento neutro: **‹ Hoje ›** e **Dia/Semana/Mês** (`Segmented`), com a opção ativa em `selected`, que desliza. Novo agendamento é o **+** só com ícone, sem fundo (atalho **N**).
 - **Alvos:** número do dia e "+N mais" no mês têm no mínimo 24px (WCAG 2.5.8) e retorno ao passar o mouse.
 - **Erro:** a grade some e dá lugar ao `ErrorState` com "Tentar de novo"; uma grade vazia pareceria "sem agendamentos". Se uma atualização falhar mas já houver dados, eles continuam na tela.
 
@@ -180,11 +204,12 @@ Não distorça nem gire a marca. Ela não é usada como marcador de item ativo n
 ## Acessibilidade
 
 - Texto de apoio com pelo menos 4,5:1, inclusive placeholders (o `ink-faint` anterior tinha 2,6:1). Conferido com o `contrast.py` da skill `ui-design-craft`.
-- Contorno dos campos a 3:1; anel de foco de 2px em grafite (branco sobre a barra lateral).
+- Contorno dos campos a 3:1; anel de foco de 2px em `accent` (grafite no claro, quase branco no escuro).
 - Erro de tela inteira com ícone, título e ação; erro de campo com cor, ícone e texto; estado do filtro "Mostrar inativos" com ✓ além do preenchimento; "Inativo" sempre em texto.
 - **Aumentar contraste** (`prefers-contrast: more`) escurece texto secundário, filetes, contornos e erro. **Reduzir movimento** tira todo deslocamento, escala e transição (`--shift` vira 0 e as transições ficam instantâneas) mas mantém os fades, para a mudança continuar visível; o símbolo de carregando fica estático, e o check do aviso aparece já desenhado. Como não há transparência, **Reduzir transparência** não muda nada.
-- `nativeTheme.themeSource = 'light'` mantém os controles nativos (barras de rolagem, seletor de data) claros no Modo Escuro; as barras de rolagem do app são finas e iguais em todos os sistemas (`scrollbar-width: thin`).
-- **Ainda não feito:** tema escuro (exige variantes de todos os tokens; os tokens já estão por papel, então é incremento pequeno), passagem com leitor de tela e teste real no Windows.
+- `nativeTheme.themeSource` segue a escolha de Configurações e `color-scheme: light dark` faz os controles nativos acompanharem o tema; as barras de rolagem do app são finas e iguais em todos os sistemas (`scrollbar-width: thin`).
+- **Aumentar contraste** tem variantes nos dois temas.
+- **Ainda não feito:** passagem com leitor de tela e teste real no Windows (inclusive do tema escuro).
 
 ## Referências
 

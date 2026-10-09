@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { format } from 'date-fns'
-import { Archive, Check, Plus, Search, X } from 'lucide-react'
+import { Archive, Plus, Search, X } from 'lucide-react'
 import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router'
 import { formatAge, isIsoDate, parseIsoDate } from '@shared/dates'
@@ -215,8 +215,14 @@ export function PatientsPage(): React.JSX.Element {
     <Page
       trail={[{ label: 'Pacientes' }]}
       actions={
-        <Button onClick={newPatient}>
-          <Plus /> Novo paciente
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={newPatient}
+          aria-label="Novo paciente"
+          title="Novo paciente"
+        >
+          <Plus />
         </Button>
       }
       toolbar={
@@ -233,7 +239,9 @@ export function PatientsPage(): React.JSX.Element {
               onChange={(e) => setBusca(e.target.value)}
               placeholder="Nome, mãe ou CPF"
               // o "x" nativo do navegador é azul e fora da paleta: o botão abaixo o substitui
-              className="h-8 pr-8 pl-9 text-[13px] pointer-coarse:h-11 [&::-webkit-search-cancel-button]:appearance-none"
+              // ferramenta do cabeçalho: o mesmo preenchimento dos botões ao lado, sem contorno; no foco
+              // ganha o fundo e o contorno de campo
+              className="h-8 border-transparent bg-fill pr-8 pl-9 text-[13px] hover:border-transparent hover:bg-fill-hover focus:border-ink focus:bg-surface pointer-coarse:h-11 [&::-webkit-search-cancel-button]:appearance-none"
               aria-label="Buscar pacientes por nome, mãe ou CPF"
               autoFocus
             />
@@ -252,16 +260,15 @@ export function PatientsPage(): React.JSX.Element {
             )}
           </div>
           <Button
-            variant="outline"
+            variant="ghost"
+            size="icon"
+            aria-label="Mostrar inativos"
+            title={incluirInativos ? 'Mostrando inativos' : 'Mostrar inativos'}
+            // ligado: o fundo do item ativo do menu lateral
             aria-pressed={incluirInativos}
             onClick={() => setIncluirInativos((v) => !v)}
-            className={cn(
-              'text-ink-soft',
-              // ligado: preenchimento mais forte e ✓ (não só cor), sem competir com o botão principal
-              incluirInativos && 'bg-accent-soft text-ink hover:bg-accent-soft'
-            )}
           >
-            {incluirInativos ? <Check /> : <Archive />} Mostrar inativos
+            <Archive />
           </Button>
         </>
       }

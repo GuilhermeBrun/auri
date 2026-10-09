@@ -331,7 +331,7 @@ function AppointmentForm({
           )}
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={onClose}>
+          <Button variant="secondary" onClick={onClose}>
             Cancelar
           </Button>
           <Button type="submit" loading={save.isPending}>

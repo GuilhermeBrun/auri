@@ -145,7 +145,7 @@ export function Calendar({ value, onSelect }: CalendarProps): React.JSX.Element 
                     className={cn(
                       'grid size-8 place-items-center rounded-control text-[13px] tabular-nums transition-colors pointer-coarse:size-10',
                       selected
-                        ? 'bg-accent font-semibold text-white hover:bg-accent-hover'
+                        ? 'bg-solid font-semibold text-on-solid hover:bg-solid-hover'
                         : cn(
                             'hover:bg-fill',
                             isSameMonth(day, month) ? 'text-ink' : 'text-ink-faint',

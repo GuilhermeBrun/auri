@@ -38,7 +38,7 @@ export function Select({
           controlClass,
           'flex h-9 items-center justify-between gap-2 pr-2.5 text-left pointer-coarse:h-11',
           // aberto, o campo fica com o contorno do foco (o foco já está na lista)
-          'data-[state=open]:border-ink data-[state=open]:ring-[3px] data-[state=open]:ring-black/10'
+          'data-[state=open]:border-ink data-[state=open]:ring-[3px] data-[state=open]:ring-ink/10'
         )}
       >
         <SelectPrimitive.Value />

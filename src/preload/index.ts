@@ -1,5 +1,11 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import { PREFS_ARG, type AuriApi, type AuriPrefs, type IpcResult } from '../shared/api'
+import {
+  DEFAULT_UI_PREFS,
+  PREFS_ARG,
+  type AuriApi,
+  type AuriPrefs,
+  type IpcResult
+} from '../shared/api'
 
 async function invoke<T>(channel: string, ...args: unknown[]): Promise<T> {
   const result = (await ipcRenderer.invoke(channel, ...args)) as IpcResult<T>
@@ -26,7 +32,7 @@ const api: AuriApi = {
 // Chegam como argumento da janela (ver main/prefs.ts)
 const prefsArg = process.argv.find((arg) => arg.startsWith(PREFS_ARG))
 const prefs: AuriPrefs = {
-  initial: prefsArg ? JSON.parse(prefsArg.slice(PREFS_ARG.length)) : { sidebarOpen: true },
+  initial: prefsArg ? JSON.parse(prefsArg.slice(PREFS_ARG.length)) : DEFAULT_UI_PREFS,
   save: (value) => ipcRenderer.send('prefs:save', value)
 }
 
