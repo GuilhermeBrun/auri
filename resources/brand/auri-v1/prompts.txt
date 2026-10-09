@@ -1,0 +1,25 @@
+EXPLORAÇÃO PRINCIPAL — imagegen
+
+Use case: logo-brand.
+Asset type: primary horizontal logo, production-usable transparent PNG, for the brand "auri", a desktop patient and appointment application for speech-language therapy clinics.
+Primary request: design a distinctive proprietary visual identity to replace a generic three-bar audio equalizer logo. Create ONE polished final horizontal logo consisting of an original emblem on the left and the lowercase word "auri" on the right.
+Design idea: a bold sculptural lowercase "a" monogram whose single continuous organic contour suggests attentive listening, with an open inner counter and an elegantly curved terminal. Abstract the listening idea rather than literally drawing an ear. Make the silhouette memorable and compact, combining editorial typography with the reassuring warmth of a care brand. The emblem must have an actual intelligent, ownable shape rather than be a standard font letter, a spiral, an @ sign, or an outlined badge. Moderate asymmetry, carefully considered negative space, a solid thick contour, no tiny details. It must hold up at 24 px.
+Typography: exact text "auri" (a-u-r-i), lowercase, custom confident contemporary grotesque lettering with subtly rounded joins, a single-storey a, balanced tight optical kerning, distinctly drawn r and u, warm yet professional. Wordmark is visually clear and secondary to the emblem; emblem is slightly taller than wordmark. Avoid childish bulbous lettering.
+Composition: only ONE logo, landscape layout around 3:1. Align optical centers, a deliberate modest gap between emblem and wordmark, closely cropped with reasonable clear margin all around. Logo occupies most of the image width. No extra text or tagline.
+Color palette: one solid flat graphite color #1B1B22 for all positive logo geometry. Genuinely transparent background with alpha. No other colors. No white rectangular background. No checkered background baked into image.
+Style: refined vector-style logo rendering, precision edges, flat solid fills, no texture, no illustration, no shadows, no gradients, no 3D, no mockup, no presentation board, no decorative frame.
+Avoid: three bars, equalizers, generic sound waves, microphone, headphones, medical crosses, hearts, leaves, generic infinity loops, stock-logo aesthetics, copied brand marks, fine hairlines, disconnected decorative dots in the emblem, intricate internal lines.
+The only text in the entire image is "auri".
+
+EXPLORAÇÃO BRANCA — imagegen (descartada por artefatos)
+
+Use case: precise-object-edit.
+Asset type: reversed white horizontal Auri logo for use on the graphite sidebar of an app.
+Input image: edit target. Preserve this exact logo design from the input: same stylized listening lowercase a emblem, same lowercase "auri" typography, exact same outlines, spacing, relative dimensions, optical alignment, and canvas aspect ratio.
+Primary request: change ONLY the foreground color of all emblem and lettering pixels to pure solid white #FFFFFF, maintaining precisely the original silhouette and its original genuinely transparent background alpha.
+No redesign, no new shapes, no extra symbols, no text additions, no font substitution. The only text remains "auri".
+Flat uniform monochrome white fills, crisp antialiased edges. No gray shading, no gradients, no textures, no shadows, no outlines.
+The background MUST be transparent, not black, not dark gray, not white and not a baked-in checkerboard. ONE logo only, horizontal composition. Preserve the design exactly.
+
+FINALIZAÇÃO
+Redesenho manual em SVG com base na direção principal. Cor uniforme #1B1B22 / #FFFFFF; letras e símbolo em caminhos. PNGs renderizados dos SVGs finais.

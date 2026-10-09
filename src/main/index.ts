@@ -26,7 +26,7 @@ function createWindow(prefs: UiPrefs): void {
     ...(process.platform === 'darwin'
       ? { titleBarStyle: 'hiddenInset' as const, trafficLightPosition: { x: 22, y: 17 } }
       : {}),
-    ...(process.platform === 'linux' ? { icon } : {}),
+    ...(process.platform !== 'darwin' ? { icon } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       // preferências da interface prontas para o preload, sem a janela esperar o disco
@@ -56,6 +56,9 @@ function createWindow(prefs: UiPrefs): void {
 
 app.whenReady().then(() => {
   electronApp.setAppUserModelId('com.auri.app')
+
+  // Em desenvolvimento o executável ainda é o Electron; a marca também aparece no Dock.
+  if (process.platform === 'darwin') app.dock?.setIcon(icon)
 
   // O Auri só tem tema claro. Sem isto, no Modo Escuro os controles nativos (barras de rolagem,
   // seletor de data) ficariam escuros dentro de uma interface clara.

@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="pt-BR">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Auri — proposta de marca</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      background: #e8e8eb;
+      color: #1b1b22;
+      font-family: system-ui, sans-serif;
+    }
+    main {
+      max-width: 1440px;
+      margin: auto;
+      background: #f8f7f4;
+    }
+    .hero {
+      height: 370px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .hero img {
+      width: 560px;
+      max-width: 75%;
+      height: auto;
+    }
+    .night {
+      background: #1b1b22;
+    }
+    .details {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 48px;
+      padding: 40px 70px;
+    }
+    .caption {
+      font-size: 12px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #64646e;
+    }
+    .description {
+      margin-top: 12px;
+      font-size: 17px;
+      line-height: 1.5;
+      max-width: 510px;
+    }
+    .sizes {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+    }
+    .sizes img {
+      object-fit: contain;
+    }
+    .app-icon {
+      display: grid;
+      place-items: center;
+      width: 104px;
+      height: 104px;
+    }
+    .app-icon img {
+      width: 104px;
+      height: 104px;
+    }
+    @media (max-width: 700px) {
+      .hero {
+        height: 260px;
+      }
+      .details {
+        padding: 28px;
+        flex-wrap: wrap;
+      }
+    }
+  </style>
+  <main>
+    <div class="hero">
+      <img src="auri-grafite.svg" alt="Logo Auri em grafite sobre fundo claro" />
+    </div>
+    <div class="hero night">
+      <img src="auri-branco.svg" alt="Logo Auri em branco sobre fundo grafite" />
+    </div>
+    <div class="details">
+      <div>
+        <div class="caption">Auri · proposta de identidade</div>
+        <div class="description">
+          O símbolo ocupa o lugar do “a” em Auri.<br />Forma orgânica, integrada às letras do nome.
+        </div>
+      </div>
+      <div class="sizes" aria-label="Símbolo em diferentes tamanhos">
+        <img src="simbolo-grafite.svg" width="24" height="24" alt="Símbolo a 24 pixels" />
+        <img src="simbolo-grafite.svg" width="40" height="40" alt="Símbolo a 40 pixels" />
+        <img src="simbolo-grafite.svg" width="64" height="64" alt="Símbolo a 64 pixels" />
+        <div class="app-icon">
+          <img src="auri-app.svg" alt="Ícone do aplicativo com margem, contorno e fundo grafite" />
+        </div>
+      </div>
+    </div>
+  </main>
+</html>
