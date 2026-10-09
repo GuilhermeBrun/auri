@@ -1,0 +1,45 @@
+appId: com.auri.app
+productName: Auri
+directories:
+  buildResources: build
+files:
+  - '!**/.vscode/*'
+  - '!src/*'
+  - '!scripts/*'
+  - '!electron.vite.config.{js,ts,mjs,cjs}'
+  - '!vitest.config.{js,ts,mjs,cjs}'
+  - '!{.eslintcache,eslint.config.mjs,.prettierignore,.prettierrc.yaml,dev-app-update.yml,CHANGELOG.md,README.md}'
+  - '!{.env,.env.*,.npmrc,pnpm-lock.yaml}'
+  - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
+  - '!node_modules/better-sqlite3/prebuilds/{linux,linuxmusl}-*'
+  - '!node_modules/node-addon-api/**'
+asarUnpack:
+  - resources/**
+# O better-sqlite3 já vem com binários prontos (Node-API) para cada sistema em
+# prebuilds/, então não há nada a recompilar; isso também permite gerar o .exe no Mac.
+npmRebuild: false
+win:
+  executableName: Auri
+  target:
+    - target: nsis
+      arch: [x64]
+nsis:
+  artifactName: ${name}-${version}-setup.${ext}
+  shortcutName: ${productName}
+  uninstallDisplayName: ${productName}
+  createDesktopShortcut: always
+mac:
+  category: public.app-category.medical
+  entitlementsInherit: build/entitlements.mac.plist
+  notarize: false
+  # Assinatura ad-hoc: sem certificado da Apple, mas o pacote fica íntegro (sem ela, um
+  # .dmg baixado abre como "danificado"). Com um Developer ID, troque pelo nome dele.
+  identity: '-'
+  # O hardened runtime só é exigido para notarizar; com assinatura ad-hoc ele impediria o
+  # carregamento do binário do SQLite (validação de biblioteca).
+  hardenedRuntime: false
+  target:
+    - target: dmg
+      arch: [arm64, x64]
+dmg:
+  artifactName: ${name}-${version}-${arch}.${ext}

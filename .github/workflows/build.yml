@@ -1,0 +1,41 @@
+name: Build
+
+# Gera os instaladores e roda os testes em cada sistema (inclusive no Windows,
+# onde o app não pode ser testado a partir do Mac).
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            script: build:win
+            artifact: dist/*.exe
+          - os: macos-latest
+            script: build:mac
+            artifact: dist/*.dmg
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm test
+
+      - run: npm run ${{ matrix.script }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: auri-${{ matrix.os }}
+          path: ${{ matrix.artifact }}
+          if-no-files-found: error
