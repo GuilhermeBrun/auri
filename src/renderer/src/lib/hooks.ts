@@ -15,6 +15,28 @@ function scrollParent(el: HTMLElement): HTMLElement {
 }
 
 /**
+ * Rola a lista até a linha `index` se ela estiver fora da área visível, deixando-a no meio. Serve
+ * para mostrar o paciente recém-salvo, que numa lista longa pode estar muito abaixo. `stickyTop` é a
+ * altura do cabeçalho fixo, que cobre o topo da área de rolagem. Rola de uma vez, sem animar: a lista
+ * é virtualizada e passar por centenas de linhas no caminho não ajuda.
+ */
+export function revealRow(
+  list: HTMLElement,
+  index: number,
+  rowHeight: number,
+  stickyTop: number
+): void {
+  const scrollEl = scrollParent(list)
+  const offset =
+    list.getBoundingClientRect().top - scrollEl.getBoundingClientRect().top + scrollEl.scrollTop
+  const top = offset + index * rowHeight
+  const visible =
+    top >= scrollEl.scrollTop + stickyTop &&
+    top + rowHeight <= scrollEl.scrollTop + scrollEl.clientHeight
+  if (!visible) scrollEl.scrollTop = Math.max(0, top - (scrollEl.clientHeight - rowHeight) / 2)
+}
+
+/**
  * Lista longa com linhas de altura fixa: devolve o trecho [start, end) que precisa estar no DOM (o
  * que aparece na área de rolagem, arredondado em blocos, mais um bloco de folga acima e abaixo). O
  * resto da lista vira espaço reservado, então a tela monta umas 40 linhas em vez de centenas.

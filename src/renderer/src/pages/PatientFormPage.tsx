@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ChevronLeft } from 'lucide-react'
-import { useEffect, type ReactNode } from 'react'
+import { Archive, ChevronLeft } from 'lucide-react'
+import { useEffect, useId, type ReactNode } from 'react'
 import { Controller, useForm, useWatch, type Control } from 'react-hook-form'
 import { Link, useNavigate, useParams } from 'react-router'
 import { formatAge, toIsoDate } from '@shared/dates'
@@ -18,7 +18,9 @@ import { Avatar } from '@renderer/components/ui/avatar'
 import { Loading } from '@renderer/components/ui/loading'
 import { Button } from '@renderer/components/ui/button'
 import { ErrorState } from '@renderer/components/ui/error'
+import { DateField } from '@renderer/components/ui/date-field'
 import { Field, Input, Textarea } from '@renderer/components/ui/input'
+import { useToast } from '@renderer/lib/toast'
 
 function toInput(patient: Patient): PatientInput {
   return Object.fromEntries(PATIENT_FIELDS.map((f) => [f, patient[f]])) as PatientInput
@@ -40,10 +42,7 @@ function Section({
   children: ReactNode
 }): React.JSX.Element {
   return (
-    <section
-      aria-labelledby={id}
-      className="grid grid-cols-[200px_1fr] gap-x-8 border-t border-line py-6"
-    >
+    <section aria-labelledby={id} className="grid grid-cols-[200px_1fr] gap-x-8 py-7">
       <div>
         <div className="sticky top-4">
           <h2 id={id} className="text-[15px] font-semibold tracking-tight">
@@ -109,6 +108,8 @@ export function PatientFormRoute(): React.JSX.Element {
 function PatientFormPage({ patientId }: { patientId: number | null }): React.JSX.Element {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const toast = useToast()
+  const ids = useId()
   const isNew = patientId === null
 
   const {
@@ -143,7 +144,9 @@ function PatientFormPage({ patientId }: { patientId: number | null }): React.JSX
       queryClient.setQueryData(['patient', saved.id], saved)
       queryClient.invalidateQueries({ queryKey: ['patients'] })
       queryClient.invalidateQueries({ queryKey: ['appointments'] })
-      navigate('/pacientes')
+      toast({ title: isNew ? 'Paciente cadastrado' : 'Alterações salvas', description: saved.nome })
+      // `saved`: a lista destaca (e rola até) a linha deste paciente
+      navigate('/pacientes', { state: { saved: saved.id } })
     }
   })
 
@@ -152,6 +155,11 @@ function PatientFormPage({ patientId }: { patientId: number | null }): React.JSX
     onSuccess: (saved) => {
       queryClient.setQueryData(['patient', saved.id], saved)
       queryClient.invalidateQueries({ queryKey: ['patients'] })
+      toast(
+        saved.ativo
+          ? { title: 'Paciente reativado', description: saved.nome }
+          : { title: 'Paciente inativado', description: saved.nome, icon: <Archive /> }
+      )
     }
   })
 
@@ -223,7 +231,7 @@ function PatientFormPage({ patientId }: { patientId: number | null }): React.JSX
                   </span>
                 )}
                 {patient && !patient.ativo && (
-                  <span className="rounded-chip bg-danger/8 px-2 py-0.5 font-medium text-danger">
+                  <span className="animate-pop-in rounded-chip bg-danger/8 px-2 py-0.5 font-medium text-danger">
                     Inativo
                   </span>
                 )}
@@ -237,7 +245,10 @@ function PatientFormPage({ patientId }: { patientId: number | null }): React.JSX
           </header>
 
           {(save.error || toggleAtivo.error) && (
-            <p className="mb-5 rounded-card bg-danger/8 p-3 text-xs text-danger" role="alert">
+            <p
+              className="mb-5 animate-error-in rounded-card bg-danger/8 p-3 text-xs text-danger"
+              role="alert"
+            >
               {(save.error ?? toggleAtivo.error)!.message}
             </p>
           )}
@@ -249,14 +260,22 @@ function PatientFormPage({ patientId }: { patientId: number | null }): React.JSX
               </Field>
               <Field
                 label="Data de nascimento"
+                htmlFor={`${ids}-nascimento`}
                 error={err('data_nascimento')}
                 hint={idade}
                 className="col-span-3"
               >
-                <Input
-                  type="date"
-                  {...register('data_nascimento')}
-                  aria-invalid={invalid('data_nascimento')}
+                <Controller
+                  control={control}
+                  name="data_nascimento"
+                  render={({ field, fieldState }) => (
+                    <DateField
+                      id={`${ids}-nascimento`}
+                      value={field.value}
+                      onChange={field.onChange}
+                      invalid={fieldState.invalid}
+                    />
+                  )}
                 />
               </Field>
               <Field label="CPF" error={err('cpf')} className="col-span-3">
@@ -348,11 +367,23 @@ function PatientFormPage({ patientId }: { patientId: number | null }): React.JSX
               <Field label="Pediatra" error={err('pediatra')} className="col-span-2">
                 <Input {...register('pediatra')} />
               </Field>
-              <Field label="Data de entrada" error={err('data_entrada')} className="col-span-2">
-                <Input
-                  type="date"
-                  {...register('data_entrada')}
-                  aria-invalid={invalid('data_entrada')}
+              <Field
+                label="Data de entrada"
+                htmlFor={`${ids}-entrada`}
+                error={err('data_entrada')}
+                className="col-span-2"
+              >
+                <Controller
+                  control={control}
+                  name="data_entrada"
+                  render={({ field, fieldState }) => (
+                    <DateField
+                      id={`${ids}-entrada`}
+                      value={field.value}
+                      onChange={field.onChange}
+                      invalid={fieldState.invalid}
+                    />
+                  )}
                 />
               </Field>
               <Field label="Observações" error={err('observacoes')} className="col-span-6">

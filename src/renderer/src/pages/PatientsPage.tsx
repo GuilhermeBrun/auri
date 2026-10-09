@@ -1,8 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
 import { format } from 'date-fns'
-import { Archive, Check, Plus, Search, UserRoundPlus, X } from 'lucide-react'
-import { memo, useMemo, useRef, useState } from 'react'
-import { Link, useNavigate } from 'react-router'
+import { Archive, Check, Plus, Search, X } from 'lucide-react'
+import { memo, useEffect, useMemo, useRef, useState } from 'react'
+import { Link, useLocation, useNavigate } from 'react-router'
 import { formatAge, isIsoDate, parseIsoDate } from '@shared/dates'
 import type { Patient } from '@shared/schemas'
 import { createPatientSearch } from '@shared/search'
@@ -13,7 +13,7 @@ import { Button } from '@renderer/components/ui/button'
 import { EmptyState } from '@renderer/components/ui/empty'
 import { ErrorState } from '@renderer/components/ui/error'
 import { Input } from '@renderer/components/ui/input'
-import { useVirtualRows } from '@renderer/lib/hooks'
+import { revealRow, useVirtualRows } from '@renderer/lib/hooks'
 import { patientsQuery } from '@renderer/lib/queries'
 import { cn } from '@renderer/lib/utils'
 
@@ -30,6 +30,10 @@ const COLUMNS: { label: string; className?: string }[] = [
 
 /** Altura de cada linha da tabela. Fixa, para a lista montar só as linhas visíveis. */
 const ROW_HEIGHT = 56
+/** Altura do cabeçalho da tabela, que fica fixo no topo da área de rolagem (`h-9`). */
+const HEAD_HEIGHT = 36
+/** Quanto tempo o paciente recém-salvo fica marcado na lista; o destaque (1,8s) dura menos que isso. */
+const SAVED_MS = 2500
 
 /** Valor vazio: um traço, que o leitor de tela anuncia como "não informado". */
 function Blank(): React.JSX.Element {
@@ -69,10 +73,13 @@ function Spacer({ rows }: { rows: number }): React.JSX.Element {
 
 const PatientRow = memo(function PatientRow({
   patient: p,
-  index
+  index,
+  justSaved
 }: {
   patient: Patient
   index: number
+  /** Acabou de ser cadastrado ou editado: o fundo da linha se apaga aos poucos. */
+  justSaved: boolean
 }): React.JSX.Element {
   const navigate = useNavigate()
   return (
@@ -80,8 +87,11 @@ const PatientRow = memo(function PatientRow({
       aria-rowindex={index + 2}
       onClick={() => navigate(`/pacientes/${p.id}`)}
       style={{ height: ROW_HEIGHT }}
-      // hover: fundo arredondado na linha inteira
-      className="group cursor-pointer [&>td]:transition-colors [&>td:first-child]:rounded-l-card [&>td:last-child]:rounded-r-card hover:[&>td]:bg-canvas"
+      // hover: fundo arredondado na linha inteira; ao clicar, um tom mais escuro
+      className={cn(
+        'group cursor-pointer [&>td]:transition-colors [&>td:first-child]:rounded-l-card [&>td:last-child]:rounded-r-card hover:[&>td]:bg-canvas active:[&>td]:bg-accent-soft',
+        justSaved && '[&>td]:animate-row-flash'
+      )}
     >
       <td className="px-3">
         <span className="flex min-w-0 items-center gap-3">
@@ -127,14 +137,28 @@ const PatientRow = memo(function PatientRow({
  * na busca só redesenha a tabela quando o resultado muda, e cada linha só quando o paciente muda.
  */
 const PatientTable = memo(function PatientTable({
-  patients
+  patients,
+  savedId
 }: {
   patients: Patient[]
+  /** Paciente recém-salvo: a lista rola até ele (se preciso) e a linha é destacada. */
+  savedId: number | undefined
 }): React.JSX.Element {
   const bodyRef = useRef<HTMLTableSectionElement>(null)
   const { start, end } = useVirtualRows(bodyRef, patients.length, ROW_HEIGHT)
+
+  // O paciente novo chega com a lista atualizada, uma fração depois de a tela abrir: rola uma vez só
+  const revealed = useRef<number | undefined>(undefined)
+  useEffect(() => {
+    if (savedId === undefined || revealed.current === savedId || !bodyRef.current) return
+    const index = patients.findIndex((p) => p.id === savedId)
+    if (index < 0) return
+    revealed.current = savedId
+    revealRow(bodyRef.current, index, ROW_HEIGHT, HEAD_HEIGHT)
+  }, [patients, savedId])
   return (
-    <div className="px-4 pb-6">
+    // pb-20: folga no fim para a última linha subir acima do aviso, que fica no rodapé da janela
+    <div className="px-4 pb-20">
       <table
         aria-rowcount={patients.length + 1}
         className="w-full table-fixed border-separate border-spacing-0 text-left text-[13px]"
@@ -142,10 +166,7 @@ const PatientTable = memo(function PatientTable({
         <thead className="sticky top-0 z-[1] bg-surface text-xs text-ink-soft">
           <tr aria-rowindex={1}>
             {COLUMNS.map(({ label, className }) => (
-              <th
-                key={label}
-                className={cn('h-9 border-b border-line px-3 font-medium', className)}
-              >
+              <th key={label} className={cn('h-9 px-3 font-medium', className)}>
                 {label}
               </th>
             ))}
@@ -154,7 +175,7 @@ const PatientTable = memo(function PatientTable({
         <tbody ref={bodyRef}>
           {start > 0 && <Spacer rows={start} />}
           {patients.slice(start, end).map((p, i) => (
-            <PatientRow key={p.id} patient={p} index={start + i} />
+            <PatientRow key={p.id} patient={p} index={start + i} justSaved={p.id === savedId} />
           ))}
           {end < patients.length && <Spacer rows={patients.length - end} />}
         </tbody>
@@ -166,6 +187,14 @@ const PatientTable = memo(function PatientTable({
 export function PatientsPage(): React.JSX.Element {
   const navigate = useNavigate()
   const [busca, setBusca] = useState('')
+  // A ficha manda o id do paciente salvo na navegação; ele fica marcado por um instante e a marca sai
+  // do histórico (senão voltar a esta tela repetiria o destaque)
+  const savedId = (useLocation().state as { saved?: number } | null)?.saved
+  useEffect(() => {
+    if (savedId === undefined) return
+    const timer = setTimeout(() => navigate('/pacientes', { replace: true, state: null }), SAVED_MS)
+    return () => clearTimeout(timer)
+  }, [savedId, navigate])
   const [incluirInativos, setIncluirInativos] = useState(false)
 
   const { data, isPending, error, refetch } = useQuery({
@@ -221,7 +250,7 @@ export function PatientsPage(): React.JSX.Element {
                   setBusca('')
                   searchRef.current?.focus()
                 }}
-                className="absolute top-1/2 right-1.5 grid size-6 -translate-y-1/2 place-items-center rounded-chip text-ink-soft transition-colors hover:bg-fill hover:text-ink pointer-coarse:size-9 [&_svg]:size-4 [&_svg]:stroke-[1.75]"
+                className="absolute top-1/2 right-1.5 grid size-6 -translate-y-1/2 animate-fade-in place-items-center rounded-chip text-ink-soft transition-colors hover:bg-fill hover:text-ink pointer-coarse:size-9 [&_svg]:size-4 [&_svg]:stroke-[1.75]"
               >
                 <X aria-hidden="true" />
               </button>
@@ -260,7 +289,6 @@ export function PatientsPage(): React.JSX.Element {
           </EmptyState>
         ) : (
           <EmptyState
-            icon={<UserRoundPlus />}
             title="Nenhum paciente cadastrado ainda"
             action={
               <Button onClick={newPatient}>
@@ -272,7 +300,7 @@ export function PatientsPage(): React.JSX.Element {
           </EmptyState>
         )
       ) : (
-        <PatientTable patients={patients} />
+        <PatientTable patients={patients} savedId={savedId} />
       )}
     </Page>
   )
