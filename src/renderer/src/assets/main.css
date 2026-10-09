@@ -1,0 +1,473 @@
+@import 'tailwindcss';
+
+/* Tokens da identidade visual. Documentação: docs/identidade-visual.md */
+@theme {
+  /* Família única; o eixo óptico (opsz) deixa os títulos mais expressivos e o texto miúdo mais firme */
+  --font-sans: 'Bricolage Grotesque Variable', ui-sans-serif, system-ui, sans-serif;
+
+  /* Destaque único (grafite). Para trocar a cor do app, mude só estes três. */
+  --color-accent: #1b1b22;
+  --color-accent-hover: #34343f;
+  --color-accent-soft: #eeeef3;
+  /* Sessões da agenda: um passo mais escuro que o avatar, para se destacarem da grade */
+  --color-session: #e6e6ee;
+  --color-session-hover: #dcdce6;
+
+  --color-ink: #1b1b22;
+  --color-ink-soft: #5b5b68;
+  --color-ink-faint: #6e6e7c;
+
+  --color-canvas: #f5f5f8;
+  --color-surface: #ffffff;
+  --color-subtle: #f9f9fb;
+  --color-line: #e6e6ec;
+  --color-line-strong: #c9c9d4;
+  /* Contorno dos campos: 3:1 contra o branco (WCAG 1.4.11) */
+  --color-control: #8e8e9c;
+
+  /* Barra lateral: o grafite do ícone do app, em escala */
+  --color-night: #1b1b22;
+  --color-night-ink: #ffffff;
+  --color-night-soft: #b7b7c6;
+  --color-night-faint: #9c9cae;
+
+  --color-danger: #c4271b;
+  --color-now: #e5484d;
+
+  /* Preenchimento de cápsulas e chips neutros */
+  --color-fill: rgba(27, 27, 34, 0.055);
+  --color-fill-hover: rgba(27, 27, 34, 0.09);
+
+  /* Tudo é retângulo de cantos arredondados; não há pílulas. Quatro raios, do menor ao maior: */
+  --radius-chip: 6px; /* chips, sessões, opção ativa do seletor */
+  --radius-control: 8px; /* botões, campos, itens do menu, seletor de visão */
+  --radius-card: 12px; /* alertas, menus, linhas da tabela, avatar grande */
+  --radius-sheet: 16px; /* diálogos */
+
+  /* Só o que flutua (diálogos, menus) tem sombra; o resto é plano */
+  --shadow-pop:
+    0 0 0 1px rgba(27, 27, 34, 0.08), 0 20px 44px -14px rgba(27, 27, 34, 0.34),
+    0 2px 6px rgba(27, 27, 34, 0.06);
+  --shadow-lift: 0 0 0 1px rgba(27, 27, 34, 0.06), 0 1px 2px rgba(27, 27, 34, 0.12);
+
+  /* Movimento só em resposta a uma ação (abrir diálogo, lista) ou para dizer "carregando" */
+  --animate-pop-in: pop-in 140ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  --animate-fade-in: fade-in 140ms ease-out;
+  --animate-beat: beat 900ms ease-in-out infinite;
+
+  @keyframes pop-in {
+    from {
+      opacity: 0;
+      transform: translateY(4px) scale(0.985);
+    }
+  }
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+  }
+
+  @keyframes beat {
+    0%,
+    100% {
+      transform: scaleY(0.5);
+    }
+    50% {
+      transform: scaleY(1);
+    }
+  }
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  /*
+   * Ao abrir um diálogo, o Radix põe `pointer-events: none` e a variável abaixo no <body>, e tira ao
+   * fechar. Mudar algo herdado no <body> faz o navegador recalcular o estilo de cada elemento da
+   * página (na agenda, quase 2.000) ao abrir e ao fechar, e a animação travava. Então o <body> já
+   * tem o valor que o Radix põe (0px: a página não rola, não há barra a compensar) e o #root tem
+   * `pointer-events` próprio, onde a mudança para. Os cliques fora do diálogo continuam bloqueados:
+   * o fundo escuro do diálogo cobre a janela inteira e é ele que os recebe.
+   */
+  body {
+    --removed-body-scroll-bar-size: 0px;
+  }
+
+  #root {
+    pointer-events: auto;
+  }
+
+  html {
+    color-scheme: light;
+    /* barras de rolagem finas e iguais no Mac, no Windows e na web */
+    scrollbar-width: thin;
+    scrollbar-color: rgba(27, 27, 34, 0.3) transparent;
+  }
+
+  body {
+    @apply bg-surface font-sans text-ink antialiased;
+    font-size: 13px;
+    line-height: 1.45;
+    font-optical-sizing: auto;
+  }
+
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+
+  /* sobre o grafite da barra lateral o anel é branco */
+  .on-night :focus-visible {
+    outline-color: var(--color-night-ink);
+  }
+
+  ::selection {
+    background: #dcdce6;
+  }
+
+  /* Aumentar contraste: cada cor de texto e divisória ganha uma variante mais forte */
+  @media (prefers-contrast: more) {
+    :root {
+      --color-ink-soft: #3f3f4a;
+      --color-ink-faint: #54545f;
+      --color-line: #8e8e9c;
+      --color-line-strong: #6e6e7c;
+      --color-control: #5b5b68;
+      --color-danger: #a8190f;
+      --color-night-soft: #e0e0ea;
+      --color-night-faint: #cfcfdb;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer components {
+  /* Seta do <select> desenhada no CSS, igual em Mac e Windows */
+  .select-chevron {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%235b5b68' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m4.5 6.5 3.5 3.5 3.5-3.5'/%3E%3C/svg%3E");
+    background-position: right 8px center;
+    background-repeat: no-repeat;
+  }
+
+  /* Áreas que arrastam a janela no Mac (barra de título integrada) */
+  .drag {
+    -webkit-app-region: drag;
+    app-region: drag;
+  }
+
+  .no-drag {
+    -webkit-app-region: no-drag;
+    app-region: no-drag;
+  }
+}
+
+/*
+ * Agenda (react-big-calendar). Fica fora de @layer de propósito: o CSS da biblioteca
+ * não tem camada e venceria qualquer regra dentro de uma.
+ */
+.rbc-calendar {
+  font-family: var(--font-sans);
+  color: var(--color-ink);
+}
+
+.rbc-month-view,
+.rbc-time-view {
+  border: 0;
+  border-top: 1px solid var(--color-line);
+  background: var(--color-surface);
+}
+
+/* Cabeçalho dos dias: o conteúdo vem dos componentes DayHeader/MonthHeader */
+.rbc-header {
+  padding: 6px 4px 8px;
+  font-weight: 400;
+  border-color: var(--color-line) !important;
+}
+
+.rbc-header > .rbc-button-link,
+.rbc-header > a {
+  display: block;
+  width: 100%;
+}
+
+.rbc-time-header-content,
+.rbc-time-header.rbc-overflowing,
+.rbc-time-content,
+.rbc-timeslot-group,
+.rbc-time-content > * + * > *,
+.rbc-header + .rbc-header,
+.rbc-day-bg + .rbc-day-bg,
+.rbc-month-row + .rbc-month-row {
+  border-color: var(--color-line);
+}
+
+.rbc-time-header.rbc-overflowing {
+  border-right: 0;
+}
+
+.rbc-time-content {
+  border-top: 1px solid var(--color-line);
+}
+
+/* Uma hora = 56px. A linha da meia hora é tracejada e bem fraca, só para alinhar o olho */
+.rbc-timeslot-group {
+  min-height: 56px;
+}
+
+.rbc-day-slot .rbc-time-slot {
+  border-top: 0;
+}
+
+.rbc-day-slot .rbc-time-slot + .rbc-time-slot {
+  border-top: 1px dashed rgba(27, 27, 34, 0.07);
+}
+
+.rbc-time-gutter .rbc-timeslot-group {
+  border-bottom: 0;
+}
+
+.rbc-time-gutter,
+.rbc-time-header-gutter {
+  flex: none;
+  width: 52px;
+}
+
+.rbc-time-gutter .rbc-label {
+  display: block;
+  padding: 4px 8px 0 0;
+  text-align: right;
+  font-size: 12px;
+  color: var(--color-ink-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Fim de semana levemente sombreado; "hoje" aparece só no selo do número */
+.rbc-weekend {
+  background: var(--color-subtle);
+}
+
+.rbc-today {
+  background: transparent;
+}
+
+/* Na visão Dia só há uma coluna: destacar "hoje" pintaria a agenda inteira */
+.agenda-day .rbc-today {
+  background: var(--color-surface);
+}
+
+.rbc-off-range-bg {
+  background: var(--color-subtle);
+}
+
+.rbc-off-range {
+  color: var(--color-ink-faint);
+}
+
+.rbc-date-cell {
+  padding: 6px 8px 2px;
+  text-align: left;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* O número do dia leva à visão Dia: alvo de pelo menos 24px (WCAG 2.5.8), com retorno ao passar o mouse */
+.rbc-date-cell > button {
+  display: inline-grid;
+  place-items: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 4px;
+  border-radius: var(--radius-chip);
+  transition: background-color 120ms;
+}
+
+.rbc-date-cell > button:hover {
+  background: var(--color-fill);
+}
+
+.rbc-date-cell.rbc-now > button {
+  padding: 0 7px;
+  background: var(--color-accent);
+  color: #fff;
+  font-weight: 600;
+}
+
+/*
+ * Sessões: bloco cinza claro com um contorno fino, para se destacar também sobre o fim de semana
+ * sombreado. Sessão selecionada: grafite com texto branco.
+ */
+.rbc-event,
+.rbc-day-slot .rbc-event {
+  position: relative;
+  background: var(--color-session);
+  color: var(--color-ink);
+  border: 0 !important;
+  border-radius: var(--radius-chip);
+  box-shadow: inset 0 0 0 1px rgba(27, 27, 34, 0.12);
+  padding: 3px 6px 3px 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.rbc-event:hover {
+  background: var(--color-session-hover);
+}
+
+.rbc-event.rbc-selected,
+.rbc-day-slot .rbc-selected.rbc-event {
+  background: var(--color-accent);
+  color: #fff;
+  box-shadow: none;
+}
+
+.rbc-event:focus {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+
+/* O horário já aparece no conteúdo do evento (EventContent) */
+.rbc-event-label {
+  display: none;
+}
+
+.rbc-day-slot .rbc-event {
+  flex-flow: column nowrap;
+  justify-content: center;
+}
+
+.rbc-day-slot .rbc-events-container {
+  margin-right: 4px;
+}
+
+/* Janela estreita (colunas de ~100px): 12px para o nome curto caber sem reticências */
+.rbc-time-view {
+  container-type: inline-size;
+}
+
+@container (max-width: 800px) {
+  .rbc-day-slot .rbc-event {
+    font-size: 12px;
+  }
+}
+
+/*
+ * Nome curto (dois primeiros nomes) em Semana e Mês, onde as colunas são estreitas; a visão Dia
+ * tem espaço e mostra o nome completo, com o horário à direita nas sessões curtas.
+ */
+.rbc-event .name-full {
+  display: none;
+}
+
+.agenda-day .rbc-event .name-short {
+  display: none;
+}
+
+.agenda-day .rbc-event .name-full {
+  display: inline;
+}
+
+.agenda-day .rbc-event .event-inline-time {
+  display: inline;
+}
+
+/* Na visão Mês cada evento ocupa uma linha: horário antes do nome, sem o intervalo */
+.rbc-month-view .event-detail {
+  display: none;
+}
+
+.rbc-month-view .event-start {
+  display: inline;
+  font-size: 12px;
+}
+
+/* Cada linha do mês é estreita: menos respiro nas laterais para o nome curto caber ao lado do horário */
+.rbc-month-view .rbc-event {
+  padding: 2px 6px;
+}
+
+.rbc-row-segment {
+  padding: 1px 4px;
+}
+
+.rbc-slot-selection {
+  background: rgba(27, 27, 34, 0.08);
+  color: var(--color-ink);
+  border-radius: 8px;
+  font-size: 12px;
+}
+
+/* Linha do horário atual, com um ponto no início */
+.rbc-current-time-indicator {
+  background: var(--color-now);
+  height: 1.5px;
+}
+
+.rbc-current-time-indicator::before {
+  content: '';
+  position: absolute;
+  left: -4px;
+  top: -3.25px;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--color-now);
+}
+
+.rbc-show-more {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 4px;
+  border-radius: var(--radius-chip);
+  color: var(--color-ink);
+  font-weight: 600;
+  font-size: 12px;
+  background: transparent;
+}
+
+.rbc-show-more:hover {
+  background: var(--color-fill);
+}
+
+.rbc-overlay {
+  border: 0;
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-pop);
+  padding: 6px;
+}
+
+.rbc-overlay-header {
+  border-bottom-color: var(--color-line);
+  font-weight: 600;
+  font-size: 12px;
+  margin: -6px -6px 6px;
+  padding: 8px 10px;
+}
+
+.rbc-allday-cell {
+  display: none;
+}
