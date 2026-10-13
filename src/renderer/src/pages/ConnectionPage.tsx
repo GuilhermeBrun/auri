@@ -17,7 +17,8 @@ import type {
   FoundServer,
   LinkStatus,
   PairedDevice,
-  PairingCode
+  PairingCode,
+  RemoteReach
 } from '@shared/api'
 import { SETTINGS_CRUMB } from '@renderer/lib/settings'
 
@@ -301,6 +302,9 @@ function ServerSection({ info }: { info: ConnectionInfo }): React.JSX.Element {
   const openAtLogin = useMutation({
     mutationFn: (on: boolean) => window.connection.setOpenAtLogin(on)
   })
+  const remoteAccess = useMutation({
+    mutationFn: (on: boolean) => window.connection.setRemoteAccess(on)
+  })
   const live = info.sharing && !info.sharingError
 
   return (
@@ -339,6 +343,16 @@ function ServerSection({ info }: { info: ConnectionInfo }): React.JSX.Element {
       {(info.sharing || info.devices.length > 0) && <DeviceList devices={info.devices} />}
       {info.sharing && (
         <div className="mt-10 flex flex-col gap-5">
+          <div>
+            <SwitchField
+              label="Permitir acesso de fora da clínica"
+              description="Os computadores conectados também chegam aos dados pela internet, de qualquer lugar, sem abrir porta no roteador. Desligado, só dentro desta rede."
+              checked={info.remoteAccess}
+              disabled={remoteAccess.isPending}
+              onCheckedChange={(on) => remoteAccess.mutate(on)}
+            />
+            {info.remoteReach && <RemoteReachText reach={info.remoteReach} />}
+          </div>
           <SwitchField
             label="Continuar rodando ao fechar a janela"
             description={`O Auri fica ${isMac ? 'na barra de menus' : 'na bandeja, perto do relógio'}, para os outros computadores não perderem o acesso.`}
@@ -355,6 +369,61 @@ function ServerSection({ info }: { info: ConnectionInfo }): React.JSX.Element {
           />
         </div>
       )}
+    </section>
+  )
+}
+
+const REACH_TEXT: Record<RemoteReach, string> = {
+  starting: 'Verificando a internet desta rede…',
+  open: 'Disponível: a rede desta clínica aceita conexões de fora.',
+  likely: 'Disponível de fora da clínica na maioria das redes.',
+  restricted:
+    'A rede desta clínica é restritiva: de fora, só deve conectar a partir de redes mais abertas. Use “Testar acesso pela internet” no outro computador para conferir.',
+  offline: 'Sem internet agora. Dentro da clínica continua funcionando.'
+}
+
+/** Como está o acesso de fora, logo abaixo do liga/desliga. */
+function RemoteReachText({ reach }: { reach: RemoteReach }): React.JSX.Element {
+  const good = reach === 'open' || reach === 'likely'
+  return (
+    <p className="mt-2 flex items-start gap-1.5 text-xs text-ink-soft">
+      <StatusDot on={good} />
+      <span className="-mt-[3px]">{REACH_TEXT[reach]}</span>
+    </p>
+  )
+}
+
+/**
+ * "Testar acesso pela internet": conecta ao outro computador só pela rede distribuída, como faria
+ * de fora da clínica, e diz se deu certo e em quanto tempo.
+ */
+function RemoteTest({ server }: { server: string }): React.JSX.Element {
+  const test = useMutation({ mutationFn: () => window.connection.testRemote() })
+  const result = test.data
+  return (
+    <section className="mt-10">
+      <SectionTitle title="Acesso de fora da clínica">
+        Testa a conexão com {server} só pela internet. Para valer, ligue este computador em outra
+        rede antes (por exemplo, o celular roteando internet).
+      </SectionTitle>
+      <Button
+        variant="secondary"
+        className="mt-3"
+        loading={test.isPending}
+        onClick={() => test.mutate()}
+      >
+        {test.isPending ? 'Testando…' : 'Testar acesso pela internet'}
+      </Button>
+      {result?.ok && (
+        <p role="status" className="mt-2 flex animate-fade-in items-center gap-1.5 text-xs">
+          <Check className="size-3.5 stroke-[2]" aria-hidden="true" />
+          Conectou pela internet em{' '}
+          {(result.ms / 1000).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} s. De fora da
+          clínica deve funcionar igual.
+        </p>
+      )}
+      {result && !result.ok && <ErrorText>{result.error}</ErrorText>}
+      {test.error && <ErrorText>{test.error.message}</ErrorText>}
     </section>
   )
 }
@@ -381,57 +450,68 @@ function LinkedServer({
   const forget = useMutation({ mutationFn: () => window.connection.forget() })
   const canRetry = info.status === 'offline' || info.status === 'version'
   return (
-    <section>
-      <SectionTitle title="Usando os dados de" />
-      <div className="mt-3 flex items-center gap-3">
-        <StatusDot on={info.status === 'connected'} />
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-[13px] font-medium">{server.name}</p>
-          <p className="text-xs text-ink-soft">
-            {STATUS_TEXT[info.status]}
-            {server.address && info.status === 'connected' && (
-              <>
-                {' · '}
-                <Sensitive label={`Endereço de ${server.name}`}>{server.address}</Sensitive>
-              </>
-            )}
-          </p>
-        </div>
-        {!confirming && (
-          <div className="flex items-center gap-2">
-            {canRetry && (
-              <Button variant="secondary" size="sm" onClick={() => void window.connection.retry()}>
-                <RotateCw /> Tentar agora
+    <>
+      <section>
+        <SectionTitle title="Usando os dados de" />
+        <div className="mt-3 flex items-center gap-3">
+          <StatusDot on={info.status === 'connected'} />
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-[13px] font-medium">{server.name}</p>
+            <p className="text-xs text-ink-soft">
+              {info.status === 'connected'
+                ? info.via === 'internet'
+                  ? 'Conectado pela internet'
+                  : 'Conectado pela rede da clínica'
+                : STATUS_TEXT[info.status]}
+              {server.address && info.status === 'connected' && info.via === 'local' && (
+                <>
+                  {' · '}
+                  <Sensitive label={`Endereço de ${server.name}`}>{server.address}</Sensitive>
+                </>
+              )}
+            </p>
+          </div>
+          {!confirming && (
+            <div className="flex items-center gap-2">
+              {canRetry && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => void window.connection.retry()}
+                >
+                  <RotateCw /> Tentar agora
+                </Button>
+              )}
+              <Button variant="secondary" size="sm" onClick={() => setConfirming(true)}>
+                Desconectar
               </Button>
-            )}
-            <Button variant="secondary" size="sm" onClick={() => setConfirming(true)}>
-              Desconectar
-            </Button>
+            </div>
+          )}
+        </div>
+        {confirming && (
+          <div className="mt-4 animate-fade-in rounded-card bg-fill p-4">
+            <p className="text-xs text-ink-soft">
+              Para conectar de novo vai ser preciso gerar um código novo em {server.name}.
+            </p>
+            <div className="mt-3 flex justify-end gap-2">
+              <Button variant="secondary" size="sm" onClick={() => setConfirming(false)}>
+                Cancelar
+              </Button>
+              <Button
+                variant="danger"
+                size="sm"
+                loading={forget.isPending}
+                onClick={() => forget.mutate()}
+              >
+                Desconectar
+              </Button>
+            </div>
           </div>
         )}
-      </div>
-      {confirming && (
-        <div className="mt-4 animate-fade-in rounded-card bg-fill p-4">
-          <p className="text-xs text-ink-soft">
-            Para conectar de novo vai ser preciso gerar um código novo em {server.name}.
-          </p>
-          <div className="mt-3 flex justify-end gap-2">
-            <Button variant="secondary" size="sm" onClick={() => setConfirming(false)}>
-              Cancelar
-            </Button>
-            <Button
-              variant="danger"
-              size="sm"
-              loading={forget.isPending}
-              onClick={() => forget.mutate()}
-            >
-              Desconectar
-            </Button>
-          </div>
-        </div>
-      )}
-      {forget.error && <ErrorText>{forget.error.message}</ErrorText>}
-    </section>
+        {forget.error && <ErrorText>{forget.error.message}</ErrorText>}
+      </section>
+      <RemoteTest server={server.name} />
+    </>
   )
 }
 

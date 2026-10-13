@@ -1,6 +1,6 @@
 # Conexão entre computadores — design
 
-Data: 13/10/2026. Estado: aprovado na conversa; fase 1 em implementação.
+Data: 13/10/2026. Estado: fases 1 e 2 implementadas (13/10/2026); falta teste real no Windows e entre duas redes.
 
 ## Objetivo
 
@@ -103,10 +103,19 @@ Trocar de papel não reinicia o app: o main fecha banco/conexão, abre o novo e 
 
 1. **Rede da clínica:** registro de operações, edição concorrente, protocolo, pareamento, servidor
    TCP + mDNS, cliente com reconexão, segundo plano/bandeja/abrir ao ligar, aba Conexão, estados.
-2. **Acesso de fora:** o servidor também escuta pela `hyperdht` com a mesma chave; o cliente tenta
-   a rede local e a DHT; botão "Testar acesso de fora da clínica". Não muda segurança nem telas.
-   Limitação conhecida: falha se as duas pontas estiverem atrás de NAT restritivo (CGNAT nos dois
-   lados, celular roteando).
+2. **Acesso de fora:** o servidor também escuta pela `hyperdht` com a mesma chave
+   (`main/net/remote.ts`); chaves não pareadas são barradas antes da conexão (`firewall`), e o
+   pareamento continua só na rede local. O cliente tenta a rede local primeiro e, se ela não
+   responder em 1,5 s, também a internet; fica a que entrar primeiro. Configurações / Conexão:
+   - recepção: "Permitir acesso de fora da clínica" (ligado por padrão quando compartilha), com o
+     estado da rede: disponível (`open`), na maioria das redes (`likely`), restritiva
+     (`restricted`: o roteador troca a porta a cada conexão), sem internet (`offline`);
+   - consultório: "Conectado pela rede da clínica" ou "pela internet", e "Testar acesso pela
+     internet" (conecta só pela DHT, se apresenta e mede o tempo).
+     Limitação conhecida: falha se as duas pontas estiverem atrás de NAT restritivo (CGNAT nos dois
+     lados, celular roteando). A DHT pública (nós de bootstrap da Holepunch) só coordena: os dados
+     vão direto entre os dois computadores, cifrados. Quem conhece a chave pública da recepção (só
+     computadores pareados) consegue saber o IP público dela pela DHT.
 
 ## Testes
 

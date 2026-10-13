@@ -1,6 +1,6 @@
 import net from 'node:net'
 import SecretStream from '@hyperswarm/secret-stream'
-import type { DataTopic, IpcResult } from '../../shared/api'
+import type { DataTopic, IpcResult, LinkVia, RemoteProbe } from '../../shared/api'
 import { pairingProof, proofMatches } from './pairing'
 import {
   decode,
@@ -14,6 +14,17 @@ import type { KeyPair } from './server'
 
 export type Address = { host: string; port: number }
 
+/** Por onde uma conexão chegou ao servidor. */
+export type Route = { via: 'local'; address: Address } | { via: 'internet' }
+
+/** Fluxo cifrado (iniciador) sobre TCP, para a rede local. */
+export function tcpStream(keyPair: KeyPair, address: Address): SecretStream {
+  const socket = net.connect(address.port, address.host)
+  socket.on('error', () => {})
+  socket.setKeepAlive(true, 10_000)
+  return new SecretStream(true, socket, { keyPair })
+}
+
 export type ClientStatus = 'connecting' | 'connected' | 'offline' | 'version' | 'revoked'
 
 export type ClientHooks = {
@@ -25,15 +36,24 @@ export type ClientHooks = {
   serverKey: string
   /** Nome do servidor, para as mensagens ("Sem conexão com Recepção"). */
   serverName: string
-  /** Onde tentar, em ordem (ex.: o último endereço que funcionou, depois o que a busca achar). */
+  /** Onde tentar na rede local, em ordem (ex.: o último endereço que funcionou, depois a busca). */
   addresses: () => Promise<Address[]>
+  /** Abre uma conexão pela internet (rede distribuída). Sem isso, só a rede local. */
+  dialRemote?: () => SecretStream
   onStatus: (status: ClientStatus) => void
   onEvent: (topics: DataTopic[]) => void
-  /** Conectou por este endereço (para tentar ele primeiro da próxima vez). */
-  onConnected?: (address: Address) => void
+  /** Conectou por este caminho (o endereço local é tentado primeiro da próxima vez). */
+  onConnected?: (route: Route) => void
 }
 
-const CONNECT_TIMEOUT_MS = 5_000
+const LOCAL_TIMEOUT_MS = 5_000
+/** Pela internet: achar o outro na rede distribuída e furar os dois NATs leva alguns segundos. */
+const REMOTE_TIMEOUT_MS = 20_000
+/**
+ * A rede local tem a vantagem: a internet só entra na disputa se em 1,5 s ela não respondeu (na
+ * clínica a local vence quase sempre; em casa, a internet começa logo).
+ */
+const REMOTE_DELAY_MS = 1_500
 const REQUEST_TIMEOUT_MS = 15_000
 const PING_MS = 10_000
 /** Sem nenhuma mensagem do servidor por este tempo (nem `pong`), a conexão está morta. */
@@ -44,6 +64,24 @@ const BACKOFF_MS = [1_000, 2_000, 4_000, 8_000, 15_000]
 const FIRST_CONNECT_WAIT_MS = 6_000
 
 type Outcome = 'ok' | 'fail' | 'version' | 'revoked'
+
+/** Uma rodada de tentativas: a primeira que entra ganha, e as outras são canceladas. */
+type Race = { won: boolean; aborts: Set<() => void> }
+
+/** O primeiro resultado que decide algo (conectou, versão, removido); 'fail' se todos falharem. */
+function firstDecisive(attempts: Promise<Outcome>[]): Promise<Outcome> {
+  return new Promise((resolve) => {
+    let left = attempts.length
+    for (const attempt of attempts) {
+      void attempt.then((outcome) => {
+        if (outcome !== 'fail') resolve(outcome)
+        else if (--left === 0) resolve('fail')
+      })
+    }
+  })
+}
+
+const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
 
 /** JSON troca `undefined` por `null` em listas: argumentos opcionais do fim simplesmente não vão. */
 function trimArgs(args: unknown[]): unknown[] {
@@ -61,11 +99,14 @@ function trimArgs(args: unknown[]): unknown[] {
 export function createSyncClient(hooks: ClientHooks): {
   request(channel: string, args: unknown[]): Promise<IpcResult<unknown>>
   status(): ClientStatus
+  /** Por onde está conectado agora (null quando não está). */
+  via(): LinkVia | null
   retry(): void
   close(): void
 } {
   let status: ClientStatus = 'connecting'
   let stream: SecretStream | null = null
+  let route: Route | null = null
   let looping = false
   let closed = false
   let attempt = 0
@@ -113,8 +154,9 @@ export function createSyncClient(hooks: ClientHooks): {
     }
   }
 
-  function adopt(next: SecretStream, address: Address): void {
+  function adopt(next: SecretStream, through: Route): void {
     stream = next
+    route = through
     attempt = 0
     lastHeard = Date.now()
     pingTimer = setInterval(() => {
@@ -122,11 +164,12 @@ export function createSyncClient(hooks: ClientHooks): {
       else next.write(encode({ t: 'ping' }))
     }, PING_MS)
     setStatus('connected')
-    hooks.onConnected?.(address)
+    hooks.onConnected?.(through)
   }
 
   function dropped(): void {
     stream = null
+    route = null
     clearInterval(pingTimer)
     failPending(
       `A conexão com ${server} caiu antes da resposta. Confira se a alteração foi salva antes de repetir.`
@@ -136,21 +179,31 @@ export function createSyncClient(hooks: ClientHooks): {
     schedule()
   }
 
-  function connectOnce(address: Address): Promise<Outcome> {
+  function connectOnce(
+    open: () => SecretStream,
+    through: Route,
+    timeoutMs: number,
+    race: Race
+  ): Promise<Outcome> {
     return new Promise((resolve) => {
-      const socket = net.connect(address.port, address.host)
-      socket.on('error', () => {})
-      socket.setKeepAlive(true, 10_000)
-      const secret = new SecretStream(true, socket, { keyPair: hooks.keyPair })
+      let secret: SecretStream
+      try {
+        secret = open()
+      } catch {
+        return resolve('fail')
+      }
       let settled = false
       const finish = (outcome: Outcome): void => {
         if (settled) return
         settled = true
         clearTimeout(timer)
+        race.aborts.delete(abort)
         if (outcome !== 'ok') secret.destroy()
         resolve(outcome)
       }
-      const timer = setTimeout(() => finish('fail'), CONNECT_TIMEOUT_MS)
+      const abort = (): void => finish('fail')
+      race.aborts.add(abort)
+      const timer = setTimeout(() => finish('fail'), timeoutMs)
 
       secret.on('error', () => {})
       secret.on('connect', () => {
@@ -170,8 +223,10 @@ export function createSyncClient(hooks: ClientHooks): {
         lastHeard = Date.now()
         if (settled) return onMessage(message)
         if (message.t === 'welcome') {
-          if (closed) return finish('fail')
-          adopt(secret, address)
+          // outra tentativa desta rodada já entrou
+          if (closed || race.won || stream) return finish('fail')
+          race.won = true
+          adopt(secret, through)
           finish('ok')
         } else if (message.t === 'reject') {
           finish(message.reason === 'version' ? 'version' : 'revoked')
@@ -184,18 +239,40 @@ export function createSyncClient(hooks: ClientHooks): {
     })
   }
 
+  /** Rede local, endereço por endereço. */
+  async function tryLocal(race: Race): Promise<Outcome> {
+    const addresses = await hooks.addresses().catch(() => [])
+    for (const address of addresses) {
+      if (race.won || closed) return 'fail'
+      const outcome = await connectOnce(
+        () => tcpStream(hooks.keyPair, address),
+        { via: 'local', address },
+        LOCAL_TIMEOUT_MS,
+        race
+      )
+      if (outcome !== 'fail') return outcome
+    }
+    return 'fail'
+  }
+
+  async function tryRemote(race: Race): Promise<Outcome> {
+    const dial = hooks.dialRemote
+    if (!dial) return 'fail'
+    await sleep(REMOTE_DELAY_MS)
+    if (race.won || closed) return 'fail'
+    return connectOnce(dial, { via: 'internet' }, REMOTE_TIMEOUT_MS, race)
+  }
+
   async function connectLoop(): Promise<void> {
     if (looping || closed || stream) return
     looping = true
+    const race: Race = { won: false, aborts: new Set() }
     try {
-      const addresses = await hooks.addresses().catch(() => [])
-      for (const address of addresses) {
-        if (closed) return
-        const outcome = await connectOnce(address)
-        if (outcome === 'ok') return
-        if (outcome !== 'fail') return setStatus(outcome)
-      }
-      if (closed) return
+      const outcome = await firstDecisive([tryLocal(race), tryRemote(race)])
+      race.won = true
+      for (const abort of race.aborts) abort()
+      if (closed || outcome === 'ok') return
+      if (outcome !== 'fail') return setStatus(outcome)
       setStatus('offline')
       schedule()
     } finally {
@@ -245,6 +322,7 @@ export function createSyncClient(hooks: ClientHooks): {
       })
     },
     status: () => status,
+    via: () => route?.via ?? null,
     retry() {
       if (closed || stream) return
       clearTimeout(retryTimer)
@@ -258,6 +336,7 @@ export function createSyncClient(hooks: ClientHooks): {
       clearInterval(pingTimer)
       stream?.destroy()
       stream = null
+      route = null
       failPending(`Sem conexão com ${server}.`)
     }
   }
@@ -290,9 +369,7 @@ export function pairWithServer(options: {
 }): Promise<{ publicKey: string; name: string }> {
   const { address, code } = options
   return new Promise((resolve, reject) => {
-    const socket = net.connect(address.port, address.host)
-    socket.on('error', () => {})
-    const secret = new SecretStream(true, socket, { keyPair: options.keyPair })
+    const secret = tcpStream(options.keyPair, address)
     let settled = false
     const finish = (error: string | null, result?: { publicKey: string; name: string }): void => {
       if (settled) return
@@ -329,6 +406,70 @@ export function pairWithServer(options: {
         return finish('Não foi possível confirmar a identidade do outro computador.')
       }
       finish(null, { publicKey: secret.remotePublicKey!.toString('hex'), name: message.name })
+    })
+    secret.on('close', () => finish(unreachable))
+  })
+}
+
+const PROBE_TIMEOUT_MS = 25_000
+
+/**
+ * "Testar acesso pela internet": abre uma conexão só pelo caminho dado, se apresenta como faria de
+ * verdade e fecha. Não mexe na conexão em uso.
+ */
+export function probeServer(options: {
+  open: () => SecretStream
+  serverKey: string
+  serverName: string
+  name: string
+  schemaVersion: number
+}): Promise<RemoteProbe> {
+  const started = Date.now()
+  const server = options.serverName
+  return new Promise((resolve) => {
+    let secret: SecretStream
+    try {
+      secret = options.open()
+    } catch (error) {
+      return resolve({ ok: false, error: (error as Error).message })
+    }
+    let settled = false
+    const finish = (result: RemoteProbe): void => {
+      if (settled) return
+      settled = true
+      clearTimeout(timer)
+      secret.destroy()
+      resolve(result)
+    }
+    const unreachable: RemoteProbe = {
+      ok: false,
+      error:
+        `Não conectou pela internet. ${server} pode estar sem internet ou com o acesso de fora ` +
+        'desligado, ou a rede de um dos dois computadores bloqueia esse tipo de conexão.'
+    }
+    const timer = setTimeout(() => finish(unreachable), PROBE_TIMEOUT_MS)
+
+    secret.on('error', () => {})
+    secret.on('connect', () => {
+      if (secret.remotePublicKey?.toString('hex') !== options.serverKey) return finish(unreachable)
+      const hello: ClientMessage = {
+        t: 'hello',
+        protocol: PROTOCOL_VERSION,
+        schema: options.schemaVersion,
+        name: options.name
+      }
+      secret.write(encode(hello))
+    })
+    secret.on('data', (data: Buffer) => {
+      const message = decode(serverMessage, data)
+      if (message?.t === 'welcome') return finish({ ok: true, ms: Date.now() - started })
+      if (message?.t === 'reject' && message.reason === 'version') {
+        return finish({ ok: false, error: `${server} usa outra versão do Auri.` })
+      }
+      if (message?.t === 'reject') {
+        return finish({ ok: false, error: `Este computador foi desconectado de ${server}.` })
+      }
+      finish(unreachable)
     })
     secret.on('close', () => finish(unreachable))
   })

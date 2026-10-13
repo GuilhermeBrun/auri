@@ -10,15 +10,18 @@ import {
   type FoundServer,
   type IpcResult,
   type LinkStatus,
-  type PairingCode
+  type PairingCode,
+  type RemoteProbe,
+  type RemoteReach
 } from '../shared/api'
 import { createConnectionStore, type ConnectionStore } from './connection-store'
 import { openDatabase, type Db } from './db/connection'
 import { SCHEMA_VERSION } from './db/migrations'
-import { createSyncClient, pairWithServer, type Address } from './net/client'
+import { createSyncClient, pairWithServer, probeServer, type Address } from './net/client'
 import { createDiscovery, localAddresses } from './net/discovery'
 import { createPairingCodes, formatCode } from './net/pairing'
 import { DEFAULT_PORT } from './net/protocol'
+import { createRemoteDialer, createRemoteListener } from './net/remote'
 import { createSyncServer, type KeyPair } from './net/server'
 import { runOperation } from './operations'
 
@@ -40,6 +43,8 @@ export type Connection = {
   setSharing(on: boolean): Promise<ConnectionInfo>
   setKeepRunning(on: boolean): Promise<ConnectionInfo>
   setOpenAtLogin(on: boolean): Promise<ConnectionInfo>
+  setRemoteAccess(on: boolean): Promise<ConnectionInfo>
+  testRemote(): Promise<RemoteProbe>
   createCode(): Promise<PairingCode>
   cancelCode(): Promise<void>
   removeDevice(publicKey: string): Promise<ConnectionInfo>
@@ -72,8 +77,10 @@ export function parseAddress(value: string): Address | null {
  * docs/superpowers/specs/2026-10-13-conexao-entre-computadores-design.md).
  *
  * - Papel `server` (recepção): abre o SQLite; com o compartilhamento ligado, aceita computadores
- *   pareados pela rede e se anuncia nela.
- * - Papel `client` (consultório): não abre o banco local; repassa cada pedido ao servidor.
+ *   pareados pela rede local (TCP, anunciado por mDNS) e, com o acesso de fora ligado, também pela
+ *   internet (rede distribuída do Hyperswarm, com a mesma chave).
+ * - Papel `client` (consultório): não abre o banco local; repassa cada pedido ao servidor, pela
+ *   rede local quando dá, senão pela internet.
  *
  * Trocar de papel não reinicia o app: fecha um lado, abre o outro e avisa as telas
  * (`onDataChanged` com tudo) para recarregarem.
@@ -92,7 +99,10 @@ export function createConnection(options: {
   let server: ReturnType<typeof createSyncServer> | null = null
   let port: number | null = null
   let sharingError: string | null = null
+  let remote: ReturnType<typeof createRemoteListener> | null = null
+  let remoteReach: RemoteReach | null = null
   let client: ReturnType<typeof createSyncClient> | null = null
+  let dialer: ReturnType<typeof createRemoteDialer> | null = null
   let clientStatus: LinkStatus = 'unpaired'
   let blocker: number | null = null
 
@@ -144,6 +154,8 @@ export function createConnection(options: {
       sharingError,
       keepRunning: s.keepRunning,
       openAtLogin: s.openAtLogin,
+      remoteAccess: s.remoteAccess,
+      remoteReach: s.role === 'server' && server ? remoteReach : null,
       addresses:
         s.role === 'server' && s.sharing && port !== null
           ? localAddresses().map((address) =>
@@ -154,7 +166,8 @@ export function createConnection(options: {
         ...device,
         online: online.has(device.publicKey)
       })),
-      server: s.server
+      server: s.server,
+      via: s.role === 'client' ? (client?.via() ?? null) : null
     }
   }
 
@@ -193,6 +206,28 @@ export function createConnection(options: {
     options.onDataChanged(topics)
   }
 
+  /** Acesso de fora: escuta também pela rede distribuída, entregando as conexões ao mesmo servidor. */
+  function startRemote(): void {
+    if (remote || !server || !store.get().remoteAccess) return
+    remoteReach = 'starting'
+    remote = createRemoteListener({
+      keyPair: getKeys(),
+      isPaired: (key) => store.get().devices.some((d) => d.publicKey === key),
+      attach: server.attach,
+      onReach: (reach) => {
+        remoteReach = reach
+        changed()
+      }
+    })
+  }
+
+  async function stopRemote(): Promise<void> {
+    const closing = remote
+    remote = null
+    remoteReach = null
+    await closing?.close()
+  }
+
   async function startSharing(): Promise<void> {
     if (server || !db) return
     const local = db
@@ -220,6 +255,7 @@ export function createConnection(options: {
       server = next
       sharingError = null
       discovery.publish({ name: name(), port, publicKey: getKeys().publicKey.toString('hex') })
+      startRemote()
     } catch (error) {
       await next.close()
       sharingError = `Não foi possível compartilhar: ${(error as Error).message}`
@@ -229,6 +265,7 @@ export function createConnection(options: {
 
   async function stopSharing(): Promise<void> {
     codes.cancel()
+    await stopRemote()
     discovery.unpublish()
     await server?.close()
     server = null
@@ -273,6 +310,7 @@ export function createConnection(options: {
       return
     }
     clientStatus = 'connecting'
+    const remoteDialer = (dialer = createRemoteDialer({ keyPair: getKeys() }))
     client = createSyncClient({
       keyPair: getKeys(),
       name,
@@ -280,6 +318,7 @@ export function createConnection(options: {
       serverKey: target.publicKey,
       serverName: target.name,
       addresses: () => serverAddresses(target.publicKey),
+      dialRemote: () => remoteDialer.dial(target.publicKey),
       onStatus: (status) => {
         clientStatus = status
         // voltou: o que mudou enquanto estava fora não chegou como aviso
@@ -287,11 +326,14 @@ export function createConnection(options: {
         changed()
       },
       onEvent: options.onDataChanged,
-      onConnected: (address) => {
+      onConnected: (route) => {
+        // pela internet não há endereço a guardar: a chave basta para achar o outro
+        if (route.via !== 'local') return
         const current = store.get().server
-        const value = `${address.host}:${address.port}`
-        if (current && current.address !== value)
+        const value = `${route.address.host}:${route.address.port}`
+        if (current && current.address !== value) {
           store.update({ server: { ...current, address: value } })
+        }
       }
     })
   }
@@ -299,6 +341,8 @@ export function createConnection(options: {
   function stopClientRole(): void {
     client?.close()
     client = null
+    void dialer?.close()
+    dialer = null
   }
 
   // Ciclo de vida ------------------------------------------------------------------------------
@@ -386,6 +430,29 @@ export function createConnection(options: {
       return info()
     },
 
+    async setRemoteAccess(on: boolean): Promise<ConnectionInfo> {
+      store.update({ remoteAccess: on })
+      if (on) startRemote()
+      else await stopRemote()
+      changed()
+      return info()
+    },
+
+    async testRemote(): Promise<RemoteProbe> {
+      const target = store.get().server
+      if (store.get().role !== 'client' || !target || !dialer) {
+        throw new Error('Este computador não está conectado a outro.')
+      }
+      const remoteDialer = dialer
+      return probeServer({
+        open: () => remoteDialer.dial(target.publicKey),
+        serverKey: target.publicKey,
+        serverName: target.name,
+        name: name(),
+        schemaVersion: SCHEMA_VERSION
+      })
+    },
+
     async createCode(): Promise<PairingCode> {
       if (!server) throw new Error('Ligue o compartilhamento antes de conectar um computador.')
       const { code, expiresAt } = codes.issue()
@@ -447,6 +514,8 @@ export function createConnection(options: {
     close(): void {
       stopClientRole()
       codes.cancel()
+      void remote?.close()
+      remote = null
       void server?.close()
       server = null
       db?.close()

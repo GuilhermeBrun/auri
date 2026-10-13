@@ -19,6 +19,8 @@ const storeSchema = z.object({
   sharing: z.boolean().default(false),
   keepRunning: z.boolean().default(true),
   openAtLogin: z.boolean().default(true),
+  /** Aceitar conexões de fora da clínica (rede distribuída), além da rede local. */
+  remoteAccess: z.boolean().default(true),
   devices: z
     .array(
       z.object({

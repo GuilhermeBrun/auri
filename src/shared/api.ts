@@ -83,6 +83,23 @@ export type PairedDevice = {
   lastSeen: string | null
 }
 
+/**
+ * Se o computador que guarda os dados pode ser alcançado de fora da clínica (pela internet, sem
+ * abrir porta no roteador).
+ * - `starting`: verificando.
+ * - `open`: o roteador aceita conexões de fora.
+ * - `likely`: o roteador bloqueia, mas de um jeito que dá para atravessar na maioria das redes.
+ * - `restricted`: o roteador troca a porta a cada conexão; de fora, só de redes bem abertas.
+ * - `offline`: sem internet agora (dentro da clínica continua funcionando).
+ */
+export type RemoteReach = 'starting' | 'open' | 'likely' | 'restricted' | 'offline'
+
+/** Por onde este computador está conectado ao outro. */
+export type LinkVia = 'local' | 'internet'
+
+/** Resultado de "Testar acesso pela internet". */
+export type RemoteProbe = { ok: true; ms: number } | { ok: false; error: string }
+
 /** Um Auri que compartilha dados, encontrado na rede local. */
 export type FoundServer = { name: string; publicKey: string; host: string; port: number }
 
@@ -97,11 +114,17 @@ export type ConnectionInfo = {
   sharingError: string | null
   keepRunning: boolean
   openAtLogin: boolean
+  /** Aceitar conexões de fora da clínica (pela internet). */
+  remoteAccess: boolean
+  /** null quando não compartilha ou com o acesso de fora desligado. */
+  remoteReach: RemoteReach | null
   /** Endereços deste computador na rede (para digitar no outro, se a busca não achar). */
   addresses: string[]
   devices: PairedDevice[]
   // Papel cliente
   server: { name: string; publicKey: string; address: string | null } | null
+  /** Por onde está conectado agora (null quando não está). */
+  via: LinkVia | null
 }
 
 export type PairingCode = { code: string; expiresAt: number }
@@ -116,6 +139,9 @@ export interface AuriConnection {
   setSharing(on: boolean): Promise<ConnectionInfo>
   setKeepRunning(on: boolean): Promise<ConnectionInfo>
   setOpenAtLogin(on: boolean): Promise<ConnectionInfo>
+  setRemoteAccess(on: boolean): Promise<ConnectionInfo>
+  /** Conecta ao outro computador só pela internet, para saber se funciona de fora da clínica. */
+  testRemote(): Promise<RemoteProbe>
   createCode(): Promise<PairingCode>
   cancelCode(): Promise<void>
   removeDevice(publicKey: string): Promise<ConnectionInfo>

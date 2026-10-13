@@ -16,6 +16,7 @@ files:
   - '!node_modules/node-addon-api/**'
   # criptografia da conexão entre computadores: só os binários de Mac e Windows
   - '!node_modules/sodium-native/prebuilds/{android,ios,linux}-*'
+  - '!node_modules/udx-native/prebuilds/{android,ios,linux}-*'
 asarUnpack:
   - resources/**
 # O better-sqlite3 já vem com binários prontos (Node-API) para cada sistema em
