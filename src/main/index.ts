@@ -171,7 +171,8 @@ app.whenReady().then(async () => {
     userData: app.getPath('userData'),
     connection,
     onInfoChanged: (info) => sendToWindows('backup:changed', info),
-    providers: () => detectProviders(systemProbe())
+    providers: () => detectProviders(systemProbe()),
+    onInstallProgress: (progress) => sendToWindows('backup:installProgress', progress)
   })
   syncTray()
   prefs = createPrefsStore(join(app.getPath('userData'), 'preferencias.json'), (next) =>

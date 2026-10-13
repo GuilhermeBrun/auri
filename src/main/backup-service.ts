@@ -8,7 +8,9 @@ import type {
   BackupFrequency,
   BackupInfo,
   BackupSecret,
-  CloudProvider
+  CloudProvider,
+  CloudProviderId,
+  InstallProgress
 } from '../shared/api'
 import { createKeyring, keyFromSecret, readHeaderFromFile, type Keyring } from './backup/archive'
 import {
@@ -27,6 +29,7 @@ import {
   unseal,
   WrongSecretError
 } from './backup/crypto'
+import { installProvider, openProvider } from './backup/installer'
 import { isBackupDue, isStale } from './backup/scheduler'
 import { createBackupStore, type BackupStore } from './backup/store'
 import type { Connection } from './connection'
@@ -66,6 +69,8 @@ export type BackupService = {
   undoRestore(): Promise<BackupInfo>
   dismissWelcome(): Promise<BackupInfo>
   providers(): Promise<CloudProvider[]>
+  install(id: CloudProviderId): Promise<void>
+  openProvider(id: CloudProviderId): Promise<void>
   /** Pasta das cópias ou da nuvem escolhida, para abrir a janela de salvar configurações nela. */
   preferredFolder(): string | null
   /** Nuvem sugerida no assistente (vinda de configurações importadas). */
@@ -85,6 +90,8 @@ export function createBackupService(options: {
   onInfoChanged: (info: BackupInfo) => void
   /** Nuvens deste computador (para listar cópias nelas e reconhecer a pasta de uma cópia). */
   providers?: () => Promise<CloudProvider[]>
+  /** Andamento de "Instalar" (baixando, abrindo o instalador…). */
+  onInstallProgress?: (progress: InstallProgress) => void
 }): BackupService {
   const store = createBackupStore(join(options.userData, 'copias.json'))
   const tmpDir = join(app.getPath('temp'), 'auri-copias')
@@ -566,6 +573,13 @@ export function createBackupService(options: {
     },
 
     providers: async () => (await options.providers?.()) ?? [],
+
+    install: (id) => installProvider(id, (progress) => options.onInstallProgress?.(progress)),
+
+    async openProvider(id) {
+      const provider = ((await options.providers?.()) ?? []).find((p) => p.id === id)
+      await openProvider(id, provider?.state === 'denied')
+    },
 
     preferredFolder() {
       const destination = store.get().destination
