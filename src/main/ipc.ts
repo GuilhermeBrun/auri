@@ -1,6 +1,6 @@
 import { ipcMain } from 'electron'
 import { z } from 'zod'
-import type { IpcResult } from '../shared/api'
+import type { AuriTransfer, IpcResult } from '../shared/api'
 import type { BackupService } from './backup-service'
 import type { Connection } from './connection'
 import { DATA_CHANNELS, errorMessage } from './operations'
@@ -31,7 +31,8 @@ const secretSchema = z.union([
 export function registerIpc(
   connection: Connection,
   prefs: PrefsStore,
-  backup: BackupService
+  backup: BackupService,
+  transfer: AuriTransfer
 ): void {
   // Dados: no banco deste computador ou no outro, conforme o papel (ver main/connection.ts).
   for (const channel of DATA_CHANNELS) {
@@ -116,6 +117,13 @@ export function registerIpc(
   )
   handle('backup:undoRestore', () => backup.undoRestore())
   handle('backup:dismissWelcome', () => backup.dismissWelcome())
+
+  // Configurações / Importar e exportar
+  handle('transfer:export', () => transfer.exportSettings())
+  handle('transfer:pick', () => transfer.pickSettings())
+  handle('transfer:apply', (token: unknown) =>
+    transfer.applySettings(z.string().uuid().parse(token))
+  )
 
   // Sem resposta: a janela manda gravar e segue (ver main/prefs.ts)
   ipcMain.on('prefs:save', (_event, value: unknown) => {

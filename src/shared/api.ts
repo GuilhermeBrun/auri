@@ -48,6 +48,8 @@ export interface AuriPrefs {
   initial: UiPrefs
   /** Grava só os campos informados; os outros ficam como estão. */
   save(prefs: Partial<UiPrefs>): void
+  /** Avisa quando as preferências mudam fora desta janela (configurações importadas). */
+  onChange(listener: (prefs: UiPrefs) => void): () => void
 }
 
 /**
@@ -267,4 +269,26 @@ export interface AuriBackup {
   onInstallProgress(listener: (progress: InstallProgress) => void): () => void
   /** Abre o app da nuvem (para entrar na conta) ou os Ajustes do iCloud. */
   openProvider(id: CloudProviderId): Promise<void>
+}
+
+/** Uma configuração que muda ao importar: "Tema: Sistema → Escuro". */
+export type SettingsChange = { label: string; from: string; to: string }
+
+/** Configurações lidas de um arquivo, prontas para confirmar. */
+export type SettingsPreview = {
+  /** Identifica o arquivo lido (o main guarda o conteúdo até aplicar). */
+  token: string
+  name: string
+  exportedAt: string
+  changes: SettingsChange[]
+}
+
+/** Configurações / Importar e exportar. Exposto em window.transfer pelo preload. */
+export interface AuriTransfer {
+  /** Janela do sistema para salvar o arquivo. Devolve o caminho, ou null se cancelar. */
+  exportSettings(): Promise<string | null>
+  /** Janela do sistema para escolher o arquivo; devolve o que vai mudar. null se cancelar. */
+  pickSettings(): Promise<SettingsPreview | null>
+  /** Aplica as configurações lidas por `pickSettings`. */
+  applySettings(token: string): Promise<void>
 }

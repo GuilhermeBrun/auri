@@ -7,10 +7,12 @@ import {
   type AuriConnection,
   type BackupInfo,
   type AuriPrefs,
+  type AuriTransfer,
   type ConnectionInfo,
   type DataTopic,
   type IpcResult
 } from '../shared/api'
+import type { UiPrefs } from '../shared/schemas'
 
 async function invoke<T>(channel: string, ...args: unknown[]): Promise<T> {
   const result = (await ipcRenderer.invoke(channel, ...args)) as IpcResult<T>
@@ -90,12 +92,20 @@ const backup: AuriBackup = {
 const prefsArg = process.argv.find((arg) => arg.startsWith(PREFS_ARG))
 const prefs: AuriPrefs = {
   initial: prefsArg ? JSON.parse(prefsArg.slice(PREFS_ARG.length)) : DEFAULT_UI_PREFS,
-  save: (value) => ipcRenderer.send('prefs:save', value)
+  save: (value) => ipcRenderer.send('prefs:save', value),
+  onChange: (listener) => subscribe<UiPrefs>('prefs:changed', listener)
+}
+
+const transfer: AuriTransfer = {
+  exportSettings: () => invoke('transfer:export'),
+  pickSettings: () => invoke('transfer:pick'),
+  applySettings: (token) => invoke('transfer:apply', token)
 }
 
 contextBridge.exposeInMainWorld('api', api)
 contextBridge.exposeInMainWorld('prefs', prefs)
 contextBridge.exposeInMainWorld('connection', connection)
 contextBridge.exposeInMainWorld('backup', backup)
+contextBridge.exposeInMainWorld('transfer', transfer)
 // A interface ajusta espaços e atalhos ao sistema (ex.: botões da janela no Mac, ⌘ x Ctrl)
 contextBridge.exposeInMainWorld('platform', process.platform)

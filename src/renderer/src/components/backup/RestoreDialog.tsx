@@ -24,11 +24,13 @@ function summary(entry: BackupEntry): string {
  */
 export function RestoreDialog({
   request,
-  onClose
+  onClose,
+  onRestored
 }: {
   /** `id` muda a cada abertura, para recomeçar do zero. */
   request: { id: number } | null
   onClose: () => void
+  onRestored?: () => void
 }): React.JSX.Element {
   const [last, setLast] = useState(request)
   if (request && request !== last) setLast(request)
@@ -39,12 +41,18 @@ export function RestoreDialog({
       title="Restaurar dados de uma cópia"
       description="Os pacientes e a agenda deste computador são trocados pelos da cópia. As configurações não mudam."
     >
-      <RestoreForm key={last?.id} onClose={onClose} />
+      <RestoreForm key={last?.id} onClose={onClose} onRestored={onRestored} />
     </Dialog>
   )
 }
 
-function RestoreForm({ onClose }: { onClose: () => void }): React.JSX.Element {
+function RestoreForm({
+  onClose,
+  onRestored
+}: {
+  onClose: () => void
+  onRestored?: () => void
+}): React.JSX.Element {
   const toast = useToast()
   const list = useQuery({
     queryKey: ['backups'],
@@ -81,6 +89,7 @@ function RestoreForm({ onClose }: { onClose: () => void }): React.JSX.Element {
     onSuccess: (info) => {
       setBackupInfo(info)
       toast({ title: 'Dados restaurados', description: `Cópia de ${formatWhen(entry!.createdAt)}` })
+      onRestored?.()
       onClose()
     }
   })

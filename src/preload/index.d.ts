@@ -1,4 +1,4 @@
-import type { AuriApi, AuriBackup, AuriConnection, AuriPrefs } from '../shared/api'
+import type { AuriApi, AuriBackup, AuriConnection, AuriPrefs, AuriTransfer } from '../shared/api'
 
 declare global {
   interface Window {
@@ -6,6 +6,7 @@ declare global {
     prefs: AuriPrefs
     connection: AuriConnection
     backup: AuriBackup
+    transfer: AuriTransfer
     platform: string
   }
 }

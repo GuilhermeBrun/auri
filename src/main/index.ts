@@ -10,6 +10,7 @@ import { detectProviders, systemProbe } from './backup/providers'
 import { createConnection, type Connection } from './connection'
 import { registerIpc } from './ipc'
 import { createPrefsStore, type PrefsStore } from './prefs'
+import { createTransferService } from './transfer-service'
 
 let connection: Connection | null = null
 let backup: BackupService | null = null
@@ -175,10 +176,12 @@ app.whenReady().then(async () => {
     onInstallProgress: (progress) => sendToWindows('backup:installProgress', progress)
   })
   syncTray()
-  prefs = createPrefsStore(join(app.getPath('userData'), 'preferencias.json'), (next) =>
+  prefs = createPrefsStore(join(app.getPath('userData'), 'preferencias.json'), (next) => {
     applyTheme(next.theme)
-  )
-  registerIpc(connection, prefs, backup)
+    // configurações importadas: as telas abertas acompanham (tema marcado, barra lateral)
+    sendToWindows('prefs:changed', next)
+  })
+  registerIpc(connection, prefs, backup, createTransferService({ prefs, connection, backup }))
   applyTheme(prefs.get().theme)
   // o sistema trocou de tema (com "system" escolhido)
   nativeTheme.on('updated', syncWindowBackgrounds)

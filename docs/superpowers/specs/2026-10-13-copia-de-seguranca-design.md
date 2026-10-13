@@ -1,6 +1,8 @@
 # Cópia de segurança na nuvem e configurações — design
 
-Data: 13/10/2026. Estado: em implementação (fases 1 a 4).
+Data: 13/10/2026. Estado: fases 1 a 4 implementadas (13/10/2026); falta testar no Windows (detecção do
+Google Drive e do OneDrive, instalação conduzida e verificação de assinatura) e uma instalação real
+de ponta a ponta no Mac.
 
 ## Objetivo
 
@@ -82,9 +84,15 @@ src/main/backup/
   installer.ts         baixar e abrir instaladores, abrir app ou Ajustes para entrar na conta
   backup.ts            fazer cópia, guardar as 30 últimas, listar, preparar restauração
   scheduler.ts         quando copiar (diária, a cada alteração, manual)
-  settings-transfer.ts exportar e importar o .auriconfig
-src/main/backup-service.ts  junta tudo e expõe para o IPC (window.backup, window.transfer)
+src/main/backup-service.ts     junta tudo e expõe para o IPC (window.backup)
+src/main/settings-transfer.ts  formato do .auriconfig e o que muda ao importar
+src/main/transfer-service.ts   janelas de salvar/abrir e aplicar (window.transfer)
 ```
+
+- Restaurar num computador sem cópia ligada, de uma cópia que estava em `<nuvem>/Auri/Cópias`,
+  adota a chave e a pasta: as cópias continuam para lá com a mesma senha, sem configurar nada.
+- Duas cópias no mesmo minuto: a deste computador é trocada pela nova; a de outro computador (outra
+  chave) na mesma pasta nunca é sobrescrita, a nova ganha " (2)" no nome.
 
 - A restauração troca o arquivo do banco pelo `Connection` (`replaceDatabase`), que fecha o banco,
   troca o arquivo, abre (migrando se a cópia for de versão anterior) e avisa telas e computadores

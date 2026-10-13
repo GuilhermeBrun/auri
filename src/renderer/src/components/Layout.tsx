@@ -1,5 +1,6 @@
 import {
   ArrowLeft,
+  ArrowLeftRight,
   CalendarDays,
   DatabaseBackup,
   Network,
@@ -17,6 +18,7 @@ import { AuriLogo } from '@renderer/components/ui/brand'
 import { EmptyState } from '@renderer/components/ui/empty'
 import { ErrorState } from '@renderer/components/ui/error'
 import { ToastProvider } from '@renderer/components/ui/toast'
+import { WelcomeDialog } from '@renderer/components/WelcomeDialog'
 import { useConnection } from '@renderer/lib/connection'
 import { isMac, SETTINGS_SHORTCUT, SIDEBAR_SHORTCUT } from '@renderer/lib/platform'
 import { SidebarContext, useSidebar } from '@renderer/lib/sidebar'
@@ -44,7 +46,8 @@ const CONNECTION_PATH = `${SETTINGS_PATH}/conexao`
 const SETTINGS_ITEMS: NavItem[] = [
   { to: `${SETTINGS_PATH}/aparencia`, label: 'Aparência', icon: <SunMoon /> },
   { to: CONNECTION_PATH, label: 'Conexão', icon: <Network /> },
-  { to: `${SETTINGS_PATH}/copia`, label: 'Cópia de segurança', icon: <DatabaseBackup /> }
+  { to: `${SETTINGS_PATH}/copia`, label: 'Cópia de segurança', icon: <DatabaseBackup /> },
+  { to: `${SETTINGS_PATH}/transferir`, label: 'Importar e exportar', icon: <ArrowLeftRight /> }
 ]
 
 /**
@@ -194,6 +197,9 @@ export function Layout(): React.JSX.Element {
     window.prefs.save({ sidebarOpen: open })
   }, [open])
 
+  // configurações importadas também trazem a barra aberta ou recolhida
+  useEffect(() => window.prefs.onChange((prefs) => setOpen(prefs.sidebarOpen)), [])
+
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent): void {
       const key = e.key.toLowerCase()
@@ -248,6 +254,7 @@ export function Layout(): React.JSX.Element {
             <RouteFade />
           </main>
         </div>
+        <WelcomeDialog />
       </ToastProvider>
     </SidebarContext>
   )

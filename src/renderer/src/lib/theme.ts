@@ -9,6 +9,13 @@ import type { Theme } from '@shared/schemas'
 let current: Theme = window.prefs.initial.theme
 const listeners = new Set<() => void>()
 
+// configurações importadas trocam o tema por fora desta tela
+window.prefs.onChange((prefs) => {
+  if (prefs.theme === current) return
+  current = prefs.theme
+  for (const listener of listeners) listener()
+})
+
 function subscribe(listener: () => void): () => void {
   listeners.add(listener)
   return () => listeners.delete(listener)
