@@ -128,7 +128,10 @@ function PatientFormPage({ patientId }: { patientId: number | null }): React.JSX
 
   const save = useMutation({
     mutationFn: (input: PatientInput) =>
-      isNew ? window.api.patients.create(input) : window.api.patients.update(patientId, input),
+      isNew
+        ? window.api.patients.create(input)
+        : // recusa se a ficha foi salva em outro computador depois de aberta aqui
+          window.api.patients.update(patientId, input, patient?.updated_at),
     onSuccess: (saved) => {
       queryClient.setQueryData(['patient', saved.id], saved)
       queryClient.invalidateQueries({ queryKey: ['patients'] })

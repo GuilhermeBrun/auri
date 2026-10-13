@@ -5,6 +5,7 @@ import {
   type PatientInput
 } from '../../shared/schemas'
 import { createPatientSearch } from '../../shared/search'
+import { assertUnchanged } from './concurrency'
 import type { Db } from './connection'
 
 type PatientRow = { [K in keyof PatientInput]: string | null } & {
@@ -58,7 +59,12 @@ export function createPatient(db: Db, input: PatientInput): Patient {
   return getPatient(db, Number(result.lastInsertRowid))
 }
 
-export function updatePatient(db: Db, id: number, input: PatientInput): Patient {
+/**
+ * `expected` é o `updated_at` de quando a ficha foi aberta: se outra pessoa (em outro computador)
+ * salvou depois disso, a gravação é recusada em vez de apagar a alteração dela sem aviso.
+ */
+export function updatePatient(db: Db, id: number, input: PatientInput, expected?: string): Patient {
+  assertUnchanged(getPatient(db, id).updated_at, expected)
   const assignments = PATIENT_FIELDS.map((f) => `${f} = @${f}`).join(', ')
   const result = db
     .prepare(

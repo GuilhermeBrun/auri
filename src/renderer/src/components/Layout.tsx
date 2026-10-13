@@ -1,19 +1,25 @@
 import {
   ArrowLeft,
   CalendarDays,
+  Network,
   PanelLeft,
   PanelLeftClose,
   Settings,
   SunMoon,
-  Users
+  Users,
+  WifiOff
 } from 'lucide-react'
 import { Fragment, useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link, matchPath, NavLink, Outlet, useLocation, useNavigate } from 'react-router'
 import { Button } from '@renderer/components/ui/button'
 import { AuriLogo } from '@renderer/components/ui/brand'
+import { EmptyState } from '@renderer/components/ui/empty'
+import { ErrorState } from '@renderer/components/ui/error'
 import { ToastProvider } from '@renderer/components/ui/toast'
+import { useConnection } from '@renderer/lib/connection'
 import { isMac, SETTINGS_SHORTCUT, SIDEBAR_SHORTCUT } from '@renderer/lib/platform'
 import { SidebarContext, useSidebar } from '@renderer/lib/sidebar'
+import { useToast } from '@renderer/lib/toast'
 import { cn } from '@renderer/lib/utils'
 
 /** Altura de cada item do menu e o vão entre eles (`h-[34px]` e `gap-1.5`): o indicador anda de 40 em 40px. */
@@ -33,8 +39,10 @@ const NAV_ITEMS: NavItem[] = [
 
 /** Seções de Configurações, que tomam o lugar do menu principal enquanto se está nelas. */
 const SETTINGS_PATH = '/configuracoes'
+const CONNECTION_PATH = `${SETTINGS_PATH}/conexao`
 const SETTINGS_ITEMS: NavItem[] = [
-  { to: `${SETTINGS_PATH}/aparencia`, label: 'Aparência', icon: <SunMoon /> }
+  { to: `${SETTINGS_PATH}/aparencia`, label: 'Aparência', icon: <SunMoon /> },
+  { to: CONNECTION_PATH, label: 'Conexão', icon: <Network /> }
 ]
 
 /**
@@ -252,8 +260,105 @@ function RouteFade(): React.JSX.Element {
   const { pathname } = useLocation()
   return (
     <div key={pathname} className="h-full animate-page-in">
-      <Outlet />
+      <ConnectionGate
+        inSettings={matchPath({ path: SETTINGS_PATH, end: false }, pathname) !== null}
+      >
+        <Outlet />
+      </ConnectionGate>
     </div>
+  )
+}
+
+/**
+ * Computador que usa os dados de outro (Configurações / Conexão): o que mostrar quando não há
+ * conexão. Conectado, ou guardando os próprios dados, nada aparece. Nunca conectou desde que o app
+ * abriu: a tela inteira avisa, porque não há dado nenhum para mostrar. Caiu depois de conectar: os
+ * dados carregados ficam (só para consulta; salvar dá erro) e um aviso fixo diz que está tentando
+ * de novo. As Configurações sempre abrem, para dar para resolver por lá.
+ */
+function ConnectionGate({
+  inSettings,
+  children
+}: {
+  inSettings: boolean
+  children: ReactNode
+}): React.JSX.Element {
+  const { info, everConnected } = useConnection()
+  const navigate = useNavigate()
+  const toast = useToast()
+  const status = info?.status
+  const server = info?.server?.name ?? 'o outro computador'
+
+  // voltou depois de cair: avisa uma vez (os dados se recarregam sozinhos, ver main.tsx)
+  const previous = useRef(status)
+  useEffect(() => {
+    if (previous.current === 'offline' && status === 'connected') {
+      toast({ title: 'Conectado de novo', description: server })
+    }
+    previous.current = status
+  }, [status, server, toast])
+
+  if (!info || inSettings || status === 'local' || status === 'connected') return <>{children}</>
+  if (status === 'connecting') return <>{children}</>
+  if (status === 'offline' && everConnected) {
+    return (
+      <>
+        {children}
+        <div
+          role="status"
+          className="fixed right-4 bottom-4 z-50 flex animate-fade-in items-center gap-3 rounded-card bg-raised py-2.5 pr-4 pl-3 text-ink shadow-pop"
+        >
+          <span
+            aria-hidden="true"
+            className="grid size-6 shrink-0 place-items-center rounded-chip bg-fill [&_svg]:size-4 [&_svg]:stroke-[1.75]"
+          >
+            <WifiOff />
+          </span>
+          <div>
+            <p className="text-[13px] leading-tight font-medium">Sem conexão com {server}</p>
+            <p className="mt-0.5 text-xs text-ink-soft">
+              Tentando reconectar. Até lá, nada pode ser salvo.
+            </p>
+          </div>
+        </div>
+      </>
+    )
+  }
+
+  const openSettings = (
+    <Button variant="secondary" onClick={() => navigate(CONNECTION_PATH)}>
+      <Network /> Abrir Conexão
+    </Button>
+  )
+  return (
+    <Page trail={[{ label: info.server?.name ?? 'Conexão' }]}>
+      {status === 'unpaired' ? (
+        <EmptyState icon={<Network />} title="Conecte este computador" action={openSettings}>
+          Ele está configurado para usar os dados de outro computador, mas ainda não foi conectado a
+          nenhum.
+        </EmptyState>
+      ) : status === 'version' ? (
+        <ErrorState
+          title="Versões diferentes do Auri"
+          onRetry={() => void window.connection.retry()}
+        >
+          {server} usa outra versão do Auri. Atualize os dois computadores para a mesma versão.
+        </ErrorState>
+      ) : status === 'revoked' ? (
+        <ErrorState title={`Este computador foi desconectado de ${server}`}>
+          Para voltar a usar os dados, conecte de novo em Configurações / Conexão, com um código
+          gerado em {server}.<span className="mt-4 flex justify-center">{openSettings}</span>
+        </ErrorState>
+      ) : (
+        <ErrorState
+          title={`Sem conexão com ${server}`}
+          onRetry={() => void window.connection.retry()}
+        >
+          Confira se o Auri está aberto em {server} e se os dois computadores estão na mesma rede. O
+          Auri continua tentando sozinho.
+        </ErrorState>
+      )}
+    </Page>
   )
 }
 

@@ -171,7 +171,7 @@ function AppointmentForm({
   const save = useMutation({
     mutationFn: (input: AppointmentInput) =>
       editing
-        ? window.api.appointments.update(editing.id, input)
+        ? window.api.appointments.update(editing.id, input, editing.updated_at)
         : window.api.appointments.create(input),
     onSuccess: (saved) => {
       toast({

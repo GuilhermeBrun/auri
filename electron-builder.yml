@@ -14,6 +14,8 @@ files:
   - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
   - '!node_modules/better-sqlite3/prebuilds/{linux,linuxmusl}-*'
   - '!node_modules/node-addon-api/**'
+  # criptografia da conexão entre computadores: só os binários de Mac e Windows
+  - '!node_modules/sodium-native/prebuilds/{android,ios,linux}-*'
 asarUnpack:
   - resources/**
 # O better-sqlite3 já vem com binários prontos (Node-API) para cada sistema em

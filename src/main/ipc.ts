@@ -1,78 +1,59 @@
 import { ipcMain } from 'electron'
 import { z } from 'zod'
 import type { IpcResult } from '../shared/api'
-import {
-  appointmentInputSchema,
-  appointmentRangeSchema,
-  idSchema,
-  patientFilterSchema,
-  patientInputSchema
-} from '../shared/schemas'
-import {
-  createAppointment,
-  listAppointments,
-  removeAppointment,
-  updateAppointment
-} from './db/appointments'
-import type { Db } from './db/connection'
+import type { Connection } from './connection'
+import { DATA_CHANNELS, errorMessage } from './operations'
 import type { PrefsStore } from './prefs'
-import {
-  createPatient,
-  getPatient,
-  listPatients,
-  setPatientAtivo,
-  updatePatient
-} from './db/patients'
-
-function errorMessage(error: unknown): string {
-  if (error instanceof z.ZodError) {
-    return error.issues[0]?.message ?? 'Dados inválidos'
-  }
-  if (error instanceof Error) {
-    if (error.message.includes('FOREIGN KEY')) {
-      return 'Operação bloqueada: existem registros ligados a este item.'
-    }
-    return error.message
-  }
-  return 'Erro inesperado'
-}
 
 /** Todo handler valida a entrada no main: o renderer nunca é tratado como confiável. */
-function handle<A extends unknown[], T>(channel: string, fn: (...args: A) => T): void {
-  ipcMain.handle(channel, (_event, ...args): IpcResult<T> => {
+function handle<A extends unknown[], T>(channel: string, fn: (...args: A) => T | Promise<T>): void {
+  ipcMain.handle(channel, async (_event, ...args): Promise<IpcResult<T>> => {
     try {
-      return { ok: true, data: fn(...(args as A)) }
+      return { ok: true, data: await fn(...(args as A)) }
     } catch (error) {
-      console.error(`[ipc] ${channel}`, error)
+      console.error(`[ipc] ${channel}: ${errorMessage(error)}`)
       return { ok: false, error: errorMessage(error) }
     }
   })
 }
 
-export function registerIpc(db: Db, prefs: PrefsStore): void {
-  handle('patients:list', (filter: unknown) =>
-    listPatients(db, patientFilterSchema.parse(filter ?? {}))
-  )
-  handle('patients:get', (id: unknown) => getPatient(db, idSchema.parse(id)))
-  handle('patients:create', (input: unknown) => createPatient(db, patientInputSchema.parse(input)))
-  handle('patients:update', (id: unknown, input: unknown) =>
-    updatePatient(db, idSchema.parse(id), patientInputSchema.parse(input))
-  )
-  handle('patients:setAtivo', (id: unknown, ativo: unknown) =>
-    setPatientAtivo(db, idSchema.parse(id), z.boolean().parse(ativo))
-  )
+export function registerIpc(connection: Connection, prefs: PrefsStore): void {
+  // Dados: no banco deste computador ou no outro, conforme o papel (ver main/connection.ts).
+  for (const channel of DATA_CHANNELS) {
+    ipcMain.handle(channel, (_event, ...args) => connection.call(channel, args))
+  }
 
-  handle('appointments:listRange', (de: unknown, ate: unknown) => {
-    const range = appointmentRangeSchema.parse({ de, ate })
-    return listAppointments(db, range.de, range.ate)
-  })
-  handle('appointments:create', (input: unknown) =>
-    createAppointment(db, appointmentInputSchema.parse(input))
+  // Configurações / Conexão
+  const bool = z.boolean()
+  handle('connection:info', () => connection.info())
+  handle('connection:setRole', (role: unknown) =>
+    connection.setRole(z.enum(['server', 'client']).parse(role))
   )
-  handle('appointments:update', (id: unknown, input: unknown) =>
-    updateAppointment(db, idSchema.parse(id), appointmentInputSchema.parse(input))
+  handle('connection:setName', (name: unknown) =>
+    connection.setName(z.string().trim().min(1, 'Informe um nome').max(60).parse(name))
   )
-  handle('appointments:remove', (id: unknown) => removeAppointment(db, idSchema.parse(id)))
+  handle('connection:setSharing', (on: unknown) => connection.setSharing(bool.parse(on)))
+  handle('connection:setKeepRunning', (on: unknown) => connection.setKeepRunning(bool.parse(on)))
+  handle('connection:setOpenAtLogin', (on: unknown) => connection.setOpenAtLogin(bool.parse(on)))
+  handle('connection:createCode', () => connection.createCode())
+  handle('connection:cancelCode', () => connection.cancelCode())
+  handle('connection:removeDevice', (key: unknown) =>
+    connection.removeDevice(
+      z
+        .string()
+        .regex(/^[0-9a-f]{64}$/)
+        .parse(key)
+    )
+  )
+  handle('connection:discover', () => connection.discover())
+  handle('connection:pair', (address: unknown, code: unknown) =>
+    connection.pair(
+      z.string().max(100).parse(address),
+      z.string().trim().min(1, 'Digite o código').max(30).parse(code)
+    )
+  )
+  handle('connection:forget', () => connection.forget())
+  handle('connection:retry', () => connection.retry())
 
   // Sem resposta: a janela manda gravar e segue (ver main/prefs.ts)
   ipcMain.on('prefs:save', (_event, value: unknown) => {

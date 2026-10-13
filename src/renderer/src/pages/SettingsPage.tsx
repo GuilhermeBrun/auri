@@ -2,6 +2,7 @@ import { Check } from 'lucide-react'
 import type { CSSProperties } from 'react'
 import { Page } from '@renderer/components/Layout'
 import { isMac } from '@renderer/lib/platform'
+import { SETTINGS_CRUMB } from '@renderer/lib/settings'
 import { setTheme, useTheme } from '@renderer/lib/theme'
 import { cn } from '@renderer/lib/utils'
 import type { Theme } from '@shared/schemas'
@@ -156,9 +157,6 @@ function ThemePicker(): React.JSX.Element {
     </fieldset>
   )
 }
-
-/** Passo da trilha que leva à raiz das Configurações (que abre a primeira seção). */
-const SETTINGS_CRUMB = { label: 'Configurações', to: '/configuracoes' }
 
 /**
  * Configurações → Aparência. Página comum, de uma coluna: o título fica na trilha do cabeçalho

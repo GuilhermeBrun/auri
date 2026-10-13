@@ -531,7 +531,6 @@
  */
 .rbc-event,
 .rbc-day-slot .rbc-event {
-  position: relative;
   background: var(--color-session);
   color: var(--color-ink);
   border: 0 !important;
@@ -544,6 +543,12 @@
 }
 
 .rbc-event {
+  /*
+   * Base para o contorno ::after. Só aqui, sem o `.rbc-day-slot`: na grade de horários o
+   * react-big-calendar posiciona a sessão com `position: absolute` (mais específico), e um
+   * `relative` ali empurrava cada sessão para baixo pela altura das anteriores do mesmo dia.
+   */
+  position: relative;
   transition: background-color 120ms;
 }
 

@@ -1,5 +1,6 @@
 import { formatTime, parseIsoLocalDateTime } from '../../shared/dates'
 import type { Appointment, AppointmentInput } from '../../shared/schemas'
+import { assertUnchanged } from './concurrency'
 import type { Db } from './connection'
 
 type AppointmentRow = Omit<Appointment, 'observacao'> & { observacao: string | null }
@@ -81,7 +82,14 @@ export function createAppointment(db: Db, input: AppointmentInput): Appointment 
   return getAppointment(db, Number(result.lastInsertRowid))
 }
 
-export function updateAppointment(db: Db, id: number, input: AppointmentInput): Appointment {
+/** `expected`: ver `updatePatient`. */
+export function updateAppointment(
+  db: Db,
+  id: number,
+  input: AppointmentInput,
+  expected?: string
+): Appointment {
+  assertUnchanged(getAppointment(db, id).updated_at, expected)
   assertPatientExists(db, input.patient_id)
   assertSlotFree(db, input, id)
   const result = db
