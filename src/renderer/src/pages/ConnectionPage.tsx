@@ -1,10 +1,11 @@
 import { useMutation } from '@tanstack/react-query'
-import { Check, CircleAlert, HardDrive, Laptop, Plus, RotateCw } from 'lucide-react'
+import { Check, HardDrive, Laptop, Plus, RotateCw } from 'lucide-react'
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import { Page } from '@renderer/components/Layout'
 import { Button } from '@renderer/components/ui/button'
 import { Field, Input } from '@renderer/components/ui/input'
 import { Loading } from '@renderer/components/ui/loading'
+import { ErrorText, SectionTitle, StatusDot } from '@renderer/components/ui/section'
 import { Sensitive } from '@renderer/components/ui/sensitive'
 import { SwitchField } from '@renderer/components/ui/switch'
 import { useConnection } from '@renderer/lib/connection'
@@ -21,42 +22,6 @@ import type {
   RemoteReach
 } from '@shared/api'
 import { SETTINGS_CRUMB } from '@renderer/lib/settings'
-
-/** Erro de uma ação da página: ícone + texto, nunca só cor (como o erro dos campos). */
-function ErrorText({ children }: { children: ReactNode }): React.JSX.Element {
-  return (
-    <p role="alert" className="mt-2 flex animate-error-in items-start gap-1.5 text-xs text-danger">
-      <CircleAlert className="mt-0.5 size-3.5 shrink-0 stroke-[2]" aria-hidden="true" />
-      {children}
-    </p>
-  )
-}
-
-/** Título de um grupo da página, com a explicação embaixo. */
-function SectionTitle({
-  title,
-  children
-}: {
-  title: string
-  children?: ReactNode
-}): React.JSX.Element {
-  return (
-    <>
-      <h2 className="text-[13px] font-medium">{title}</h2>
-      {children && <p className="mt-0.5 text-xs text-ink-soft">{children}</p>}
-    </>
-  )
-}
-
-/** Bolinha de estado: grafite cheio quando conectado, apagada quando não (sem verde). */
-function StatusDot({ on }: { on: boolean }): React.JSX.Element {
-  return (
-    <span
-      aria-hidden="true"
-      className={cn('size-2 shrink-0 rounded-full', on ? 'bg-ink' : 'bg-line-strong')}
-    />
-  )
-}
 
 /** Hora atual que se atualiza a cada segundo enquanto `active` (para contagens regressivas). */
 function useNow(active: boolean): number {

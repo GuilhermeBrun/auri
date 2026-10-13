@@ -3,7 +3,9 @@ import {
   DEFAULT_UI_PREFS,
   PREFS_ARG,
   type AuriApi,
+  type AuriBackup,
   type AuriConnection,
+  type BackupInfo,
   type AuriPrefs,
   type ConnectionInfo,
   type DataTopic,
@@ -59,6 +61,31 @@ const connection: AuriConnection = {
   retry: () => invoke('connection:retry')
 }
 
+const backup: AuriBackup = {
+  info: () => invoke('backup:info'),
+  onChange: (listener) => subscribe<BackupInfo>('backup:changed', listener),
+  providers: () => invoke('backup:providers'),
+  chooseFolder: () => invoke('backup:chooseFolder'),
+  setup: (destination, password) => invoke('backup:setup', destination, password),
+  setDestination: (destination) => invoke('backup:setDestination', destination),
+  setFrequency: (frequency, time) => invoke('backup:setFrequency', frequency, time),
+  runNow: () => invoke('backup:runNow'),
+  openFolder: () => invoke('backup:openFolder'),
+  changePassword: (current, next) => invoke('backup:changePassword', current, next),
+  resetPassword: (code, next) => invoke('backup:resetPassword', code, next),
+  newRecoveryCode: (password) => invoke('backup:newRecoveryCode', password),
+  printRecoveryCode: (code) => invoke('backup:printRecoveryCode', code),
+  disable: () => invoke('backup:disable'),
+  list: () => invoke('backup:list'),
+  pickFile: () => invoke('backup:pickFile'),
+  restore: (file, secret) => invoke('backup:restore', file, secret),
+  undoRestore: () => invoke('backup:undoRestore'),
+  dismissWelcome: () => invoke('backup:dismissWelcome'),
+  install: (id) => invoke('backup:install', id),
+  onInstallProgress: (listener) => subscribe('backup:installProgress', listener),
+  openProvider: (id) => invoke('backup:openProvider', id)
+}
+
 // Chegam como argumento da janela (ver main/prefs.ts)
 const prefsArg = process.argv.find((arg) => arg.startsWith(PREFS_ARG))
 const prefs: AuriPrefs = {
@@ -69,5 +96,6 @@ const prefs: AuriPrefs = {
 contextBridge.exposeInMainWorld('api', api)
 contextBridge.exposeInMainWorld('prefs', prefs)
 contextBridge.exposeInMainWorld('connection', connection)
+contextBridge.exposeInMainWorld('backup', backup)
 // A interface ajusta espaços e atalhos ao sistema (ex.: botões da janela no Mac, ⌘ x Ctrl)
 contextBridge.exposeInMainWorld('platform', process.platform)

@@ -1,6 +1,7 @@
 import {
   ArrowLeft,
   CalendarDays,
+  DatabaseBackup,
   Network,
   PanelLeft,
   PanelLeftClose,
@@ -42,7 +43,8 @@ const SETTINGS_PATH = '/configuracoes'
 const CONNECTION_PATH = `${SETTINGS_PATH}/conexao`
 const SETTINGS_ITEMS: NavItem[] = [
   { to: `${SETTINGS_PATH}/aparencia`, label: 'Aparência', icon: <SunMoon /> },
-  { to: CONNECTION_PATH, label: 'Conexão', icon: <Network /> }
+  { to: CONNECTION_PATH, label: 'Conexão', icon: <Network /> },
+  { to: `${SETTINGS_PATH}/copia`, label: 'Cópia de segurança', icon: <DatabaseBackup /> }
 ]
 
 /**

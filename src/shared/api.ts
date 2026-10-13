@@ -154,3 +154,117 @@ export interface AuriConnection {
   /** Tenta conectar agora, sem esperar o próximo intervalo. */
   retry(): Promise<void>
 }
+
+/** Quando a cópia de segurança sai sozinha. */
+export type BackupFrequency = 'daily' | 'change' | 'manual'
+
+/** Nuvens que o Auri reconhece pela pasta que o app delas cria no computador. */
+export type CloudProviderId = 'google' | 'onedrive' | 'icloud'
+
+/** Onde as cópias ficam: uma das nuvens ou qualquer outra pasta (pendrive, HD externo). */
+export type BackupDestination = { kind: CloudProviderId | 'folder'; folder: string }
+
+/**
+ * Situação de uma nuvem neste computador.
+ * - `ready`: a pasta existe; dá para usar.
+ * - `signed-out`: o app está instalado, mas falta entrar na conta (a pasta não apareceu).
+ * - `off`: iCloud Drive desligado nos Ajustes do Sistema.
+ * - `denied`: o macOS não deixou o Auri abrir a pasta (Privacidade e Segurança).
+ * - `not-installed`: o app da nuvem não está instalado.
+ */
+export type CloudState = 'ready' | 'signed-out' | 'off' | 'denied' | 'not-installed'
+
+export type CloudProvider = {
+  id: CloudProviderId
+  name: string
+  state: CloudState
+  /** Pasta da nuvem (a raiz do "Meu Drive", por exemplo), quando `ready`. */
+  folder: string | null
+}
+
+/** Andamento de "Instalar" (baixar o instalador oficial e abrir). */
+export type InstallProgress = {
+  id: CloudProviderId
+  stage: 'downloading' | 'opening' | 'waiting' | 'error'
+  /** 0 a 1, enquanto baixa (null se o tamanho não veio). */
+  progress: number | null
+  error?: string
+}
+
+export type BackupInfo = {
+  /** Este computador guarda os dados: só ele faz cópias. */
+  available: boolean
+  /** Já tem pasta e senha. */
+  configured: boolean
+  destination: BackupDestination | null
+  /** A pasta escolhida não está acessível agora (nuvem desligada, pendrive fora). */
+  folderMissing: boolean
+  frequency: BackupFrequency
+  /** "HH:mm" da cópia diária. */
+  dailyTime: string
+  /** Uma cópia, troca de senha ou restauração em andamento. */
+  running: boolean
+  lastSuccessAt: string | null
+  lastError: { at: string; message: string } | null
+  /** Mais de 3 dias sem cópia (ou nenhuma) com a cópia ligada. */
+  stale: boolean
+  /** Dá para desfazer a última restauração. */
+  undo: { at: string } | null
+  /** Mostrar "Já usa o Auri?" (primeira abertura com o banco vazio). */
+  welcome: boolean
+  /** Nuvem trazida por configurações importadas, sugerida no assistente. */
+  suggested: BackupDestination['kind'] | null
+}
+
+/** Uma cópia encontrada (na pasta escolhida, numa nuvem ou num arquivo escolhido). */
+export type BackupEntry = {
+  file: string
+  name: string
+  createdAt: string
+  counts: { patients: number; appointments: number }
+  /** Onde está: "Google Drive", "Pasta escolhida"… */
+  location: string
+  /** Feita com a chave deste computador: abre sem pedir senha. */
+  own: boolean
+}
+
+/** Como abrir uma cópia de outro computador. */
+export type BackupSecret = { password: string } | { recoveryCode: string }
+
+/** Configurações / Cópia de segurança. Exposto em window.backup pelo preload. */
+export interface AuriBackup {
+  info(): Promise<BackupInfo>
+  /** Avisa a cada mudança (cópia feita, falha, troca de papel). Devolve a função que cancela. */
+  onChange(listener: (info: BackupInfo) => void): () => void
+  /** Google Drive, OneDrive e iCloud (só no Mac) e a situação de cada um. */
+  providers(): Promise<CloudProvider[]>
+  /** Janela do sistema para escolher uma pasta qualquer. null se cancelar. */
+  chooseFolder(): Promise<string | null>
+  /** Liga a cópia: guarda o destino e cria a chave presa à senha. Devolve o código de recuperação. */
+  setup(destination: BackupDestination, password: string): Promise<{ recoveryCode: string }>
+  setDestination(destination: BackupDestination): Promise<BackupInfo>
+  setFrequency(frequency: BackupFrequency, dailyTime: string): Promise<BackupInfo>
+  runNow(): Promise<BackupInfo>
+  openFolder(): Promise<void>
+  changePassword(current: string, next: string): Promise<BackupInfo>
+  /** "Esqueci a senha": código de recuperação + senha nova. */
+  resetPassword(recoveryCode: string, next: string): Promise<BackupInfo>
+  /** Gera outro código (pede a senha); o antigo deixa de valer. */
+  newRecoveryCode(password: string): Promise<{ recoveryCode: string }>
+  printRecoveryCode(code: string): Promise<void>
+  /** Desliga as cópias automáticas e esquece a senha. As cópias já feitas ficam na pasta. */
+  disable(): Promise<BackupInfo>
+  /** Cópias na pasta escolhida e nas nuvens deste computador, da mais nova para a mais antiga. */
+  list(): Promise<BackupEntry[]>
+  /** Janela do sistema para escolher um arquivo de cópia. null se cancelar. */
+  pickFile(): Promise<BackupEntry | null>
+  /** Troca os dados pelos da cópia. `secret` só é preciso para cópias de outro computador. */
+  restore(file: string, secret?: BackupSecret): Promise<BackupInfo>
+  undoRestore(): Promise<BackupInfo>
+  dismissWelcome(): Promise<BackupInfo>
+  /** Baixa o instalador oficial da nuvem e o abre. */
+  install(id: CloudProviderId): Promise<void>
+  onInstallProgress(listener: (progress: InstallProgress) => void): () => void
+  /** Abre o app da nuvem (para entrar na conta) ou os Ajustes do iCloud. */
+  openProvider(id: CloudProviderId): Promise<void>
+}

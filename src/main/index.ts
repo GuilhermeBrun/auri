@@ -5,11 +5,13 @@ import icon from '../../resources/icon.png?asset'
 import trayIcon from '../../resources/trayTemplate.png?asset'
 import { PREFS_ARG } from '../shared/api'
 import type { Theme, UiPrefs } from '../shared/schemas'
+import { createBackupService, type BackupService } from './backup-service'
 import { createConnection, type Connection } from './connection'
 import { registerIpc } from './ipc'
 import { createPrefsStore, type PrefsStore } from './prefs'
 
 let connection: Connection | null = null
+let backup: BackupService | null = null
 let prefs: PrefsStore | null = null
 let tray: Tray | null = null
 /** O usuário já confirmou sair mesmo com outro computador conectado. */
@@ -158,14 +160,22 @@ app.whenReady().then(async () => {
     onInfoChanged: (info) => {
       sendToWindows('connection:changed', info)
       syncTray()
-    }
+      // trocar de papel liga ou desliga as cópias (só quem guarda os dados copia)
+      backup?.refresh()
+    },
+    onWrite: () => backup?.dataWritten()
   })
   await connection.start()
+  backup = createBackupService({
+    userData: app.getPath('userData'),
+    connection,
+    onInfoChanged: (info) => sendToWindows('backup:changed', info)
+  })
   syncTray()
   prefs = createPrefsStore(join(app.getPath('userData'), 'preferencias.json'), (next) =>
     applyTheme(next.theme)
   )
-  registerIpc(connection, prefs)
+  registerIpc(connection, prefs, backup)
   applyTheme(prefs.get().theme)
   // o sistema trocou de tema (com "system" escolhido)
   nativeTheme.on('updated', syncWindowBackgrounds)
@@ -205,6 +215,8 @@ app.on('before-quit', (event) => {
 })
 
 app.on('will-quit', () => {
+  backup?.close()
+  backup = null
   connection?.close()
   connection = null
 })

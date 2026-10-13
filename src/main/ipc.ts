@@ -1,6 +1,7 @@
 import { ipcMain } from 'electron'
 import { z } from 'zod'
 import type { IpcResult } from '../shared/api'
+import type { BackupService } from './backup-service'
 import type { Connection } from './connection'
 import { DATA_CHANNELS, errorMessage } from './operations'
 import type { PrefsStore } from './prefs'
@@ -17,7 +18,21 @@ function handle<A extends unknown[], T>(channel: string, fn: (...args: A) => T |
   })
 }
 
-export function registerIpc(connection: Connection, prefs: PrefsStore): void {
+const destinationSchema = z.object({
+  kind: z.enum(['google', 'onedrive', 'icloud', 'folder']),
+  folder: z.string().min(1).max(1000)
+})
+const passwordSchema = z.string().max(200)
+const secretSchema = z.union([
+  z.object({ password: passwordSchema }),
+  z.object({ recoveryCode: z.string().max(100) })
+])
+
+export function registerIpc(
+  connection: Connection,
+  prefs: PrefsStore,
+  backup: BackupService
+): void {
   // Dados: no banco deste computador ou no outro, conforme o papel (ver main/connection.ts).
   for (const channel of DATA_CHANNELS) {
     ipcMain.handle(channel, (_event, ...args) => connection.call(channel, args))
@@ -56,6 +71,47 @@ export function registerIpc(connection: Connection, prefs: PrefsStore): void {
   )
   handle('connection:forget', () => connection.forget())
   handle('connection:retry', () => connection.retry())
+
+  // Configurações / Cópia de segurança
+  handle('backup:info', () => backup.info())
+  handle('backup:chooseFolder', () => backup.chooseFolder())
+  handle('backup:setup', (destination: unknown, password: unknown) =>
+    backup.setup(destinationSchema.parse(destination), passwordSchema.parse(password))
+  )
+  handle('backup:setDestination', (destination: unknown) =>
+    backup.setDestination(destinationSchema.parse(destination))
+  )
+  handle('backup:setFrequency', (frequency: unknown, time: unknown) =>
+    backup.setFrequency(
+      z.enum(['daily', 'change', 'manual']).parse(frequency),
+      z
+        .string()
+        .regex(/^([01]\d|2[0-3]):[0-5]\d$/)
+        .parse(time)
+    )
+  )
+  handle('backup:runNow', () => backup.runNow())
+  handle('backup:openFolder', () => backup.openFolder())
+  handle('backup:changePassword', (current: unknown, next: unknown) =>
+    backup.changePassword(passwordSchema.parse(current), passwordSchema.parse(next))
+  )
+  handle('backup:resetPassword', (code: unknown, next: unknown) =>
+    backup.resetPassword(z.string().max(100).parse(code), passwordSchema.parse(next))
+  )
+  handle('backup:newRecoveryCode', (password: unknown) =>
+    backup.newRecoveryCode(passwordSchema.parse(password))
+  )
+  handle('backup:printRecoveryCode', (code: unknown) =>
+    backup.printRecoveryCode(z.string().max(100).parse(code))
+  )
+  handle('backup:disable', () => backup.disable())
+  handle('backup:list', () => backup.list())
+  handle('backup:pickFile', () => backup.pickFile())
+  handle('backup:restore', (file: unknown, secret: unknown) =>
+    backup.restore(z.string().max(1000).parse(file), secretSchema.optional().parse(secret))
+  )
+  handle('backup:undoRestore', () => backup.undoRestore())
+  handle('backup:dismissWelcome', () => backup.dismissWelcome())
 
   // Sem resposta: a janela manda gravar e segue (ver main/prefs.ts)
   ipcMain.on('prefs:save', (_event, value: unknown) => {

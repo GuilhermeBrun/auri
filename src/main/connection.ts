@@ -1,5 +1,6 @@
 import SecretStream from '@hyperswarm/secret-stream'
 import { app, powerSaveBlocker, safeStorage } from 'electron'
+import { copyFileSync, rmSync } from 'fs'
 import { hostname } from 'os'
 import { join } from 'path'
 import {
@@ -52,6 +53,13 @@ export type Connection = {
   pair(address: string, code: string): Promise<ConnectionInfo>
   forget(): Promise<ConnectionInfo>
   retry(): Promise<void>
+  /** O banco aberto (papel servidor), para a cópia de segurança. null no papel cliente. */
+  database(): Db | null
+  /**
+   * Troca o banco pelo arquivo `source` (restaurar uma cópia): fecha, copia por cima, abre de novo
+   * (migrando, se for de versão anterior) e avisa as telas e os computadores conectados.
+   */
+  replaceDatabase(source: string): void
   /** Ao sair do app: síncrono, para o banco fechar antes de o processo terminar. */
   close(): void
 }
@@ -89,6 +97,8 @@ export function createConnection(options: {
   userData: string
   onDataChanged: (topics: DataTopic[]) => void
   onInfoChanged: (info: ConnectionInfo) => void
+  /** Uma gravação deu certo no banco deste computador (para a cópia "a cada alteração"). */
+  onWrite?: () => void
 }): Connection {
   const store = createConnectionStore(join(options.userData, 'conexao.json'))
   const dbFile = join(options.userData, 'auri.db')
@@ -204,6 +214,7 @@ export function createConnection(options: {
   function dataChanged(topics: DataTopic[]): void {
     server?.broadcast(topics)
     options.onDataChanged(topics)
+    options.onWrite?.()
   }
 
   /** Acesso de fora: escuta também pela rede distribuída, entregando as conexões ao mesmo servidor. */
@@ -230,7 +241,6 @@ export function createConnection(options: {
 
   async function startSharing(): Promise<void> {
     if (server || !db) return
-    const local = db
     const next = createSyncServer({
       keyPair: getKeys(),
       name,
@@ -248,7 +258,11 @@ export function createConnection(options: {
         changed()
         if (online) console.log('[conexão] computador conectado')
       },
-      handle: (channel, args) => runOperation(local, channel, args, dataChanged)
+      // o banco do momento: restaurar uma cópia troca o banco sem derrubar o compartilhamento
+      handle: (channel, args) =>
+        db
+          ? runOperation(db, channel, args, dataChanged)
+          : { ok: false, error: 'Os dados estão sendo restaurados. Tente de novo em instantes.' }
     })
     try {
       port = await next.listen()
@@ -509,6 +523,23 @@ export function createConnection(options: {
 
     async retry(): Promise<void> {
       client?.retry()
+    },
+
+    database: () => db,
+
+    replaceDatabase(source: string): void {
+      if (!db) throw new Error('Só o computador que guarda os dados pode restaurar uma cópia.')
+      db.close()
+      db = null
+      try {
+        // o -wal e o -shm são do banco antigo; deixá-los misturaria os dois
+        for (const suffix of ['-wal', '-shm']) rmSync(`${dbFile}${suffix}`, { force: true })
+        copyFileSync(source, dbFile)
+      } finally {
+        db = openDatabase(dbFile)
+      }
+      server?.broadcast([...DATA_TOPICS])
+      options.onDataChanged([...DATA_TOPICS])
     },
 
     close(): void {
