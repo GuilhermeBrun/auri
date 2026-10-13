@@ -65,6 +65,7 @@ export type BackupService = {
   restore(file: string, secret?: BackupSecret): Promise<BackupInfo>
   undoRestore(): Promise<BackupInfo>
   dismissWelcome(): Promise<BackupInfo>
+  providers(): Promise<CloudProvider[]>
   /** Pasta das cópias ou da nuvem escolhida, para abrir a janela de salvar configurações nela. */
   preferredFolder(): string | null
   /** Nuvem sugerida no assistente (vinda de configurações importadas). */
@@ -563,6 +564,8 @@ export function createBackupService(options: {
       store.update({ welcomeDone: true })
       return info()
     },
+
+    providers: async () => (await options.providers?.()) ?? [],
 
     preferredFolder() {
       const destination = store.get().destination

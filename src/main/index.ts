@@ -6,6 +6,7 @@ import trayIcon from '../../resources/trayTemplate.png?asset'
 import { PREFS_ARG } from '../shared/api'
 import type { Theme, UiPrefs } from '../shared/schemas'
 import { createBackupService, type BackupService } from './backup-service'
+import { detectProviders, systemProbe } from './backup/providers'
 import { createConnection, type Connection } from './connection'
 import { registerIpc } from './ipc'
 import { createPrefsStore, type PrefsStore } from './prefs'
@@ -169,7 +170,8 @@ app.whenReady().then(async () => {
   backup = createBackupService({
     userData: app.getPath('userData'),
     connection,
-    onInfoChanged: (info) => sendToWindows('backup:changed', info)
+    onInfoChanged: (info) => sendToWindows('backup:changed', info),
+    providers: () => detectProviders(systemProbe())
   })
   syncTray()
   prefs = createPrefsStore(join(app.getPath('userData'), 'preferencias.json'), (next) =>

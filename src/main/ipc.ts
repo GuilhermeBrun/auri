@@ -74,6 +74,7 @@ export function registerIpc(
 
   // Configurações / Cópia de segurança
   handle('backup:info', () => backup.info())
+  handle('backup:providers', () => backup.providers())
   handle('backup:chooseFolder', () => backup.chooseFolder())
   handle('backup:setup', (destination: unknown, password: unknown) =>
     backup.setup(destinationSchema.parse(destination), passwordSchema.parse(password))

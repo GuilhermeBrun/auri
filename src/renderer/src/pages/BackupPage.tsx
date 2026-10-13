@@ -74,7 +74,13 @@ function DestinationLine({ destination }: { destination: BackupDestination }): R
  * Liga a cópia: onde guardar e a senha. O código de recuperação aparece depois, na página (ver
  * `RecoveryStep`), porque a cópia já fica ligada quando ele é gerado.
  */
-function Setup({ onCode }: { onCode: (code: string) => void }): React.JSX.Element {
+function Setup({
+  suggested,
+  onCode
+}: {
+  suggested: BackupInfo['suggested']
+  onCode: (code: string) => void
+}): React.JSX.Element {
   const [destination, setDestination] = useState<BackupDestination | null>(null)
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
@@ -97,10 +103,11 @@ function Setup({ onCode }: { onCode: (code: string) => void }): React.JSX.Elemen
       <section className="animate-fade-in">
         <Step n={1} />
         <SectionTitle title="Onde guardar as cópias">
-          Numa pasta que vai para a nuvem, para a cópia sobreviver se este computador quebrar.
+          Numa nuvem, para a cópia sobreviver se este computador quebrar. O Auri grava na pasta que
+          o app da nuvem cria neste computador, e ele manda para a internet.
         </SectionTitle>
         <div className="mt-4">
-          <DestinationPicker onPick={setDestination} />
+          <DestinationPicker onPick={setDestination} suggested={suggested} />
         </div>
       </section>
     )
@@ -473,7 +480,7 @@ export function BackupPage(): React.JSX.Element {
             </>
           ) : (
             <>
-              <Setup onCode={setCode} />
+              <Setup suggested={info.suggested} onCode={setCode} />
               <Restore info={info} />
             </>
           )}
