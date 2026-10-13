@@ -42,9 +42,14 @@ const PUBLISHER: Record<'google' | 'onedrive', string> = {
   onedrive: 'Microsoft Corporation'
 }
 
-function run(command: string, args: string[], timeout = 60_000): Promise<string> {
+function run(
+  command: string,
+  args: string[],
+  timeout = 60_000,
+  env: NodeJS.ProcessEnv = process.env
+): Promise<string> {
   return new Promise((resolve, reject) =>
-    execFile(command, args, { timeout, windowsHide: true }, (error, stdout) =>
+    execFile(command, args, { timeout, windowsHide: true, env }, (error, stdout) =>
       error ? reject(error) : resolve(stdout)
     )
   )
@@ -79,11 +84,34 @@ export async function verifyPkg(pkg: string, id: 'google' | 'onedrive'): Promise
 }
 
 /** "Status|Assunto do certificado" de `Get-AuthenticodeSignature` (ou "erro: …"). */
+/**
+ * Ambiente para o PowerShell do Windows (5.1): sem o `PSModulePath` herdado. Aberto a partir de um
+ * PowerShell 7, o Auri herda os módulos dele, que o 5.1 não carrega (o CI pegou isso:
+ * "Get-AuthenticodeSignature … the module could not be loaded").
+ */
+function windowsPowerShellEnv(): NodeJS.ProcessEnv {
+  return Object.fromEntries(
+    Object.entries(process.env).filter(([key]) => key.toLowerCase() !== 'psmodulepath')
+  )
+}
+
+/** "Status|Assunto do certificado" de `Get-AuthenticodeSignature` (ou "erro: …"). */
 export function authenticode(exe: string): Promise<string> {
   const script = `$s = Get-AuthenticodeSignature -LiteralPath '${exe.replace(/'/g, "''")}'; $s.Status.ToString() + '|' + $s.SignerCertificate.Subject`
-  return run('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script]).catch(
-    (error: Error) => `erro: ${error.message}`
+  // pelo caminho do sistema, e não pelo PATH, que poderia apontar para outro executável
+  const powershell = win32.join(
+    process.env.SystemRoot ?? 'C:\\Windows',
+    'System32',
+    'WindowsPowerShell',
+    'v1.0',
+    'powershell.exe'
   )
+  return run(
+    powershell,
+    ['-NoProfile', '-NonInteractive', '-Command', script],
+    60_000,
+    windowsPowerShellEnv()
+  ).catch((error: Error) => `erro: ${error.message}`)
 }
 
 export async function verifyExe(exe: string, id: 'google' | 'onedrive'): Promise<void> {
