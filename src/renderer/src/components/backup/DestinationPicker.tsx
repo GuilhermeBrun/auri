@@ -215,6 +215,9 @@ export function DestinationPicker({
     queryKey: ['cloud-providers'],
     queryFn: () => window.backup.providers(),
     refetchInterval: 3000,
+    // o usuário está na janela do instalador ou do login, com o Auri escondido atrás: continua
+    // procurando, para já ter seguido quando ele voltar
+    refetchIntervalInBackground: true,
     refetchOnWindowFocus: true
   })
   const choose = useMutation({

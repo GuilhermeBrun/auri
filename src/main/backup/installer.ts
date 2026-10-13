@@ -1,10 +1,9 @@
 import { execFile } from 'child_process'
-import { app, net, shell } from 'electron'
+import { app, net, shell, type IncomingMessage } from 'electron'
 import { createWriteStream, existsSync } from 'fs'
-import { mkdir, readdir, rm } from 'fs/promises'
+import { copyFile, mkdir, readdir, rm } from 'fs/promises'
 import { release } from 'os'
 import { join, win32 } from 'path'
-import { Readable } from 'stream'
 import { pipeline } from 'stream/promises'
 import type { CloudProviderId, InstallProgress } from '../../shared/api'
 
@@ -90,41 +89,76 @@ async function verifyExe(exe: string, id: 'google' | 'onedrive'): Promise<void> 
   if (!exeSignedBy(output, PUBLISHER[id])) throw new Error('unsigned')
 }
 
+/**
+ * Pede o instalador, conferindo o domínio do endereço inicial e de cada redirecionamento (o
+ * OneDrive passa por um). O `net.fetch` não serve: devolve a resposta final sem dizer de onde ela
+ * veio. O `net.request` usa o proxy do sistema, como o resto do Electron.
+ */
+function request(url: string): Promise<IncomingMessage> {
+  return new Promise((resolve, reject) => {
+    if (!ALLOWED_HOSTS.includes(new URL(url).hostname)) {
+      reject(new Error(`domínio ${new URL(url).hostname}`))
+      return
+    }
+    const req = net.request({ url, redirect: 'manual' })
+    req.on('redirect', (_status, _method, next) => {
+      const host = new URL(next).hostname
+      if (ALLOWED_HOSTS.includes(host)) req.followRedirect()
+      else {
+        req.abort()
+        reject(new Error(`redirecionou para ${host}`))
+      }
+    })
+    req.on('response', resolve)
+    req.on('error', reject)
+    req.end()
+  })
+}
+
 /** Baixa avisando o andamento (0 a 1) a cada ponto percentual. */
 async function download(
   installer: Installer,
   target: string,
   onProgress: (fraction: number | null) => void
 ): Promise<void> {
-  const response = await net.fetch(installer.url)
-  const host = new URL(response.url).hostname
-  if (!response.ok || !response.body || !ALLOWED_HOSTS.includes(host)) {
-    throw new Error(`download ${response.status} ${host}`)
-  }
-  const total = Number(response.headers.get('content-length')) || null
+  const response = await request(installer.url)
+  if (response.statusCode !== 200) throw new Error(`download ${response.statusCode}`)
+  const total = Number(response.headers['content-length']) || null
   let received = 0
   let lastShown = -1
-  const body = Readable.fromWeb(response.body as import('stream/web').ReadableStream)
-  body.on('data', (chunk: Buffer) => {
+  if (!total) onProgress(null)
+  response.on('data', (chunk: Buffer) => {
     received += chunk.length
-    const percent = total ? Math.floor((received / total) * 100) : null
+    if (!total) return
+    const percent = Math.floor((received / total) * 100)
     if (percent !== lastShown) {
-      lastShown = percent ?? lastShown
-      onProgress(total ? received / total : null)
+      lastShown = percent
+      onProgress(received / total)
     }
   })
-  await pipeline(body, createWriteStream(target))
+  // o IncomingMessage do Electron é um Readable, mas os tipos dele não dizem
+  await pipeline(response as unknown as NodeJS.ReadableStream, createWriteStream(target))
 }
 
-/** Mac: monta o .dmg sem abrir o Finder e devolve o .pkg de dentro. */
-async function pkgFromDmg(dmg: string): Promise<string> {
+/**
+ * Mac: monta o .dmg sem abrir o Finder, copia o .pkg de dentro para `folder` e desmonta (para não
+ * deixar o volume montado depois da instalação).
+ */
+async function pkgFromDmg(dmg: string, folder: string): Promise<string> {
   const mount = parseMountPoint(
     await run('hdiutil', ['attach', '-nobrowse', '-noautoopen', '-noverify', dmg])
   )
   if (!mount) throw new Error('mount')
-  const pkg = (await readdir(mount)).find((name) => name.endsWith('.pkg'))
-  if (!pkg) throw new Error('no pkg')
-  return join(mount, pkg)
+  try {
+    const pkg = (await readdir(mount)).find((name) => name.endsWith('.pkg'))
+    if (!pkg) throw new Error('no pkg')
+    const copy = join(folder, pkg)
+    await rm(copy, { force: true })
+    await copyFile(join(mount, pkg), copy)
+    return copy
+  } finally {
+    await run('hdiutil', ['detach', mount, '-quiet']).catch(() => undefined)
+  }
 }
 
 /**
@@ -151,7 +185,9 @@ export async function installProvider(
     )
     onProgress({ id, stage: 'opening', progress: null })
     if (process.platform === 'darwin') {
-      const pkg = target.endsWith('.dmg') ? await pkgFromDmg(target) : target
+      const pkg = target.endsWith('.dmg') ? await pkgFromDmg(target, folder) : target
+      // o .dmg já deu o que tinha: o pacote copiado basta
+      if (pkg !== target) await rm(target, { force: true })
       await verifyPkg(pkg, id)
       const error = await shell.openPath(pkg)
       if (error) throw new Error(error)

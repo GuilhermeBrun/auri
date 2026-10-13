@@ -365,6 +365,7 @@ export function createBackupService(options: {
     async setDestination(destination) {
       requireServer()
       store.update({ destination, lastError: null })
+      changed()
       // pasta nova começa vazia: a primeira cópia vai já
       if (configured()) void backup()
       return info()
@@ -372,6 +373,7 @@ export function createBackupService(options: {
 
     async setFrequency(frequency, dailyTime) {
       store.update({ frequency, dailyTime })
+      changed()
       return info()
     },
 
@@ -485,6 +487,7 @@ export function createBackupService(options: {
         lastError: null,
         lastChangeAt: null
       })
+      changed()
       return info()
     },
 
@@ -569,6 +572,7 @@ export function createBackupService(options: {
 
     async dismissWelcome() {
       store.update({ welcomeDone: true })
+      changed()
       return info()
     },
 
