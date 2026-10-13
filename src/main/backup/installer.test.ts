@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { exeSignedBy, parseMountPoint, pkgSignedBy } from './installer'
+import { mkdtempSync, writeFileSync } from 'fs'
+import { tmpdir } from 'os'
+import { join } from 'path'
+import { exeSignedBy, parseMountPoint, pkgSignedBy, verifyExe, verifyPkg } from './installer'
 
 // Saídas reais (hdiutil e pkgutil no macOS, com o instalador oficial do Google Drive).
 const ATTACH = [
@@ -35,5 +38,23 @@ describe('instalador da nuvem', () => {
     expect(exeSignedBy(`HashMismatch|${subject}`, 'Microsoft Corporation')).toBe(false)
     expect(exeSignedBy(`Valid|${subject}`, 'Google LLC')).toBe(false)
     expect(exeSignedBy('', 'Google LLC')).toBe(false)
+  })
+})
+
+describe.runIf(process.platform === 'win32')('assinatura no Windows de verdade', () => {
+  it('aceita um executável assinado pela Microsoft e recusa um sem assinatura', async () => {
+    await expect(verifyExe('C:\\Windows\\explorer.exe', 'onedrive')).resolves.toBeUndefined()
+    await expect(verifyExe('C:\\Windows\\explorer.exe', 'google')).rejects.toThrow()
+    const fake = join(mkdtempSync(join(tmpdir(), 'auri-')), "Setup d'Auri.exe")
+    writeFileSync(fake, 'não é um executável')
+    await expect(verifyExe(fake, 'onedrive')).rejects.toThrow()
+  }, 30_000)
+})
+
+describe.runIf(process.platform === 'darwin')('assinatura no Mac de verdade', () => {
+  it('recusa um pacote sem assinatura', async () => {
+    const fake = join(mkdtempSync(join(tmpdir(), 'auri-')), 'Falso.pkg')
+    writeFileSync(fake, 'não é um pacote')
+    await expect(verifyPkg(fake, 'google')).rejects.toThrow()
   })
 })

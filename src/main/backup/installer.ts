@@ -73,12 +73,12 @@ export function exeSignedBy(output: string, publisher: string): boolean {
   return status === 'Valid' && subject.includes(`O=${publisher}`)
 }
 
-async function verifyPkg(pkg: string, id: 'google' | 'onedrive'): Promise<void> {
+export async function verifyPkg(pkg: string, id: 'google' | 'onedrive'): Promise<void> {
   const output = await run('pkgutil', ['--check-signature', pkg]).catch(() => '')
   if (!pkgSignedBy(output, PUBLISHER[id])) throw new Error('unsigned')
 }
 
-async function verifyExe(exe: string, id: 'google' | 'onedrive'): Promise<void> {
+export async function verifyExe(exe: string, id: 'google' | 'onedrive'): Promise<void> {
   const script = `$s = Get-AuthenticodeSignature -LiteralPath '${exe.replace(/'/g, "''")}'; $s.Status.ToString() + '|' + $s.SignerCertificate.Subject`
   const output = await run('powershell.exe', [
     '-NoProfile',

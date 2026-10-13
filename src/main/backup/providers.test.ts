@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { detectProviders, type Probe } from './providers'
+import { detectProviders, parseRegistry, systemProbe, type Probe } from './providers'
 
 /**
  * Sistema de arquivos de mentira: cada caminho listado existe (as pastas-pai também). `blocked`
@@ -137,4 +137,25 @@ describe('nuvens no Windows', () => {
       ['onedrive', 'signed-out']
     ])
   })
+})
+
+// No sistema de verdade: só roda no Windows (no CI, em windows-latest).
+describe.runIf(process.platform === 'win32')('Windows de verdade', () => {
+  it('lê uma pasta do registro com reg.exe', async () => {
+    const output = await systemProbe().registry(
+      'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Shell Folders',
+      'Desktop'
+    )
+    const [desktop] = parseRegistry(output, 'Desktop')
+    expect(desktop?.data).toMatch(/^[A-Z]:\\/i)
+  })
+
+  it('procura Google Drive e OneDrive sem travar nem lançar erro', async () => {
+    const found = await detectProviders(systemProbe())
+    expect(found.map((p) => p.id)).toEqual(['google', 'onedrive'])
+    for (const provider of found) {
+      expect(['ready', 'signed-out', 'not-installed']).toContain(provider.state)
+      expect(provider.state === 'ready').toBe(provider.folder !== null)
+    }
+  }, 20_000)
 })

@@ -1,8 +1,9 @@
 # Cópia de segurança na nuvem e configurações — design
 
-Data: 13/10/2026. Estado: fases 1 a 4 implementadas (13/10/2026); falta testar no Windows (detecção do
-Google Drive e do OneDrive, instalação conduzida e verificação de assinatura) e uma instalação real
-de ponta a ponta no Mac.
+Data: 13/10/2026. Estado: fases 1 a 4 implementadas e testadas no Mac com o app aberto (13/10/2026),
+inclusive o download, a montagem e a assinatura dos instaladores oficiais do Google Drive e do
+OneDrive (só a abertura do Instalador foi simulada). No Windows, só pelos testes que rodam no CI
+(`windows-latest`): registro, detecção e assinatura Authenticode; falta abrir o app num Windows.
 
 ## Objetivo
 

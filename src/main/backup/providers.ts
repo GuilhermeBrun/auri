@@ -122,7 +122,7 @@ async function macICloud(probe: Probe): Promise<Found> {
 }
 
 /** Blocos de `reg query /s`: chave → valor, para preferir a conta pessoal do OneDrive. */
-function parseRegistry(output: string, value: string): { key: string; data: string }[] {
+export function parseRegistry(output: string, value: string): { key: string; data: string }[] {
   const found: { key: string; data: string }[] = []
   let key = ''
   for (const line of output.split(/\r?\n/)) {
