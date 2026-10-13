@@ -42,3 +42,33 @@ jobs:
           name: auri-${{ matrix.os }}
           path: ${{ matrix.artifact }}
           if-no-files-found: error
+
+  # O Auri aberto de verdade (janela, IPC, banco, disco), dirigido pelo protocolo do DevTools. No
+  # Windows também baixa e roda o instalador oficial do Google Drive (a máquina do CI é descartável).
+  e2e:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run build
+
+      - run: node scripts/e2e.mjs e2e-saida
+        env:
+          AURI_E2E_INSTALAR: ${{ matrix.os == 'windows-latest' && '1' || '' }}
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-${{ matrix.os }}
+          path: e2e-saida
