@@ -1,9 +1,13 @@
 # Cópia de segurança na nuvem e configurações — design
 
-Data: 13/10/2026. Estado: fases 1 a 4 implementadas e testadas no Mac com o app aberto (13/10/2026),
-inclusive o download, a montagem e a assinatura dos instaladores oficiais do Google Drive e do
-OneDrive (só a abertura do Instalador foi simulada). No Windows, só pelos testes que rodam no CI
-(`windows-latest`): registro, detecção e assinatura Authenticode; falta abrir o app num Windows.
+Data: 13/10/2026. Estado: fases 1 a 4 implementadas e verificadas (13/10/2026).
+
+- Mac, com o app aberto: assistente inteiro, cópia, restauração (inclusive em computador novo),
+  senha, exportar/importar configurações e a instalação real do Google Drive (Instalador da Apple,
+  login e o Auri avançando sozinho quando a pasta "Meu Drive" apareceu).
+- Windows, no CI (`windows-latest`): leitura do registro, detecção das nuvens e a assinatura
+  Authenticode dos instaladores oficiais do OneDrive e do Google Drive, além do build do `.exe`.
+- Não verificado num Windows com tela: abrir o app da nuvem e as janelas do sistema.
 
 ## Objetivo
 
