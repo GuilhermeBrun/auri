@@ -78,15 +78,17 @@ export async function verifyPkg(pkg: string, id: 'google' | 'onedrive'): Promise
   if (!pkgSignedBy(output, PUBLISHER[id])) throw new Error('unsigned')
 }
 
-export async function verifyExe(exe: string, id: 'google' | 'onedrive'): Promise<void> {
+/** "Status|Assunto do certificado" de `Get-AuthenticodeSignature` (ou "erro: …"). */
+export function authenticode(exe: string): Promise<string> {
   const script = `$s = Get-AuthenticodeSignature -LiteralPath '${exe.replace(/'/g, "''")}'; $s.Status.ToString() + '|' + $s.SignerCertificate.Subject`
-  const output = await run('powershell.exe', [
-    '-NoProfile',
-    '-NonInteractive',
-    '-Command',
-    script
-  ]).catch(() => '')
-  if (!exeSignedBy(output, PUBLISHER[id])) throw new Error('unsigned')
+  return run('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script]).catch(
+    (error: Error) => `erro: ${error.message}`
+  )
+}
+
+export async function verifyExe(exe: string, id: 'google' | 'onedrive'): Promise<void> {
+  const output = await authenticode(exe)
+  if (!exeSignedBy(output, PUBLISHER[id])) throw new Error(`unsigned: ${output.trim()}`)
 }
 
 /**

@@ -1,8 +1,15 @@
 import { describe, expect, it } from 'vitest'
 import { mkdtempSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
-import { join } from 'path'
-import { exeSignedBy, parseMountPoint, pkgSignedBy, verifyExe, verifyPkg } from './installer'
+import { join, win32 } from 'path'
+import {
+  authenticode,
+  exeSignedBy,
+  parseMountPoint,
+  pkgSignedBy,
+  verifyExe,
+  verifyPkg
+} from './installer'
 
 // Saídas reais (hdiutil e pkgutil no macOS, com o instalador oficial do Google Drive).
 const ATTACH = [
@@ -43,12 +50,43 @@ describe('instalador da nuvem', () => {
 
 describe.runIf(process.platform === 'win32')('assinatura no Windows de verdade', () => {
   it('aceita um executável assinado pela Microsoft e recusa um sem assinatura', async () => {
-    await expect(verifyExe('C:\\Windows\\explorer.exe', 'onedrive')).resolves.toBeUndefined()
-    await expect(verifyExe('C:\\Windows\\explorer.exe', 'google')).rejects.toThrow()
+    // dotnet.exe tem assinatura própria (o explorer.exe é assinado por catálogo)
+    const dotnet = win32.join(
+      process.env.ProgramFiles ?? 'C:\\Program Files',
+      'dotnet',
+      'dotnet.exe'
+    )
+    console.log(`[assinatura] dotnet.exe: ${await authenticode(dotnet)}`)
+    console.log(`[assinatura] explorer.exe: ${await authenticode('C:\\Windows\\explorer.exe')}`)
+    await expect(verifyExe(dotnet, 'onedrive')).resolves.toBeUndefined()
+    await expect(verifyExe(dotnet, 'google')).rejects.toThrow()
     const fake = join(mkdtempSync(join(tmpdir(), 'auri-')), "Setup d'Auri.exe")
     writeFileSync(fake, 'não é um executável')
     await expect(verifyExe(fake, 'onedrive')).rejects.toThrow()
-  }, 30_000)
+  }, 60_000)
+
+  // Os instaladores oficiais de verdade (~440 MB): só quando pedido (no CI, AURI_TESTA_INSTALADORES).
+  it.runIf(!!process.env.AURI_TESTA_INSTALADORES)(
+    'os instaladores oficiais do OneDrive e do Google Drive passam na verificação',
+    async () => {
+      const folder = mkdtempSync(join(tmpdir(), 'auri-instaladores-'))
+      const installers = [
+        ['onedrive', 'https://go.microsoft.com/fwlink/?linkid=844652', 'OneDriveSetup.exe'],
+        [
+          'google',
+          'https://dl.google.com/drive-file-stream/GoogleDriveSetup.exe',
+          'GoogleDriveSetup.exe'
+        ]
+      ] as const
+      for (const [id, url, name] of installers) {
+        const file = join(folder, name)
+        writeFileSync(file, Buffer.from(await (await fetch(url)).arrayBuffer()))
+        console.log(`[assinatura] ${name}: ${await authenticode(file)}`)
+        await expect(verifyExe(file, id)).resolves.toBeUndefined()
+      }
+    },
+    600_000
+  )
 })
 
 describe.runIf(process.platform === 'darwin')('assinatura no Mac de verdade', () => {

@@ -1,7 +1,7 @@
 import { execFile } from 'child_process'
 import { access, readdir } from 'fs/promises'
 import { homedir } from 'os'
-import { join, win32 } from 'path'
+import { posix, win32 } from 'path'
 import type { CloudProvider, CloudProviderId, CloudState } from '../../shared/api'
 
 /**
@@ -54,12 +54,12 @@ function settle(folder: string | null, blocked: boolean, installed: boolean): Fo
 
 /** Pastas de `~/Library/CloudStorage` que começam com `prefix` (uma por conta). */
 async function cloudStorage(probe: Probe, prefix: string): Promise<string[]> {
-  const root = join(probe.home, 'Library', 'CloudStorage')
+  const root = posix.join(probe.home, 'Library', 'CloudStorage')
   try {
     return (await probe.readdir(root))
       .filter((name) => name.startsWith(prefix))
       .sort()
-      .map((name) => join(root, name))
+      .map((name) => posix.join(root, name))
   } catch {
     return []
   }
@@ -71,7 +71,7 @@ async function myDrive(probe: Probe, account: string): Promise<string | null> {
   const known = MY_DRIVE.find((name) => names.includes(name))
   const guess = names.find((name) => !name.startsWith('.') && !NOT_MY_DRIVE.includes(name))
   const chosen = known ?? guess
-  return chosen ? join(account, chosen) : null
+  return chosen ? posix.join(account, chosen) : null
 }
 
 async function macGoogle(probe: Probe): Promise<Found> {
@@ -86,7 +86,7 @@ async function macGoogle(probe: Probe): Promise<Found> {
   }
   // versões antigas montavam um volume
   for (const name of MY_DRIVE) {
-    const legacy = join('/Volumes', 'GoogleDrive', name)
+    const legacy = posix.join('/Volumes', 'GoogleDrive', name)
     if (await probe.exists(legacy)) return settle(legacy, false, true)
   }
   return settle(null, blocked, await probe.exists('/Applications/Google Drive.app'))
@@ -105,13 +105,13 @@ async function macOneDrive(probe: Probe): Promise<Found> {
       blocked ||= denied(error)
     }
   }
-  const legacy = join(probe.home, 'OneDrive')
+  const legacy = posix.join(probe.home, 'OneDrive')
   if (await probe.exists(legacy)) return settle(legacy, false, true)
   return settle(null, blocked, await probe.exists('/Applications/OneDrive.app'))
 }
 
 async function macICloud(probe: Probe): Promise<Found> {
-  const folder = join(probe.home, 'Library', 'Mobile Documents', 'com~apple~CloudDocs')
+  const folder = posix.join(probe.home, 'Library', 'Mobile Documents', 'com~apple~CloudDocs')
   try {
     await probe.readdir(folder)
     return { state: 'ready', folder }

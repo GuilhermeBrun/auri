@@ -31,6 +31,9 @@ jobs:
       - run: npm ci
 
       - run: npm test
+        env:
+          # baixa os instaladores oficiais e confere a assinatura (no Windows)
+          AURI_TESTA_INSTALADORES: '1'
 
       - run: npm run ${{ matrix.script }}
 
