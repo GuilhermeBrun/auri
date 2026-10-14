@@ -1,0 +1,185 @@
+{
+  "version": 1,
+  "scenarios": [
+    {
+      "id": "AURI-01",
+      "description": "Primeira abertura e contrato real do preload/SQLite.",
+      "evidence": [
+        {
+          "kind": "e2e",
+          "name": "primeira abertura mostra \"Já usa o Auri?\""
+        },
+        {
+          "kind": "e2e",
+          "name": "cadastra pacientes fictícios"
+        }
+      ]
+    },
+    {
+      "id": "AURI-02",
+      "description": "Cadastro persiste e valida campos inválidos.",
+      "evidence": [
+        {
+          "kind": "vitest",
+          "file": "src/main/db/patients.test.ts",
+          "name": "pacientes cria e lê, devolvendo campos vazios como string vazia"
+        },
+        {
+          "kind": "vitest",
+          "file": "src/main/db/patients.test.ts",
+          "name": "validação do cadastro exige nome e valida CPF, celular, e-mail e datas"
+        }
+      ]
+    },
+    {
+      "id": "AURI-03",
+      "description": "Busca sem acento e inativação reversível.",
+      "evidence": [
+        {
+          "kind": "vitest",
+          "file": "src/main/db/patients.test.ts",
+          "name": "pacientes busca por nome sem acento e sem diferenciar maiúsculas, pelo nome da mãe e por CPF"
+        },
+        {
+          "kind": "vitest",
+          "file": "src/main/db/patients.test.ts",
+          "name": "pacientes esconde inativos por padrão e permite reativar"
+        }
+      ]
+    },
+    {
+      "id": "AURI-04",
+      "description": "Conflito informa quem ocupa e preserva adjacência.",
+      "evidence": [
+        {
+          "kind": "vitest",
+          "file": "src/main/db/appointments.test.ts",
+          "name": "agendamentos horário ocupado recusa o mesmo horário, mesmo para outro paciente, dizendo quem ocupa"
+        },
+        {
+          "kind": "vitest",
+          "file": "src/main/db/appointments.test.ts",
+          "name": "agendamentos horário ocupado aceita sessões encostadas e em outro dia"
+        }
+      ]
+    },
+    {
+      "id": "AURI-05",
+      "description": "Remarcação recusa conflito sem alterar a sessão; excluir libera horário.",
+      "evidence": [
+        {
+          "kind": "vitest",
+          "file": "src/main/db/appointments.test.ts",
+          "name": "agendamentos horário ocupado ao editar, ignora a própria sessão mas recusa conflito com outra"
+        },
+        {
+          "kind": "vitest",
+          "file": "src/main/db/appointments.test.ts",
+          "name": "agendamentos horário ocupado libera o horário quando a sessão é excluída"
+        }
+      ]
+    },
+    {
+      "id": "AURI-06",
+      "description": "Datas brasileiras e limites de horário da interface.",
+      "evidence": [
+        {
+          "kind": "vitest",
+          "file": "src/shared/dates.test.ts",
+          "name": "data digitada (dd/mm/aaaa) converte nos dois sentidos"
+        },
+        {
+          "kind": "vitest",
+          "file": "src/shared/agenda.test.ts",
+          "name": "startsWithinAgenda recusa horários que não existem na grade"
+        },
+        {
+          "kind": "vitest",
+          "file": "src/shared/agenda.test.ts",
+          "name": "endsWithinAgenda aceita a sessão que termina às 20:00 em ponto"
+        },
+        {
+          "kind": "vitest",
+          "file": "src/shared/agenda.test.ts",
+          "name": "endsWithinAgenda recusa a sessão que passa das 20:00"
+        }
+      ]
+    },
+    {
+      "id": "AURI-07",
+      "description": "Backup cifrado, senha errada, restauração e desfazer.",
+      "evidence": [
+        {
+          "kind": "vitest",
+          "file": "src/main/backup/backup.test.ts",
+          "name": "cópia de segurança cifra o banco e volta igual com a senha ou com o código"
+        },
+        {
+          "kind": "vitest",
+          "file": "src/main/backup/backup.test.ts",
+          "name": "cópia de segurança recusa senha e código errados com mensagens próprias"
+        },
+        {
+          "kind": "e2e",
+          "name": "restaura a cópia e desfaz"
+        }
+      ]
+    },
+    {
+      "id": "AURI-08",
+      "description": "Banco v1 preservado ao migrar/reabrir; versão futura recusada.",
+      "evidence": [
+        {
+          "kind": "vitest",
+          "file": "src/main/db/migrations.test.ts",
+          "name": "compatibilidade do banco preserva os registros v1 ao migrar e reabrir"
+        },
+        {
+          "kind": "vitest",
+          "file": "src/main/db/migrations.test.ts",
+          "name": "compatibilidade do banco recusa versão futura sem modificar o arquivo"
+        }
+      ]
+    },
+    {
+      "id": "AURI-09",
+      "description": "Rede valida dados, recusa edição concorrente e revogação.",
+      "evidence": [
+        {
+          "kind": "vitest",
+          "file": "src/main/net/sync.test.ts",
+          "name": "servidor e cliente valida e aplica as regras do banco pelo caminho da rede"
+        },
+        {
+          "kind": "vitest",
+          "file": "src/main/net/sync.test.ts",
+          "name": "servidor e cliente recusa salvar o que foi alterado em outro computador"
+        },
+        {
+          "kind": "vitest",
+          "file": "src/main/net/sync.test.ts",
+          "name": "servidor e cliente remover derruba a conexão aberta e impede a volta"
+        }
+      ]
+    },
+    {
+      "id": "AURI-10",
+      "description": "Tema preservado em disco e conteúdo de importação indica mudanças.",
+      "evidence": [
+        {
+          "kind": "vitest",
+          "file": "src/main/prefs.test.ts",
+          "name": "preferências da interface grava só o que mudou, sem perder o resto"
+        },
+        {
+          "kind": "e2e",
+          "name": "importar mostra o que muda"
+        },
+        {
+          "kind": "e2e",
+          "name": "aplica as configurações importadas"
+        }
+      ]
+    }
+  ]
+}

@@ -43,7 +43,7 @@ const IDLE_TIMEOUT_MS = 45_000
 export function createSyncServer(hooks: ServerHooks): {
   /** Devolve a porta em uso. Padrão: todas as interfaces, na porta preferida. */
   listen(options?: { host?: string; port?: number }): Promise<number>
-  attach(stream: SecretStream): void
+  attach(this: void, stream: SecretStream): void
   broadcast(topics: DataTopic[]): void
   disconnect(publicKey: string): void
   online(): Set<string>

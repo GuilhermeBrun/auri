@@ -15,7 +15,7 @@ export type Probe = {
   /** O caminho existe. Nunca lança (unidade de rede fora do ar vira false). */
   exists(path: string): Promise<boolean>
   /** Lista uma pasta; lança com `code` (ENOENT, EPERM…) como o `fs`. */
-  readdir(path: string): Promise<string[]>
+  readdir(this: void, path: string): Promise<string[]>
   /**
    * Saída de `reg query <key> /s` no Windows, só do valor `value` quando informado ('' se a chave
    * não existir).

@@ -1,6 +1,6 @@
 import SecretStream from '@hyperswarm/secret-stream'
 import createTestnet from 'hyperdht/testnet'
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it } from 'vite-plus/test'
 import type { RemoteReach } from '../../shared/api'
 import { emptyPatientInput } from '../../shared/schemas'
 import { openDatabase, type Db } from '../db/connection'

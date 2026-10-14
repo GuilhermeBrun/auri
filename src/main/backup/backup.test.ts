@@ -1,7 +1,7 @@
 import { mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vite-plus/test'
 import { emptyPatientInput } from '../../shared/schemas'
 import { openDatabase, type Db } from '../db/connection'
 import { createPatient } from '../db/patients'
@@ -126,11 +126,12 @@ describe('cópia de segurança', () => {
     await createBackup({ db, folder, keyring, tmpDir: tmp, now })
     await createBackup({ db, folder, keyring, tmpDir: tmp, now })
     const entries = await listBackups(folder)
-    expect(entries.map((e) => [e.name, e.keyId]).sort()).toEqual(
+    const byName = (a: string[], b: string[]): number => a[0].localeCompare(b[0])
+    expect(entries.map((e) => [e.name, e.keyId]).sort(byName)).toEqual(
       [
         ['Auri 2026-10-13 19h00.auribackup', other.keyId],
         ['Auri 2026-10-13 19h00 (2).auribackup', keyring.keyId]
-      ].sort()
+      ].sort(byName)
     )
   })
 

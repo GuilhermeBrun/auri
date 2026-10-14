@@ -7,8 +7,16 @@ on:
   push:
     tags: ['v*']
 
+permissions:
+  contents: read
+  pull-requests: read
+
 jobs:
+  validation:
+    uses: ./.github/workflows/quality.yml
+
   build:
+    needs: validation
     strategy:
       fail-fast: false
       matrix:
@@ -21,9 +29,11 @@ jobs:
             artifact: dist/*.dmg
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
           cache: npm
@@ -37,24 +47,28 @@ jobs:
 
       - run: npm run ${{ matrix.script }}
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: auri-${{ matrix.os }}
           path: ${{ matrix.artifact }}
+          overwrite: true
           if-no-files-found: error
 
   # O Auri aberto de verdade (janela, IPC, banco, disco), dirigido pelo protocolo do DevTools. No
   # Windows também baixa e roda o instalador oficial do Google Drive (a máquina do CI é descartável).
   e2e:
+    needs: validation
     strategy:
       fail-fast: false
       matrix:
         os: [windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
           cache: npm
@@ -67,8 +81,9 @@ jobs:
         env:
           AURI_E2E_INSTALAR: ${{ matrix.os == 'windows-latest' && '1' || '' }}
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
           name: e2e-${{ matrix.os }}
           path: e2e-saida
+          overwrite: true

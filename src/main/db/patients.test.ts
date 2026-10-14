@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vite-plus/test'
 import { emptyPatientInput, patientInputSchema, type PatientInput } from '../../shared/schemas'
 import { openDatabase, type Db } from './connection'
 import { SCHEMA_VERSION } from './migrations'

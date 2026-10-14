@@ -1,5 +1,5 @@
 import SecretStream from '@hyperswarm/secret-stream'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test'
 import type { DataTopic } from '../../shared/api'
 import { emptyPatientInput } from '../../shared/schemas'
 import { openDatabase, type Db } from '../db/connection'

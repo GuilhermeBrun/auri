@@ -1,0 +1,630 @@
+{
+  "version": 1,
+  "tests": [
+    {
+      "file": "src/main/backup/backup.test.ts",
+      "name": "código de recuperação aceita o código digitado em minúsculas e com espaços",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/backup/backup.test.ts",
+      "name": "código de recuperação tem 24 símbolos em grupos de 4, sem 0/O nem 1/I",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/backup/backup.test.ts",
+      "name": "cópia de segurança cifra o banco e volta igual com a senha ou com o código",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/backup/backup.test.ts",
+      "name": "cópia de segurança lista da mais nova para a mais antiga e guarda só as últimas",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/backup/backup.test.ts",
+      "name": "cópia de segurança não confunde outro arquivo com uma cópia",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/backup/backup.test.ts",
+      "name": "cópia de segurança no mesmo minuto troca a própria cópia, mas nunca a de outro computador",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/backup/backup.test.ts",
+      "name": "cópia de segurança pasta que ainda não existe não tem cópias",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/backup/backup.test.ts",
+      "name": "cópia de segurança percebe quando o cabeçalho foi alterado (as contagens não dão para falsificar)",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/backup/backup.test.ts",
+      "name": "cópia de segurança recusa cópia de uma versão mais nova do Auri",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/backup/backup.test.ts",
+      "name": "cópia de segurança recusa senha e código errados com mensagens próprias",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/backup/backup.test.ts",
+      "name": "troca de senha cifra de novo as cópias: a senha antiga deixa de abrir, a nova abre",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/backup/backup.test.ts",
+      "name": "troca de senha deixa como estão as cópias de outra chave",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/backup/installer.test.ts",
+      "name": "assinatura no Mac de verdade recusa um pacote sem assinatura",
+      "requiredOn": ["darwin"],
+      "reason": "Integração nativa exclusiva do macOS."
+    },
+    {
+      "file": "src/main/backup/installer.test.ts",
+      "name": "assinatura no Windows de verdade aceita um executável assinado pela Microsoft e recusa um sem assinatura",
+      "requiredOn": ["win32"],
+      "reason": "Integração nativa exclusiva do Windows."
+    },
+    {
+      "file": "src/main/backup/installer.test.ts",
+      "name": "assinatura no Windows de verdade os instaladores oficiais do OneDrive e do Google Drive passam na verificação",
+      "requiredOn": [],
+      "reason": "Download dos instaladores externos no workflow Build; fora do PR."
+    },
+    {
+      "file": "src/main/backup/installer.test.ts",
+      "name": "instalador da nuvem aceita só o pacote assinado pelo fabricante certo",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/backup/installer.test.ts",
+      "name": "instalador da nuvem acha a pasta montada do .dmg, com espaço no nome",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/backup/installer.test.ts",
+      "name": "instalador da nuvem no Windows, exige assinatura válida da empresa certa",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/backup/providers.test.ts",
+      "name": "nuvem desinstalada o app sumiu e a pasta da conta ficou para trás: \"não instalado\"",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/backup/providers.test.ts",
+      "name": "nuvem instalada mas fechada a pasta do \"Meu Drive\" aparece mas não responde: \"fechado\", não \"pronto\"",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/backup/providers.test.ts",
+      "name": "nuvens no Mac acha o Meu Drive, o OneDrive pessoal e o iCloud prontos",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/backup/providers.test.ts",
+      "name": "nuvens no Mac instalado sem conta, não instalado e iCloud desligado",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/backup/providers.test.ts",
+      "name": "nuvens no Mac pasta que o macOS não deixou abrir vira \"sem permissão\"",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/backup/providers.test.ts",
+      "name": "nuvens no Windows lê a pasta do OneDrive no registro (preferindo a pessoal) e acha o Google Drive no G:",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/backup/providers.test.ts",
+      "name": "nuvens no Windows OneDrive que vem com o Windows, sem conta; Google Drive não instalado; sem iCloud",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/backup/providers.test.ts",
+      "name": "nuvens no Windows OneDrive recém-instalado, com a pasta criada mas sem conta: falta entrar na conta",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/backup/providers.test.ts",
+      "name": "Windows de verdade lê uma pasta do registro com reg.exe",
+      "requiredOn": ["win32"],
+      "reason": "Integração nativa exclusiva do Windows."
+    },
+    {
+      "file": "src/main/backup/providers.test.ts",
+      "name": "Windows de verdade procura Google Drive e OneDrive sem travar nem lançar erro",
+      "requiredOn": ["win32"],
+      "reason": "Integração nativa exclusiva do Windows."
+    },
+    {
+      "file": "src/main/backup/scheduler.test.ts",
+      "name": "a cada alteração espera 5 minutos sem mudanças",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/backup/scheduler.test.ts",
+      "name": "a cada alteração sem mudança depois da última cópia, não copia",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/backup/scheduler.test.ts",
+      "name": "aviso de cópia antiga avisa depois de 3 dias sem cópia, ou sem nenhuma",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/backup/scheduler.test.ts",
+      "name": "cópia diária computador desligado no horário: copia ao abrir na manhã seguinte",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/backup/scheduler.test.ts",
+      "name": "cópia diária copia no horário e não de novo no mesmo dia",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/backup/scheduler.test.ts",
+      "name": "cópia diária depois de uma falha espera 5 minutos",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/backup/scheduler.test.ts",
+      "name": "cópia diária nunca copiou: copia já",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/backup/scheduler.test.ts",
+      "name": "cópia diária o último horário é o de hoje depois que ele passa, senão o de ontem",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/backup/scheduler.test.ts",
+      "name": "só quando pedir nunca copia sozinho",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/db/appointments.test.ts",
+      "name": "agendamentos cria com o nome do paciente e lista por intervalo",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/db/appointments.test.ts",
+      "name": "agendamentos edita e exclui",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/db/appointments.test.ts",
+      "name": "agendamentos horário ocupado aceita sessões encostadas e em outro dia",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/db/appointments.test.ts",
+      "name": "agendamentos horário ocupado ao editar, ignora a própria sessão mas recusa conflito com outra",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/db/appointments.test.ts",
+      "name": "agendamentos horário ocupado conta as outras sessões que também ocupam o horário",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/db/appointments.test.ts",
+      "name": "agendamentos horário ocupado libera o horário quando a sessão é excluída",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/db/appointments.test.ts",
+      "name": "agendamentos horário ocupado recusa o mesmo horário, mesmo para outro paciente, dizendo quem ocupa",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/db/appointments.test.ts",
+      "name": "agendamentos horário ocupado recusa sessão que começa no meio de outra",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/db/appointments.test.ts",
+      "name": "agendamentos horário ocupado recusa sessão que contém outra",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/db/appointments.test.ts",
+      "name": "agendamentos horário ocupado recusa sessão que está dentro de outra",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/db/appointments.test.ts",
+      "name": "agendamentos horário ocupado recusa sessão que termina no meio de outra",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/db/appointments.test.ts",
+      "name": "agendamentos impede apagar paciente que tem agendamento",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/db/appointments.test.ts",
+      "name": "agendamentos inclui agendamentos que cruzam o limite do intervalo",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/db/appointments.test.ts",
+      "name": "agendamentos não agenda para paciente inexistente",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/db/appointments.test.ts",
+      "name": "agendamentos valida que o fim vem depois do início",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/db/patients.test.ts",
+      "name": "migrations deixa o banco na versão atual",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/db/patients.test.ts",
+      "name": "pacientes atualiza os dados",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/db/patients.test.ts",
+      "name": "pacientes busca por nome sem acento e sem diferenciar maiúsculas, pelo nome da mãe e por CPF",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/db/patients.test.ts",
+      "name": "pacientes cria e lê, devolvendo campos vazios como string vazia",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/db/patients.test.ts",
+      "name": "pacientes esconde inativos por padrão e permite reativar",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/db/patients.test.ts",
+      "name": "validação do cadastro aceita campos opcionais vazios e remove espaços",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/db/patients.test.ts",
+      "name": "validação do cadastro exige nome e valida CPF, celular, e-mail e datas",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/net/remote.test.ts",
+      "name": "acesso de fora da clínica barra quem não pareou antes de conectar",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/net/remote.test.ts",
+      "name": "acesso de fora da clínica fica disponível na rede distribuída",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/net/remote.test.ts",
+      "name": "acesso de fora da clínica o cliente conecta só pela internet e usa os dados",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/net/remote.test.ts",
+      "name": "acesso de fora da clínica o teste de acesso conecta, se apresenta e mede o tempo",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/net/sync.test.ts",
+      "name": "código de pareamento aceita o código digitado de qualquer jeito",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/net/sync.test.ts",
+      "name": "código de pareamento confere a prova uma vez só",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/net/sync.test.ts",
+      "name": "código de pareamento descarta o código depois de 5 erros",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/net/sync.test.ts",
+      "name": "código de pareamento recusa prova de outra conexão, do lado errado ou com código errado",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/net/sync.test.ts",
+      "name": "código de pareamento vence",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/net/sync.test.ts",
+      "name": "servidor e cliente conexão caída: o pedido falha, sem repetir, e o cliente se reconecta",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/net/sync.test.ts",
+      "name": "servidor e cliente não conversa com outro servidor no mesmo endereço",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/net/sync.test.ts",
+      "name": "servidor e cliente pareia com o código e depois usa os dados do servidor",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/net/sync.test.ts",
+      "name": "servidor e cliente recusa código errado e computador não pareado",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/net/sync.test.ts",
+      "name": "servidor e cliente recusa salvar o que foi alterado em outro computador",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/net/sync.test.ts",
+      "name": "servidor e cliente recusa versão diferente antes de qualquer leitura",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/net/sync.test.ts",
+      "name": "servidor e cliente remover derruba a conexão aberta e impede a volta",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/net/sync.test.ts",
+      "name": "servidor e cliente valida e aplica as regras do banco pelo caminho da rede",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/prefs.test.ts",
+      "name": "preferências da interface avisa a mudança só quando algo muda",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/prefs.test.ts",
+      "name": "preferências da interface começa com a barra lateral aberta e o tema do sistema, e lembra a escolha na próxima abertura",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/prefs.test.ts",
+      "name": "preferências da interface completa com o padrão um arquivo de uma versão anterior, sem o tema",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/prefs.test.ts",
+      "name": "preferências da interface grava só o que mudou, sem perder o resto",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/prefs.test.ts",
+      "name": "preferências da interface recusa valores inválidos sem mexer no que estava salvo",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/prefs.test.ts",
+      "name": "preferências da interface usa o padrão quando o arquivo está corrompido",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/settings-transfer.test.ts",
+      "name": "arquivo de configurações aceita arquivo com partes faltando (usa só o que veio)",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/settings-transfer.test.ts",
+      "name": "arquivo de configurações diz o que muda num computador novo, só o que é diferente",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/settings-transfer.test.ts",
+      "name": "arquivo de configurações ida e volta, sem nenhum segredo no arquivo",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/settings-transfer.test.ts",
+      "name": "arquivo de configurações recusa outro arquivo e avisa quando é de versão mais nova",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/shared/agenda.test.ts",
+      "name": "endsWithinAgenda aceita a sessão que termina às 20:00 em ponto",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/shared/agenda.test.ts",
+      "name": "endsWithinAgenda recusa a sessão que passa das 20:00",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/shared/agenda.test.ts",
+      "name": "startsWithinAgenda aceita do início da grade até a última meia hora",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/shared/agenda.test.ts",
+      "name": "startsWithinAgenda recusa horários que não existem na grade",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/shared/agenda.test.ts",
+      "name": "TIME_SLOTS só tem horários em que uma sessão pode começar",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/shared/agenda.test.ts",
+      "name": "TIME_SLOTS vai de 15 em 15 minutos, da abertura até o último quarto de hora antes do fim",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/shared/cpf.test.ts",
+      "name": "isValidCpf aceita CPFs válidos, com ou sem pontuação",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/shared/cpf.test.ts",
+      "name": "isValidCpf rejeita dígito verificador errado",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/shared/cpf.test.ts",
+      "name": "isValidCpf rejeita tamanho errado e sequências repetidas",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/shared/cpf.test.ts",
+      "name": "máscaras formata celular e telefone fixo",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/shared/cpf.test.ts",
+      "name": "máscaras formata CPF enquanto digita",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/shared/cpf.test.ts",
+      "name": "máscaras valida telefone por quantidade de dígitos",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/shared/dates.test.ts",
+      "name": "data digitada (dd/mm/aaaa) aplica a máscara enquanto digita",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/shared/dates.test.ts",
+      "name": "data digitada (dd/mm/aaaa) completa dia e mês de um dígito quando a barra é digitada",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/shared/dates.test.ts",
+      "name": "data digitada (dd/mm/aaaa) converte nos dois sentidos",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/shared/dates.test.ts",
+      "name": "data digitada (dd/mm/aaaa) devolve vazio para o que não é data",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/shared/dates.test.ts",
+      "name": "formatAge mostra anos a partir de 1 ano",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/shared/dates.test.ts",
+      "name": "formatAge mostra dias no primeiro mês",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/shared/dates.test.ts",
+      "name": "formatAge mostra meses no primeiro ano",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/shared/dates.test.ts",
+      "name": "formatAge retorna vazio para data inválida ou futura",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/shared/dates.test.ts",
+      "name": "hora digitada (HH:mm) aplica a máscara enquanto digita",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/shared/dates.test.ts",
+      "name": "hora digitada (HH:mm) completa o que falta",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/shared/dates.test.ts",
+      "name": "hora digitada (HH:mm) põe o zero na hora que começa com 3 a 9, ou com um dígito seguido de separador",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/shared/dates.test.ts",
+      "name": "hora digitada (HH:mm) recusa horas que não existem",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/shared/dates.test.ts",
+      "name": "leitura e escrita de datas formata o horário com dois dígitos",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/shared/dates.test.ts",
+      "name": "leitura e escrita de datas lê data e data/hora como horário local",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/shared/dates.test.ts",
+      "name": "validação de datas valida data e hora locais",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/shared/dates.test.ts",
+      "name": "validação de datas valida datas AAAA-MM-DD",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/shared/names.test.ts",
+      "name": "shortName ignora espaços sobrando e aceita vazio",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/shared/names.test.ts",
+      "name": "shortName mantém os dois primeiros nomes",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/shared/names.test.ts",
+      "name": "shortName não mexe em nomes de uma ou duas palavras",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/shared/names.test.ts",
+      "name": "shortName pula partículas depois do primeiro nome",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/shared/search.test.ts",
+      "name": "busca de pacientes encontra pelo nome da mãe e pelos dígitos do CPF",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/shared/search.test.ts",
+      "name": "busca de pacientes encontra pelo nome sem acento e sem diferenciar maiúsculas",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/shared/search.test.ts",
+      "name": "busca de pacientes não casa entre o nome do paciente e o da mãe",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/shared/search.test.ts",
+      "name": "busca de pacientes sem busca devolve todos, na ordem recebida",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/db/migrations.test.ts",
+      "name": "compatibilidade do banco preserva os registros v1 ao migrar e reabrir",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/db/migrations.test.ts",
+      "name": "compatibilidade do banco recusa versão futura sem modificar o arquivo",
+      "requiredOn": ["darwin", "win32", "linux"]
+    }
+  ]
+}

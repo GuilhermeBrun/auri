@@ -56,7 +56,8 @@ export function proofMatches(expected: Buffer, received: Buffer): boolean {
 }
 
 export type PairingCheck =
-  { ok: true; code: string } | { ok: false; reason: 'none' | 'expired' | 'wrong' }
+  | { ok: true; code: string }
+  | { ok: false; reason: 'none' | 'expired' | 'wrong' }
 
 /**
  * O código de pareamento em uso no servidor: um por vez, vale `CODE_TTL_MS`, uma vez só, e é

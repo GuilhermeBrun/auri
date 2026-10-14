@@ -1,0 +1,7 @@
+[extend]
+useDefault = true
+
+# Somente saídas geradas e material de pesquisa; código e fixtures seguem inspecionados.
+[allowlist]
+description = "Dependências, binários e saídas locais"
+paths = ['''(^|/)(node_modules|out|dist|\.quality|research_notes|reports)/''']

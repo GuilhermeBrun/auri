@@ -208,7 +208,7 @@ export function PatientsPage(): React.JSX.Element {
   const searchRef = useRef<HTMLInputElement>(null)
   const searching = busca.trim() !== ''
   const newPatient = (): void => {
-    navigate('/pacientes/novo')
+    void navigate('/pacientes/novo')
   }
 
   return (

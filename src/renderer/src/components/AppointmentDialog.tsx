@@ -29,7 +29,8 @@ import { useToast } from '@renderer/lib/toast'
 
 /** O que abriu o diálogo: um horário livre na agenda ou um agendamento existente. */
 export type AppointmentDraft =
-  { mode: 'create'; inicio: Date; duracao: number } | { mode: 'edit'; appointment: Appointment }
+  | { mode: 'create'; inicio: Date; duracao: number }
+  | { mode: 'edit'; appointment: Appointment }
 
 const DURATIONS = [30, 45, 60, 90]
 
@@ -164,7 +165,7 @@ function AppointmentForm({
   })
 
   const done = (): void => {
-    queryClient.invalidateQueries({ queryKey: ['appointments'] })
+    void queryClient.invalidateQueries({ queryKey: ['appointments'] })
     onClose()
   }
 

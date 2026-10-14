@@ -38,7 +38,7 @@ function weekday(date: Date): string {
  * calendário põe o foco nele, depois que o diálogo em volta liberar o foco para fora dele.
  */
 export function Calendar({ value, onSelect }: CalendarProps): React.JSX.Element {
-  const today = new Date()
+  const [today] = useState(() => new Date())
   const [active, setActive] = useState(value ?? today)
   const [month, setMonth] = useState(startOfMonth(active))
   const gridRef = useRef<HTMLDivElement>(null)

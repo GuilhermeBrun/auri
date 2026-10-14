@@ -9,7 +9,13 @@ Arquivo `auri.db`, na pasta de dados do app:
 - **macOS:** `~/Library/Application Support/Auri/auri.db`
 - **Windows:** `%APPDATA%\Auri\auri.db`
 
-Por enquanto não há backup automático. Para não perder dados, copie esse arquivo com o app fechado.
+Em **Configurações → Cópia de segurança**, configure cópias cifradas em uma pasta local,
+pendrive ou pasta sincronizada com a nuvem. A cópia pode ser diária, após alterações ou
+manual; guarde a senha e o código de recuperação. O Auri precisa estar aberto para executar
+as cópias automáticas. Apenas o computador que guarda os dados realiza essas cópias.
+
+Para copiar o arquivo `auri.db` diretamente, feche o app antes. A documentação operacional
+de validação do código e conteúdo fica em [docs/qualidade/politica.md](docs/qualidade/politica.md).
 
 ## Desenvolvimento
 
@@ -19,6 +25,8 @@ npm run dev        # recarrega as telas e reinicia o app ao alterar main/preload
 npm test           # testes (rodam no Node do Electron por causa do better-sqlite3)
 npm run typecheck
 npm run lint
+npm run check      # Vite+: formato, lint e análise de tipos
+npm run quality    # inclui testes Electron, E2E, build e segurança
 ```
 
 Estrutura:
@@ -29,6 +37,7 @@ Estrutura:
 - `src/preload/`: expõe `window.api`. O contrato fica em `src/shared/api.ts`.
 - `src/renderer/`: telas (React + Tailwind).
 - `docs/identidade-visual.md`: identidade visual (cores, tipografia, componentes). Toda tela nova deve segui-la.
+- `vite.config.ts`: configuração única do build Electron, testes, lint e formatação com Vite+.
 
 ## Instaladores
 

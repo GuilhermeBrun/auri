@@ -329,7 +329,7 @@ const AgendaCalendar = memo(function AgendaCalendar({
   arrivedRef
 }: AgendaCalendarProps): React.JSX.Element {
   const { min, max, scrollToTime } = useMemo(() => {
-    const base = startOfDay(new Date())
+    const base = startOfDay(date)
     return {
       min: setHours(base, DAY_START_HOUR),
       max: setHours(base, DAY_END_HOUR),
@@ -337,7 +337,7 @@ const AgendaCalendar = memo(function AgendaCalendar({
       // cortava o rótulo da primeira hora
       scrollToTime: setHours(base, DAY_START_HOUR)
     }
-  }, [])
+  }, [date])
 
   const onSelectSlot = useCallback(
     (slot: SlotInfo): void => {

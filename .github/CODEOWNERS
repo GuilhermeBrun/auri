@@ -1,0 +1,7 @@
+# Encaminha revisão. A exigência depende das regras configuradas no GitHub.
+/.github/ @GuilhermeBrun
+/scripts/ @GuilhermeBrun
+/docs/qualidade/ @GuilhermeBrun
+/vite.config.ts @GuilhermeBrun
+/package*.json @GuilhermeBrun
+/src/**/*.test.ts @GuilhermeBrun

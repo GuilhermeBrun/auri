@@ -1,0 +1,164 @@
+name: Qualidade
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+  workflow_call:
+  schedule:
+    - cron: '0 10 * * 1'
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: quality-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  EXPECTED_SHA: ${{ github.sha }}
+  BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before || github.sha }}
+  TRUSTED_SHA: ${{ github.event.pull_request.base.sha || github.sha }}
+
+jobs:
+  policy:
+    name: policy
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+      - name: Carregar verificador da base aprovada
+        shell: bash
+        run: |
+          mkdir -p .quality/trusted
+          if git cat-file -e "$TRUSTED_SHA:docs/qualidade/testes.json" 2>/dev/null; then
+            git archive "$TRUSTED_SHA" scripts/quality docs/qualidade | tar -x -C .quality/trusted
+          else
+            # Bootstrap: esta é a primeira introdução da política no repositório.
+            mkdir -p .quality/trusted/scripts .quality/trusted/docs
+            cp -R scripts/quality .quality/trusted/scripts/
+            cp -R docs/qualidade .quality/trusted/docs/
+          fi
+      - name: Conferir integridade da política
+        run: node .quality/trusted/scripts/quality/cli.mjs policy
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: quality-policy
+          path: |
+            .quality/policy.json
+            .quality/trusted/
+          include-hidden-files: true
+          overwrite: true
+          if-no-files-found: error
+          retention-days: 14
+
+  checks:
+    name: checks (${{ matrix.platform }})
+    needs: policy
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            platform: darwin
+          - os: windows-latest
+            platform: win32
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - run: npm run test:quality
+      - run: npm run test:ci
+      - run: npm run build
+      - run: npm run test:e2e
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: quality-${{ matrix.platform }}
+          path: .quality/
+          include-hidden-files: true
+          overwrite: true
+          if-no-files-found: error
+          retention-days: 14
+
+  security:
+    name: security
+    needs: policy
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: quality-policy
+          path: .quality-policy
+      - run: npm ci --ignore-scripts
+      - name: Audit e scan de segredos com política da base
+        run: node .quality-policy/trusted/scripts/quality/security.mjs
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: quality-security
+          path: .quality/
+          include-hidden-files: true
+          overwrite: true
+          if-no-files-found: error
+          retention-days: 14
+
+  quality:
+    name: quality
+    if: always()
+    needs: [policy, checks, security]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+      - name: Exigir sucesso de todos os jobs
+        env:
+          QUALITY_JOBS: ${{ toJSON(needs) }}
+        run: |
+          node -e "const jobs=JSON.parse(process.env.QUALITY_JOBS);for(const name of ['policy','checks','security']){if(jobs[name]?.result!=='success')throw new Error(name+': '+jobs[name]?.result)}"
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          pattern: quality-*
+          path: evidence
+      - name: Validar relatórios e cenários com verificador da base
+        run: node evidence/quality-policy/trusted/scripts/quality/cli.mjs aggregate evidence
+        env:
+          QUALITY_JOBS: ${{ toJSON(needs) }}
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: quality-summary
+          path: evidence/summary.json
+          overwrite: true
+          if-no-files-found: error
+          retention-days: 14

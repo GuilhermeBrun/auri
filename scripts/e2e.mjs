@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/explicit-function-return-type -- script em JS puro */
 // Teste de ponta a ponta do Auri aberto de verdade (janela, IPC, banco, disco), dirigido pelo
 // protocolo do DevTools. Roda no CI (Windows e Mac) depois do `npm run build`:
 //
@@ -25,7 +24,10 @@ const MAIN_PORT = 9250
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 let failures = 0
+const startedAt = Date.now()
+const checks = []
 function check(name, ok, detail = '') {
+  checks.push({ name, status: ok ? 'passed' : 'failed', detail })
   console.log(`${ok ? '✓' : '✗'} ${name}${detail ? ` — ${detail}` : ''}`)
   if (!ok) failures++
 }
@@ -415,9 +417,30 @@ try {
   await run()
 } catch (error) {
   failures++
+  checks.push({ name: 'execução do Electron', status: 'failed', detail: error.message })
   console.log(`✗ erro: ${error.stack ?? error}`)
 } finally {
   app.kill()
+  writeFileSync(
+    join(out, 'results.json'),
+    JSON.stringify(
+      {
+        sha: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(),
+        worktreeDirty:
+          execFileSync('git', ['status', '--porcelain'], { encoding: 'utf8' }).trim() !== '',
+        platform: process.platform,
+        arch: process.arch,
+        runId: process.env.GITHUB_RUN_ID || null,
+        runAttempt: process.env.GITHUB_RUN_ATTEMPT || null,
+        startedAt,
+        finishedAt: Date.now(),
+        success: failures === 0,
+        checks
+      },
+      null,
+      2
+    )
+  )
 }
 console.log(failures === 0 ? '\nE2E: tudo certo' : `\nE2E: ${failures} falha(s)`)
 process.exit(failures === 0 ? 0 : 1)

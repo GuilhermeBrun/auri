@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Archive } from 'lucide-react'
-import { useEffect, useId, type ReactNode } from 'react'
+import { useEffect, useId, useState, type ReactNode } from 'react'
 import { Controller, useForm, useWatch, type Control } from 'react-hook-form'
 import { useNavigate, useParams } from 'react-router'
 import { formatAge, toIsoDate } from '@shared/dates'
@@ -100,6 +100,7 @@ function PatientFormPage({ patientId }: { patientId: number | null }): React.JSX
   const toast = useToast()
   const ids = useId()
   const isNew = patientId === null
+  const [entryDate] = useState(() => toIsoDate(new Date()))
 
   const {
     data: patient,
@@ -119,7 +120,7 @@ function PatientFormPage({ patientId }: { patientId: number | null }): React.JSX
     formState: { errors, isDirty }
   } = useForm<PatientInput>({
     resolver: zodResolver(patientInputSchema),
-    defaultValues: { ...emptyPatientInput(), data_entrada: toIsoDate(new Date()) }
+    defaultValues: { ...emptyPatientInput(), data_entrada: entryDate }
   })
 
   useEffect(() => {
@@ -134,11 +135,11 @@ function PatientFormPage({ patientId }: { patientId: number | null }): React.JSX
           window.api.patients.update(patientId, input, patient?.updated_at),
     onSuccess: (saved) => {
       queryClient.setQueryData(['patient', saved.id], saved)
-      queryClient.invalidateQueries({ queryKey: ['patients'] })
-      queryClient.invalidateQueries({ queryKey: ['appointments'] })
+      void queryClient.invalidateQueries({ queryKey: ['patients'] })
+      void queryClient.invalidateQueries({ queryKey: ['appointments'] })
       toast({ title: isNew ? 'Paciente cadastrado' : 'Alterações salvas', description: saved.nome })
       // `saved`: a lista destaca (e rola até) a linha deste paciente
-      navigate('/pacientes', { state: { saved: saved.id } })
+      void navigate('/pacientes', { state: { saved: saved.id } })
     }
   })
 
@@ -146,7 +147,7 @@ function PatientFormPage({ patientId }: { patientId: number | null }): React.JSX
     mutationFn: () => window.api.patients.setAtivo(patientId!, !patient!.ativo),
     onSuccess: (saved) => {
       queryClient.setQueryData(['patient', saved.id], saved)
-      queryClient.invalidateQueries({ queryKey: ['patients'] })
+      void queryClient.invalidateQueries({ queryKey: ['patients'] })
       toast(
         saved.ativo
           ? { title: 'Paciente reativado', description: saved.nome }

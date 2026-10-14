@@ -262,7 +262,7 @@ export function Layout(): React.JSX.Element {
       if (!sidebar && !settings) return
       e.preventDefault()
       if (sidebar) toggle()
-      else navigate(SETTINGS_PATH)
+      else void navigate(SETTINGS_PATH)
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)

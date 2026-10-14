@@ -73,15 +73,15 @@ function createWindow(prefs: UiPrefs): void {
   })
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
-    if (details.url.startsWith('https://')) shell.openExternal(details.url)
+    if (details.url.startsWith('https://')) void shell.openExternal(details.url)
     return { action: 'deny' }
   })
 
   // HMR do renderer em desenvolvimento; arquivo local em produção.
   if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
-    mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
+    void mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
   } else {
-    mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
+    void mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
   }
 }
 
@@ -142,7 +142,7 @@ if (!isFirstInstance) {
   })
 }
 
-app.whenReady().then(async () => {
+void app.whenReady().then(async () => {
   // a segunda instância só existe para acordar a primeira (`second-instance`) e sair
   if (!isFirstInstance) return
 

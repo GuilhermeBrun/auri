@@ -74,7 +74,13 @@ export type ConnectionRole = 'server' | 'client'
  * - `revoked`: o outro computador removeu este da lista.
  */
 export type LinkStatus =
-  'local' | 'unpaired' | 'connecting' | 'connected' | 'offline' | 'version' | 'revoked'
+  | 'local'
+  | 'unpaired'
+  | 'connecting'
+  | 'connected'
+  | 'offline'
+  | 'version'
+  | 'revoked'
 
 /** Um computador que pode usar os dados deste. */
 export type PairedDevice = {

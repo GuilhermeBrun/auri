@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { isBackupDue, isStale, lastDailySlot, type ScheduleState } from './scheduler'
 
 const at = (day: number, hours: number, minutes = 0): Date => new Date(2026, 9, day, hours, minutes)
