@@ -53,6 +53,20 @@ async function launch(data) {
     realpathSync(data)
   )
   await expect(page.locator('main')).toBeVisible()
+  const main = await application.evaluate(({ app, BrowserWindow }) => ({
+    appPath: app.getAppPath(),
+    userData: app.getPath('userData'),
+    url: BrowserWindow.getAllWindows()[0].webContents.getURL()
+  }))
+  const bridge = await page.evaluate(async () => ({
+    url: location.href,
+    backup: await window.backup.info().catch((error) => ({ error: error.message })),
+    patients: await window.api.patients
+      .list()
+      .then((patients) => ({ count: patients.length }))
+      .catch((error) => ({ error: error.message }))
+  }))
+  writeJson('.quality/package/startup.json', { main, bridge })
   await page.addStyleTag({
     content: '*, *::before, *::after { animation: none !important; transition: none !important; }'
   })
@@ -156,6 +170,11 @@ try {
 } catch (error) {
   console.error(error)
   process.exitCode = 1
+  if (application) {
+    const page = await application.firstWindow().catch(() => null)
+    if (page && !page.isClosed())
+      await page.screenshot({ path: '.quality/package/falha.png' }).catch(() => {})
+  }
 } finally {
   await application?.close().catch(() => {})
   writeJson('.quality/package/results.json', {

@@ -16,7 +16,7 @@ import { execution, writeJson } from './evidence.mjs'
 import { requireCondition } from './checks.mjs'
 
 const startedAt = Date.now()
-const directory = mkdtempSync(join(tmpdir(), 'auri-installer-quality-'))
+const directory = mkdtempSync(join(process.env.RUNNER_TEMP || tmpdir(), 'auri-installer-quality-'))
 let artifact
 let mounted = false
 const checks = []
