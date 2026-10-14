@@ -138,15 +138,15 @@ jobs:
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: quality-policy
-          path: .quality-policy
+          path: .quality/policy-source
       - run: npm install --global npm@11.13.0
       - run: npm ci --ignore-scripts
       - name: Audit e scan de segredos com política da base
-        run: node .quality-policy/trusted/scripts/quality/security.mjs
+        run: node .quality/policy-source/trusted/scripts/quality/security.mjs
       - name: SAST e provas das regras
         run: npm run security:sast
         env:
-          AURI_SAST_POLICY: .quality-policy/trusted/docs/qualidade/sast.json
+          AURI_SAST_POLICY: .quality/policy-source/trusted/docs/qualidade/sast.json
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
