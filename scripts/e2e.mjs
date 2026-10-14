@@ -363,6 +363,38 @@ async function run() {
     check('"Abrir o Google Drive" abre o app', /GoogleDriveFS|Google Drive/i.test(running))
     const screen = await page.eval(`document.body.textContent.includes('Abrir o Google Drive')`)
     check('o cartão oferece "Abrir o Google Drive"', screen)
+
+    // OneDrive: no Windows ele pode já vir instalado; senão, "Instalar" (o instalador da
+    // Microsoft não pede clique)
+    if (process.platform === 'win32') {
+      const onedrive = async () =>
+        (await page.eval(`window.backup.providers()`)).find((p) => p.id === 'onedrive').state
+      let od = await onedrive()
+      console.log(`OneDrive antes: ${od}`)
+      if (od === 'not-installed') {
+        const clickedOd = await page.eval(`(() => {
+          const card = [...document.querySelectorAll('div')].find((d) => d.textContent.startsWith('OneDrive') && d.querySelector('button'))
+          const button = [...(card?.querySelectorAll('button') ?? [])].find((b) => b.textContent.trim() === 'Instalar')
+          button?.click()
+          return !!button
+        })()`)
+        check('clica em "Instalar" no cartão do OneDrive', clickedOd)
+        for (let i = 0; i < 60 && od === 'not-installed'; i++) {
+          await sleep(5000)
+          if (i === 6) desktopShot('09-onedrive-instalando')
+          od = await onedrive()
+        }
+      }
+      check('o OneDrive fica instalado (falta entrar na conta)', od === 'signed-out', od)
+      await page.eval(`window.backup.openProvider('onedrive')`)
+      await sleep(15000)
+      desktopShot('10-onedrive-aberto')
+      const odRunning = execFileSync('tasklist', ['/FI', 'IMAGENAME eq OneDrive.exe'], {
+        encoding: 'utf8'
+      })
+      check('"Abrir o OneDrive" abre o app', /OneDrive\.exe/i.test(odRunning))
+      await shot(page, '11-cartoes-instalados')
+    }
   }
 }
 
