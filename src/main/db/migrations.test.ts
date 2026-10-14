@@ -1,5 +1,5 @@
 import Database from 'better-sqlite3'
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test'
@@ -62,5 +62,17 @@ describe('compatibilidade do banco', () => {
     expect(() => migrate(db)).toThrow('O banco de dados é de uma versão mais nova do Auri')
     expect(readFileSync(file)).toEqual(before)
     expect(db.prepare('SELECT valor FROM sentinel').get()).toEqual({ valor: 'preservado' })
+  })
+
+  it('recusa a abertura de banco futuro sem mudar bytes nem criar WAL', () => {
+    const file = join(dir, 'futuro-abertura.db')
+    const future = new Database(file)
+    future.exec("CREATE TABLE sentinel (valor TEXT); INSERT INTO sentinel VALUES ('preservado');")
+    future.pragma(`user_version = ${SCHEMA_VERSION + 1}`)
+    future.close()
+    const before = readFileSync(file)
+    expect(() => openDatabase(file)).toThrow('O banco de dados é de uma versão mais nova do Auri')
+    expect(readFileSync(file)).toEqual(before)
+    expect(readdirSync(dir)).toEqual(['futuro-abertura.db'])
   })
 })

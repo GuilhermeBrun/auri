@@ -9,6 +9,8 @@ import { createBackupService, type BackupService } from './backup-service'
 import { detectProviders, systemProbe } from './backup/providers'
 import { createConnection, type Connection } from './connection'
 import { registerIpc } from './ipc'
+import { trustRenderer } from './ipc-security'
+import { pathToFileURL } from 'node:url'
 import { createPrefsStore, type PrefsStore } from './prefs'
 import { createTransferService } from './transfer-service'
 
@@ -79,9 +81,20 @@ function createWindow(prefs: UiPrefs): void {
 
   // HMR do renderer em desenvolvimento; arquivo local em produção.
   if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
-    void mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
+    const url = process.env['ELECTRON_RENDERER_URL']
+    trustRenderer(mainWindow.webContents, url)
+    mainWindow.webContents.on('will-navigate', (event, target) => {
+      if (target !== url) event.preventDefault()
+    })
+    void mainWindow.loadURL(url)
   } else {
-    void mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
+    const file = join(__dirname, '../renderer/index.html')
+    const url = pathToFileURL(file).href
+    trustRenderer(mainWindow.webContents, url)
+    mainWindow.webContents.on('will-navigate', (event, target) => {
+      if (target !== url) event.preventDefault()
+    })
+    void mainWindow.loadFile(file)
   }
 }
 

@@ -26,8 +26,8 @@ export function createPrefsStore(file: string, onChange?: (prefs: UiPrefs) => vo
     save(value) {
       const next = { ...prefs, ...uiPrefsSchema.partial().parse(value) }
       if (JSON.stringify(next) === JSON.stringify(prefs)) return
+      writeFileSync(file, JSON.stringify(next))
       prefs = next
-      writeFileSync(file, JSON.stringify(prefs))
       onChange?.(prefs)
     }
   }

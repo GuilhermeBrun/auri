@@ -5,11 +5,13 @@ import type { BackupService } from './backup-service'
 import type { Connection } from './connection'
 import { DATA_CHANNELS, errorMessage } from './operations'
 import type { PrefsStore } from './prefs'
+import { assertTrustedSender } from './ipc-security'
 
 /** Todo handler valida a entrada no main: o renderer nunca é tratado como confiável. */
 function handle<A extends unknown[], T>(channel: string, fn: (...args: A) => T | Promise<T>): void {
-  ipcMain.handle(channel, async (_event, ...args): Promise<IpcResult<T>> => {
+  ipcMain.handle(channel, async (event, ...args): Promise<IpcResult<T>> => {
     try {
+      assertTrustedSender(event)
       return { ok: true, data: await fn(...(args as A)) }
     } catch (error) {
       console.error(`[ipc] ${channel}: ${errorMessage(error)}`)
@@ -36,7 +38,14 @@ export function registerIpc(
 ): void {
   // Dados: no banco deste computador ou no outro, conforme o papel (ver main/connection.ts).
   for (const channel of DATA_CHANNELS) {
-    ipcMain.handle(channel, (_event, ...args) => connection.call(channel, args))
+    ipcMain.handle(channel, (event, ...args) => {
+      try {
+        assertTrustedSender(event)
+        return connection.call(channel, args)
+      } catch (error) {
+        return { ok: false, error: errorMessage(error) }
+      }
+    })
   }
 
   // Configurações / Conexão
@@ -127,8 +136,9 @@ export function registerIpc(
   )
 
   // Sem resposta: a janela manda gravar e segue (ver main/prefs.ts)
-  ipcMain.on('prefs:save', (_event, value: unknown) => {
+  ipcMain.on('prefs:save', (event, value: unknown) => {
     try {
+      assertTrustedSender(event)
       prefs.save(value)
     } catch (error) {
       console.error('[ipc] prefs:save', error)
