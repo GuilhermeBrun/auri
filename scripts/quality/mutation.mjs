@@ -4,6 +4,7 @@ import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  realpathSync,
   rmSync,
   symlinkSync,
   writeFileSync
@@ -16,7 +17,8 @@ import { execution, writeJson } from './evidence.mjs'
 import { requireCondition } from './checks.mjs'
 
 const startedAt = Date.now()
-const sandbox = mkdtempSync(join(tmpdir(), 'auri-mutation-'))
+// Evita misturar o caminho 8.3 de TEMP com o caminho completo usado pelo Vite no Windows.
+const sandbox = realpathSync.native(mkdtempSync(join(tmpdir(), 'auri-mutation-')))
 const output = resolve('.quality/mutation')
 const catalog = JSON.parse(readFileSync('docs/qualidade/mutacoes.json', 'utf8'))
 const mutants = []
