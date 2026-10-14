@@ -1,4 +1,6 @@
 import { requireCondition } from './checks.mjs'
+import { readFileSync } from 'node:fs'
+import { validateRelease } from './extended-checks.mjs'
 
 try {
   if (process.env.GITHUB_REF_TYPE !== 'tag') {
@@ -14,19 +16,15 @@ try {
       return result.json()
     }
     const main = await get('commits/main')
-    requireCondition(
-      main.sha === GITHUB_SHA,
-      'Tag de release precisa apontar para o commit atual de main'
-    )
     const runs = await get(
       `actions/workflows/quality.yml/runs?event=push&branch=main&head_sha=${GITHUB_SHA}&per_page=100`
     )
-    requireCondition(
-      runs.workflow_runs.some(
-        (run) =>
-          run.head_sha === GITHUB_SHA && run.status === 'completed' && run.conclusion === 'success'
-      ),
-      'Release exige Qualidade aprovado no push de main desse commit'
+    validateRelease(
+      main.sha,
+      GITHUB_SHA,
+      process.env.GITHUB_REF_NAME,
+      JSON.parse(readFileSync('package.json', 'utf8')).version,
+      runs.workflow_runs
     )
     console.log(`Release autorizada para main aprovado: ${GITHUB_SHA}`)
   }

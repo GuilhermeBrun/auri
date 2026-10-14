@@ -1,6 +1,11 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { validateCoverage, validateExtendedReport, validateMutations } from './extended-checks.mjs'
+import {
+  validateCoverage,
+  validateExtendedReport,
+  validateMutations,
+  validateRelease
+} from './extended-checks.mjs'
 
 const metadata = {
   sha: 'commit',
@@ -87,5 +92,33 @@ await test('mutação precisa conter todos os erros previstos, detectados por as
         'darwin'
       ),
     /duplicado/
+  )
+})
+
+await test('release exige versão correta e sucesso no push do commit atual de main', () => {
+  const run = {
+    head_sha: 'commit',
+    head_branch: 'main',
+    event: 'push',
+    status: 'completed',
+    conclusion: 'success'
+  }
+  assert.doesNotThrow(() => validateRelease('commit', 'commit', 'v1.0.0', '1.0.0', [run]))
+  assert.throws(() => validateRelease('commit', 'commit', 'v2.0.0', '1.0.0', [run]), /versão/)
+  assert.throws(() => validateRelease('outro', 'commit', 'v1.0.0', '1.0.0', [run]), /commit atual/)
+  for (const bad of [
+    { ...run, head_sha: 'outro' },
+    { ...run, head_branch: 'feature' },
+    { ...run, event: 'workflow_dispatch' },
+    { ...run, conclusion: 'failure' },
+    { ...run, status: 'in_progress' }
+  ])
+    assert.throws(
+      () => validateRelease('commit', 'commit', 'v1.0.0', '1.0.0', [bad]),
+      /Qualidade aprovado/
+    )
+  assert.throws(
+    () => validateRelease('commit', 'commit', 'v1.0.0', '1.0.0', []),
+    /Qualidade aprovado/
   )
 })

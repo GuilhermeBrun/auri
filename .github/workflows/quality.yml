@@ -24,7 +24,7 @@ concurrency:
 
 env:
   EXPECTED_SHA: ${{ github.sha }}
-  BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before || github.sha }}
+  BASE_SHA: ${{ github.event.pull_request.base.sha || (github.event.before != '0000000000000000000000000000000000000000' && github.event.before) || github.sha }}
   TRUSTED_SHA: ${{ github.event.pull_request.base.sha || github.sha }}
 
 jobs:

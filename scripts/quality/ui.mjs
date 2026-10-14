@@ -54,8 +54,11 @@ async function launch() {
     realpathSync(directory)
   )
   await application.evaluate(({ BrowserWindow }) =>
-    BrowserWindow.getAllWindows()[0].setContentSize(1280, 820)
+    BrowserWindow.getAllWindows()[0].setContentSize(1024, 640)
   )
+  await expect
+    .poll(() => page.evaluate(() => ({ width: innerWidth, height: innerHeight })))
+    .toEqual({ width: 1024, height: 640 })
   page.on('pageerror', (error) => errors.push(error.message))
   await page.clock.setFixedTime(new Date('2026-10-14T12:00:00Z'))
   // Recria o React já com a data fixa, inclusive estados inicializados na primeira renderização.

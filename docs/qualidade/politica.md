@@ -135,7 +135,7 @@ A configuração de formato, lint, testes e cobertura continua em `vite.config.t
   A integração usa o modo compatível com Electron e recusa iframes; isso não substitui uma
   avaliação com VoiceOver/NVDA.
 - As referências PNG por sistema ficam em `visual/`. A data é fixa, as fontes são as do app,
-  a área tem 1280×820 pixels e animações/avisos transitórios são retirados das comparações.
+  a área tem 1024×640 pixels e animações/avisos transitórios são retirados das comparações.
   A troca do tema precisa aparecer no CSS antes da captura. O diff e a razão de pixels alterados
   ficam nos artefatos, com tolerância de 0,1% e comparação de antialiasing.
 - `mutacoes.json` lista erros deliberados nas regras de agenda, CPF, compatibilidade do banco
@@ -147,7 +147,8 @@ A configuração de formato, lint, testes e cobertura continua em `vite.config.t
   No Build de distribuição, o DMG da arquitetura atual é montado somente para leitura,
   ou o NSIS é instalado em pasta temporária no runner descartável; os mesmos testes abrem
   o aplicativo distribuído. O relatório inclui o SHA-256 do instalador.
-- Tags só geram distribuição quando apontam para o HEAD de `main` com Qualidade aprovado
+- Tags precisam corresponder à versão do `package.json` e só geram distribuição quando
+  apontam para o HEAD de `main` com Qualidade aprovado
   naquele push. Build manual continua gerando artefatos para validação, sem publicar release.
 
 ## Revisar referências visuais
@@ -185,3 +186,14 @@ não publica uma versão pública nem afirma que um certificado ad-hoc identific
 Os testes abrem somente a arquitetura nativa do runner; outros alvos gerados precisam de
 execução em hardware correspondente antes de prometer compatibilidade. Performance e avaliação
 manual com leitores de tela continuam tendo evidências próprias.
+
+## Dependências moderadas em 14/10/2026
+
+O audit registra oito entradas moderadas decorrentes do mesmo advisory
+[GHSA-hp3w-g68c-fv3c](https://github.com/advisories/GHSA-hp3w-g68c-fv3c),
+na cadeia `electron-builder → @electron/get → global-agent → roarr → sprintf-js`.
+A versão publicada mais recente de `sprintf-js` é 1.1.3 e o advisory não informa
+versão corrigida. `npm audit fix --dry-run --ignore-scripts` não propõe atualização.
+A cadeia pertence às ferramentas de empacotamento; a inspeção do ASAR deve confirmar
+que essas ferramentas não acompanham o aplicativo. Achados altos/críticos continuam
+bloqueantes e o audit semanal permite reavaliar quando houver correção publicada.

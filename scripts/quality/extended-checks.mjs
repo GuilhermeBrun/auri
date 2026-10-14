@@ -4,6 +4,25 @@ import { requireCondition, validateCiExecution, validateE2e } from './checks.mjs
 
 const json = (file) => JSON.parse(readFileSync(file, 'utf8'))
 
+export function validateRelease(mainSha, sha, tag, version, runs) {
+  requireCondition(
+    tag === `v${version}`,
+    'Tag de release precisa corresponder à versão do package.json'
+  )
+  requireCondition(mainSha === sha, 'Tag de release precisa apontar para o commit atual de main')
+  requireCondition(
+    runs.some(
+      (run) =>
+        run.head_sha === sha &&
+        run.head_branch === 'main' &&
+        run.event === 'push' &&
+        run.status === 'completed' &&
+        run.conclusion === 'success'
+    ),
+    'Release exige Qualidade aprovado no push de main desse commit'
+  )
+}
+
 export function validateCoverage(summary, policy, root) {
   const normalized = new Map(
     Object.entries(summary).map(([file, metrics]) => [
