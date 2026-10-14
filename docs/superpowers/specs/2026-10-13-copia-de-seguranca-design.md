@@ -7,11 +7,14 @@ Data: 13/10/2026. Estado: fases 1 a 4 implementadas e verificadas (13 e 14/10/20
   o Auri avançando sozinho).
 - Windows e Mac no CI, com o app aberto (`scripts/e2e.mjs`, job `e2e`): o mesmo fluxo e, no
   Windows, a instalação real do Google Drive pelo botão "Instalar" (download, assinatura
-  Authenticode, instalador aceito) e "Abrir o Google Drive" abrindo o app.
+  Authenticode, instalador aceito) e "Abrir o Google Drive" abrindo o app; o mesmo com o OneDrive.
 - Nuvem que para de funcionar (pedido do usuário em 13/10, depois de desinstalar o Google Drive):
   a aba mostra o que houve e o caminho para resolver; verificado no Mac (desinstalar e reinstalar).
-- Não feito: gravar uma cópia numa conta de nuvem real (o usuário autorizou no Google Drive, mas o
-  desinstalou antes).
+- Nuvem real (14/10, autorizado pelo usuário): cópia gravada no iCloud Drive dele, enviada pelo
+  macOS em 6 s, restaurada num "computador novo" com a senha; a pasta foi apagada no fim.
+- Windows no CI: OneDrive instalado pelo "Instalar" e aberto pelo "Abrir o OneDrive". O instalador
+  grava a pasta da conta no registro antes do login (sem `UserEmail`): só conta como pronto com
+  e-mail e pasta.
 
 ## Objetivo
 
