@@ -171,6 +171,14 @@ try {
     const [patient] = await patients()
     expect(patient.data_nascimento).toBe('2019-08-17')
     expect(patient.mae_nome).toBe('Maria Interface Fictícia')
+    await expect(page.getByRole('columnheader')).toHaveText([
+      'Paciente',
+      'Mãe',
+      'Escola',
+      'Entrada'
+    ])
+    await expect(page.getByText('7 anos', { exact: true })).toBeVisible()
+    await expect(page.getByRole('cell', { name: '14/10/2026', exact: true })).toBeVisible()
     await page.getByRole('searchbox').fill('')
     await accessibility('pacientes-lista')
   })
