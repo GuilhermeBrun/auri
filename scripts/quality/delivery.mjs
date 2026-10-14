@@ -1,5 +1,5 @@
 import { readFileSync, readdirSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { normalize, resolve } from 'node:path'
 import { listPackage, extractFile } from '@electron/asar'
 import { execution, writeJson } from './evidence.mjs'
 import { requireCondition } from './checks.mjs'
@@ -24,7 +24,9 @@ try {
   report.testedAsarSha256 = tested.asarSha256
   requireCondition(report.asarSha256 === tested.asarSha256, 'O pacote mudou depois dos testes')
   const files = listPackage(asar).map((file) => file.replaceAll('\\', '/'))
-  const manifest = JSON.parse(extractFile(asar, 'package.json').toString())
+  // O inventário usa barras POSIX; a API ASAR resolve diretórios com path.sep do host.
+  const readAsar = (file) => extractFile(asar, normalize(file))
+  const manifest = JSON.parse(readAsar('package.json').toString())
   report.version = manifest.version
   requireCondition(report.version === json('package.json').version, 'Versão empacotada divergente')
   const packages = new Map()
@@ -44,10 +46,8 @@ try {
       file
     )
   ))
-    addPackage(JSON.parse(extractFile(asar, file.slice(1)).toString()))
-  for (const value of JSON.parse(
-    extractFile(asar, 'out/renderer/component-inventory.json').toString()
-  ))
+    addPackage(JSON.parse(readAsar(file.slice(1)).toString()))
+  for (const value of JSON.parse(readAsar('out/renderer/component-inventory.json').toString()))
     addPackage(value)
   const runtime = json('.quality/package/startup.json').main.runtime
   for (const [name, key] of [
@@ -68,7 +68,7 @@ try {
     .filter((file) => file.endsWith('.node'))
     .map((file) => ({
       file: file.slice(1),
-      sha256: sha256(extractFile(asar, file.slice(1)))
+      sha256: sha256(readAsar(file.slice(1)))
     }))
   for (const native of report.native)
     packages.set(native.file, {
