@@ -32,6 +32,7 @@ function run(id, tests) {
       fileURLToPath(import.meta.resolve('vite-plus/bin')),
       'test',
       ...tests,
+      '--no-file-parallelism',
       '--coverage=false',
       '--reporter=json',
       `--outputFile=${report}`
