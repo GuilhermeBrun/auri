@@ -1,13 +1,17 @@
 # Cópia de segurança na nuvem e configurações — design
 
-Data: 13/10/2026. Estado: fases 1 a 4 implementadas e verificadas (13/10/2026).
+Data: 13/10/2026. Estado: fases 1 a 4 implementadas e verificadas (13 e 14/10/2026).
 
-- Mac, com o app aberto: assistente inteiro, cópia, restauração (inclusive em computador novo),
-  senha, exportar/importar configurações e a instalação real do Google Drive (Instalador da Apple,
-  login e o Auri avançando sozinho quando a pasta "Meu Drive" apareceu).
-- Windows, no CI (`windows-latest`): leitura do registro, detecção das nuvens e a assinatura
-  Authenticode dos instaladores oficiais do OneDrive e do Google Drive, além do build do `.exe`.
-- Não verificado num Windows com tela: abrir o app da nuvem e as janelas do sistema.
+- Mac, com o app aberto: assistente, cópia, restauração (inclusive em computador novo), senha,
+  exportar/importar configurações e a instalação real do Google Drive (Instalador da Apple, login e
+  o Auri avançando sozinho).
+- Windows e Mac no CI, com o app aberto (`scripts/e2e.mjs`, job `e2e`): o mesmo fluxo e, no
+  Windows, a instalação real do Google Drive pelo botão "Instalar" (download, assinatura
+  Authenticode, instalador aceito) e "Abrir o Google Drive" abrindo o app.
+- Nuvem que para de funcionar (pedido do usuário em 13/10, depois de desinstalar o Google Drive):
+  a aba mostra o que houve e o caminho para resolver; verificado no Mac (desinstalar e reinstalar).
+- Não feito: gravar uma cópia numa conta de nuvem real (o usuário autorizou no Google Drive, mas o
+  desinstalou antes).
 
 ## Objetivo
 
@@ -59,6 +63,16 @@ computador quebrar, um computador novo com o Auri restaura tudo com a senha ou o
   para restaurar dados e importar configurações, e a saída "Começar do zero".
 - **Só o computador que guarda os dados faz cópias.** No consultório (papel cliente) a aba explica
   isso; exportar e importar configurações funciona nos dois.
+
+## Nuvem que para de funcionar
+
+A nuvem escolhida é conferida a cada minuto (e a cada 4 s com a aba aberta): desinstalada,
+fechada, fora da conta, desligada, bloqueada ou em outra conta vira um aviso na aba com o botão do
+assistente (Instalar, Abrir o app, Abrir Ajustes, Usar esta conta) e "Escolher outra nuvem"; marca
+em Configurações (que leva direto à aba) e aviso ao abrir o Auri. Com a nuvem fora do ar o Auri
+não tenta copiar; quando ela volta, faz a cópia parada na hora. A pasta só conta como pronta se o
+"Meu Drive" abre de verdade: desinstalado ou fechado, o Google Drive deixa a pasta da conta para
+trás, sem responder.
 
 ## Arquivo da cópia (`.auribackup`)
 
