@@ -1,6 +1,7 @@
-import { readFileSync, writeFileSync } from 'fs'
+import { readFileSync } from 'fs'
 import { DEFAULT_UI_PREFS } from '../shared/api'
 import { uiPrefsSchema, type UiPrefs } from '../shared/schemas'
+import { writeAtomicJson } from './atomic-file'
 
 export type PrefsStore = { get(): UiPrefs; save(value: unknown): void }
 
@@ -26,7 +27,7 @@ export function createPrefsStore(file: string, onChange?: (prefs: UiPrefs) => vo
     save(value) {
       const next = { ...prefs, ...uiPrefsSchema.partial().parse(value) }
       if (JSON.stringify(next) === JSON.stringify(prefs)) return
-      writeFileSync(file, JSON.stringify(next))
+      writeAtomicJson(file, next)
       prefs = next
       onChange?.(prefs)
     }
