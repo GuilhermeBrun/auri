@@ -2,10 +2,10 @@
   "version": 1,
   "measuredOn": "darwin-arm64",
   "minimums": {
-    "lines": 29,
-    "statements": 28,
-    "functions": 22,
-    "branches": 19
+    "lines": 35.5,
+    "statements": 34.5,
+    "functions": 26,
+    "branches": 23
   },
   "critical": {
     "src/main/ipc-security.ts": {
@@ -89,9 +89,40 @@
     "src/main/ipc.ts": {
       "lines": 82,
       "statements": 62
+    },
+    "src/main/atomic-file.ts": {
+      "lines": 100,
+      "statements": 90,
+      "functions": 100,
+      "branches": 100
+    },
+    "src/main/db/recovery.ts": {
+      "lines": 90,
+      "statements": 90,
+      "functions": 100,
+      "branches": 80
+    },
+    "src/renderer/src/components/ui/time-field.tsx": {
+      "lines": 90,
+      "statements": 90,
+      "functions": 90,
+      "branches": 80
+    },
+    "src/renderer/src/components/ui/calendar.tsx": {
+      "lines": 90,
+      "statements": 90,
+      "functions": 85,
+      "branches": 85
+    },
+    "src/renderer/src/components/ui/date-field.tsx": {
+      "lines": 85,
+      "statements": 85,
+      "functions": 85,
+      "branches": 80
     }
   },
   "productionFiles": [
+    "src/main/atomic-file.ts",
     "src/main/backup-service.ts",
     "src/main/backup/archive.ts",
     "src/main/backup/backup.ts",
@@ -107,6 +138,7 @@
     "src/main/db/connection.ts",
     "src/main/db/migrations.ts",
     "src/main/db/patients.ts",
+    "src/main/db/recovery.ts",
     "src/main/index.ts",
     "src/main/ipc-security.ts",
     "src/main/ipc.ts",
@@ -178,5 +210,6 @@
     "src/shared/names.ts",
     "src/shared/schemas.ts",
     "src/shared/search.ts"
-  ]
+  ],
+  "changedLinesMinimum": 80
 }

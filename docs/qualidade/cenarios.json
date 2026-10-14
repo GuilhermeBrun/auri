@@ -185,6 +185,69 @@
           "name": "aplica as configurações importadas"
         }
       ]
+    },
+    {
+      "id": "AURI-11",
+      "evidence": [
+        {
+          "kind": "vitest",
+          "file": "src/main/db/recovery.test.ts",
+          "name": "recuperação de dados restaura um backup cifrado histórico e reabre a base recuperada"
+        },
+        {
+          "kind": "vitest",
+          "file": "src/main/db/recovery.test.ts",
+          "name": "recuperação de dados falha ao abrir a cópia promovida repõe o banco anterior"
+        },
+        {
+          "kind": "vitest",
+          "file": "src/main/db/recovery.test.ts",
+          "name": "recuperação de dados falha também no rollback conserva uma cópia legível dos dados anteriores"
+        },
+        {
+          "kind": "vitest",
+          "file": "src/main/db/recovery.test.ts",
+          "name": "recuperação de dados leitor externo impede a troca e mantém os dados recentes no WAL"
+        }
+      ],
+      "description": "Recuperação mantém o banco anterior diante de arquivo inválido ou falha de substituição"
+    },
+    {
+      "id": "AURI-12",
+      "evidence": [
+        {
+          "kind": "vitest",
+          "file": "src/main/atomic-file.test.ts",
+          "name": "gravação parcial por falta de espaço não corrompe as preferências anteriores"
+        },
+        {
+          "kind": "vitest",
+          "file": "src/main/atomic-file.test.ts",
+          "name": "falha ao substituir preferências preserva arquivo, memória e notificações"
+        }
+      ],
+      "description": "Gravação parcial das preferências mantém arquivo e memória anteriores"
+    },
+    {
+      "id": "AURI-13",
+      "evidence": [
+        {
+          "kind": "vitest",
+          "file": "src/main/db/appointments-properties.test.ts",
+          "name": "intervalos gerados rejeitam sobreposição, aceitam adjacência e preservam edição recusada"
+        },
+        {
+          "kind": "vitest",
+          "file": "src/main/backup/archive-properties.test.ts",
+          "name": "backup conserva qualquer payload e recusa alterações em qualquer byte do arquivo"
+        },
+        {
+          "kind": "vitest",
+          "file": "src/shared/properties.test.ts",
+          "name": "propriedades de conteúdo datas válidas mantêm o mesmo dia na conversão brasileira e ISO"
+        }
+      ],
+      "description": "Propriedades de intervalos, conteúdo e autenticidade do backup"
     }
   ]
 }

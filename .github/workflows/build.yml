@@ -56,6 +56,8 @@ jobs:
 
       - name: Testar o instalador e o aplicativo distribuído
         run: npm run test:installer
+      - name: Inventariar o mesmo pacote e instalador aprovados
+        run: npm run quality:delivery -- --installer
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
@@ -69,7 +71,9 @@ jobs:
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: auri-${{ matrix.os }}
-          path: ${{ matrix.artifact }}
+          path: |
+            ${{ matrix.artifact }}
+            .quality/delivery/
           overwrite: true
           if-no-files-found: error
 

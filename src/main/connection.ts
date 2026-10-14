@@ -1,6 +1,5 @@
 import SecretStream from '@hyperswarm/secret-stream'
 import { app, powerSaveBlocker, safeStorage } from 'electron'
-import { copyFileSync, rmSync } from 'fs'
 import { hostname } from 'os'
 import { join } from 'path'
 import {
@@ -18,6 +17,7 @@ import {
 import { createConnectionStore, type ConnectionStore } from './connection-store'
 import { openDatabase, type Db } from './db/connection'
 import { SCHEMA_VERSION } from './db/migrations'
+import { restoreDatabase } from './db/recovery'
 import { createSyncClient, pairWithServer, probeServer, type Address } from './net/client'
 import { createDiscovery, localAddresses } from './net/discovery'
 import { createPairingCodes, formatCode } from './net/pairing'
@@ -56,8 +56,7 @@ export type Connection = {
   /** O banco aberto (papel servidor), para a cópia de segurança. null no papel cliente. */
   database(): Db | null
   /**
-   * Troca o banco pelo arquivo `source` (restaurar uma cópia): fecha, copia por cima, abre de novo
-   * (migrando, se for de versão anterior) e avisa as telas e os computadores conectados.
+   * Valida e prepara a cópia antes de trocar o banco; avisa as telas só após a abertura bem-sucedida.
    */
   replaceDatabase(source: string): void
   /** Ao sair do app: síncrono, para o banco fechar antes de o processo terminar. */
@@ -529,14 +528,15 @@ export function createConnection(options: {
 
     replaceDatabase(source: string): void {
       if (!db) throw new Error('Só o computador que guarda os dados pode restaurar uma cópia.')
-      db.close()
-      db = null
+      const current = db
       try {
-        // o -wal e o -shm são do banco antigo; deixá-los misturaria os dois
-        for (const suffix of ['-wal', '-shm']) rmSync(`${dbFile}${suffix}`, { force: true })
-        copyFileSync(source, dbFile)
-      } finally {
-        db = openDatabase(dbFile)
+        db = restoreDatabase(db, dbFile, source)
+      } catch (error) {
+        db = current.open ? current : null
+        // Se também falhou o rollback, não continue atendendo sobre a base substituída.
+        // O erro informa o arquivo anterior preservado para recuperação manual.
+        if (!db && !(error instanceof AggregateError)) db = openDatabase(dbFile)
+        throw error
       }
       server?.broadcast([...DATA_TOPICS])
       options.onDataChanged([...DATA_TOPICS])
