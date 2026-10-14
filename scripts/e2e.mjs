@@ -123,22 +123,48 @@ function desktopShot(name) {
 }
 
 /**
- * Windows: clica num botão de outro programa (o instalador do Google Drive) pela automação de
- * interface do Windows, como o usuário faria. Tenta por até `seconds` segundos.
+ * Windows: aceita o instalador do Google Drive como o usuário faria. A janela dele não expõe os
+ * botões à automação de interface, então: acha a janela "Google Drive", traz para a frente e
+ * aperta Enter ("Install" é o botão padrão); se ela continuar lá, clica na posição do botão.
  */
-function clickWindowsButton(name, seconds) {
+function acceptGoogleInstaller(seconds) {
   if (process.platform !== 'win32') return false
-  const script = [
-    'Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes',
-    '$root = [System.Windows.Automation.AutomationElement]::RootElement',
-    `$cond = New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::NameProperty, '${name}')`,
-    `for ($i = 0; $i -lt ${seconds}; $i++) {`,
-    '  $b = $root.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $cond)',
-    "  if ($b) { $b.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke(); 'clicou'; exit 0 }",
-    '  Start-Sleep -Seconds 1',
-    '}',
-    "'nao achou'"
-  ].join('\n')
+  const script = `
+Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes, System.Windows.Forms
+Add-Type @"
+using System; using System.Runtime.InteropServices;
+public static class Win {
+  [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr h);
+  [DllImport("user32.dll")] public static extern bool SetCursorPos(int x, int y);
+  [DllImport("user32.dll")] public static extern void mouse_event(int f, int x, int y, int d, int e);
+}
+"@
+$root = [System.Windows.Automation.AutomationElement]::RootElement
+$byName = New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::NameProperty, 'Google Drive')
+function Find { $root.FindFirst([System.Windows.Automation.TreeScope]::Children, $byName) }
+for ($i = 0; $i -lt ${seconds}; $i++) {
+  $w = Find
+  if ($w) {
+    $h = [IntPtr]$w.Current.NativeWindowHandle
+    [Win]::SetForegroundWindow($h) | Out-Null
+    Start-Sleep -Milliseconds 500
+    [System.Windows.Forms.SendKeys]::SendWait('{ENTER}')
+    Start-Sleep -Seconds 5
+    $w = Find
+    if ($w) {
+      $r = $w.Current.BoundingRectangle
+      $x = [int]($r.Left + $r.Width * 0.432); $y = [int]($r.Top + $r.Height * 0.913)
+      [Win]::SetCursorPos($x, $y) | Out-Null
+      [Win]::mouse_event(2, 0, 0, 0, 0); [Win]::mouse_event(4, 0, 0, 0, 0)
+      Start-Sleep -Seconds 5
+      'clicou na posicao'
+    } else { 'enter' }
+    exit 0
+  }
+  Start-Sleep -Seconds 1
+}
+'nao achou'
+`
   // PowerShell 5.1 pelo caminho do sistema e sem o PSModulePath do PowerShell 7 do CI
   const env = Object.fromEntries(
     Object.entries(process.env).filter(([key]) => key.toLowerCase() !== 'psmodulepath')
@@ -154,8 +180,9 @@ function clickWindowsButton(name, seconds) {
     const result = execFileSync(powershell, ['-NoProfile', '-Command', script], {
       env,
       encoding: 'utf8'
-    })
-    return result.includes('clicou')
+    }).trim()
+    console.log(`(instalador do Google: ${result})`)
+    return result !== 'nao achou'
   } catch (error) {
     console.log(`(automação de interface falhou: ${error.message.split('\n')[0]})`)
     return false
@@ -307,7 +334,7 @@ async function run() {
     })()`)
     check('clica em "Instalar" no cartão do Google Drive', clicked)
     // o instalador baixa (~300 MB) e abre a janela "Install Google Drive?": o usuário clica em Install
-    const confirmed = clickWindowsButton('Install', 300)
+    const confirmed = acceptGoogleInstaller(300)
     check('a janela do instalador do Google aparece e aceita "Install"', confirmed)
     desktopShot('06-depois-do-install')
     let state = 'not-installed'
