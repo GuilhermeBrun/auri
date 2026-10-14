@@ -8,3 +8,5 @@
 /src/**/*.test.tsx @GuilhermeBrun
 /src/main/ipc-security.ts @GuilhermeBrun
 /electron-builder.yml @GuilhermeBrun
+/.gitattributes @GuilhermeBrun
+/.editorconfig @GuilhermeBrun
