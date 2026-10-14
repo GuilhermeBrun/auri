@@ -126,7 +126,10 @@ export function ProviderAction({
         loading={action.isPending}
         onClick={() => action.mutate()}
       >
-        {started ? 'Tentar de novo' : ACTION[state].label(provider.name)}
+        {/* o rótulo segue o estado de agora: instalou, vira "Abrir o Google Drive" */}
+        {started && state === 'not-installed'
+          ? 'Tentar de novo'
+          : ACTION[state].label(provider.name)}
       </Button>
     </div>
   )
