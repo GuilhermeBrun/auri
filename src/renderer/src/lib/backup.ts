@@ -1,5 +1,5 @@
-import { useSyncExternalStore } from 'react'
-import type { BackupDestination, BackupInfo } from '@shared/api'
+import { useEffect, useState, useSyncExternalStore } from 'react'
+import type { BackupDestination, BackupInfo, InstallProgress } from '@shared/api'
 
 /** null até a primeira resposta do main (uma fração de segundo na abertura). */
 let snapshot: BackupInfo | null = null
@@ -61,4 +61,28 @@ export function passwordProblem(password: string, confirm: string): string | nul
   }
   if (password !== confirm) return 'As duas senhas não são iguais.'
   return null
+}
+
+/** Andamento de "Instalar" de cada nuvem, que chega do main por aviso. */
+export function useInstallProgress(): Partial<Record<string, InstallProgress>> {
+  const [progress, setProgress] = useState<Partial<Record<string, InstallProgress>>>({})
+  useEffect(
+    () =>
+      window.backup.onInstallProgress((next) =>
+        setProgress((current) => ({ ...current, [next.id]: next }))
+      ),
+    []
+  )
+  return progress
+}
+
+/**
+ * A cópia ligada precisa de atenção: a nuvem deixou de funcionar, a pasta sumiu ou a última
+ * tentativa falhou. Vira marca em Configurações e aviso ao abrir o Auri.
+ */
+export function needsAttention(info: BackupInfo | null): boolean {
+  if (!info?.available || !info.configured) return false
+  const failed =
+    info.lastError !== null && (!info.lastSuccessAt || info.lastError.at > info.lastSuccessAt)
+  return info.destinationProblem !== null || info.folderMissing || failed
 }

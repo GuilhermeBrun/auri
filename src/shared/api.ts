@@ -170,11 +170,12 @@ export type BackupDestination = { kind: CloudProviderId | 'folder'; folder: stri
  * Situação de uma nuvem neste computador.
  * - `ready`: a pasta existe; dá para usar.
  * - `signed-out`: o app está instalado, mas falta entrar na conta (a pasta não apareceu).
+ * - `closed`: o app está instalado e com conta, mas fechado: a pasta existe e não responde.
  * - `off`: iCloud Drive desligado nos Ajustes do Sistema.
  * - `denied`: o macOS não deixou o Auri abrir a pasta (Privacidade e Segurança).
  * - `not-installed`: o app da nuvem não está instalado.
  */
-export type CloudState = 'ready' | 'signed-out' | 'off' | 'denied' | 'not-installed'
+export type CloudState = 'ready' | 'signed-out' | 'closed' | 'off' | 'denied' | 'not-installed'
 
 export type CloudProvider = {
   id: CloudProviderId
@@ -216,6 +217,20 @@ export type BackupInfo = {
   welcome: boolean
   /** Nuvem trazida por configurações importadas, sugerida no assistente. */
   suggested: BackupDestination['kind'] | null
+  /** A nuvem escolhida deixou de funcionar; null quando está tudo certo (ou é uma pasta comum). */
+  destinationProblem: DestinationProblem | null
+}
+
+/**
+ * A nuvem escolhida não está pronta: desinstalada, fechada, fora da conta, desligada, bloqueada,
+ * ou pronta mas em outra conta (`state: 'ready'` com outra `folder`).
+ */
+export type DestinationProblem = {
+  state: CloudState
+  /** Pasta da nuvem agora (a da outra conta, quando `ready`). */
+  folder: string | null
+  /** "O Google Drive não está mais instalado neste computador." */
+  message: string
 }
 
 /** Uma cópia encontrada (na pasta escolhida, numa nuvem ou num arquivo escolhido). */
@@ -267,6 +282,8 @@ export interface AuriBackup {
   /** Baixa o instalador oficial da nuvem e o abre. */
   install(id: CloudProviderId): Promise<void>
   onInstallProgress(listener: (progress: InstallProgress) => void): () => void
+  /** Confere agora se a nuvem escolhida continua pronta. */
+  check(): Promise<BackupInfo>
   /** Abre o app da nuvem (para entrar na conta) ou os Ajustes do iCloud. */
   openProvider(id: CloudProviderId): Promise<void>
 }

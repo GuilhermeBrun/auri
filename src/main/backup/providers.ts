@@ -45,12 +45,32 @@ const denied = (error: unknown): boolean => {
   return code === 'EPERM' || code === 'EACCES'
 }
 
-/** Estado a partir do que foi achado: pasta > sem permissão > instalado > nada. */
-function settle(folder: string | null, blocked: boolean, installed: boolean): Found {
+/** Como a pasta de uma conta respondeu: abriu, o macOS bloqueou ou não respondeu (app fechado). */
+type Access = { blocked: boolean; closed: boolean }
+
+/**
+ * Estado a partir do que foi achado: pasta que abre > app não instalado > sem permissão > fechado
+ * > falta entrar na conta. Desinstalar o app deixa a pasta da conta para trás (sem responder):
+ * sem o app, vale "não instalado".
+ */
+function settle(folder: string | null, access: Access, installed: boolean): Found {
   if (folder) return { state: 'ready', folder }
-  if (blocked) return { state: 'denied', folder: null }
-  return { state: installed ? 'signed-out' : 'not-installed', folder: null }
+  if (!installed) return { state: 'not-installed', folder: null }
+  if (access.blocked) return { state: 'denied', folder: null }
+  if (access.closed) return { state: 'closed', folder: null }
+  return { state: 'signed-out', folder: null }
 }
+
+/**
+ * Anota por que uma pasta da nuvem não abriu. Com o app da nuvem fechado, a pasta continua lá,
+ * mas não responde (ETIMEDOUT): visto no Google Drive de verdade, em 13/10/2026.
+ */
+function note(access: Access, error: unknown): void {
+  if (denied(error)) access.blocked = true
+  else access.closed = true
+}
+
+const OK: Access = { blocked: false, closed: false }
 
 /** Pastas de `~/Library/CloudStorage` que começam com `prefix` (uma por conta). */
 async function cloudStorage(probe: Probe, prefix: string): Promise<string[]> {
@@ -74,40 +94,49 @@ async function myDrive(probe: Probe, account: string): Promise<string | null> {
   return chosen ? posix.join(account, chosen) : null
 }
 
+/** O app está em /Applications ou na pasta Aplicativos do usuário. */
+async function macApp(probe: Probe, name: string): Promise<boolean> {
+  const places = ['/Applications', posix.join(probe.home, 'Applications')]
+  return (await Promise.all(places.map((p) => probe.exists(posix.join(p, name))))).some(Boolean)
+}
+
 async function macGoogle(probe: Probe): Promise<Found> {
-  let blocked = false
+  const access: Access = { blocked: false, closed: false }
   for (const account of await cloudStorage(probe, 'GoogleDrive-')) {
     try {
       const folder = await myDrive(probe, account)
-      if (folder) return settle(folder, false, true)
+      if (!folder) continue
+      // o "Meu Drive" tem de abrir de verdade, não só aparecer na lista
+      await probe.readdir(folder)
+      return settle(folder, OK, true)
     } catch (error) {
-      blocked ||= denied(error)
+      note(access, error)
     }
   }
   // versões antigas montavam um volume
   for (const name of MY_DRIVE) {
     const legacy = posix.join('/Volumes', 'GoogleDrive', name)
-    if (await probe.exists(legacy)) return settle(legacy, false, true)
+    if (await probe.exists(legacy)) return settle(legacy, OK, true)
   }
-  return settle(null, blocked, await probe.exists('/Applications/Google Drive.app'))
+  return settle(null, access, await macApp(probe, 'Google Drive.app'))
 }
 
 async function macOneDrive(probe: Probe): Promise<Found> {
-  let blocked = false
+  const access: Access = { blocked: false, closed: false }
   const accounts = await cloudStorage(probe, 'OneDrive')
   // a conta pessoal primeiro ("OneDrive-Personal"), depois as de empresa
   accounts.sort((a, b) => Number(b.endsWith('-Personal')) - Number(a.endsWith('-Personal')))
   for (const account of accounts) {
     try {
       await probe.readdir(account)
-      return settle(account, false, true)
+      return settle(account, OK, true)
     } catch (error) {
-      blocked ||= denied(error)
+      note(access, error)
     }
   }
   const legacy = posix.join(probe.home, 'OneDrive')
-  if (await probe.exists(legacy)) return settle(legacy, false, true)
-  return settle(null, blocked, await probe.exists('/Applications/OneDrive.app'))
+  if (await probe.exists(legacy)) return settle(legacy, OK, true)
+  return settle(null, access, await macApp(probe, 'OneDrive.app'))
 }
 
 async function macICloud(probe: Probe): Promise<Found> {
@@ -144,7 +173,7 @@ async function winOneDrive(probe: Probe): Promise<Found> {
     probe.env.OneDrive
   ].filter((v): v is string => !!v)
   for (const folder of candidates) {
-    if (await probe.exists(folder)) return settle(folder, false, true)
+    if (await probe.exists(folder)) return settle(folder, OK, true)
   }
   const local = probe.env.LOCALAPPDATA ?? win32.join(probe.home, 'AppData', 'Local')
   const programs = [probe.env.ProgramFiles, probe.env['ProgramFiles(x86)']].filter(
@@ -155,7 +184,7 @@ async function winOneDrive(probe: Probe): Promise<Found> {
     ...programs.map((p) => win32.join(p, 'Microsoft OneDrive', 'OneDrive.exe'))
   ]
   const installed = (await Promise.all(executables.map((e) => probe.exists(e)))).some(Boolean)
-  return settle(null, false, installed)
+  return settle(null, OK, installed)
 }
 
 /** Letras de unidade em que o Google Drive costuma montar (G: é o padrão). */
@@ -171,7 +200,7 @@ async function winGoogle(probe: Probe): Promise<Found> {
   const folder = candidates.find((_, i) => hits[i]) ?? null
   const programs = probe.env.ProgramFiles ?? 'C:\\Program Files'
   const installed = await probe.exists(win32.join(programs, 'Google', 'Drive File Stream'))
-  return settle(folder, false, installed)
+  return settle(folder, OK, installed)
 }
 
 /**
@@ -223,7 +252,14 @@ export function systemProbe(): Probe {
         1500,
         false
       ),
-    readdir: (path) => readdir(path),
+    // a pasta de uma nuvem com o app travado pode não responder: desiste em 3 s
+    readdir: (path) =>
+      Promise.race([
+        readdir(path),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(Object.assign(new Error('timeout'), { code: 'ETIMEDOUT' })), 3000)
+        )
+      ]),
     registry: (key, value) =>
       new Promise((resolve) =>
         execFile(

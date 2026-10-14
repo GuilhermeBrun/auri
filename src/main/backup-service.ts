@@ -10,6 +10,8 @@ import type {
   BackupSecret,
   CloudProvider,
   CloudProviderId,
+  CloudState,
+  DestinationProblem,
   InstallProgress
 } from '../shared/api'
 import { createKeyring, keyFromSecret, readHeaderFromFile, type Keyring } from './backup/archive'
@@ -69,6 +71,8 @@ export type BackupService = {
   undoRestore(): Promise<BackupInfo>
   dismissWelcome(): Promise<BackupInfo>
   providers(): Promise<CloudProvider[]>
+  /** Confere agora se a nuvem escolhida continua pronta (a aba chama enquanto há problema). */
+  check(): Promise<BackupInfo>
   install(id: CloudProviderId): Promise<void>
   openProvider(id: CloudProviderId): Promise<void>
   /** Pasta das cópias ou da nuvem escolhida, para abrir a janela de salvar configurações nela. */
@@ -99,6 +103,8 @@ export function createBackupService(options: {
   /** Arquivos que as telas podem pedir para restaurar: só os que o main listou ou o usuário escolheu. */
   const known = new Set<string>()
   let running = 0
+  /** A nuvem escolhida deixou de funcionar (desinstalada, fechada, saiu da conta…); null se ok. */
+  let problem: DestinationProblem | null = null
   let queue: Promise<unknown> = Promise.resolve()
 
   // Chave -------------------------------------------------------------------------------------
@@ -162,7 +168,8 @@ export function createBackupService(options: {
       stale: on && isStale(s.lastSuccessAt, new Date()),
       undo: s.undo ? { at: s.undo.at } : null,
       welcome: !s.welcomeDone && !on && available() && emptyDatabase(),
-      suggested: s.suggested
+      suggested: s.suggested,
+      destinationProblem: on ? problem : null
     }
   }
 
@@ -202,8 +209,56 @@ export function createBackupService(options: {
 
   // Cópia -------------------------------------------------------------------------------------
 
+  /** O que dizer quando a nuvem escolhida não está pronta. */
+  function problemMessage(kind: CloudProviderId, state: CloudState): string {
+    const name = DESTINATION_LABEL[kind]
+    switch (state) {
+      case 'not-installed':
+        return `O ${name} não está mais instalado neste computador.`
+      case 'signed-out':
+        return `O ${name} saiu da conta.`
+      case 'closed':
+        return `O ${name} está fechado.`
+      case 'off':
+        return 'O iCloud Drive foi desligado neste Mac.'
+      case 'denied':
+        return `O macOS bloqueou o acesso do Auri ao ${name}.`
+      case 'ready':
+        return `O ${name} agora está em outra conta.`
+    }
+  }
+
+  /**
+   * Confere se a nuvem escolhida continua pronta e na mesma pasta (a de uma conta). Avisa as telas
+   * quando muda; quando volta a funcionar, já faz a cópia que ficou parada.
+   */
+  async function checkDestination(): Promise<void> {
+    const destination = store.get().destination
+    let next: DestinationProblem | null = null
+    if (destination && destination.kind !== 'folder' && configured()) {
+      const cloud = ((await options.providers?.()) ?? []).find((c) => c.id === destination.kind)
+      if (
+        cloud &&
+        !(cloud.state === 'ready' && cloud.folder && sameName(cloud.folder, destination.folder))
+      ) {
+        next = {
+          state: cloud.state,
+          folder: cloud.folder,
+          message: problemMessage(destination.kind, cloud.state)
+        }
+      }
+    }
+    const recovered = problem !== null && next === null
+    if (JSON.stringify(next) === JSON.stringify(problem)) return
+    problem = next
+    console.log(`[cópia] nuvem: ${next ? next.state : 'pronta'}`)
+    changed()
+    if (recovered) void backup()
+  }
+
   /** Mensagem para a tela quando a cópia falha. */
   function failureMessage(error: unknown, destination: BackupDestination): string {
+    if (problem) return `${problem.message} As cópias estão paradas.`
     if (!existsSync(destination.folder)) {
       return destination.kind === 'folder'
         ? 'A pasta escolhida não está disponível. Confira se o pendrive ou HD está conectado.'
@@ -214,6 +269,10 @@ export function createBackupService(options: {
       return 'Sem permissão para gravar na pasta da cópia.'
     }
     if (code === 'ENOSPC') return 'Sem espaço na pasta da cópia.'
+    // a pasta da nuvem existe, mas o app dela está fechado ou travado
+    if (code === 'ETIMEDOUT' && destination.kind !== 'folder') {
+      return `O ${DESTINATION_LABEL[destination.kind]} não respondeu. Confira se ele está aberto.`
+    }
     return `Não foi possível fazer a cópia: ${(error as Error).message}`
   }
 
@@ -246,9 +305,12 @@ export function createBackupService(options: {
     })
   }
 
-  function tick(): void {
+  async function tick(): Promise<void> {
     const s = store.get()
     if (!available() || !configured(s) || running > 0) return
+    await checkDestination()
+    // com a nuvem fora do ar, tentar só repetiria a falha: a aba já mostra o que resolver
+    if (problem) return
     const due = isBackupDue(
       {
         frequency: s.frequency,
@@ -262,8 +324,12 @@ export function createBackupService(options: {
     if (due) void backup()
   }
 
-  const firstTick = setTimeout(tick, FIRST_TICK_MS)
-  const interval = setInterval(tick, TICK_MS)
+  const safeTick = (): void => {
+    tick().catch((error) => console.error(`[cópia] verificação: ${(error as Error).message}`))
+  }
+
+  const firstTick = setTimeout(safeTick, FIRST_TICK_MS)
+  const interval = setInterval(safeTick, TICK_MS)
 
   // Restauração -------------------------------------------------------------------------------
 
@@ -365,6 +431,7 @@ export function createBackupService(options: {
     async setDestination(destination) {
       requireServer()
       store.update({ destination, lastError: null })
+      problem = null
       changed()
       // pasta nova começa vazia: a primeira cópia vai já
       if (configured()) void backup()
@@ -487,6 +554,7 @@ export function createBackupService(options: {
         lastError: null,
         lastChangeAt: null
       })
+      problem = null
       changed()
       return info()
     },
@@ -577,6 +645,11 @@ export function createBackupService(options: {
     },
 
     providers: async () => (await options.providers?.()) ?? [],
+
+    async check() {
+      await checkDestination()
+      return info()
+    },
 
     install: (id) => installProvider(id, (progress) => options.onInstallProgress?.(progress)),
 

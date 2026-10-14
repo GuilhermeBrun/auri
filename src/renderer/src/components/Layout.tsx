@@ -8,6 +8,7 @@ import {
   PanelLeftClose,
   Settings,
   SunMoon,
+  TriangleAlert,
   Users,
   WifiOff
 } from 'lucide-react'
@@ -19,6 +20,7 @@ import { EmptyState } from '@renderer/components/ui/empty'
 import { ErrorState } from '@renderer/components/ui/error'
 import { ToastProvider } from '@renderer/components/ui/toast'
 import { WelcomeDialog } from '@renderer/components/WelcomeDialog'
+import { needsAttention, useBackup } from '@renderer/lib/backup'
 import { useConnection } from '@renderer/lib/connection'
 import { isMac, SETTINGS_SHORTCUT, SIDEBAR_SHORTCUT } from '@renderer/lib/platform'
 import { SidebarContext, useSidebar } from '@renderer/lib/sidebar'
@@ -33,7 +35,23 @@ const NAV_GAP = 6
 const navItemClass =
   'relative flex h-[34px] items-center gap-2.5 rounded-control px-3 text-[13px] font-medium text-ink-soft transition-colors hover:bg-fill hover:text-ink [&_svg]:size-4 [&_svg]:stroke-[1.75]'
 
-type NavItem = { to: string; label: string; icon: ReactNode }
+type NavItem = {
+  to: string
+  label: string
+  icon: ReactNode
+  /** Marca de atenção (ex.: a cópia de segurança parou). */
+  alert?: boolean
+}
+
+/** Marca de atenção num item do menu: ponto vermelho, com o motivo para o leitor de tela. */
+function AlertDot(): React.JSX.Element {
+  return (
+    <>
+      <span aria-hidden="true" className="ml-auto size-1.5 shrink-0 rounded-full bg-danger" />
+      <span className="sr-only">(precisa de atenção)</span>
+    </>
+  )
+}
 
 const NAV_ITEMS: NavItem[] = [
   { to: '/agenda', label: 'Agenda', icon: <CalendarDays /> },
@@ -43,10 +61,11 @@ const NAV_ITEMS: NavItem[] = [
 /** Seções de Configurações, que tomam o lugar do menu principal enquanto se está nelas. */
 const SETTINGS_PATH = '/configuracoes'
 const CONNECTION_PATH = `${SETTINGS_PATH}/conexao`
+const BACKUP_PATH = `${SETTINGS_PATH}/copia`
 const SETTINGS_ITEMS: NavItem[] = [
   { to: `${SETTINGS_PATH}/aparencia`, label: 'Aparência', icon: <SunMoon /> },
   { to: CONNECTION_PATH, label: 'Conexão', icon: <Network /> },
-  { to: `${SETTINGS_PATH}/copia`, label: 'Cópia de segurança', icon: <DatabaseBackup /> },
+  { to: BACKUP_PATH, label: 'Cópia de segurança', icon: <DatabaseBackup /> },
   { to: `${SETTINGS_PATH}/transferir`, label: 'Importar e exportar', icon: <ArrowLeftRight /> }
 ]
 
@@ -77,7 +96,7 @@ function SidebarNav({
           }}
         />
       )}
-      {items.map(({ to, label, icon }) => (
+      {items.map(({ to, label, icon, alert }) => (
         <NavLink
           key={to}
           to={to}
@@ -91,6 +110,7 @@ function SidebarNav({
         >
           {icon}
           {label}
+          {alert && <AlertDot />}
         </NavLink>
       ))}
     </nav>
@@ -108,6 +128,8 @@ function SidebarBody(): React.JSX.Element {
   const { pathname } = useLocation()
   const navigate = useNavigate()
   const inSettings = matchPath({ path: SETTINGS_PATH, end: false }, pathname) !== null
+  // a cópia parou: marca no menu e "Configurações" leva direto a ela
+  const attention = needsAttention(useBackup())
   // última tela fora das Configurações (a de abertura é a agenda)
   const backTo = useRef('/agenda')
   useEffect(() => {
@@ -117,7 +139,13 @@ function SidebarBody(): React.JSX.Element {
   if (inSettings) {
     return (
       <div key="configuracoes" className="flex flex-1 animate-fade-in flex-col">
-        <SidebarNav items={SETTINGS_ITEMS} label="Configurações" pathname={pathname} />
+        <SidebarNav
+          items={SETTINGS_ITEMS.map((item) =>
+            item.to === BACKUP_PATH ? { ...item, alert: attention } : item
+          )}
+          label="Configurações"
+          pathname={pathname}
+        />
         <button
           type="button"
           onClick={() => navigate(backTo.current)}
@@ -135,15 +163,38 @@ function SidebarBody(): React.JSX.Element {
       <SidebarNav items={NAV_ITEMS} label="Principal" pathname={pathname} />
       {/* rodapé: Configurações, com o nome, no mesmo estilo dos itens do menu (e do "Voltar") */}
       <Link
-        to={SETTINGS_PATH}
+        to={attention ? BACKUP_PATH : SETTINGS_PATH}
         title={`Configurações (${SETTINGS_SHORTCUT})`}
         className={cn(navItemClass, 'mt-auto')}
       >
         <Settings aria-hidden="true" />
         Configurações
+        {attention && <AlertDot />}
       </Link>
     </div>
   )
+}
+
+/**
+ * Ao abrir o Auri com a cópia de segurança parada, um aviso uma vez só, que leva à aba onde se
+ * resolve. Depois disso fica a marca em Configurações.
+ */
+function BackupAttention(): null {
+  const info = useBackup()
+  const toast = useToast()
+  const shown = useRef(false)
+  const attention = needsAttention(info)
+  const message = info?.destinationProblem?.message
+  useEffect(() => {
+    if (!attention || shown.current) return
+    shown.current = true
+    toast({
+      title: 'A cópia de segurança parou',
+      description: message ?? 'Veja em Configurações › Cópia de segurança.',
+      icon: <TriangleAlert className="size-4 stroke-[1.75] text-danger" />
+    })
+  }, [attention, message, toast])
+  return null
 }
 
 const SIDEBAR_WIDTH = 216
@@ -255,6 +306,7 @@ export function Layout(): React.JSX.Element {
           </main>
         </div>
         <WelcomeDialog />
+        <BackupAttention />
       </ToastProvider>
     </SidebarContext>
   )

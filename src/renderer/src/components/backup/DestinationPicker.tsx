@@ -5,12 +5,14 @@ import { Button } from '@renderer/components/ui/button'
 import { ErrorText, StatusDot } from '@renderer/components/ui/section'
 import { isMac } from '@renderer/lib/platform'
 import { cn } from '@renderer/lib/utils'
+import { useInstallProgress } from '@renderer/lib/backup'
 import { useToast } from '@renderer/lib/toast'
 import type { BackupDestination, CloudProvider, CloudState, InstallProgress } from '@shared/api'
 
 const STATE_TEXT: Record<CloudState, string> = {
   ready: 'Pronto para usar',
   'signed-out': 'Instalado, falta entrar na conta',
+  closed: 'Instalado, mas fechado',
   off: 'Desligado neste Mac',
   denied: 'O macOS bloqueou o acesso do Auri',
   'not-installed': 'Não instalado'
@@ -29,6 +31,10 @@ const ACTION: Record<
   'signed-out': {
     label: (name) => `Abrir o ${name}`,
     after: (name) => `Entre com sua conta na janela do ${name}. O Auri percebe sozinho.`
+  },
+  closed: {
+    label: (name) => `Abrir o ${name}`,
+    after: (name) => `Espere o ${name} terminar de abrir. O Auri percebe sozinho.`
   },
   off: {
     label: () => 'Abrir Ajustes',
@@ -55,7 +61,7 @@ function progressText(progress: InstallProgress): string {
  * abrir o app para entrar na conta ou abrir os Ajustes. Depois do clique, diz o que fazer na
  * outra janela; a lista se atualiza sozinha.
  */
-function ProviderAction({
+export function ProviderAction({
   provider,
   progress,
   started,
@@ -228,15 +234,7 @@ export function DestinationPicker({
   const best = recommended(list, suggested)
   const toast = useToast()
 
-  // andamento de "Instalar", que chega do main por aviso
-  const [progress, setProgress] = useState<Partial<Record<string, InstallProgress>>>({})
-  useEffect(
-    () =>
-      window.backup.onInstallProgress((next) =>
-        setProgress((current) => ({ ...current, [next.id]: next }))
-      ),
-    []
-  )
+  const progress = useInstallProgress()
 
   // a nuvem que o usuário está preparando: quando ficar pronta, segue com ela
   const [started, setStarted] = useState<CloudProvider['id'] | null>(null)

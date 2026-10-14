@@ -122,6 +122,46 @@ function desktopShot(name) {
   }
 }
 
+/**
+ * Windows: clica num botão de outro programa (o instalador do Google Drive) pela automação de
+ * interface do Windows, como o usuário faria. Tenta por até `seconds` segundos.
+ */
+function clickWindowsButton(name, seconds) {
+  if (process.platform !== 'win32') return false
+  const script = [
+    'Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes',
+    '$root = [System.Windows.Automation.AutomationElement]::RootElement',
+    `$cond = New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::NameProperty, '${name}')`,
+    `for ($i = 0; $i -lt ${seconds}; $i++) {`,
+    '  $b = $root.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $cond)',
+    "  if ($b) { $b.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke(); 'clicou'; exit 0 }",
+    '  Start-Sleep -Seconds 1',
+    '}',
+    "'nao achou'"
+  ].join('\n')
+  // PowerShell 5.1 pelo caminho do sistema e sem o PSModulePath do PowerShell 7 do CI
+  const env = Object.fromEntries(
+    Object.entries(process.env).filter(([key]) => key.toLowerCase() !== 'psmodulepath')
+  )
+  const powershell = join(
+    process.env.SystemRoot ?? 'C:\\Windows',
+    'System32',
+    'WindowsPowerShell',
+    'v1.0',
+    'powershell.exe'
+  )
+  try {
+    const result = execFileSync(powershell, ['-NoProfile', '-Command', script], {
+      env,
+      encoding: 'utf8'
+    })
+    return result.includes('clicou')
+  } catch (error) {
+    console.log(`(automação de interface falhou: ${error.message.split('\n')[0]})`)
+    return false
+  }
+}
+
 const FIELDS =
   'nome,data_nascimento,cpf,escola,serie,professora,mae_nome,mae_cpf,mae_rg,mae_celular,mae_email,mae_profissao,pai_nome,pai_profissao,endereco,bairro,cidade,indicacao,pediatra,data_entrada,observacoes'
 
@@ -266,9 +306,13 @@ async function run() {
       return !!button
     })()`)
     check('clica em "Instalar" no cartão do Google Drive', clicked)
+    // o instalador baixa (~300 MB) e abre a janela "Install Google Drive?": o usuário clica em Install
+    const confirmed = clickWindowsButton('Install', 300)
+    check('a janela do instalador do Google aparece e aceita "Install"', confirmed)
+    desktopShot('06-depois-do-install')
     let state = 'not-installed'
     const seen = []
-    for (let i = 0; i < 120 && state === 'not-installed'; i++) {
+    for (let i = 0; i < 60 && state === 'not-installed'; i++) {
       await sleep(5000)
       if (i === 2) await shot(page, '06-instalando')
       if (i % 6 === 3) desktopShot(`06-tela-${i}`)

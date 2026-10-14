@@ -97,6 +97,36 @@ describe('nuvens no Mac', () => {
   })
 })
 
+describe('nuvem instalada mas fechada', () => {
+  it('a pasta do "Meu Drive" aparece mas não responde: "fechado", não "pronto"', async () => {
+    const myDrive = `${STORAGE}/GoogleDrive-clinica@exemplo.com/My Drive`
+    const probe = fakeProbe({
+      platform: 'darwin',
+      home: HOME,
+      paths: [`${myDrive}/x`, '/Applications/Google Drive.app']
+    })
+    const readdir = probe.readdir
+    probe.readdir = async (path) => {
+      if (path === myDrive) throw Object.assign(new Error('timed out'), { code: 'ETIMEDOUT' })
+      return readdir(path)
+    }
+    expect((await detectProviders(probe))[0]).toMatchObject({ state: 'closed', folder: null })
+  })
+})
+
+describe('nuvem desinstalada', () => {
+  it('o app sumiu e a pasta da conta ficou para trás: "não instalado"', async () => {
+    const myDrive = `${STORAGE}/GoogleDrive-clinica@exemplo.com/My Drive`
+    const probe = fakeProbe({ platform: 'darwin', home: HOME, paths: [`${myDrive}/x`] })
+    const readdir = probe.readdir
+    probe.readdir = async (path) => {
+      if (path === myDrive) throw Object.assign(new Error('timed out'), { code: 'ETIMEDOUT' })
+      return readdir(path)
+    }
+    expect((await detectProviders(probe))[0]).toMatchObject({ state: 'not-installed' })
+  })
+})
+
 describe('nuvens no Windows', () => {
   const WIN_HOME = 'C:\\Users\\Recepcao'
 

@@ -76,6 +76,7 @@ export function registerIpc(
   // Configurações / Cópia de segurança
   handle('backup:info', () => backup.info())
   handle('backup:providers', () => backup.providers())
+  handle('backup:check', () => backup.check())
   const providerId = z.enum(['google', 'onedrive', 'icloud'])
   handle('backup:install', (id: unknown) => backup.install(providerId.parse(id)))
   handle('backup:openProvider', (id: unknown) => backup.openProvider(providerId.parse(id)))

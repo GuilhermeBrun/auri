@@ -1,8 +1,9 @@
 import { useMutation } from '@tanstack/react-query'
 import { FolderOpen, RotateCcw } from 'lucide-react'
-import { useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Page } from '@renderer/components/Layout'
 import { DestinationPicker } from '@renderer/components/backup/DestinationPicker'
+import { DestinationRepair } from '@renderer/components/backup/DestinationRepair'
 import { PasswordDialog, type PasswordMode } from '@renderer/components/backup/PasswordDialog'
 import { NewPasswordFields } from '@renderer/components/backup/PasswordFields'
 import { RecoveryCode } from '@renderer/components/backup/RecoveryCode'
@@ -185,14 +186,25 @@ function Status({ info }: { info: BackupInfo }): React.JSX.Element {
     }
   })
   const open = useMutation({ mutationFn: () => window.backup.openFolder() })
+  const problem = info.destinationProblem
   const failed =
     info.lastError !== null && (!info.lastSuccessAt || info.lastError.at > info.lastSuccessAt)
+
+  // a nuvem voltou a funcionar: avisa (o main já faz a cópia que ficou parada)
+  const label = DESTINATION_LABEL[info.destination!.kind]
+  const hadProblem = useRef(problem !== null)
+  useEffect(() => {
+    if (hadProblem.current && problem === null) {
+      toast({ title: `O ${label} voltou`, description: 'As cópias continuam.' })
+    }
+    hadProblem.current = problem !== null
+  }, [problem, label, toast])
 
   return (
     <section>
       <div className="flex items-start gap-3">
         <span className="mt-[5px] flex">
-          <StatusDot on={!failed && !info.stale} />
+          <StatusDot on={!failed && !info.stale && !problem} />
         </span>
         <div className="min-w-0 flex-1">
           <p className="text-[13px] font-medium" aria-live="polite">
@@ -221,7 +233,8 @@ function Status({ info }: { info: BackupInfo }): React.JSX.Element {
           </Button>
         </div>
       </div>
-      {failed && !run.error && <ErrorText>{info.lastError!.message}</ErrorText>}
+      {problem && <DestinationRepair info={info} problem={problem} />}
+      {failed && !problem && !run.error && <ErrorText>{info.lastError!.message}</ErrorText>}
       {run.error && <ErrorText>{run.error.message}</ErrorText>}
       {open.error && <ErrorText>{open.error.message}</ErrorText>}
       {!failed && info.stale && info.lastSuccessAt && !info.running && (

@@ -67,6 +67,7 @@ const backup: AuriBackup = {
   info: () => invoke('backup:info'),
   onChange: (listener) => subscribe<BackupInfo>('backup:changed', listener),
   providers: () => invoke('backup:providers'),
+  check: () => invoke('backup:check'),
   chooseFolder: () => invoke('backup:chooseFolder'),
   setup: (destination, password) => invoke('backup:setup', destination, password),
   setDestination: (destination) => invoke('backup:setDestination', destination),
