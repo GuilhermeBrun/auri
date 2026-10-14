@@ -269,6 +269,15 @@ O Dependabot propõe atualizações semanais de npm e GitHub Actions; essas prop
 os mesmos checks e revisão da política. Não há merge automático. Sua ativação depende de esta
 configuração estar na branch padrão.
 
+As Actions oficiais são fixadas por SHA e usam runtime Node.js 24, inclusive checkout,
+setup e transferência de artefatos. Esse runtime pertence às Actions; a versão usada pelos
+comandos do projeto continua explícita em `node-version`. Os jobs Linux usam `ubuntu-24.04`
+para que a troca do rótulo `ubuntu-latest` não altere o ambiente sem revisão. Atualizações
+precisam conferir as notas de migração, o `runs.using` da Action e os checks completos.
+
+Notices de capacidade dos runners macOS ARM são emitidos pela infraestrutura do GitHub.
+Eles podem aparecer mesmo com todos os checks aprovados e indicam possibilidade de fila.
+
 ## Recuperação diante de falhas
 
 A restauração prepara e valida uma cópia no mesmo volume antes de fechar o banco atual, verifica
