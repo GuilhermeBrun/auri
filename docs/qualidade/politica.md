@@ -197,3 +197,90 @@ versão corrigida. `npm audit fix --dry-run --ignore-scripts` não propõe atual
 A cadeia pertence às ferramentas de empacotamento; a inspeção do ASAR deve confirmar
 que essas ferramentas não acompanham o aplicativo. Achados altos/críticos continuam
 bloqueantes e o audit semanal permite reavaliar quando houver correção publicada.
+
+## Controles adicionais de código e entrega
+
+O fluxo local e a matriz Windows/macOS agora exigem os seguintes comandos adicionais:
+
+```sh
+npm run test:coverage-changed
+npm run test:performance
+npm run quality:delivery
+```
+
+O job de segurança Linux também instala Python 3.12.15 e Semgrep CE 1.180.0 e executa
+`npm run security:sast`. Para executar `npm run quality` localmente, instale essa versão do
+Semgrep em um ambiente Python separado; o executável pode ser informado por `AURI_SEMGREP`.
+O ambiente precisa ficar fora de `.quality`, que é apagada no início da validação.
+Por exemplo, com Python 3.12 disponível:
+
+```sh
+python3.12 -m venv /tmp/auri-semgrep
+/tmp/auri-semgrep/bin/python -m pip install semgrep==1.180.0
+AURI_SEMGREP=/tmp/auri-semgrep/bin/semgrep npm run quality
+```
+
+O scanner usa somente as regras locais de `sast.json`, sem enviar métricas ou código a um serviço.
+São oito regras dirigidas a isolamento Electron, código dinâmico, TLS, shell, criptografia,
+HTML, capacidades do preload e remetentes IPC. Cada regra precisa detectar seu exemplo inseguro
+e aceitar seu exemplo seguro antes de verificar todas as fontes de produção. Erro de parsing,
+timeout, fonte omitida e achado reprovam; comentários `nosemgrep` não suprimem os resultados.
+Esse conjunto dirigido não constitui uma análise completa de fluxo entre arquivos.
+[Opções e limites do Semgrep CE](https://docs.semgrep.dev/cli-reference).
+
+`cobertura.json` exige 80% das **linhas executáveis alteradas**, além dos mínimos globais e dos
+módulos críticos. A comparação usa a base do PR ou o commit anterior do push; execução manual
+sem alterações legítimas pode ter zero linhas e recebe 100% nesse indicador. Comentários,
+tipos e linhas sem ponto executável no relatório Istanbul não entram no denominador.
+A política extraída da base aprovada registra as linhas esperadas; o agregador recalcula os
+resultados a partir da cobertura bruta, recusando outro SHA/base ou um percentual falsificado.
+Arquivos novos, renomeações e fontes não importadas não podem desaparecer da verificação.
+
+Os testes por propriedades usam uma seed reproduzível e mil casos gerados por execução:
+datas/conversão brasileira, busca sem alteração da lista, conflitos/adjacência e autenticidade
+do backup. São complementares aos exemplos existentes e aos E2E. O catálogo de mutação foi
+ampliado de 13 para 17 erros dirigidos, incluindo backup, restauração, preferências e calendário.
+
+Os componentes de data, horário e calendário têm testes DOM de conteúdo, entrada inválida,
+reset de rascunho, foco e teclado. O runtime dos testes permanece o Electron por causa do SQLite
+nativo; jsdom é usado somente nos arquivos de teste de componentes, dentro do mesmo `vite.config.ts`.
+
+`desempenho.json` define dois orçamentos iniciais: JavaScript do renderer comprimido em gzip até
+330.000 bytes e p95 da busca sobre 10.000 pacientes fictícios até 16 ms, com 100 amostras após
+aquecimento e conferência dos resultados. A referência local macOS arm64 foi 280.460 bytes e
+p95 inferior a 1 ms; o limite de tempo é um orçamento de operação, ainda sem referência medida
+no Windows para esta alteração. Os limites são versionados e sua mudança exige revisão.
+O benchmark transpila as funções de produção e usa o Node do Electron; não mede renderização,
+abertura completa, memória ou tempo de acesso à rede.
+
+O pacote aprovado gera `delivery/sbom.cdx.json` (CycloneDX 1.6) e um manifesto com commit,
+plataforma, arquitetura, versão, hash do SBOM, ASAR e módulos nativos. O build registra os
+pacotes npm presentes nos chunks do renderer, incluindo bibliotecas compiladas que não ficam
+em `node_modules` no aplicativo. O inventário também lê os módulos de produção do ASAR e as
+versões de Electron, Chromium, Node e V8 medidas no aplicativo aberto. As bibliotecas internas
+desses runtimes e do sistema operacional não são enumeradas individualmente.
+
+O Build executa `npm run quality:delivery -- --installer` depois do teste do instalador. O hash
+do instalador e do ASAR precisam corresponder aos arquivos testados; o inventário e o manifesto
+são guardados junto do artefato, sem reconstruí-lo depois. Isso não identifica o fabricante:
+Developer ID/notarização, certificado Windows e publicação continuam sendo etapas externas.
+
+O Dependabot propõe atualizações semanais de npm e GitHub Actions; essas propostas atravessam
+os mesmos checks e revisão da política. Não há merge automático. Sua ativação depende de esta
+configuração estar na branch padrão.
+
+## Recuperação diante de falhas
+
+A restauração prepara e valida uma cópia no mesmo volume antes de fechar o banco atual, verifica
+integridade/relacionamentos, aplica as migrações e confere o contrato atual de tabelas. A troca é
+por rename, após checkpoint do WAL. Uma conexão externa que impede o checkpoint cancela a troca.
+Falha ao promover ou reabrir repõe o arquivo anterior e não anuncia sucesso às telas.
+Se também falhar o rollback, o arquivo `.previous` com os dados anteriores é preservado e o
+serviço não continua atendendo sobre a base substituída; o erro informa o caminho para recuperação.
+O procedimento de contingência é fechar o Auri, preservar os dois arquivos e restaurar a cópia
+anterior após diagnosticar permissões, espaço e bloqueios de disco.
+
+As preferências são gravadas em um temporário exclusivo, sincronizadas e só então substituídas
+por rename. Falha de escrita parcial ou de substituição mantém os bytes e a memória anteriores.
+Esses testes exercitam falhas de processo/disco; não simulam perda física do dispositivo ou
+interrupção elétrica em todos os sistemas de arquivos.

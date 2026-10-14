@@ -2,6 +2,26 @@
   "version": 1,
   "tests": [
     {
+      "file": "src/main/atomic-file.test.ts",
+      "name": "falha ao substituir preferências preserva arquivo, memória e notificações",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/atomic-file.test.ts",
+      "name": "gravação parcial por falta de espaço não corrompe as preferências anteriores",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/atomic-file.test.ts",
+      "name": "preferências são gravadas completas e não deixam temporários",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/backup/archive-properties.test.ts",
+      "name": "backup conserva qualquer payload e recusa alterações em qualquer byte do arquivo",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
       "file": "src/main/backup/backup.test.ts",
       "name": "código de recuperação aceita o código digitado em minúsculas e com espaços",
       "requiredOn": ["darwin", "win32", "linux"]
@@ -23,12 +43,12 @@
     },
     {
       "file": "src/main/backup/backup.test.ts",
-      "name": "cópia de segurança não confunde outro arquivo com uma cópia",
+      "name": "cópia de segurança no mesmo minuto troca a própria cópia, mas nunca a de outro computador",
       "requiredOn": ["darwin", "win32", "linux"]
     },
     {
       "file": "src/main/backup/backup.test.ts",
-      "name": "cópia de segurança no mesmo minuto troca a própria cópia, mas nunca a de outro computador",
+      "name": "cópia de segurança não confunde outro arquivo com uma cópia",
       "requiredOn": ["darwin", "win32", "linux"]
     },
     {
@@ -96,6 +116,18 @@
     },
     {
       "file": "src/main/backup/providers.test.ts",
+      "name": "Windows de verdade lê uma pasta do registro com reg.exe",
+      "requiredOn": ["win32"],
+      "reason": "Integração nativa exclusiva do Windows."
+    },
+    {
+      "file": "src/main/backup/providers.test.ts",
+      "name": "Windows de verdade procura Google Drive e OneDrive sem travar nem lançar erro",
+      "requiredOn": ["win32"],
+      "reason": "Integração nativa exclusiva do Windows."
+    },
+    {
+      "file": "src/main/backup/providers.test.ts",
       "name": "nuvem desinstalada o app sumiu e a pasta da conta ficou para trás: \"não instalado\"",
       "requiredOn": ["darwin", "win32", "linux"]
     },
@@ -121,11 +153,6 @@
     },
     {
       "file": "src/main/backup/providers.test.ts",
-      "name": "nuvens no Windows lê a pasta do OneDrive no registro (preferindo a pessoal) e acha o Google Drive no G:",
-      "requiredOn": ["darwin", "win32", "linux"]
-    },
-    {
-      "file": "src/main/backup/providers.test.ts",
       "name": "nuvens no Windows OneDrive que vem com o Windows, sem conta; Google Drive não instalado; sem iCloud",
       "requiredOn": ["darwin", "win32", "linux"]
     },
@@ -136,15 +163,8 @@
     },
     {
       "file": "src/main/backup/providers.test.ts",
-      "name": "Windows de verdade lê uma pasta do registro com reg.exe",
-      "requiredOn": ["win32"],
-      "reason": "Integração nativa exclusiva do Windows."
-    },
-    {
-      "file": "src/main/backup/providers.test.ts",
-      "name": "Windows de verdade procura Google Drive e OneDrive sem travar nem lançar erro",
-      "requiredOn": ["win32"],
-      "reason": "Integração nativa exclusiva do Windows."
+      "name": "nuvens no Windows lê a pasta do OneDrive no registro (preferindo a pessoal) e acha o Google Drive no G:",
+      "requiredOn": ["darwin", "win32", "linux"]
     },
     {
       "file": "src/main/backup/scheduler.test.ts",
@@ -189,6 +209,11 @@
     {
       "file": "src/main/backup/scheduler.test.ts",
       "name": "só quando pedir nunca copia sozinho",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/db/appointments-properties.test.ts",
+      "name": "intervalos gerados rejeitam sobreposição, aceitam adjacência e preservam edição recusada",
       "requiredOn": ["darwin", "win32", "linux"]
     },
     {
@@ -267,6 +292,36 @@
       "requiredOn": ["darwin", "win32", "linux"]
     },
     {
+      "file": "src/main/db/failures.test.ts",
+      "name": "falhas de armazenamento mantém os dados quando outro escritor bloqueia o banco e permite tentar novamente",
+      "requiredOn": ["darwin", "win32"]
+    },
+    {
+      "file": "src/main/db/failures.test.ts",
+      "name": "falhas de armazenamento recusa escrita somente leitura sem perder o registro nem anunciar sucesso",
+      "requiredOn": ["darwin", "win32"]
+    },
+    {
+      "file": "src/main/db/failures.test.ts",
+      "name": "falhas de armazenamento recusa falta de espaço sem aplicar parcialmente a atualização",
+      "requiredOn": ["darwin", "win32"]
+    },
+    {
+      "file": "src/main/db/migrations.test.ts",
+      "name": "compatibilidade do banco preserva os registros v1 ao migrar e reabrir",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/db/migrations.test.ts",
+      "name": "compatibilidade do banco recusa a abertura de banco futuro sem mudar bytes nem criar WAL",
+      "requiredOn": ["darwin", "win32"]
+    },
+    {
+      "file": "src/main/db/migrations.test.ts",
+      "name": "compatibilidade do banco recusa versão futura sem modificar o arquivo",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
       "file": "src/main/db/patients.test.ts",
       "name": "migrations deixa o banco na versão atual",
       "requiredOn": ["darwin", "win32", "linux"]
@@ -300,6 +355,91 @@
       "file": "src/main/db/patients.test.ts",
       "name": "validação do cadastro exige nome e valida CPF, celular, e-mail e datas",
       "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/db/recovery.test.ts",
+      "name": "recuperação de dados falha ao abrir a cópia promovida repõe o banco anterior",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/db/recovery.test.ts",
+      "name": "recuperação de dados falha na promoção preserva todos os dados e permite nova tentativa",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/db/recovery.test.ts",
+      "name": "recuperação de dados falha também no rollback conserva uma cópia legível dos dados anteriores",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/db/recovery.test.ts",
+      "name": "recuperação de dados leitor externo impede a troca e mantém os dados recentes no WAL",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/db/recovery.test.ts",
+      "name": "recuperação de dados recusa arquivo ausente ou truncado mantendo o banco atual aberto",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/db/recovery.test.ts",
+      "name": "recuperação de dados recusa banco vazio e tabela incompatível antes da substituição",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/db/recovery.test.ts",
+      "name": "recuperação de dados recusa o próprio banco como origem",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/db/recovery.test.ts",
+      "name": "recuperação de dados recusa relações órfãs mesmo quando o SQLite passa no integrity_check",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/db/recovery.test.ts",
+      "name": "recuperação de dados recusa versão futura sem modificar a origem ou os dados atuais",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/db/recovery.test.ts",
+      "name": "recuperação de dados restaura a fixture histórica sem perder IDs, campos ou agendamentos",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/db/recovery.test.ts",
+      "name": "recuperação de dados restaura um backup cifrado histórico e reabre a base recuperada",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/ipc-security.test.ts",
+      "name": "segurança IPC aceita apenas o frame principal registrado na URL exata",
+      "requiredOn": ["darwin", "win32"]
+    },
+    {
+      "file": "src/main/ipc-security.test.ts",
+      "name": "segurança IPC recusa janela desconhecida mesmo carregando o arquivo legítimo",
+      "requiredOn": ["darwin", "win32"]
+    },
+    {
+      "file": "src/main/ipc-security.test.ts",
+      "name": "segurança IPC recusa subframe, navegação externa, URL com prefixo parecido e frame ausente",
+      "requiredOn": ["darwin", "win32"]
+    },
+    {
+      "file": "src/main/ipc-security.test.ts",
+      "name": "segurança IPC revoga a janela destruída e não confia em outra instância com o mesmo ID",
+      "requiredOn": ["darwin", "win32"]
+    },
+    {
+      "file": "src/main/ipc.test.ts",
+      "name": "handlers IPC janela autorizada usa a API, mas um subframe não pode ler dados nem gravar preferências",
+      "requiredOn": ["darwin", "win32"]
+    },
+    {
+      "file": "src/main/ipc.test.ts",
+      "name": "handlers IPC todos os canais recusam renderer desconhecido antes de executar a operação",
+      "requiredOn": ["darwin", "win32"]
     },
     {
       "file": "src/main/net/remote.test.ts",
@@ -387,6 +527,11 @@
       "requiredOn": ["darwin", "win32", "linux"]
     },
     {
+      "file": "src/main/prefs-failure.test.ts",
+      "name": "falha ao salvar preferências preserva memória e permite tentar novamente",
+      "requiredOn": ["darwin", "win32"]
+    },
+    {
       "file": "src/main/prefs.test.ts",
       "name": "preferências da interface avisa a mudança só quando algo muda",
       "requiredOn": ["darwin", "win32", "linux"]
@@ -437,6 +582,86 @@
       "requiredOn": ["darwin", "win32", "linux"]
     },
     {
+      "file": "src/renderer/src/components/ui/calendar.test.tsx",
+      "name": "calendário Home e End respeitam a semana que começa no domingo",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/renderer/src/components/ui/calendar.test.tsx",
+      "name": "calendário PageUp e PageDown com Shift atravessam anos sem criar 29 de fevereiro inválido",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/renderer/src/components/ui/calendar.test.tsx",
+      "name": "calendário setas atravessam meses e Enter entrega o dia escolhido",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/renderer/src/components/ui/date-field.test.tsx",
+      "name": "campo de data carregar outra ficha e limpar o valor substituem o rascunho exibido",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/renderer/src/components/ui/date-field.test.tsx",
+      "name": "campo de data escolher um dia no calendário entrega ISO e devolve o foco ao campo",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/renderer/src/components/ui/date-field.test.tsx",
+      "name": "campo de data mantém uma data incompleta como inválida em vez de apagar a entrada",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/renderer/src/components/ui/date-field.test.tsx",
+      "name": "campo de data mostra a data brasileira e entrega ISO somente para uma data existente",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/renderer/src/components/ui/date-field.test.tsx",
+      "name": "campo de data seta abre o calendário e Escape devolve o foco sem alterar a data",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/renderer/src/components/ui/time-field.test.tsx",
+      "name": "campo de horário Escape fecha as sugestões sem mudar o valor",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/renderer/src/components/ui/time-field.test.tsx",
+      "name": "campo de horário acompanha uma troca externa de valor sem reutilizar o rascunho",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/renderer/src/components/ui/time-field.test.tsx",
+      "name": "campo de horário completa o horário digitado ao sair do campo sem escolher outra sugestão",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/renderer/src/components/ui/time-field.test.tsx",
+      "name": "campo de horário horário inválido permanece disponível para o formulário recusar",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/renderer/src/components/ui/time-field.test.tsx",
+      "name": "campo de horário seleção pelo mouse escolhe antes do blur e não envia o formulário",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/renderer/src/components/ui/time-field.test.tsx",
+      "name": "campo de horário setas e Enter escolhem a sugestão mantendo o foco no campo",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/shared/agenda.test.ts",
+      "name": "TIME_SLOTS só tem horários em que uma sessão pode começar",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/shared/agenda.test.ts",
+      "name": "TIME_SLOTS vai de 15 em 15 minutos, da abertura até o último quarto de hora antes do fim",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
       "file": "src/shared/agenda.test.ts",
       "name": "endsWithinAgenda aceita a sessão que termina às 20:00 em ponto",
       "requiredOn": ["darwin", "win32", "linux"]
@@ -457,16 +682,6 @@
       "requiredOn": ["darwin", "win32", "linux"]
     },
     {
-      "file": "src/shared/agenda.test.ts",
-      "name": "TIME_SLOTS só tem horários em que uma sessão pode começar",
-      "requiredOn": ["darwin", "win32", "linux"]
-    },
-    {
-      "file": "src/shared/agenda.test.ts",
-      "name": "TIME_SLOTS vai de 15 em 15 minutos, da abertura até o último quarto de hora antes do fim",
-      "requiredOn": ["darwin", "win32", "linux"]
-    },
-    {
       "file": "src/shared/cpf.test.ts",
       "name": "isValidCpf aceita CPFs válidos, com ou sem pontuação",
       "requiredOn": ["darwin", "win32", "linux"]
@@ -483,12 +698,12 @@
     },
     {
       "file": "src/shared/cpf.test.ts",
-      "name": "máscaras formata celular e telefone fixo",
+      "name": "máscaras formata CPF enquanto digita",
       "requiredOn": ["darwin", "win32", "linux"]
     },
     {
       "file": "src/shared/cpf.test.ts",
-      "name": "máscaras formata CPF enquanto digita",
+      "name": "máscaras formata celular e telefone fixo",
       "requiredOn": ["darwin", "win32", "linux"]
     },
     {
@@ -597,6 +812,16 @@
       "requiredOn": ["darwin", "win32", "linux"]
     },
     {
+      "file": "src/shared/properties.test.ts",
+      "name": "propriedades de conteúdo busca conserva ordem, não altera pacientes e encontra o nome normalizado",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/shared/properties.test.ts",
+      "name": "propriedades de conteúdo datas válidas mantêm o mesmo dia na conversão brasileira e ISO",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
       "file": "src/shared/search.test.ts",
       "name": "busca de pacientes encontra pelo nome da mãe e pelos dígitos do CPF",
       "requiredOn": ["darwin", "win32", "linux"]
@@ -615,71 +840,6 @@
       "file": "src/shared/search.test.ts",
       "name": "busca de pacientes sem busca devolve todos, na ordem recebida",
       "requiredOn": ["darwin", "win32", "linux"]
-    },
-    {
-      "file": "src/main/db/migrations.test.ts",
-      "name": "compatibilidade do banco preserva os registros v1 ao migrar e reabrir",
-      "requiredOn": ["darwin", "win32", "linux"]
-    },
-    {
-      "file": "src/main/db/migrations.test.ts",
-      "name": "compatibilidade do banco recusa versão futura sem modificar o arquivo",
-      "requiredOn": ["darwin", "win32", "linux"]
-    },
-    {
-      "file": "src/main/ipc-security.test.ts",
-      "name": "segurança IPC aceita apenas o frame principal registrado na URL exata",
-      "requiredOn": ["darwin", "win32"]
-    },
-    {
-      "file": "src/main/ipc-security.test.ts",
-      "name": "segurança IPC recusa janela desconhecida mesmo carregando o arquivo legítimo",
-      "requiredOn": ["darwin", "win32"]
-    },
-    {
-      "file": "src/main/ipc-security.test.ts",
-      "name": "segurança IPC recusa subframe, navegação externa, URL com prefixo parecido e frame ausente",
-      "requiredOn": ["darwin", "win32"]
-    },
-    {
-      "file": "src/main/ipc-security.test.ts",
-      "name": "segurança IPC revoga a janela destruída e não confia em outra instância com o mesmo ID",
-      "requiredOn": ["darwin", "win32"]
-    },
-    {
-      "file": "src/main/ipc.test.ts",
-      "name": "handlers IPC todos os canais recusam renderer desconhecido antes de executar a operação",
-      "requiredOn": ["darwin", "win32"]
-    },
-    {
-      "file": "src/main/ipc.test.ts",
-      "name": "handlers IPC janela autorizada usa a API, mas um subframe não pode ler dados nem gravar preferências",
-      "requiredOn": ["darwin", "win32"]
-    },
-    {
-      "file": "src/main/prefs-failure.test.ts",
-      "name": "falha ao salvar preferências preserva memória e permite tentar novamente",
-      "requiredOn": ["darwin", "win32"]
-    },
-    {
-      "file": "src/main/db/failures.test.ts",
-      "name": "falhas de armazenamento recusa escrita somente leitura sem perder o registro nem anunciar sucesso",
-      "requiredOn": ["darwin", "win32"]
-    },
-    {
-      "file": "src/main/db/failures.test.ts",
-      "name": "falhas de armazenamento mantém os dados quando outro escritor bloqueia o banco e permite tentar novamente",
-      "requiredOn": ["darwin", "win32"]
-    },
-    {
-      "file": "src/main/db/failures.test.ts",
-      "name": "falhas de armazenamento recusa falta de espaço sem aplicar parcialmente a atualização",
-      "requiredOn": ["darwin", "win32"]
-    },
-    {
-      "file": "src/main/db/migrations.test.ts",
-      "name": "compatibilidade do banco recusa a abertura de banco futuro sem mudar bytes nem criar WAL",
-      "requiredOn": ["darwin", "win32"]
     }
   ]
 }

@@ -1,6 +1,8 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { requireCondition, validateCiExecution, validateE2e } from './checks.mjs'
+import { sha256, validateChangedCoverage, validatePerformance } from './risk-checks.mjs'
+import { validateDelivery } from './delivery-checks.mjs'
 
 const json = (file) => JSON.parse(readFileSync(file, 'utf8'))
 
@@ -91,13 +93,36 @@ export function validateMutations(report, catalog, sha, platform) {
   return actual.size
 }
 
-export function validateExtendedBundle(directory, trusted, sha, platform) {
+export function validateExtendedBundle(directory, trusted, sha, platform, changedCoverage) {
   const policy = json(join(trusted, 'docs/qualidade/gates.json'))
   const run = json(join(directory, 'test-run.json'))
+  const coveragePolicy = json(join(trusted, 'docs/qualidade/cobertura.json'))
   return {
+    delivery: validateDelivery(
+      json(join(directory, 'delivery/results.json')),
+      json(join(directory, 'delivery/sbom.cdx.json')),
+      sha,
+      platform,
+      sha256(readFileSync(join(directory, 'delivery/sbom.cdx.json')))
+    ),
+    changedCoverage: validateChangedCoverage(
+      json(join(directory, 'changed-coverage.json')),
+      json(join(directory, 'coverage/coverage-final.json')),
+      changedCoverage,
+      run.root,
+      coveragePolicy.changedLinesMinimum,
+      sha,
+      platform
+    ),
+    performance: validatePerformance(
+      json(join(directory, 'performance/results.json')),
+      json(join(trusted, 'docs/qualidade/desempenho.json')),
+      sha,
+      platform
+    ),
     coverage: validateCoverage(
       json(join(directory, 'coverage/coverage-summary.json')),
-      json(join(trusted, 'docs/qualidade/cobertura.json')),
+      coveragePolicy,
       run.root
     ),
     ui: validateExtendedReport(json(join(directory, 'ui/results.json')), policy.ui, sha, platform),

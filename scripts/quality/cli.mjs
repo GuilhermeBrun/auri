@@ -13,6 +13,7 @@ import {
   validatePolicyChanges
 } from './checks.mjs'
 import { validateExtendedBundle } from './extended-checks.mjs'
+import { collectChangedLines, sha256, validateSast } from './risk-checks.mjs'
 
 const trusted = resolve(fileURLToPath(new URL('../../', import.meta.url)))
 const json = (file) => JSON.parse(readFileSync(file, 'utf8'))
@@ -92,7 +93,8 @@ async function policy() {
     base: base || null,
     bootstrap,
     reviewed,
-    sensitive
+    sensitive,
+    changedCoverage: collectChangedLines(base)
   }
   write('.quality/policy.json', report)
   console.log(
@@ -102,7 +104,11 @@ async function policy() {
   )
 }
 
-function validateBundle(directory, platform) {
+function validateBundle(
+  directory,
+  platform,
+  changedCoverage = collectChangedLines(process.env.BASE_SHA)
+) {
   const run = json(join(directory, 'test-run.json'))
   const report = json(join(directory, 'tests.json'))
   const e2eReport = json(join(directory, 'e2e/results.json'))
@@ -126,7 +132,7 @@ function validateBundle(directory, platform) {
     platform,
     tests: tests.size,
     scenarios: validateScenarios(catalog(), tests, e2e),
-    ...validateExtendedBundle(directory, trusted, sha(), platform)
+    ...validateExtendedBundle(directory, trusted, sha(), platform, changedCoverage)
   }
 }
 
@@ -148,6 +154,16 @@ function validateSecurity(directory) {
     Array.isArray(secrets) && secrets.length === 0,
     'Segredos encontrados ou relatório inválido.'
   )
+  const rulesFile = join(trusted, 'docs/qualidade/sast.json')
+  validateSast(
+    json(join(directory, 'sast/results.json')),
+    json(join(directory, 'sast/scan.json')),
+    json(join(directory, 'sast/fixtures.json')),
+    json(rulesFile).rules,
+    sha256(readFileSync(rulesFile)),
+    json(join(trusted, 'docs/qualidade/cobertura.json')).productionFiles,
+    sha()
+  )
 }
 
 function aggregate(directory) {
@@ -164,8 +180,8 @@ function aggregate(directory) {
       'Política de outra execução/tentativa.'
     )
   const bundles = [
-    validateBundle(join(directory, 'quality-darwin'), 'darwin'),
-    validateBundle(join(directory, 'quality-win32'), 'win32')
+    validateBundle(join(directory, 'quality-darwin'), 'darwin', policyReport.changedCoverage),
+    validateBundle(join(directory, 'quality-win32'), 'win32', policyReport.changedCoverage)
   ]
   validateSecurity(join(directory, 'quality-security'))
   write(join(directory, 'summary.json'), { success: true, sha: sha(), bundles })
@@ -183,13 +199,17 @@ async function local() {
     'check',
     'test:quality',
     'test:ci',
+    'test:coverage-changed',
     'build',
+    'test:performance',
     'test:e2e',
     'test:ui',
     'test:mutation',
     'build:unpack',
     'test:package',
-    'security:check'
+    'quality:delivery',
+    'security:check',
+    'security:sast'
   ]) {
     run(process.platform === 'win32' ? 'npm.cmd' : 'npm', ['run', script])
   }

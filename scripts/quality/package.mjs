@@ -1,17 +1,27 @@
 import { _electron as electron, expect } from '@playwright/test'
 import { spawnSync } from 'node:child_process'
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, realpathSync, rmSync } from 'node:fs'
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  realpathSync,
+  rmSync
+} from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import electronPath from 'electron'
 import { listPackage } from '@electron/asar'
 import { execution, writeJson } from './evidence.mjs'
+import { sha256 } from './risk-checks.mjs'
 
 const startedAt = Date.now()
 const directory = mkdtempSync(join(tmpdir(), 'auri-package-quality-'))
 const checks = []
 let application
 let packageExecutable = null
+let asarSha256 = null
 mkdirSync('.quality/package', { recursive: true })
 
 function executable() {
@@ -56,7 +66,8 @@ async function launch(data) {
   const main = await application.evaluate(({ app, BrowserWindow }) => ({
     appPath: app.getAppPath(),
     userData: app.getPath('userData'),
-    url: BrowserWindow.getAllWindows()[0].webContents.getURL()
+    url: BrowserWindow.getAllWindows()[0].webContents.getURL(),
+    runtime: process.versions
   }))
   const bridge = await page.evaluate(async () => ({
     url: location.href,
@@ -83,6 +94,7 @@ try {
         : resolve(exe, '../resources/app.asar')
     expect(existsSync(archive)).toBe(true)
     const files = listPackage(archive).map((file) => file.replaceAll('\\', '/'))
+    asarSha256 = sha256(readFileSync(archive))
     for (const file of [
       '/out/main/index.js',
       '/out/preload/index.js',
@@ -181,6 +193,7 @@ try {
     ...execution(startedAt),
     success: !process.exitCode,
     executable: packageExecutable,
+    asarSha256,
     checks
   })
   rmSync(directory, { recursive: true, force: true })

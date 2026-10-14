@@ -91,6 +91,34 @@
       "from": "assertTrustedSender(event)\n      prefs.save(value)",
       "to": "prefs.save(value)",
       "tests": ["src/main/ipc.test.ts"]
+    },
+    {
+      "id": "backup-autenticacao-cabecalho",
+      "file": "src/main/backup/crypto.ts",
+      "from": "  cipher.setAAD(aad)",
+      "to": "  cipher.setAAD(Buffer.alloc(0))",
+      "tests": ["src/main/backup/archive-properties.test.ts"]
+    },
+    {
+      "id": "restauracao-inspecao",
+      "file": "src/main/db/recovery.ts",
+      "from": "    inspect(stage)",
+      "to": "    // inspeção omitida",
+      "tests": ["src/main/db/recovery.test.ts"]
+    },
+    {
+      "id": "preferencias-promocao",
+      "file": "src/main/atomic-file.ts",
+      "from": "    renameSync(temporary, file)",
+      "to": "    rmSync(temporary, { force: true })",
+      "tests": ["src/main/atomic-file.test.ts"]
+    },
+    {
+      "id": "calendario-proximo-ano",
+      "file": "src/renderer/src/components/ui/calendar.tsx",
+      "from": "PageDown: e.shiftKey ? addYears(active, 1) : addMonths(active, 1)",
+      "to": "PageDown: e.shiftKey ? addYears(active, -1) : addMonths(active, 1)",
+      "tests": ["src/renderer/src/components/ui/calendar.test.tsx"]
     }
   ]
 }

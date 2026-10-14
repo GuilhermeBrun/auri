@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "patients": 10000,
+  "samples": 100,
+  "maximums": {
+    "rendererGzipBytes": 330000,
+    "searchP95Ms": 16
+  }
+}
