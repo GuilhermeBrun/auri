@@ -16,8 +16,11 @@ export type Probe = {
   exists(path: string): Promise<boolean>
   /** Lista uma pasta; lança com `code` (ENOENT, EPERM…) como o `fs`. */
   readdir(path: string): Promise<string[]>
-  /** Saída de `reg query <key> /s /v <value>` no Windows ('' se a chave não existir). */
-  registry(key: string, value: string): Promise<string>
+  /**
+   * Saída de `reg query <key> /s` no Windows, só do valor `value` quando informado ('' se a chave
+   * não existir).
+   */
+  registry(key: string, value?: string): Promise<string>
 }
 
 export const PROVIDER_NAMES: Record<CloudProviderId, string> = {
@@ -162,17 +165,37 @@ export function parseRegistry(output: string, value: string): { key: string; dat
   return found
 }
 
+/** Valores de cada chave numa saída de `reg query /s`: chave → nome → dado. */
+export function parseRegistryValues(output: string): Map<string, Map<string, string>> {
+  const keys = new Map<string, Map<string, string>>()
+  let current: Map<string, string> | null = null
+  for (const line of output.split(/\r?\n/)) {
+    if (/^HKEY_/i.test(line)) {
+      current = new Map()
+      keys.set(line.trim(), current)
+      continue
+    }
+    const match = /^\s+(\S+)\s+REG_\w+\s+(.*?)\s*$/.exec(line)
+    if (match && current) current.set(match[1], match[2])
+  }
+  return keys
+}
+
+/**
+ * OneDrive no Windows: pronto só com uma conta conectada (com e-mail no registro) e a pasta
+ * dela no disco. O instalador cria a pasta antes do login (visto no CI em 14/10/2026), e copiar
+ * ali gravaria numa pasta que não sobe para lugar nenhum.
+ */
 async function winOneDrive(probe: Probe): Promise<Found> {
-  const accounts = parseRegistry(
-    await probe.registry('HKCU\\Software\\Microsoft\\OneDrive\\Accounts', 'UserFolder'),
-    'UserFolder'
-  ).sort((a, b) => Number(/\\Personal$/i.test(b.key)) - Number(/\\Personal$/i.test(a.key)))
-  const candidates = [
-    ...accounts.map((a) => a.data),
-    probe.env.OneDriveConsumer,
-    probe.env.OneDrive
-  ].filter((v): v is string => !!v)
-  for (const folder of candidates) {
+  const registry = parseRegistryValues(
+    await probe.registry('HKCU\\Software\\Microsoft\\OneDrive\\Accounts')
+  )
+  const accounts = [...registry]
+    .filter(([, values]) => values.get('UserFolder') && values.get('UserEmail'))
+    // a conta pessoal primeiro, depois as de empresa
+    .sort(([a], [b]) => Number(/\\Personal$/i.test(b)) - Number(/\\Personal$/i.test(a)))
+  for (const [, values] of accounts) {
+    const folder = values.get('UserFolder')!
     if (await probe.exists(folder)) return settle(folder, OK, true)
   }
   const local = probe.env.LOCALAPPDATA ?? win32.join(probe.home, 'AppData', 'Local')
@@ -264,7 +287,7 @@ export function systemProbe(): Probe {
       new Promise((resolve) =>
         execFile(
           'reg',
-          ['query', key, '/s', '/v', value],
+          ['query', key, '/s', ...(value ? ['/v', value] : [])],
           { windowsHide: true, timeout: 5000 },
           (error, stdout) => resolve(error ? '' : stdout)
         )

@@ -385,6 +385,19 @@ async function run() {
           od = await onedrive()
         }
       }
+      // o que o OneDrive grava antes do login (para a detecção não confundir com conta conectada)
+      try {
+        const reg = execFileSync(
+          'reg',
+          ['query', 'HKCU\\Software\\Microsoft\\OneDrive\\Accounts', '/s'],
+          {
+            encoding: 'utf8'
+          }
+        )
+        console.log(`registro do OneDrive:\n${reg.replace(/(UserEmail\s+REG_SZ\s+)\S+/g, '$1***')}`)
+      } catch {
+        console.log('registro do OneDrive: (sem contas)')
+      }
       check('o OneDrive fica instalado (falta entrar na conta)', od === 'signed-out', od)
       await page.eval(`window.backup.openProvider('onedrive')`)
       await sleep(15000)

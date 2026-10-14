@@ -134,9 +134,11 @@ describe('nuvens no Windows', () => {
     const registry = [
       'HKEY_CURRENT_USER\\Software\\Microsoft\\OneDrive\\Accounts\\Business1',
       '    UserFolder    REG_SZ    C:\\Users\\Recepcao\\OneDrive - Clinica',
+      '    UserEmail    REG_SZ    recepcao@clinica.com.br',
       '',
       'HKEY_CURRENT_USER\\Software\\Microsoft\\OneDrive\\Accounts\\Personal',
       '    UserFolder    REG_SZ    C:\\Users\\Recepcao\\OneDrive',
+      '    UserEmail    REG_SZ    clinica@outlook.com',
       ''
     ].join('\r\n')
     const probe = fakeProbe({
@@ -153,6 +155,27 @@ describe('nuvens no Windows', () => {
       ['google', 'ready', 'G:\\Meu Drive'],
       ['onedrive', 'ready', 'C:\\Users\\Recepcao\\OneDrive']
     ])
+  })
+
+  it('OneDrive recém-instalado, com a pasta criada mas sem conta: falta entrar na conta', async () => {
+    const probe = fakeProbe({
+      platform: 'win32',
+      home: WIN_HOME,
+      paths: [
+        'C:\\Users\\Recepcao\\OneDrive\\x',
+        'C:\\Users\\Recepcao\\AppData\\Local\\Microsoft\\OneDrive\\OneDrive.exe'
+      ],
+      env: {
+        LOCALAPPDATA: 'C:\\Users\\Recepcao\\AppData\\Local',
+        OneDrive: 'C:\\Users\\Recepcao\\OneDrive'
+      },
+      registry: [
+        'HKEY_CURRENT_USER\\Software\\Microsoft\\OneDrive\\Accounts\\Personal',
+        '    UserFolder    REG_SZ    C:\\Users\\Recepcao\\OneDrive',
+        ''
+      ].join('\r\n')
+    })
+    expect((await detectProviders(probe))[1]).toMatchObject({ state: 'signed-out', folder: null })
   })
 
   it('OneDrive que vem com o Windows, sem conta; Google Drive não instalado; sem iCloud', async () => {
