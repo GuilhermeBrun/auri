@@ -3,6 +3,11 @@ productName: Auri
 directories:
   buildResources: build
 files:
+  - out/**
+  - resources/**
+  - package.json
+  - '!{docs,reports,research_notes,.github,.quality,.vite-plus}/**'
+  - '!vite.config.{js,ts,mjs,cjs}'
   - '!**/.vscode/*'
   - '!src/*'
   - '!scripts/*'

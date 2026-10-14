@@ -1,0 +1,96 @@
+{
+  "version": 1,
+  "mutants": [
+    {
+      "id": "agenda-inicio",
+      "file": "src/shared/agenda.ts",
+      "from": "start >= DAY_START_MINUTES",
+      "to": "start > DAY_START_MINUTES",
+      "tests": ["src/shared/agenda.test.ts"]
+    },
+    {
+      "id": "agenda-fim",
+      "file": "src/shared/agenda.ts",
+      "from": "duration <= DAY_END_MINUTES",
+      "to": "duration < DAY_END_MINUTES",
+      "tests": ["src/shared/agenda.test.ts"]
+    },
+    {
+      "id": "cpf-tamanho",
+      "file": "src/shared/cpf.ts",
+      "from": "d.length !== 11",
+      "to": "d.length === 11",
+      "tests": ["src/shared/cpf.test.ts"]
+    },
+    {
+      "id": "cpf-digito",
+      "file": "src/shared/cpf.ts",
+      "from": "checkDigit(d, 9) === Number(d[9])",
+      "to": "checkDigit(d, 9) !== Number(d[9])",
+      "tests": ["src/shared/cpf.test.ts"]
+    },
+    {
+      "id": "agenda-adjacencia",
+      "file": "src/main/db/appointments.ts",
+      "from": "WHERE a.inicio < @fim AND a.fim > @inicio",
+      "to": "WHERE a.inicio <= @fim AND a.fim > @inicio",
+      "tests": ["src/main/db/appointments.test.ts"]
+    },
+    {
+      "id": "agenda-conflito",
+      "file": "src/main/db/appointments.ts",
+      "from": "if (busy.length === 0) return",
+      "to": "if (busy.length >= 0) return",
+      "tests": ["src/main/db/appointments.test.ts"]
+    },
+    {
+      "id": "agenda-edicao",
+      "file": "src/main/db/appointments.ts",
+      "from": " AND a.id IS NOT @ignoreId",
+      "to": "",
+      "tests": ["src/main/db/appointments.test.ts"]
+    },
+    {
+      "id": "banco-futuro",
+      "file": "src/main/db/migrations.ts",
+      "from": "current > MIGRATIONS.length",
+      "to": "current < MIGRATIONS.length",
+      "tests": ["src/main/db/migrations.test.ts"]
+    },
+    {
+      "id": "ipc-frame",
+      "file": "src/main/ipc-security.ts",
+      "from": "frame !== event.sender.mainFrame",
+      "to": "false",
+      "tests": ["src/main/ipc-security.test.ts"]
+    },
+    {
+      "id": "ipc-documento",
+      "file": "src/main/ipc-security.ts",
+      "from": "documentUrl(frame.url) !== trusted.url",
+      "to": "false",
+      "tests": ["src/main/ipc-security.test.ts"]
+    },
+    {
+      "id": "ipc-handler",
+      "file": "src/main/ipc.ts",
+      "from": "assertTrustedSender(event)\n      return { ok: true",
+      "to": "return { ok: true",
+      "tests": ["src/main/ipc.test.ts"]
+    },
+    {
+      "id": "ipc-dados",
+      "file": "src/main/ipc.ts",
+      "from": "assertTrustedSender(event)\n        return connection.call",
+      "to": "return connection.call",
+      "tests": ["src/main/ipc.test.ts"]
+    },
+    {
+      "id": "ipc-preferencias",
+      "file": "src/main/ipc.ts",
+      "from": "assertTrustedSender(event)\n      prefs.save(value)",
+      "to": "prefs.save(value)",
+      "tests": ["src/main/ipc.test.ts"]
+    }
+  ]
+}

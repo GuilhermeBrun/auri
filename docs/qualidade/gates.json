@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "ui": [
+    "UI: primeira abertura e lista vazia acessíveis",
+    "UI: campos inválidos impedem cadastro",
+    "UI: cadastro, datas brasileiras e busca sem acento",
+    "UI: edição salva e navegação descarta rascunho",
+    "UI: erro de gravação preserva ficha e mostra mensagem",
+    "UI: agenda usa teclado e exibe resumo com data e horário",
+    "UI: conflito é informado sem criar sessão duplicada",
+    "UI: sessão adjacente é aceita e cancelar mantém os dados",
+    "UI: remarcação com conflito e exclusão exigem confirmação",
+    "UI: temas claro e escuro têm referências visuais e acessibilidade",
+    "UI: reiniciar preserva paciente, sessão e tema",
+    "UI: execução não contém erros JavaScript"
+  ],
+  "package": [
+    "Pacote: contém apenas arquivos de execução e dependências de produção",
+    "Pacote: inicializa SQLite e mantém isolamento do renderer",
+    "Pacote: reabre os dados criados pelo aplicativo distribuído",
+    "Pacote: abre banco histórico sem perder paciente nem agendamento"
+  ]
+}

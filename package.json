@@ -21,14 +21,18 @@
     "format:check": "vp fmt --check",
     "lint:ci": "vp lint --max-warnings=0",
     "test:ci": "node scripts/run-tests.mjs --quality",
-    "test:quality": "node --test scripts/quality/checks.test.mjs",
+    "test:quality": "node --test scripts/quality/checks.test.mjs scripts/quality/extended-checks.test.mjs",
     "test:e2e": "node scripts/e2e.mjs .quality/e2e",
     "security:check": "node scripts/quality/security.mjs",
     "quality:policy": "node scripts/quality/cli.mjs policy",
     "quality:validate": "node scripts/quality/cli.mjs validate",
     "quality": "node scripts/quality/cli.mjs local",
     "quality:protect": "node scripts/quality/enable-protection.mjs",
-    "check": "vp check"
+    "check": "vp check",
+    "test:ui": "node scripts/quality/ui.mjs",
+    "test:mutation": "node scripts/quality/mutation.mjs",
+    "test:package": "node scripts/quality/package.mjs",
+    "test:installer": "node scripts/quality/install.mjs"
   },
   "dependencies": {
     "@electron-toolkit/utils": "^4.0.0",
@@ -39,9 +43,12 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.13.0",
     "@electron-toolkit/tsconfig": "^2.0.0",
+    "@electron/asar": "3.4.1",
     "@fontsource-variable/bricolage-grotesque": "^5.3.0",
     "@hookform/resolvers": "^5.9.1",
+    "@playwright/test": "1.64.1",
     "@tailwindcss/vite": "^4.3.3",
     "@tanstack/react-query": "^5.104.1",
     "@types/better-sqlite3": "^9.6.0",
@@ -50,6 +57,7 @@
     "@types/react-big-calendar": "^1.16.3",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.1",
+    "@vitest/coverage-v8": "5.0.4",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.4.0",
@@ -57,6 +65,8 @@
     "electron-builder": "^26.0.12",
     "electron-vite": "^5.0.0",
     "lucide-react": "^1.52.0",
+    "pixelmatch": "8.0.0",
+    "pngjs": "7.0.0",
     "radix-ui": "^1.7.0",
     "react": "^19.2.1",
     "react-big-calendar": "^1.20.0",
@@ -72,5 +82,6 @@
   "productName": "Auri",
   "engines": {
     "node": "^22.18.0 || ^24.11.0 || >=26.0.0"
-  }
+  },
+  "packageManager": "npm@11.13.0"
 }

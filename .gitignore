@@ -7,3 +7,4 @@ out
 *.tsbuildinfo
 .quality/
 .vite-plus/
+coverage/

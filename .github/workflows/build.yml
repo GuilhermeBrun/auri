@@ -10,6 +10,7 @@ on:
 permissions:
   contents: read
   pull-requests: read
+  actions: read
 
 jobs:
   validation:
@@ -35,10 +36,16 @@ jobs:
 
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: 22
+          node-version: 24.15.0
           cache: npm
 
+      - run: npm install --global npm@11.13.0
       - run: npm ci
+
+      - name: Conferir origem aprovada da versão
+        run: node scripts/quality/release-policy.mjs
+        env:
+          GH_TOKEN: ${{ github.token }}
 
       - run: npm test
         env:
@@ -46,6 +53,18 @@ jobs:
           AURI_TESTA_INSTALADORES: '1'
 
       - run: npm run ${{ matrix.script }}
+
+      - name: Testar o instalador e o aplicativo distribuído
+        run: npm run test:installer
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: installer-${{ matrix.os }}
+          path: .quality/
+          include-hidden-files: true
+          overwrite: true
+          if-no-files-found: error
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
@@ -70,9 +89,10 @@ jobs:
 
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: 22
+          node-version: 24.15.0
           cache: npm
 
+      - run: npm install --global npm@11.13.0
       - run: npm ci
 
       - run: npm run build

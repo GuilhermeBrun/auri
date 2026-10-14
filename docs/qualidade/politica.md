@@ -29,7 +29,7 @@ com Vite 7. `electron.vite.config.ts` é apenas um adaptador que reexporta a con
 o electron-vite rejeita o nome padrão `vite.config.ts` como arquivo de configuração direto.
 Vite+ fornece as demais ferramentas pelo arquivo central.
 Use Node **22.18+** na linha 22 ou **24.11+** na linha 24, conforme `engines` do projeto.
-A validação exige os testes do inventário e os dez cenários de `cenarios.json`;
+A validação exige os testes do inventário e os cenários de `cenarios.json`;
 não compara apenas a quantidade de testes. Teste novo pulado, todo, duplicado, relatório
 antigo, SHA/plataforma incorretos ou zero testes reprovam. Retries automáticos não estão habilitados.
 No CI, alteração dos arquivos do checkout durante instalação/testes também reprova a evidência.
@@ -76,8 +76,8 @@ globs, exclusões, dependências e resultados anteriores/novos antes de registra
 
 O agregador e o scanner usam a versão do verificador da base. Uma expectativa atualizada só
 entra no artefato de política após revisão do SHA. Alteração no código do verificador passa
-pelo verificador antigo no PR e pelo novo no push em main. Na primeira introdução, não existe
-base anterior: o job registra `bootstrap`; essa adoção inicial precisa ser conferida manualmente.
+pelo verificador antigo no PR e pelo novo no push em main. A adoção inicial já foi integrada. A ausência da base
+agora reprova a execução, sem copiar silenciosamente o verificador candidato.
 
 CODEOWNERS encaminha mudanças sensíveis ao mantenedor. Para mantenedor solo, a proteção exige
 PR/checks sem pedir outra aprovação humana impossível de fornecer. Essa política não impede
@@ -115,12 +115,73 @@ adoção. Não o gere novamente usando as migrations candidatas. Seus testes con
 integridade, reabertura e recusa de versão futura sem mudança no arquivo. Adicione fixtures
 históricas quando houver novas versões publicadas, mantendo as anteriores.
 
-## Próximas camadas
+## Validações ampliadas
 
-Esta entrega não inclui cobertura percentual, SAST especializado, mutação, orçamento de
-performance, diff visual, axe/VoiceOver/NVDA, teste do instalador distribuído, assinatura
-com certificados ou publicação automática. Esses controles exigem baselines medidos,
-revisão das telas e configuração de distribuição; não há um status verde fictício para eles.
-O E2E atual abre o Electron com o bundle `out`, não instala o `.app`/`.exe` do Auri.
-Assinar ou voltar o executável não prova restauração dos dados; upgrade e recuperação
-continuam exigindo evidência separada.
+`npm run quality` inclui cobertura de todas as fontes TS/TSX, os testes de proteção,
+E2E de integração, jornadas pela interface, mutação, pacote executável e segurança.
+`npm run quality:validate` revalida esse conjunto completo, incluindo audit e segredos.
+O CI usa Node 24.15.0 e npm 11.13.0, as versões verificadas na instalação limpa.
+A configuração de formato, lint, testes e cobertura continua em `vite.config.ts`.
+
+- `cobertura.json` registra o inventário das fontes de produção, a referência global medida
+  e mínimos por módulo crítico. Arquivos não importados continuam visíveis com cobertura zero.
+  A cobertura global ainda é baixa porque a interface e o processo principal são exercitados
+  também por E2E; isso não é contado como cobertura unitária. Não reduza mínimos para liberar PR.
+- `gates.json` exige as jornadas de formulário, validação de datas, busca sem acento,
+  cancelamento, erro real de gravação, conflitos, exclusão confirmada, tema e reabertura.
+  Os dados e perfis usados são fictícios/temporários; o teste confere o caminho de userData
+  antes de gravar. O preload e a interface não são substituídos por mocks nessas jornadas.
+- Axe verifica os estados críticos em WCAG A/AA, e o teclado é usado nos controles compostos.
+  A integração usa o modo compatível com Electron e recusa iframes; isso não substitui uma
+  avaliação com VoiceOver/NVDA.
+- As referências PNG por sistema ficam em `visual/`. A data é fixa, as fontes são as do app,
+  a área tem 1280×820 pixels e animações/avisos transitórios são retirados das comparações.
+  A troca do tema precisa aparecer no CSS antes da captura. O diff e a razão de pixels alterados
+  ficam nos artefatos, com tolerância de 0,1% e comparação de antialiasing.
+- `mutacoes.json` lista erros deliberados nas regras de agenda, CPF, compatibilidade do banco
+  e isolamento IPC. Todos devem ser detectados por assertions; erro de importação não conta.
+  A execução usa uma cópia temporária e o runtime Electron, preservando o checkout original.
+  Esse catálogo mede os erros selecionados; não representa mutação exaustiva de todo o sistema.
+- O pacote real `.app`/`.exe` precisa abrir o SQLite, criar dados pela interface, reabrir
+  e ler o banco histórico v1. O ASAR não pode conter fontes, scripts, políticas ou pesquisas.
+  No Build de distribuição, o DMG da arquitetura atual é montado somente para leitura,
+  ou o NSIS é instalado em pasta temporária no runner descartável; os mesmos testes abrem
+  o aplicativo distribuído. O relatório inclui o SHA-256 do instalador.
+- Tags só geram distribuição quando apontam para o HEAD de `main` com Qualidade aprovado
+  naquele push. Build manual continua gerando artefatos para validação, sem publicar release.
+
+## Revisar referências visuais
+
+A atualização de imagens é uma operação de revisão, sem aprovação automática:
+
+```bash
+AURI_UPDATE_VISUAL=1 npm run test:ui
+```
+
+As imagens propostas ficam em `.quality/ui/reference/<plataforma>/`. Inspecione todas,
+compare o comportamento e copie apenas as aprovadas para `docs/qualidade/visual/`.
+No GitHub, execute Qualidade com `visual_reference=true` para obter imagens do Windows/macOS
+nos próprios runners. Essa execução produz artefatos, mas o agregador **reprova** o modo de
+referência; ela não pode ser usada para integrar código. Depois de revisar/versionar as imagens,
+execute novamente sem essa opção. Uma IA não deve atualizar referências para esconder regressões.
+
+## Integridade e distribuição
+
+A adoção inicial já aconteceu. A ausência da base aprovada agora reprova a execução;
+o bootstrap automático foi removido. O CI testa o verificador aprovado antes de usá-lo,
+além de testar o verificador candidato. Os artefatos precisam corresponder ao commit,
+sistema operacional e tentativa atuais; remover uma jornada, mutação ou fonte de cobertura
+impede a aprovação. Mudanças nas políticas e referências continuam exigindo revisão do SHA.
+
+A proteção da branch precisa ser ativada somente depois do sucesso remoto em Windows e macOS.
+O arquivo do workflow ainda pode ser alterado por quem administra o repositório; revisão
+independente e um workflow obrigatório gerenciado externamente são controles adicionais
+quando houver essa estrutura. A revisão vinculada ao commit não deve ser publicada automaticamente
+por IA, e CODEOWNERS sozinho não torna uma revisão obrigatória.
+
+O pacote macOS usa assinatura ad-hoc consistente; Developer ID/notarização e certificado
+Windows continuam dependendo de credenciais do responsável pela distribuição. Esta configuração
+não publica uma versão pública nem afirma que um certificado ad-hoc identifica o fabricante.
+Os testes abrem somente a arquitetura nativa do runner; outros alvos gerados precisam de
+execução em hardware correspondente antes de prometer compatibilidade. Performance e avaliação
+manual com leitores de tela continuam tendo evidências próprias.

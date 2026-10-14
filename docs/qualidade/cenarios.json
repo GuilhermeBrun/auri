@@ -138,6 +138,11 @@
           "kind": "vitest",
           "file": "src/main/db/migrations.test.ts",
           "name": "compatibilidade do banco recusa versão futura sem modificar o arquivo"
+        },
+        {
+          "kind": "vitest",
+          "file": "src/main/db/migrations.test.ts",
+          "name": "compatibilidade do banco recusa a abertura de banco futuro sem mudar bytes nem criar WAL"
         }
       ]
     },

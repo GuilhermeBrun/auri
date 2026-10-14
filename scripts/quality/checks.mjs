@@ -142,7 +142,7 @@ export function validateCiExecution(evidence, runId, attempt) {
 
 export function protectedPath(file) {
   return (
-    /^(\.github\/|docs\/qualidade\/|scripts\/|package(-lock)?\.json$|(electron\.)?vite(st)?\.config\.|eslint\.config\.|\.prettier|tsconfig|electron-builder\.yml$)/.test(
+    /^(\.github\/|docs\/qualidade\/|scripts\/|src\/main\/ipc(-security)?\.ts$|package(-lock)?\.json$|(electron\.)?vite(st)?\.config\.|eslint\.config\.|\.prettier|tsconfig|electron-builder\.yml$)/.test(
       file
     ) || /\.test\.[cm]?[jt]sx?$/.test(file)
   )

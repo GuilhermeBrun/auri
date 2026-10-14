@@ -5,3 +5,6 @@
 /vite.config.ts @GuilhermeBrun
 /package*.json @GuilhermeBrun
 /src/**/*.test.ts @GuilhermeBrun
+/src/**/*.test.tsx @GuilhermeBrun
+/src/main/ipc-security.ts @GuilhermeBrun
+/electron-builder.yml @GuilhermeBrun

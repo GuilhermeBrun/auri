@@ -253,6 +253,17 @@ await test('verificador da base bloqueia mudança sensível mesmo com checker ca
     const rejected = check()
     assert.equal(rejected.status, 1)
     assert.match(rejected.stderr, /Mudanças na proteção exigem revisão/)
+    const missingBase = spawnSync(
+      process.execPath,
+      [join(trusted, 'scripts/quality/cli.mjs'), 'policy'],
+      {
+        cwd: dir,
+        env: { ...env, BASE_SHA: 'f'.repeat(40) },
+        encoding: 'utf8'
+      }
+    )
+    assert.equal(missingBase.status, 1)
+    assert.match(missingBase.stderr, /Base aprovada indisponível/)
   } finally {
     rmSync(dir, { recursive: true, force: true })
   }

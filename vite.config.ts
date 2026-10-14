@@ -48,10 +48,18 @@ export default defineConfig({
     }
   },
   test: {
-    include: ['src/**/*.test.ts'],
+    include: ['src/**/*.test.{ts,tsx}'],
     environment: 'node',
     passWithNoTests: false,
     retry: 0,
+    coverage: {
+      provider: 'v8',
+      enabled: quality,
+      include: ['src/**/*.{ts,tsx}'],
+      exclude: ['src/**/*.test.{ts,tsx}', 'src/**/*.d.ts'],
+      reportsDirectory: '.quality/coverage',
+      reporter: ['text-summary', 'json', 'json-summary', 'lcov', 'html']
+    },
     ...(quality
       ? {
           reporters: ['default', 'json', 'junit'],

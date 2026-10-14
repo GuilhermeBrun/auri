@@ -625,6 +625,61 @@
       "file": "src/main/db/migrations.test.ts",
       "name": "compatibilidade do banco recusa versão futura sem modificar o arquivo",
       "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/ipc-security.test.ts",
+      "name": "segurança IPC aceita apenas o frame principal registrado na URL exata",
+      "requiredOn": ["darwin", "win32"]
+    },
+    {
+      "file": "src/main/ipc-security.test.ts",
+      "name": "segurança IPC recusa janela desconhecida mesmo carregando o arquivo legítimo",
+      "requiredOn": ["darwin", "win32"]
+    },
+    {
+      "file": "src/main/ipc-security.test.ts",
+      "name": "segurança IPC recusa subframe, navegação externa, URL com prefixo parecido e frame ausente",
+      "requiredOn": ["darwin", "win32"]
+    },
+    {
+      "file": "src/main/ipc-security.test.ts",
+      "name": "segurança IPC revoga a janela destruída e não confia em outra instância com o mesmo ID",
+      "requiredOn": ["darwin", "win32"]
+    },
+    {
+      "file": "src/main/ipc.test.ts",
+      "name": "handlers IPC todos os canais recusam renderer desconhecido antes de executar a operação",
+      "requiredOn": ["darwin", "win32"]
+    },
+    {
+      "file": "src/main/ipc.test.ts",
+      "name": "handlers IPC janela autorizada usa a API, mas um subframe não pode ler dados nem gravar preferências",
+      "requiredOn": ["darwin", "win32"]
+    },
+    {
+      "file": "src/main/prefs-failure.test.ts",
+      "name": "falha ao salvar preferências preserva memória e permite tentar novamente",
+      "requiredOn": ["darwin", "win32"]
+    },
+    {
+      "file": "src/main/db/failures.test.ts",
+      "name": "falhas de armazenamento recusa escrita somente leitura sem perder o registro nem anunciar sucesso",
+      "requiredOn": ["darwin", "win32"]
+    },
+    {
+      "file": "src/main/db/failures.test.ts",
+      "name": "falhas de armazenamento mantém os dados quando outro escritor bloqueia o banco e permite tentar novamente",
+      "requiredOn": ["darwin", "win32"]
+    },
+    {
+      "file": "src/main/db/failures.test.ts",
+      "name": "falhas de armazenamento recusa falta de espaço sem aplicar parcialmente a atualização",
+      "requiredOn": ["darwin", "win32"]
+    },
+    {
+      "file": "src/main/db/migrations.test.ts",
+      "name": "compatibilidade do banco recusa a abertura de banco futuro sem mudar bytes nem criar WAL",
+      "requiredOn": ["darwin", "win32"]
     }
   ]
 }

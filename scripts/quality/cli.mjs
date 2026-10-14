@@ -12,6 +12,7 @@ import {
   validateCiExecution,
   validatePolicyChanges
 } from './checks.mjs'
+import { validateExtendedBundle } from './extended-checks.mjs'
 
 const trusted = resolve(fileURLToPath(new URL('../../', import.meta.url)))
 const json = (file) => JSON.parse(readFileSync(file, 'utf8'))
@@ -57,11 +58,14 @@ async function reviewedSha() {
 }
 
 async function policy() {
-  const base = process.env.BASE_SHA
+  const base = process.env.BASE_SHA || git('rev-parse', 'HEAD')
   const knownBase = base && !/^0+$/.test(base)
-  const bootstrap =
-    !knownBase ||
-    spawnSync('git', ['cat-file', '-e', `${base}:docs/qualidade/testes.json`]).status !== 0
+  requireCondition(
+    knownBase &&
+      spawnSync('git', ['cat-file', '-e', `${base}:docs/qualidade/testes.json`]).status === 0,
+    'Base aprovada indisponível; bootstrap automático desativado.'
+  )
+  const bootstrap = false
   const changed = knownBase
     ? git('diff', '--name-only', base, '--').split('\n').filter(Boolean)
     : []
@@ -118,7 +122,12 @@ function validateBundle(directory, platform) {
     e2eReport.startedAt >= run.startedAt,
     'E2E antigo em relação à execução de testes.'
   )
-  return { platform, tests: tests.size, scenarios: validateScenarios(catalog(), tests, e2e) }
+  return {
+    platform,
+    tests: tests.size,
+    scenarios: validateScenarios(catalog(), tests, e2e),
+    ...validateExtendedBundle(directory, trusted, sha(), platform)
+  }
 }
 
 function validateSecurity(directory) {
@@ -176,6 +185,10 @@ async function local() {
     'test:ci',
     'build',
     'test:e2e',
+    'test:ui',
+    'test:mutation',
+    'build:unpack',
+    'test:package',
     'security:check'
   ]) {
     run(process.platform === 'win32' ? 'npm.cmd' : 'npm', ['run', script])
@@ -190,7 +203,10 @@ try {
   const command = process.argv[2]
   if (command === 'policy') await policy()
   else if (command === 'validate') {
-    console.log(validateBundle(process.argv[3] || '.quality', process.platform))
+    const directory = process.argv[3] || '.quality'
+    const summary = validateBundle(directory, process.platform)
+    validateSecurity(directory)
+    console.log(summary)
   } else if (command === 'aggregate') aggregate(process.argv[3])
   else if (command === 'audit') validateAudit(json(process.argv[3]))
   else if (command === 'local') await local()

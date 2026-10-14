@@ -5,6 +5,11 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      visual_reference:
+        description: Gerar referências para revisão (essa execução não aprova quality)
+        type: boolean
+        default: false
   workflow_call:
   schedule:
     - cron: '0 10 * * 1'
@@ -34,7 +39,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: 22
+          node-version: 24.15.0
       - name: Carregar verificador da base aprovada
         shell: bash
         run: |
@@ -42,11 +47,11 @@ jobs:
           if git cat-file -e "$TRUSTED_SHA:docs/qualidade/testes.json" 2>/dev/null; then
             git archive "$TRUSTED_SHA" scripts/quality docs/qualidade | tar -x -C .quality/trusted
           else
-            # Bootstrap: esta é a primeira introdução da política no repositório.
-            mkdir -p .quality/trusted/scripts .quality/trusted/docs
-            cp -R scripts/quality .quality/trusted/scripts/
-            cp -R docs/qualidade .quality/trusted/docs/
+            echo 'Base aprovada indisponível; bootstrap automático desativado.' >&2
+            exit 1
           fi
+      - name: Testar também o verificador aprovado
+        run: node --test .quality/trusted/scripts/quality/*.test.mjs
       - name: Conferir integridade da política
         run: node .quality/trusted/scripts/quality/cli.mjs policy
         env:
@@ -76,21 +81,28 @@ jobs:
           - os: windows-latest
             platform: win32
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: 22
+          node-version: 24.15.0
           cache: npm
+      - run: npm install --global npm@11.13.0
       - run: npm ci
       - run: npm run check
       - run: npm run test:quality
       - run: npm run test:ci
       - run: npm run build
       - run: npm run test:e2e
+      - run: npm run test:ui
+        env:
+          AURI_UPDATE_VISUAL: ${{ inputs.visual_reference && '1' || '' }}
+      - run: npm run test:mutation
+      - run: npm run build:unpack
+      - run: npm run test:package
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
@@ -113,12 +125,13 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: 22
+          node-version: 24.15.0
           cache: npm
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: quality-policy
           path: .quality-policy
+      - run: npm install --global npm@11.13.0
       - run: npm ci --ignore-scripts
       - name: Audit e scan de segredos com política da base
         run: node .quality-policy/trusted/scripts/quality/security.mjs
@@ -141,7 +154,7 @@ jobs:
     steps:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: 22
+          node-version: 24.15.0
       - name: Exigir sucesso de todos os jobs
         env:
           QUALITY_JOBS: ${{ toJSON(needs) }}
