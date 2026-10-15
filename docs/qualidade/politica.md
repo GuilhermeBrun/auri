@@ -240,7 +240,8 @@ manual com leitores de tela continuam tendo evidências próprias.
 3. O Build não repete o Qualidade: o job `origem aprovada` exige o Qualidade aprovado no push
    desse commit. Em cada sistema ele testa os instaladores oficiais das nuvens, gera o
    instalador, testa o aplicativo instalado e roda o E2E (no Windows com a instalação real do
-   Google Drive). O job `release` publica a release da tag com `.exe`, `.dmg` e `latest*.yml`.
+   Google Drive). O job `release` publica a release da tag com `.exe`, `.dmg` e `latest*.yml`, e o
+   job `atualização` leva os mesmos arquivos ao GitHub Pages.
 
 O Auri instalado no Windows procura versão nova 30 s depois de abrir e a cada 4 horas, baixa
 sozinho e instala ao sair ou por Configurações › Atualizações ("Reiniciar e atualizar"). Como
@@ -248,18 +249,13 @@ os dois computadores conectados precisam estar na mesma versão, isso evita o es
 diferentes" da Conexão. No Mac a troca automática exige app assinado: lá a tela mostra a
 versão e a nova é instalada por cima.
 
-Este repositório é privado, e o Auri instalado não pode ler as releases dele sem guardar um
-token dentro do app. Para ligar a atualização automática:
-
-1. Crie um repositório **público** só para os instaladores (ex.: `auri-atualizacoes`).
-2. Crie um token fine-grained com **Contents: Read and write** apenas nesse repositório.
-3. Aqui, em Settings › Secrets and variables › Actions: a variável
-   `AURI_ATUALIZACOES_REPO` (`dono/nome`) e o secret `AURI_ATUALIZACOES_TOKEN`.
-
-Com isso o Build grava o endereço no instalador (`app-update.yml`) e publica também lá.
-Sem a configuração, a release continua saindo aqui e a tela de Atualizações explica que a
-versão nova é instalada por cima. Instaladores gerados antes da configuração não se atualizam
-sozinhos: instale uma vez a primeira versão gerada com ela. Sem certificado, o Windows ainda
+Este repositório é privado, então o Auri instalado procura versões no GitHub Pages dele
+(`https://guilhermebrun.github.io/auri/`, em `publish` do `electron-builder.yml`), que é
+público. O job `atualização` do Build publica lá, só com o token do próprio workflow, o
+`.exe`, o `.dmg`, os `.blockmap`, o `latest.yml` e uma página de download. Fica só a versão
+atual. Nenhum token vai dentro do app nem em secret. O ambiente `github-pages` aceita a branch
+`main` e as tags `v*`. Instaladores gerados antes desta mudança não se atualizam sozinhos:
+instale uma vez a primeira versão publicada pelo Build. Sem certificado, o Windows ainda
 mostra o aviso do SmartScreen ao instalar à mão; a atualização automática não passa por ele.
 
 ## Dependências moderadas em 14/10/2026
