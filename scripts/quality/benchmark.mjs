@@ -1,22 +1,21 @@
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
-import { createRequire } from 'node:module'
-import ts from 'typescript'
+import { stripTypeScriptTypes } from 'node:module'
+import { pathToFileURL } from 'node:url'
 import assert from 'node:assert/strict'
 
 const work = mkdtempSync(join(tmpdir(), 'auri-benchmark-'))
 try {
   for (const file of ['masks', 'search']) {
     const source = readFileSync(`src/shared/${file}.ts`, 'utf8')
+    // O TypeScript 7 não expõe API JavaScript; o Node só apaga os tipos, sem compilar.
     writeFileSync(
-      join(work, `${file}.js`),
-      ts.transpileModule(source, {
-        compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 }
-      }).outputText
+      join(work, `${file}.mjs`),
+      stripTypeScriptTypes(source).replace(/from '\.\/(\w+)'/g, "from './$1.mjs'")
     )
   }
-  const { createPatientSearch } = createRequire(import.meta.url)(join(work, 'search.js'))
+  const { createPatientSearch } = await import(pathToFileURL(join(work, 'search.mjs')).href)
   const policy = JSON.parse(readFileSync('docs/qualidade/desempenho.json', 'utf8'))
   const patients = Array.from({ length: policy.patients }, (_, id) => ({
     id,
