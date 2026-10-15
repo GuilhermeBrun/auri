@@ -12,7 +12,9 @@ import {
   validateAudit,
   validateJobs,
   validateCiExecution,
-  validatePolicyChanges
+  validatePolicyChanges,
+  parseNameStatus,
+  policyFiles
 } from './checks.mjs'
 
 function fixture() {
@@ -201,6 +203,95 @@ await test('alterar assertion, configuração ou catálogo precisa de revisão e
     assert.deepEqual(validatePolicyChanges([file], true), [file])
   }
   assert.deepEqual(validatePolicyChanges(['src/main/a.ts'], false), [])
+})
+
+await test('teste adicionado dispensa revisão; teste existente alterado ou removido não', () => {
+  const entries = parseNameStatus(
+    [
+      'A\tsrc/renderer/novo.test.tsx',
+      'M\tsrc/main/a.test.ts',
+      'D\tsrc/main/antigo.test.ts',
+      'A\tsrc/main/renomeado.test.ts',
+      'M\tdocs/qualidade/testes.json',
+      'A\tscripts/quality/novo.test.mjs',
+      'A\tscripts/quality/util.mjs',
+      'M\tsrc/main/a.ts'
+    ].join('\n')
+  )
+  assert.deepEqual(entries[0], { status: 'A', file: 'src/renderer/novo.test.tsx' })
+  const files = policyFiles(entries)
+  assert.deepEqual(validatePolicyChanges(policyFiles(entries.slice(0, 1)), false), [])
+  assert.deepEqual(validatePolicyChanges(policyFiles([entries[3]]), false), [])
+  for (const entry of [entries[1], entries[2], entries[4], entries[5], entries[6]])
+    assert.throws(() => validatePolicyChanges(policyFiles([entry]), false), /revisão/)
+  assert.deepEqual(validatePolicyChanges(files, true), [
+    'src/main/a.test.ts',
+    'src/main/antigo.test.ts',
+    'docs/qualidade/testes.json',
+    'scripts/quality/novo.test.mjs',
+    'scripts/quality/util.mjs'
+  ])
+})
+
+await test('política aceita teste novo sem revisão e recusa teste existente alterado ou removido', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'auri-policy-tests-'))
+  const source = fileURLToPath(new URL('../../', import.meta.url))
+  const git = (...args) => execFileSync('git', args, { cwd: dir, encoding: 'utf8' }).trim()
+  const commit = (message) =>
+    git(
+      '-c',
+      'user.name=Teste Auri',
+      '-c',
+      'user.email=teste@example.invalid',
+      'commit',
+      '--quiet',
+      '-m',
+      message
+    )
+  try {
+    mkdirSync(join(dir, 'scripts'), { recursive: true })
+    mkdirSync(join(dir, 'docs'), { recursive: true })
+    mkdirSync(join(dir, 'src/main'), { recursive: true })
+    cpSync(join(source, 'scripts/quality'), join(dir, 'scripts/quality'), { recursive: true })
+    cpSync(join(source, 'docs/qualidade'), join(dir, 'docs/qualidade'), { recursive: true })
+    writeFileSync(join(dir, '.gitignore'), '.quality/\n')
+    writeFileSync(join(dir, 'src/main/a.test.ts'), "test('a', () => {})\n")
+    git('init', '--quiet')
+    git('add', '.')
+    commit('fixture')
+    const base = git('rev-parse', 'HEAD')
+    const env = {
+      ...process.env,
+      BASE_SHA: base,
+      EXPECTED_SHA: base,
+      GITHUB_EVENT_NAME: 'pull_request',
+      PR_NUMBER: ''
+    }
+    const check = () =>
+      spawnSync(process.execPath, [join(dir, 'scripts/quality/cli.mjs'), 'policy'], {
+        cwd: dir,
+        env,
+        encoding: 'utf8'
+      })
+    // Teste novo, não rastreado ou já commitado, passa sem revisão.
+    writeFileSync(join(dir, 'src/main/novo.test.ts'), "test('novo', () => {})\n")
+    assert.equal(check().status, 0, check().stderr)
+    git('add', '.')
+    commit('teste novo')
+    assert.equal(check().status, 0)
+    // Renomear conta como remoção do teste da base: exige revisão.
+    git('mv', 'src/main/a.test.ts', 'src/main/b.test.ts')
+    commit('renomeia')
+    assert.match(check().stderr, /revisão do SHA: src\/main\/a\.test\.ts$/m)
+    git('reset', '--quiet', '--hard', base)
+    writeFileSync(join(dir, 'src/main/a.test.ts'), "test.skip('a', () => {})\n")
+    assert.match(check().stderr, /revisão do SHA: src\/main\/a\.test\.ts$/m)
+    git('reset', '--quiet', '--hard', base)
+    rmSync(join(dir, 'src/main/a.test.ts'))
+    assert.match(check().stderr, /revisão do SHA: src\/main\/a\.test\.ts$/m)
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
 })
 
 await test('verificador da base bloqueia mudança sensível mesmo com checker candidato enfraquecido', () => {

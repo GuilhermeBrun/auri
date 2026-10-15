@@ -174,6 +174,12 @@ além de testar o verificador candidato. Os artefatos precisam corresponder ao c
 sistema operacional e tentativa atuais; remover uma jornada, mutação ou fonte de cobertura
 impede a aprovação. Mudanças nas políticas e referências continuam exigindo revisão do SHA.
 
+Arquivos de teste adicionados (status `A` em `git diff --name-status --no-renames` contra a
+base, ou ainda não rastreados) não exigem a revisão: o inventário de testes obrigatórios vem
+da base aprovada e a mutação reprova teste sem assertion. Alterar, remover ou renomear um teste
+existente continua exigindo revisão; a renomeação conta como remoção do teste antigo mais
+adição do novo. Teste novo dentro de `scripts/` ou outro caminho protegido também exige.
+
 A proteção da branch precisa ser ativada somente depois do sucesso remoto em Windows e macOS.
 O arquivo do workflow ainda pode ser alterado por quem administra o repositório; revisão
 independente e um workflow obrigatório gerenciado externamente são controles adicionais
