@@ -30,9 +30,14 @@ const api: AuriApi = {
   },
   appointments: {
     listRange: (de, ate) => invoke('appointments:listRange', de, ate),
+    listByPatient: (patientId) => invoke('appointments:listByPatient', patientId),
     create: (input) => invoke('appointments:create', input),
     update: (id, input, expected) => invoke('appointments:update', id, input, expected),
     remove: (id) => invoke('appointments:remove', id)
+  },
+  anamneses: {
+    get: (patientId) => invoke('anamneses:get', patientId),
+    save: (patientId, input, expected) => invoke('anamneses:save', patientId, input, expected)
   },
   onChanged: (listener) => subscribe<DataTopic[]>('data:changed', listener)
 }

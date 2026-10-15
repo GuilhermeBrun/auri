@@ -6,7 +6,7 @@
  * suave; no erro, vermelho, com um tremor curto ao ser recusado (e a mensagem, com ícone, aparece abaixo).
  */
 export const controlClass =
-  'w-full rounded-control border border-control bg-surface px-3 text-[13px] text-ink transition-[background-color,border-color,box-shadow] placeholder:text-ink-faint hover:border-ink-soft focus:border-ink focus:ring-[3px] focus:ring-ink/10 focus:outline-none aria-[invalid=true]:animate-nudge aria-[invalid=true]:border-danger aria-[invalid=true]:bg-danger/[0.03] aria-[invalid=true]:focus:ring-danger/15 disabled:border-line disabled:bg-canvas disabled:text-ink-faint pointer-coarse:text-base'
+  'w-full rounded-control border border-control bg-surface px-3 text-[13px] text-ink transition-[background-color,border-color,box-shadow] placeholder:text-ink-faint hover:border-ink-soft focus:border-ink focus:ring-[3px] focus:ring-ink/10 focus:outline-none aria-[invalid=true]:animate-nudge aria-[invalid=true]:border-danger aria-[invalid=true]:focus:ring-danger/15 disabled:border-line disabled:bg-canvas disabled:text-ink-faint pointer-coarse:text-base'
 
 /** O mesmo contorno do foco, enquanto a lista do campo está aberta (o foco já foi para a lista). */
 export const openClass = 'border-ink ring-[3px] ring-ink/10'

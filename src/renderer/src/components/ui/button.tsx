@@ -21,8 +21,8 @@ const buttonVariants = cva(
         secondary: 'bg-fill text-ink hover:bg-fill-hover active:bg-fill-hover',
         ghost:
           'text-ink-soft hover:bg-fill hover:text-ink active:bg-fill-hover aria-pressed:bg-fill-hover aria-pressed:text-ink',
-        danger: 'bg-danger/10 text-danger hover:bg-danger/15 active:bg-danger/20',
-        'danger-ghost': 'text-danger hover:bg-danger/8 active:bg-danger/15'
+        danger: 'bg-danger-soft text-danger hover:bg-danger-soft-hover active:bg-danger-soft-hover',
+        'danger-ghost': 'text-danger hover:bg-danger-soft active:bg-danger-soft-hover'
       },
       size: {
         sm: 'h-7 px-2.5 text-xs pointer-coarse:h-10',

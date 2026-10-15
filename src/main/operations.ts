@@ -1,15 +1,18 @@
 import { z } from 'zod'
 import type { DataTopic, IpcResult } from '../shared/api'
 import {
+  anamneseInputSchema,
   appointmentInputSchema,
   appointmentRangeSchema,
   idSchema,
   patientFilterSchema,
   patientInputSchema
 } from '../shared/schemas'
+import { getAnamnese, saveAnamnese } from './db/anamneses'
 import {
   createAppointment,
   listAppointments,
+  listPatientAppointments,
   removeAppointment,
   updateAppointment
 } from './db/appointments'
@@ -72,6 +75,9 @@ const OPERATIONS: Record<string, Operation> = {
       return listAppointments(db, range.de, range.ate)
     }
   },
+  'appointments:listByPatient': {
+    run: (db, [patientId]) => listPatientAppointments(db, idSchema.parse(patientId))
+  },
   'appointments:create': {
     run: (db, [input]) => createAppointment(db, appointmentInputSchema.parse(input)),
     changes: ['appointments']
@@ -89,6 +95,18 @@ const OPERATIONS: Record<string, Operation> = {
   'appointments:remove': {
     run: (db, [id]) => removeAppointment(db, idSchema.parse(id)),
     changes: ['appointments']
+  },
+
+  'anamneses:get': { run: (db, [patientId]) => getAnamnese(db, idSchema.parse(patientId)) },
+  'anamneses:save': {
+    run: (db, [patientId, input, expected]) =>
+      saveAnamnese(
+        db,
+        idSchema.parse(patientId),
+        anamneseInputSchema.parse(input),
+        expectedSchema.parse(expected)
+      ),
+    changes: ['anamneses']
   }
 }
 

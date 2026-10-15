@@ -1,4 +1,6 @@
 import type {
+  Anamnese,
+  AnamneseInput,
   Appointment,
   AppointmentInput,
   Patient,
@@ -20,10 +22,18 @@ export interface AuriApi {
   appointments: {
     /** Agendamentos que se sobrepõem ao intervalo [de, ate), em data/hora local AAAA-MM-DDTHH:mm. */
     listRange(de: string, ate: string): Promise<Appointment[]>
+    /** Todas as sessões do paciente, da mais nova para a mais antiga. */
+    listByPatient(patientId: number): Promise<Appointment[]>
     create(input: AppointmentInput): Promise<Appointment>
     /** `expected`: ver `patients.update`. */
     update(id: number, input: AppointmentInput, expected?: string): Promise<Appointment>
     remove(id: number): Promise<void>
+  }
+  anamneses: {
+    /** Ainda não escrita: campos vazios e `updated_at` null. */
+    get(patientId: number): Promise<Anamnese>
+    /** `expected`: ver `patients.update`; '' quando a anamnese ainda não existia. */
+    save(patientId: number, input: AnamneseInput, expected?: string): Promise<Anamnese>
   }
   /**
    * Avisa quando os dados mudaram fora desta tela (outro computador, ou troca de papel em
@@ -33,7 +43,7 @@ export interface AuriApi {
 }
 
 /** Partes dos dados que mudam juntas (cada uma invalida as suas consultas nas telas). */
-export const DATA_TOPICS = ['patients', 'appointments'] as const
+export const DATA_TOPICS = ['patients', 'appointments', 'anamneses'] as const
 export type DataTopic = (typeof DATA_TOPICS)[number]
 
 /** Resposta do IPC: erros viajam como mensagem legível em vez de exceção. */

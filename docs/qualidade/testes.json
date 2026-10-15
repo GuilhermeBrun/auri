@@ -212,6 +212,26 @@
       "requiredOn": ["darwin", "win32", "linux"]
     },
     {
+      "file": "src/main/db/anamneses.test.ts",
+      "name": "anamnese ainda não escrita vem vazia e sem updated_at",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/db/anamneses.test.ts",
+      "name": "anamnese cria na primeira gravação e atualiza nas seguintes",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/db/anamneses.test.ts",
+      "name": "anamnese recusa gravar por cima de quem salvou depois de aberta",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/db/anamneses.test.ts",
+      "name": "anamnese valida a entrada e avisa as telas pela operação",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
       "file": "src/main/db/appointments-properties.test.ts",
       "name": "intervalos gerados rejeitam sobreposição, aceitam adjacência e preservam edição recusada",
       "requiredOn": ["darwin", "win32", "linux"]
@@ -409,6 +429,31 @@
     {
       "file": "src/main/db/recovery.test.ts",
       "name": "recuperação de dados restaura um backup cifrado histórico e reabre a base recuperada",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/db/sessions.test.ts",
+      "name": "migração do registro da sessão sessões do banco v1 viram sessões comuns sem registro",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/db/sessions.test.ts",
+      "name": "registro da sessão agendar sem registro grava sessão comum, sem presença nem evolução",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/db/sessions.test.ts",
+      "name": "registro da sessão grava tipo, presença e evolução e os devolve na edição",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/db/sessions.test.ts",
+      "name": "registro da sessão lista o histórico do paciente da sessão mais nova para a mais antiga",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/db/sessions.test.ts",
+      "name": "registro da sessão recusa presença ou tipo desconhecidos",
       "requiredOn": ["darwin", "win32", "linux"]
     },
     {

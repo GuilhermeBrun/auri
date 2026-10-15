@@ -3,6 +3,7 @@ import { Check, HardDrive, Laptop, Plus, RotateCw } from 'lucide-react'
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import { Page } from '@renderer/components/Layout'
 import { Button } from '@renderer/components/ui/button'
+import { ConfirmAction } from '@renderer/components/ui/confirm-action'
 import { Field, Input } from '@renderer/components/ui/input'
 import { Loading } from '@renderer/components/ui/loading'
 import { ErrorText, SectionTitle, StatusDot } from '@renderer/components/ui/section'
@@ -225,30 +226,16 @@ function DeviceList({ devices }: { devices: PairedDevice[] }): React.JSX.Element
                       : 'Ainda não conectou'}
                 </p>
               </div>
-              {confirming === device.publicKey ? (
-                <div className="flex animate-fade-in items-center gap-2">
-                  <span className="text-xs text-ink-soft">Cortar o acesso?</span>
-                  <Button variant="secondary" size="sm" onClick={() => setConfirming(null)}>
-                    Cancelar
-                  </Button>
-                  <Button
-                    variant="danger"
-                    size="sm"
-                    loading={remove.isPending}
-                    onClick={() => remove.mutate(device.publicKey)}
-                  >
-                    Remover
-                  </Button>
-                </div>
-              ) : (
-                <Button
-                  variant="danger-ghost"
-                  size="sm"
-                  onClick={() => setConfirming(device.publicKey)}
-                >
-                  Remover
-                </Button>
-              )}
+              <ConfirmAction
+                confirming={confirming === device.publicKey}
+                onConfirmingChange={(on) => setConfirming(on ? device.publicKey : null)}
+                question="Cortar o acesso?"
+                confirmLabel="Remover"
+                loading={remove.isPending}
+                onConfirm={() => remove.mutate(device.publicKey)}
+              >
+                Remover
+              </ConfirmAction>
             </li>
           ))}
         </ul>

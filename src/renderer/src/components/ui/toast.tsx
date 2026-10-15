@@ -1,12 +1,15 @@
 import { Check, X } from 'lucide-react'
 import { Toast } from 'radix-ui'
 import { useCallback, useState, type ReactNode } from 'react'
+import { Button } from '@renderer/components/ui/button'
 import { ToastContext, type ToastInput } from '@renderer/lib/toast'
 
 type ToastItem = ToastInput & { id: number }
 
 /** Quantos avisos ficam na tela ao mesmo tempo; o mais antigo sai quando chega outro. */
 const MAX_VISIBLE = 3
+/** Aviso com botão ("Desfazer") fica mais tempo, para dar tempo de alcançar o botão. */
+const ACTION_DURATION = 6000
 /** Folga para a animação de saída terminar antes de o aviso sair da lista. */
 const EXIT_MS = 400
 
@@ -37,6 +40,7 @@ export function ToastProvider({ children }: { children: ReactNode }): React.JSX.
           <Toast.Root
             key={item.id}
             defaultOpen
+            duration={item.action ? ACTION_DURATION : undefined}
             onOpenChange={(open) => {
               if (!open) setTimeout(() => remove(item.id), EXIT_MS)
             }}
@@ -59,6 +63,14 @@ export function ToastProvider({ children }: { children: ReactNode }): React.JSX.
                 </Toast.Description>
               )}
             </div>
+            {item.action && (
+              <Toast.Action asChild altText={item.action.altText}>
+                <Button variant="secondary" size="sm" onClick={item.action.onClick}>
+                  {item.action.icon}
+                  {item.action.label}
+                </Button>
+              </Toast.Action>
+            )}
             <Toast.Close
               aria-label="Fechar aviso"
               className="grid size-7 shrink-0 place-items-center rounded-chip text-ink-soft transition-colors hover:bg-fill hover:text-ink pointer-coarse:size-10 [&_svg]:size-4 [&_svg]:stroke-[1.75]"

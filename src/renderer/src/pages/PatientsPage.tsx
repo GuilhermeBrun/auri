@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { format } from 'date-fns'
-import { Archive, Plus, Search, X } from 'lucide-react'
+import { Archive, Plus, Search } from 'lucide-react'
 import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router'
 import { formatAge, isIsoDate, parseIsoDate } from '@shared/dates'
@@ -8,11 +8,12 @@ import type { Patient } from '@shared/schemas'
 import { createPatientSearch } from '@shared/search'
 import { Page } from '@renderer/components/Layout'
 import { Avatar } from '@renderer/components/ui/avatar'
+import { Badge } from '@renderer/components/ui/badge'
 import { Loading } from '@renderer/components/ui/loading'
 import { Button } from '@renderer/components/ui/button'
 import { EmptyState } from '@renderer/components/ui/empty'
 import { ErrorState } from '@renderer/components/ui/error'
-import { Input } from '@renderer/components/ui/input'
+import { SearchField } from '@renderer/components/ui/search-field'
 import { revealRow, useVirtualRows } from '@renderer/lib/hooks'
 import { patientsQuery } from '@renderer/lib/queries'
 import { cn } from '@renderer/lib/utils'
@@ -106,11 +107,7 @@ const PatientRow = memo(function PatientRow({
               >
                 {p.nome}
               </Link>
-              {!p.ativo && (
-                <span className="shrink-0 rounded-chip bg-fill px-2 py-px text-xs font-medium text-ink-soft">
-                  Inativo
-                </span>
-              )}
+              {!p.ativo && <Badge>Inativo</Badge>}
             </span>
             <span className="truncate text-xs text-ink-soft tabular-nums">
               {formatAge(p.data_nascimento) || <Blank />}
@@ -227,38 +224,15 @@ export function PatientsPage(): React.JSX.Element {
       }
       toolbar={
         <>
-          <div className="relative w-52 @min-[960px]:w-64">
-            <Search
-              className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 stroke-[1.75] text-ink-soft"
-              aria-hidden="true"
-            />
-            <Input
-              ref={searchRef}
-              type="search"
-              value={busca}
-              onChange={(e) => setBusca(e.target.value)}
-              placeholder="Nome, mãe ou CPF"
-              // o "x" nativo do navegador é azul e fora da paleta: o botão abaixo o substitui
-              // ferramenta do cabeçalho: o mesmo preenchimento dos botões ao lado, sem contorno; no foco
-              // ganha o fundo e o contorno de campo
-              className="h-8 border-transparent bg-fill pr-8 pl-9 text-[13px] hover:border-transparent hover:bg-fill-hover focus:border-ink focus:bg-surface pointer-coarse:h-11 [&::-webkit-search-cancel-button]:appearance-none"
-              aria-label="Buscar pacientes por nome, mãe ou CPF"
-              autoFocus
-            />
-            {busca !== '' && (
-              <button
-                type="button"
-                aria-label="Limpar busca"
-                onClick={() => {
-                  setBusca('')
-                  searchRef.current?.focus()
-                }}
-                className="absolute top-1/2 right-1.5 grid size-6 -translate-y-1/2 animate-fade-in place-items-center rounded-chip text-ink-soft transition-colors hover:bg-fill hover:text-ink pointer-coarse:size-9 [&_svg]:size-4 [&_svg]:stroke-[1.75]"
-              >
-                <X aria-hidden="true" />
-              </button>
-            )}
-          </div>
+          <SearchField
+            ref={searchRef}
+            value={busca}
+            onChange={setBusca}
+            placeholder="Nome, mãe ou CPF"
+            label="Buscar pacientes por nome, mãe ou CPF"
+            className="w-52 @min-[960px]:w-64"
+            autoFocus
+          />
           <Button
             variant="ghost"
             size="icon"

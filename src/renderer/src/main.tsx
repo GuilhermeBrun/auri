@@ -31,6 +31,10 @@ window.api.onChanged((topics) => {
   if (topics.includes('appointments')) {
     void queryClient.invalidateQueries({ queryKey: ['appointments'] })
   }
+  if (topics.includes('anamneses')) {
+    // como a ficha: não recarrega por baixo de quem está escrevendo
+    void queryClient.invalidateQueries({ queryKey: ['anamnese'], refetchType: 'none' })
+  }
 })
 
 document.documentElement.dataset.platform = window.platform

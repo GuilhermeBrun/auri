@@ -49,6 +49,30 @@ const MIGRATIONS: string[] = [
 
   CREATE INDEX appointments_inicio ON appointments (inicio);
   CREATE INDEX appointments_patient ON appointments (patient_id);
+  `,
+  // Registro da sessão (tipo, presença e evolução) e anamnese
+  `
+  ALTER TABLE appointments ADD COLUMN tipo TEXT NOT NULL DEFAULT 'sessao'
+    CHECK (tipo IN ('sessao', 'avaliacao'));
+  ALTER TABLE appointments ADD COLUMN presenca TEXT
+    CHECK (presenca IN ('presente', 'falta', 'desmarcou'));
+  ALTER TABLE appointments ADD COLUMN evolucao TEXT;
+
+  CREATE TABLE anamneses (
+    patient_id      INTEGER PRIMARY KEY REFERENCES patients (id) ON DELETE RESTRICT,
+    data            TEXT,
+    queixa          TEXT,
+    gestacao        TEXT,
+    alimentacao     TEXT,
+    sono            TEXT,
+    desenvolvimento TEXT,
+    saude           TEXT,
+    rotina          TEXT,
+    terapias        TEXT,
+    observacoes     TEXT,
+    created_at      TEXT NOT NULL DEFAULT ${NOW},
+    updated_at      TEXT NOT NULL DEFAULT ${NOW}
+  );
   `
 ]
 

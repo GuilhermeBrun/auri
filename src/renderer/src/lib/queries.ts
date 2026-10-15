@@ -1,4 +1,4 @@
-import type { Appointment, Patient } from '@shared/schemas'
+import type { Anamnese, Appointment, Patient } from '@shared/schemas'
 
 type Query<T> = { queryKey: readonly unknown[]; queryFn: () => Promise<T> }
 
@@ -20,4 +20,21 @@ export function appointmentsQuery({ de, ate }: { de: string; ate: string }): Que
     queryKey: ['appointments', de, ate],
     queryFn: () => window.api.appointments.listRange(de, ate)
   }
+}
+
+/** Uma ficha. A ficha, a anamnese e as sessões do paciente usam a mesma entrada. */
+export function patientQuery(id: number): Query<Patient> {
+  return { queryKey: ['patient', id], queryFn: () => window.api.patients.get(id) }
+}
+
+/** Todas as sessões do paciente. Fica sob 'appointments': salvar na agenda atualiza o histórico. */
+export function patientAppointmentsQuery(patientId: number): Query<Appointment[]> {
+  return {
+    queryKey: ['appointments', 'patient', patientId],
+    queryFn: () => window.api.appointments.listByPatient(patientId)
+  }
+}
+
+export function anamneseQuery(patientId: number): Query<Anamnese> {
+  return { queryKey: ['anamnese', patientId], queryFn: () => window.api.anamneses.get(patientId) }
 }
