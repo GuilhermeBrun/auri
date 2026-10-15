@@ -1,7 +1,10 @@
 name: Build
 
-# Gera os instaladores e roda os testes em cada sistema (inclusive no Windows,
-# onde o app não pode ser testado a partir do Mac).
+# Gera e testa os instaladores em cada sistema (inclusive no Windows, onde o app não pode ser
+# testado a partir do Mac). Numa tag vX.Y.Z também publica a release.
+#
+# Não repete o Qualidade: a tag só é aceita no commit atual de main com o Qualidade aprovado no
+# push (release-policy.mjs). Execução manual gera artefatos para conferir, sem publicar.
 on:
   workflow_dispatch:
   push:
@@ -9,26 +12,46 @@ on:
 
 permissions:
   contents: read
-  pull-requests: read
-  actions: read
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
-  validation:
-    uses: ./.github/workflows/quality.yml
+  origin:
+    name: origem aprovada
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24.15.0
+          package-manager-cache: false
+      - name: Conferir origem aprovada da versão
+        run: node scripts/quality/release-policy.mjs
+        env:
+          GH_TOKEN: ${{ github.token }}
 
   build:
-    needs: validation
+    needs: origin
     strategy:
       fail-fast: false
       matrix:
         include:
           - os: windows-latest
+            platform: win32
             script: build:win
-            artifact: dist/*.exe
           - os: macos-latest
+            platform: darwin
             script: build:mac
-            artifact: dist/*.dmg
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -37,77 +60,113 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24.15.0
-          cache: npm
+          package-manager-cache: false
 
-      - run: npm install --global npm@11.13.0
-      - run: npm ci
+      # O mesmo cache do Qualidade, só leitura: quem grava é o push em main.
+      - id: modules
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: node_modules
+          key: modules-${{ runner.os }}-${{ runner.arch }}-node24.15.0-${{ hashFiles('package-lock.json') }}
+      - if: steps.modules.outputs.cache-hit != 'true'
+        run: npm ci
 
-      - name: Conferir origem aprovada da versão
-        run: node scripts/quality/release-policy.mjs
+      - name: Instaladores oficiais das nuvens (download e assinatura)
+        run: npm test -- src/main/backup/installer.test.ts
         env:
-          GH_TOKEN: ${{ github.token }}
-
-      - run: npm test
-        env:
-          # baixa os instaladores oficiais e confere a assinatura (no Windows)
           AURI_TESTA_INSTALADORES: '1'
 
-      - run: npm run ${{ matrix.script }}
+      # Com o repositório de atualizações configurado, o instalador sai com o endereço de onde o
+      # Auri instalado procura versões novas (ver docs/qualidade/politica.md, "Release").
+      - name: Gerar o instalador
+        shell: bash
+        env:
+          UPDATES_REPO: ${{ vars.AURI_ATUALIZACOES_REPO }}
+        run: |
+          if [ -n "$UPDATES_REPO" ]; then
+            npm run ${{ matrix.script }} -- \
+              -c.publish.provider=github \
+              -c.publish.owner="${UPDATES_REPO%%/*}" \
+              -c.publish.repo="${UPDATES_REPO#*/}"
+          else
+            npm run ${{ matrix.script }}
+          fi
 
       - name: Testar o instalador e o aplicativo distribuído
         run: npm run test:installer
       - name: Inventariar o mesmo pacote e instalador aprovados
         run: npm run quality:delivery -- --installer
 
+      # O Auri aberto de verdade (janela, IPC, banco, disco). No Windows também baixa e roda o
+      # instalador oficial do Google Drive (a máquina do CI é descartável).
+      - name: E2E com instalação real
+        run: node scripts/e2e.mjs e2e-saida
+        env:
+          AURI_E2E_INSTALAR: ${{ matrix.platform == 'win32' && '1' || '' }}
+
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
-          name: installer-${{ matrix.os }}
-          path: .quality/
+          name: evidencias-${{ matrix.platform }}
+          path: |
+            .quality/
+            e2e-saida/
           include-hidden-files: true
           overwrite: true
           if-no-files-found: error
+          retention-days: 14
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: auri-${{ matrix.os }}
+          name: auri-${{ matrix.platform }}
           path: |
-            ${{ matrix.artifact }}
+            dist/*.exe
+            dist/*.exe.blockmap
+            dist/*.dmg
+            dist/*.dmg.blockmap
+            dist/latest*.yml
             .quality/delivery/
           overwrite: true
           if-no-files-found: error
 
-  # O Auri aberto de verdade (janela, IPC, banco, disco), dirigido pelo protocolo do DevTools. No
-  # Windows também baixa e roda o instalador oficial do Google Drive (a máquina do CI é descartável).
-  e2e:
-    needs: validation
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [windows-latest, macos-latest]
-    runs-on: ${{ matrix.os }}
+  release:
+    name: release
+    if: github.ref_type == 'tag'
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
-          persist-credentials: false
+          pattern: auri-*
+          path: entrega
+          merge-multiple: true
 
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version: 24.15.0
-          cache: npm
-
-      - run: npm install --global npm@11.13.0
-      - run: npm ci
-
-      - run: npm run build
-
-      - run: node scripts/e2e.mjs e2e-saida
+      - name: Publicar a release
         env:
-          AURI_E2E_INSTALAR: ${{ matrix.os == 'windows-latest' && '1' || '' }}
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          shopt -s nullglob
+          files=(entrega/dist/*.exe entrega/dist/*.dmg entrega/dist/*.blockmap entrega/dist/latest*.yml)
+          gh release create "$TAG" --verify-tag --generate-notes --title "Auri ${TAG#v}" "${files[@]}"
 
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        if: always()
-        with:
-          name: e2e-${{ matrix.os }}
-          path: e2e-saida
-          overwrite: true
+      # O repositório de código é privado: o Auri instalado não lê as releases dele. As
+      # atualizações saem por um repositório público só com os instaladores, quando configurado.
+      - name: Publicar a atualização
+        env:
+          GH_TOKEN: ${{ secrets.AURI_ATUALIZACOES_TOKEN }}
+          GH_REPO: ${{ vars.AURI_ATUALIZACOES_REPO }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          if [ -z "$GH_REPO" ] || [ -z "$GH_TOKEN" ]; then
+            echo "::notice::Atualização automática não configurada (AURI_ATUALIZACOES_REPO e AURI_ATUALIZACOES_TOKEN)."
+            exit 0
+          fi
+          test -f entrega/dist/latest.yml || { echo 'latest.yml ausente: o build não recebeu o repositório.'; exit 1; }
+          shopt -s nullglob
+          files=(entrega/dist/*.exe entrega/dist/*.dmg entrega/dist/*.blockmap entrega/dist/latest*.yml)
+          gh release create "$TAG" --title "Auri ${TAG#v}" --notes "Instaladores do Auri ${TAG#v}." "${files[@]}"

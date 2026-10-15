@@ -46,7 +46,7 @@ npm run build:mac   # dist/auri-<versão>-arm64.dmg (Apple Silicon) e -x64.dmg (
 npm run build:win   # dist/auri-<versão>-setup.exe (pode ser gerado no próprio Mac)
 ```
 
-O better-sqlite3 já traz binários prontos para cada sistema, então os dois instaladores saem do Mac. O workflow `.github/workflows/build.yml` faz o mesmo no GitHub Actions e roda os testes também no Windows. Ele pode ser disparado manualmente ou ao criar uma tag `v*`.
+O better-sqlite3 já traz binários prontos para cada sistema, então os dois instaladores saem do Mac. O workflow `.github/workflows/build.yml` faz o mesmo no GitHub Actions e testa os instaladores também no Windows. Ele pode ser disparado manualmente (só artefatos) ou por `npm run release`, que cria a tag `v*` e publica a release; ver "Release e atualização automática" em `docs/qualidade/politica.md`.
 
 O app tem só assinatura ad-hoc: não há certificado da Apple nem da Microsoft.
 
