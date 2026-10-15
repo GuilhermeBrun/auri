@@ -176,7 +176,9 @@ impede a aprovação. Mudanças nas políticas e referências continuam exigindo
 
 Arquivos de teste adicionados (status `A` em `git diff --name-status --no-renames` contra a
 base, ou ainda não rastreados) não exigem a revisão: o inventário de testes obrigatórios vem
-da base aprovada e a mutação reprova teste sem assertion. Alterar, remover ou renomear um teste
+da base aprovada, e nos módulos de `mutacoes.json` a mutação reprova teste que não detecta o
+erro. Em módulo fora dessa lista, um teste novo sem assertion ainda cumpre a cobertura
+diferencial sem revisão; esse risco foi aceito para tirar o atrito. Alterar, remover ou renomear um teste
 existente continua exigindo revisão; a renomeação conta como remoção do teste antigo mais
 adição do novo. Teste novo dentro de `scripts/` ou outro caminho protegido também exige.
 

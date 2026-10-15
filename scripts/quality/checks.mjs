@@ -159,7 +159,7 @@ export function parseNameStatus(output) {
     })
 }
 
-// Teste novo não enfraquece o inventário obrigatório (vem da base) e a mutação pega teste vazio;
+// Teste novo não enfraquece o inventário obrigatório, que vem da base aprovada;
 // alterar, renomear ou remover um teste existente continua exigindo revisão do SHA.
 export function policyFiles(entries) {
   return [

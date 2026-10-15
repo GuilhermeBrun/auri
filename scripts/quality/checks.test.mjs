@@ -275,7 +275,8 @@ await test('política aceita teste novo sem revisão e recusa teste existente al
       })
     // Teste novo, não rastreado ou já commitado, passa sem revisão.
     writeFileSync(join(dir, 'src/main/novo.test.ts'), "test('novo', () => {})\n")
-    assert.equal(check().status, 0, check().stderr)
+    const added = check()
+    assert.equal(added.status, 0, added.stderr)
     git('add', '.')
     commit('teste novo')
     assert.equal(check().status, 0)
