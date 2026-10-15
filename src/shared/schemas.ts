@@ -70,21 +70,37 @@ export const idSchema = z.number().int().positive()
 
 const localDateTime = z.string().refine(isIsoLocalDateTime, 'Data/hora inválida')
 
+/** Primeira consulta (avaliação) ou atendimento do tratamento (sessão). */
+export const APPOINTMENT_TIPOS = ['sessao', 'avaliacao'] as const
+export type AppointmentTipo = (typeof APPOINTMENT_TIPOS)[number]
+
+/**
+ * Se o paciente veio, como a coluna PRESENÇA da folha de papel. `desmarcou`: avisou antes. ''
+ * enquanto não foi registrada (toda sessão futura, e as passadas que ninguém marcou).
+ */
+export const PRESENCAS = ['presente', 'falta', 'desmarcou'] as const
+export type Presenca = (typeof PRESENCAS)[number]
+
 export const appointmentInputSchema = z
   .object({
     patient_id: idSchema,
     inicio: localDateTime,
     fim: localDateTime,
-    observacao: text(1000)
+    observacao: text(1000),
+    tipo: z.enum(APPOINTMENT_TIPOS).default('sessao'),
+    presenca: z.enum([...PRESENCAS, '']).default(''),
+    /** O que foi feito na sessão e como o paciente respondeu. */
+    evolucao: text(10000).default('')
   })
   .refine((a) => a.fim > a.inicio, {
     message: 'O horário de término deve ser depois do início',
     path: ['fim']
   })
 
-export type AppointmentInput = z.infer<typeof appointmentInputSchema>
+/** O registro (tipo, presença e evolução) pode faltar: agendar não exige nada disso. */
+export type AppointmentInput = z.input<typeof appointmentInputSchema>
 
-export type Appointment = AppointmentInput & {
+export type Appointment = z.output<typeof appointmentInputSchema> & {
   id: number
   patient_nome: string
   created_at: string
@@ -94,6 +110,34 @@ export type Appointment = AppointmentInput & {
 export const appointmentRangeSchema = z
   .object({ de: localDateTime, ate: localDateTime })
   .refine((r) => r.ate > r.de, 'Intervalo inválido')
+
+/**
+ * Anamnese: a entrevista de entrada com a família, um texto por tema (como as anotações à mão na
+ * ficha de papel). Uma por paciente.
+ */
+export const anamneseInputSchema = z.object({
+  data: optionalDate,
+  queixa: text(10000),
+  gestacao: text(10000),
+  alimentacao: text(10000),
+  sono: text(10000),
+  desenvolvimento: text(10000),
+  saude: text(10000),
+  rotina: text(10000),
+  terapias: text(10000),
+  observacoes: text(10000)
+})
+
+export type AnamneseInput = z.infer<typeof anamneseInputSchema>
+
+export const ANAMNESE_FIELDS = Object.keys(anamneseInputSchema.shape) as (keyof AnamneseInput)[]
+
+export function emptyAnamneseInput(): AnamneseInput {
+  return Object.fromEntries(ANAMNESE_FIELDS.map((f) => [f, ''])) as AnamneseInput
+}
+
+/** `updated_at` null: a anamnese ainda não foi escrita (os campos vêm vazios). */
+export type Anamnese = AnamneseInput & { patient_id: number; updated_at: string | null }
 
 /** Tema: o do sistema (muda junto com ele) ou um fixo. */
 export const themeSchema = z.enum(['system', 'light', 'dark'])

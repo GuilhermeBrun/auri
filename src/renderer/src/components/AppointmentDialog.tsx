@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { addMinutes, differenceInMinutes, format } from 'date-fns'
-import { CalendarCheck2, Trash2 } from 'lucide-react'
+import { CalendarCheck2, Trash2, Undo2 } from 'lucide-react'
 import { ptBR } from 'date-fns/locale/pt-BR'
 import { useId, useState } from 'react'
 import { Controller, useForm, useWatch } from 'react-hook-form'
@@ -15,21 +15,32 @@ import {
 import { TIME_SLOTS } from '@shared/agenda'
 import { isIsoDate, parseIsoLocalDateTime, toIsoLocalDateTime } from '@shared/dates'
 import { shortName } from '@shared/names'
-import type { Appointment, AppointmentInput } from '@shared/schemas'
+import {
+  APPOINTMENT_TIPOS,
+  PRESENCAS,
+  type Appointment,
+  type AppointmentInput
+} from '@shared/schemas'
 import { PatientCombobox } from '@renderer/components/PatientCombobox'
 import { Button } from '@renderer/components/ui/button'
+import { Callout } from '@renderer/components/ui/callout'
 import { Dialog, DialogBody, DialogFooter } from '@renderer/components/ui/dialog'
 import { DateField } from '@renderer/components/ui/date-field'
 import { Field, Textarea } from '@renderer/components/ui/input'
 import { Kbd } from '@renderer/components/ui/kbd'
+import { Segmented } from '@renderer/components/ui/segmented'
 import { Select } from '@renderer/components/ui/select'
 import { TimeField } from '@renderer/components/ui/time-field'
 import { MOD_KEY } from '@renderer/lib/platform'
+import { PRESENCA_OPTIONS, TIPO_OPTIONS } from '@renderer/lib/session'
 import { useToast } from '@renderer/lib/toast'
 
-/** O que abriu o diálogo: um horário livre na agenda ou um agendamento existente. */
+/**
+ * O que abriu o diálogo: um horário livre na agenda ou um agendamento existente. `patient`: já
+ * escolhido (agendar a partir da ficha).
+ */
 export type AppointmentDraft =
-  | { mode: 'create'; inicio: Date; duracao: number }
+  | { mode: 'create'; inicio: Date; duracao: number; patient?: { id: number; nome: string } }
   | { mode: 'edit'; appointment: Appointment }
 
 const DURATIONS = [30, 45, 60, 90]
@@ -48,7 +59,10 @@ const formSchema = z
       .regex(TIME, 'Hora inválida')
       .refine(startsWithinAgenda, `Use entre ${DAY_START_LABEL} e ${DAY_END_LABEL}`),
     duracao: z.number().int().min(5).max(600),
-    observacao: z.string().trim().max(1000, 'Use no máximo 1000 caracteres')
+    observacao: z.string().trim().max(1000, 'Use no máximo 1000 caracteres'),
+    tipo: z.enum(APPOINTMENT_TIPOS),
+    presenca: z.enum([...PRESENCAS, '']),
+    evolucao: z.string().trim().max(10000, 'Use no máximo 10000 caracteres')
   })
   // a sessão também tem que caber na grade: 19:30 por 45 min terminaria às 20:15, fora dela
   .refine(
@@ -65,11 +79,14 @@ type ValidValues = z.output<typeof formSchema>
 function initialValues(draft: AppointmentDraft): FormValues {
   if (draft.mode === 'create') {
     return {
-      patient: null,
+      patient: draft.patient ?? null,
       data: format(draft.inicio, 'yyyy-MM-dd'),
       hora: format(draft.inicio, 'HH:mm'),
       duracao: draft.duracao,
-      observacao: ''
+      observacao: '',
+      tipo: 'sessao',
+      presenca: '',
+      evolucao: ''
     }
   }
   const { appointment: a } = draft
@@ -79,17 +96,33 @@ function initialValues(draft: AppointmentDraft): FormValues {
     data: format(inicio, 'yyyy-MM-dd'),
     hora: format(inicio, 'HH:mm'),
     duracao: differenceInMinutes(parseIsoLocalDateTime(a.fim), inicio),
-    observacao: a.observacao
+    observacao: a.observacao,
+    tipo: a.tipo,
+    presenca: a.presenca,
+    evolucao: a.evolucao
   }
 }
 
-function toInput(values: ValidValues): AppointmentInput {
+/**
+ * A sessão já começou (ou a data é de antes): dá para registrar presença e evolução. Também vale
+ * ao lançar sessões antigas, das fichas de papel. Data ou hora incompletas contam como futuras.
+ */
+function hasStarted(data: string | undefined, hora: string | undefined, now: Date): boolean {
+  if (!isIsoDate(data ?? '') || !TIME.test(hora ?? '')) return false
+  return parseIsoLocalDateTime(`${data}T${hora}`) <= now
+}
+
+function toInput(values: ValidValues, now: Date): AppointmentInput {
   const inicio = `${values.data}T${values.hora}`
   return {
     patient_id: values.patient.id,
     inicio,
     fim: toIsoLocalDateTime(addMinutes(parseIsoLocalDateTime(inicio), values.duracao)),
-    observacao: values.observacao
+    observacao: values.observacao,
+    tipo: values.tipo,
+    // remarcada para o futuro: a presença deixa de valer (a evolução escrita fica)
+    presenca: hasStarted(values.data, values.hora, now) ? values.presenca : '',
+    evolucao: values.evolucao
   }
 }
 
@@ -112,6 +145,14 @@ function summary(values: FormValues): string | null {
   return `Sessão de ${values.duracao} min${quem} na ${dia}, das ${format(inicio, 'HH:mm')} às ${format(fim, 'HH:mm')}.`
 }
 
+/** Sessão que já aconteceu abre para o registro; as outras, para (re)agendar. */
+function title(draft: AppointmentDraft | null): string {
+  if (draft?.mode !== 'edit') return 'Novo agendamento'
+  return parseIsoLocalDateTime(draft.appointment.inicio) <= new Date()
+    ? 'Registro da sessão'
+    : 'Editar agendamento'
+}
+
 type Props = {
   draft: AppointmentDraft | null
   onClose: () => void
@@ -130,12 +171,30 @@ export function AppointmentDialog({ draft, onClose, onSaved }: Props): React.JSX
     <Dialog
       open={draft !== null}
       onOpenChange={(open) => !open && onClose()}
-      title={current?.mode === 'edit' ? 'Editar agendamento' : 'Novo agendamento'}
+      title={title(current)}
     >
       {current && (
         <AppointmentForm key={shown.opening} draft={current} onClose={onClose} onSaved={onSaved} />
       )}
     </Dialog>
+  )
+}
+
+/** Rótulo em cima de um seletor de opções (que já se apresenta ao leitor de tela pelo `label`). */
+function SegmentedField({
+  label,
+  children
+}: {
+  label: string
+  children: React.ReactNode
+}): React.JSX.Element {
+  return (
+    <div className="flex flex-col gap-1">
+      <span aria-hidden="true" className="text-xs font-medium text-ink">
+        {label}
+      </span>
+      {children}
+    </div>
   )
 }
 
@@ -153,6 +212,8 @@ function AppointmentForm({
   const ids = useId()
   const editing = draft.mode === 'edit' ? draft.appointment : null
   const [confirmDelete, setConfirmDelete] = useState(false)
+  // "agora" fixo enquanto o diálogo está aberto: a seção de registro não pisca ao virar o minuto
+  const [now] = useState(() => new Date())
 
   const {
     register,
@@ -176,7 +237,11 @@ function AppointmentForm({
         : window.api.appointments.create(input),
     onSuccess: (saved) => {
       toast({
-        title: editing ? 'Agendamento atualizado' : 'Sessão agendada',
+        title: !editing
+          ? 'Sessão agendada'
+          : parseIsoLocalDateTime(editing.inicio) <= now
+            ? 'Registro salvo'
+            : 'Agendamento atualizado',
         description: `${shortName(saved.patient_nome)} · ${when(saved.inicio)}`
       })
       onSaved?.(saved)
@@ -187,10 +252,34 @@ function AppointmentForm({
   const remove = useMutation({
     mutationFn: () => window.api.appointments.remove(editing!.id),
     onSuccess: () => {
+      const gone = editing!
+      const description = `${shortName(gone.patient_nome)} · ${when(gone.inicio)}`
       toast({
         title: 'Agendamento excluído',
-        description: `${shortName(editing!.patient_nome)} · ${when(editing!.inicio)}`,
-        icon: <Trash2 />
+        description,
+        icon: <Trash2 />,
+        action: {
+          label: 'Desfazer',
+          icon: <Undo2 />,
+          altText: 'Para desfazer, agende a sessão de novo.',
+          // agenda de novo com os mesmos dados, inclusive o registro (vira outro agendamento)
+          onClick: () => {
+            void window.api.appointments
+              .create({
+                patient_id: gone.patient_id,
+                inicio: gone.inicio,
+                fim: gone.fim,
+                observacao: gone.observacao,
+                tipo: gone.tipo,
+                presenca: gone.presenca,
+                evolucao: gone.evolucao
+              })
+              .then(() => {
+                void queryClient.invalidateQueries({ queryKey: ['appointments'] })
+                toast({ title: 'Agendamento restaurado', description })
+              })
+          }
+        }
       })
       done()
     }
@@ -202,11 +291,14 @@ function AppointmentForm({
     : [...DURATIONS, initialDuration].sort((a, b) => a - b)
 
   const error = save.error ?? remove.error
-  const resumo = summary(useWatch({ control }) as FormValues)
+  const values = useWatch({ control }) as FormValues
+  const started = hasStarted(values.data, values.hora, now)
+  // o resumo confirma o que vai ser agendado; numa sessão que já aconteceu, o foco é o registro
+  const resumo = started ? null : summary(values)
 
   return (
     <form
-      onSubmit={handleSubmit((values) => save.mutate(toInput(values)))}
+      onSubmit={handleSubmit((valid) => save.mutate(toInput(valid, now)))}
       onKeyDown={(e) => {
         // ⌘/Ctrl + Enter confirma de qualquer campo
         if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
@@ -226,7 +318,7 @@ function AppointmentForm({
                 value={field.value}
                 onChange={field.onChange}
                 invalid={fieldState.invalid}
-                autoFocus={!editing}
+                autoFocus={!editing && !(draft.mode === 'create' && draft.patient)}
               />
             )}
           />
@@ -277,6 +369,39 @@ function AppointmentForm({
             />
           </Field>
         </div>
+        <div className="flex flex-wrap items-end gap-x-6 gap-y-4">
+          <SegmentedField label="Tipo">
+            <Controller
+              control={control}
+              name="tipo"
+              render={({ field }) => (
+                <Segmented
+                  label="Tipo"
+                  value={field.value}
+                  options={TIPO_OPTIONS}
+                  onChange={field.onChange}
+                />
+              )}
+            />
+          </SegmentedField>
+          {started && (
+            <SegmentedField label="Presença">
+              <Controller
+                control={control}
+                name="presenca"
+                render={({ field }) => (
+                  <Segmented
+                    label="Presença"
+                    value={field.value}
+                    options={PRESENCA_OPTIONS}
+                    // clicar de novo na opção marcada desfaz (volta a "não registrada")
+                    onChange={(v) => field.onChange(v === field.value ? '' : v)}
+                  />
+                )}
+              />
+            </SegmentedField>
+          )}
+        </div>
         <Field label="Observação" error={errors.observacao?.message}>
           <Textarea
             {...register('observacao')}
@@ -285,6 +410,15 @@ function AppointmentForm({
             placeholder="Opcional"
           />
         </Field>
+        {started && (
+          <Field label="Evolução" error={errors.evolucao?.message} className="animate-fade-in">
+            <Textarea
+              {...register('evolucao')}
+              rows={4}
+              placeholder="O que foi feito na sessão e como o paciente respondeu."
+            />
+          </Field>
+        )}
 
         {resumo && (
           <p className="flex items-start gap-2 rounded-control bg-canvas px-3 py-2 text-xs text-ink-soft">
@@ -297,12 +431,12 @@ function AppointmentForm({
         )}
 
         {error && (
-          <p
-            className="animate-error-in rounded-control bg-danger/8 px-3 py-2 text-xs text-danger"
-            role="alert"
+          <Callout
+            tone="danger"
+            title={remove.error ? 'Não foi possível excluir' : 'Não foi possível salvar'}
           >
             {error.message}
-          </p>
+          </Callout>
         )}
       </DialogBody>
 
@@ -316,7 +450,7 @@ function AppointmentForm({
                 onClick={() => remove.mutate()}
                 loading={remove.isPending}
               >
-                <Trash2 /> Confirmar exclusão
+                <Trash2 /> {editing.evolucao ? 'Excluir com a evolução' : 'Confirmar exclusão'}
               </Button>
             ) : (
               <Button variant="danger-ghost" onClick={() => setConfirmDelete(true)}>

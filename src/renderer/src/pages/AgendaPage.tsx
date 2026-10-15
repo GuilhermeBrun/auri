@@ -9,7 +9,6 @@ import {
   getDay,
   parse,
   setHours,
-  setMinutes,
   startOfDay,
   startOfMonth,
   startOfWeek,
@@ -41,6 +40,7 @@ import { Button } from '@renderer/components/ui/button'
 import { ErrorState } from '@renderer/components/ui/error'
 import { Segmented } from '@renderer/components/ui/segmented'
 import { appointmentsQuery } from '@renderer/lib/queries'
+import { DEFAULT_DURATION, nextSlot, PRESENCA_LABELS, TIPO_LABELS } from '@renderer/lib/session'
 import { cn } from '@renderer/lib/utils'
 
 const WEEK_OPTIONS = { weekStartsOn: 0 as const } // semana começa no domingo
@@ -66,7 +66,6 @@ localizer.inRange = (day, min, max, unit = 'day') =>
     ? defaultInRange(day, min, max, unit)
     : (!min || dayNumber(day) >= dayNumber(min)) && (!max || dayNumber(day) <= dayNumber(max))
 
-const DEFAULT_DURATION = 30
 /** Faixa do rodapé da janela onde o aviso aparece (altura + margem): a sessão nova não pode ficar embaixo dele. */
 const TOAST_CLEARANCE = 72
 /** Por quanto tempo a sessão recém-salva fica marcada; o destaque dura menos que isso. */
@@ -141,18 +140,6 @@ function visibleRange(date: Date, view: View): { de: string; ate: string } {
   return { de: toIsoLocalDateTime(startOfDay(start)), ate: toIsoLocalDateTime(startOfDay(end)) }
 }
 
-/** Próximo horário cheio ou meia hora a partir de agora, dentro do expediente (à noite, o início de amanhã). */
-function nextSlot(now: Date): Date {
-  const minutes = now.getMinutes() < 30 ? 30 : 60
-  const slot = setMinutes(setHours(startOfDay(now), now.getHours()), minutes)
-  if (slot.getHours() < DAY_START_HOUR) return setHours(startOfDay(now), DAY_START_HOUR)
-  // sem lugar para uma sessão padrão antes das 20:00: a grade não tem esse horário
-  if (differenceInMinutes(setHours(startOfDay(now), DAY_END_HOUR), slot) < DEFAULT_DURATION) {
-    return setHours(startOfDay(addDays(now, 1)), DAY_START_HOUR)
-  }
-  return slot
-}
-
 /**
  * Conteúdo da sessão. Semana e Mês têm colunas estreitas: mostram o nome curto ("Maria Eduarda"),
  * que cabe inteiro; o nome completo aparece no balão e na visão Dia (ver .name-short, .name-full e
@@ -164,7 +151,9 @@ function nextSlot(now: Date): Date {
 function EventContent({ event }: EventProps<CalendarEvent>): React.JSX.Element {
   const short = differenceInMinutes(event.end, event.start) < 45
   const start = formatTime(event.start)
-  const range = timeRange(event)
+  // avaliação: a segunda linha diz o tipo antes do horário
+  const range =
+    event.appointment.tipo === 'avaliacao' ? `Avaliação · ${timeRange(event)}` : timeRange(event)
   return (
     <span className="flex min-w-0 flex-col">
       <span className="flex min-w-0 items-baseline gap-3">
@@ -299,8 +288,13 @@ const COMPONENTS: Components<CalendarEvent> = {
 const CALENDAR_STYLE = { height: '100%' }
 
 function tooltip(event: CalendarEvent): string {
-  const observacao = event.appointment.observacao ? `\n${event.appointment.observacao}` : ''
-  return `${timeRange(event)} · ${event.title}${observacao}`
+  const { tipo, presenca, observacao } = event.appointment
+  const tags = [
+    tipo === 'avaliacao' ? TIPO_LABELS.avaliacao : '',
+    presenca ? PRESENCA_LABELS[presenca] : ''
+  ].filter(Boolean)
+  const extra = tags.length > 0 ? ` (${tags.join(', ')})` : ''
+  return `${timeRange(event)} · ${event.title}${extra}${observacao ? `\n${observacao}` : ''}`
 }
 
 type AgendaCalendarProps = {
@@ -380,10 +374,18 @@ const AgendaCalendar = memo(function AgendaCalendar({
     scroller.scrollTop += box.top + box.height / 2 - (view.top + view.height / 2)
   }, [events, arrivedRef])
 
-  // Lido na hora de desenhar a sessão: a que acabou de ser salva ganha a classe de destaque
+  // Lido na hora de desenhar a sessão: a que acabou de ser salva ganha a classe de destaque; a
+  // que o paciente faltou ou desmarcou fica apagada
   const eventPropGetter = useCallback(
-    (event: CalendarEvent): { className?: string } =>
-      event.id === arrivedRef.current ? { className: 'event-arrived' } : {},
+    (event: CalendarEvent): { className?: string } => {
+      const missed =
+        event.appointment.presenca === 'falta' || event.appointment.presenca === 'desmarcou'
+      const className = cn(
+        event.id === arrivedRef.current && 'event-arrived',
+        missed && 'event-missed'
+      )
+      return className ? { className } : {}
+    },
     [arrivedRef]
   )
 

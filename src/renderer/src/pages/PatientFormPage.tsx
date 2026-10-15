@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Archive } from 'lucide-react'
+import { Archive, Undo2 } from 'lucide-react'
 import { useEffect, useId, useState, type ReactNode } from 'react'
 import { Controller, useForm, useWatch, type Control } from 'react-hook-form'
 import { useNavigate, useParams } from 'react-router'
@@ -14,12 +14,16 @@ import {
   type PatientInput
 } from '@shared/schemas'
 import { Page } from '@renderer/components/Layout'
-import { Avatar } from '@renderer/components/ui/avatar'
+import { PatientHeader, PatientTabs } from '@renderer/components/PatientHeader'
 import { Loading } from '@renderer/components/ui/loading'
 import { Button } from '@renderer/components/ui/button'
+import { Callout } from '@renderer/components/ui/callout'
 import { ErrorState } from '@renderer/components/ui/error'
 import { DateField } from '@renderer/components/ui/date-field'
 import { Field, Input, Textarea } from '@renderer/components/ui/input'
+import { useDraft } from '@renderer/lib/drafts'
+import { patientQuery } from '@renderer/lib/queries'
+import { PATIENTS_CRUMB } from '@renderer/lib/session'
 import { useToast } from '@renderer/lib/toast'
 
 function toInput(patient: Patient): PatientInput {
@@ -84,9 +88,6 @@ function MaskedInput({
   )
 }
 
-/** Volta à lista; o resto da trilha é o paciente aberto. */
-const PATIENTS_CRUMB = { label: 'Pacientes', to: '/pacientes' }
-
 export function PatientFormRoute(): React.JSX.Element {
   const { id } = useParams()
   const patientId = id ? Number(id) : null
@@ -106,26 +107,34 @@ function PatientFormPage({ patientId }: { patientId: number | null }): React.JSX
     data: patient,
     error: loadError,
     refetch
-  } = useQuery({
-    queryKey: ['patient', patientId],
-    queryFn: () => window.api.patients.get(patientId!),
-    enabled: !isNew
-  })
+  } = useQuery({ ...patientQuery(patientId ?? 0), enabled: !isNew })
 
   const {
     register,
     control,
     handleSubmit,
     reset,
+    getValues,
     formState: { errors, isDirty }
   } = useForm<PatientInput>({
     resolver: zodResolver(patientInputSchema),
     defaultValues: { ...emptyPatientInput(), data_entrada: entryDate }
   })
 
+  // o que foi digitado e não salvo volta ao trocar de aba (anamnese, sessões) e retornar
+  const draft = useDraft<PatientInput>(
+    isNew ? null : `patient:${patientId}`,
+    patient?.updated_at,
+    isDirty,
+    () => getValues()
+  )
+
   useEffect(() => {
-    if (patient) reset(toInput(patient))
-  }, [patient, reset])
+    if (!patient) return
+    reset(toInput(patient))
+    const restored = draft.take()
+    if (restored) reset(restored, { keepDefaultValues: true })
+  }, [patient, reset, draft])
 
   const save = useMutation({
     mutationFn: (input: PatientInput) =>
@@ -134,6 +143,7 @@ function PatientFormPage({ patientId }: { patientId: number | null }): React.JSX
         : // recusa se a ficha foi salva em outro computador depois de aberta aqui
           window.api.patients.update(patientId, input, patient?.updated_at),
     onSuccess: (saved) => {
+      draft.discard()
       queryClient.setQueryData(['patient', saved.id], saved)
       void queryClient.invalidateQueries({ queryKey: ['patients'] })
       void queryClient.invalidateQueries({ queryKey: ['appointments'] })
@@ -151,7 +161,23 @@ function PatientFormPage({ patientId }: { patientId: number | null }): React.JSX
       toast(
         saved.ativo
           ? { title: 'Paciente reativado', description: saved.nome }
-          : { title: 'Paciente inativado', description: saved.nome, icon: <Archive /> }
+          : {
+              title: 'Paciente inativado',
+              description: saved.nome,
+              icon: <Archive />,
+              action: {
+                label: 'Desfazer',
+                icon: <Undo2 />,
+                altText: 'Para desfazer, use Reativar na ficha do paciente.',
+                onClick: () => {
+                  void window.api.patients.setAtivo(saved.id, true).then((back) => {
+                    queryClient.setQueryData(['patient', back.id], back)
+                    void queryClient.invalidateQueries({ queryKey: ['patients'] })
+                    toast({ title: 'Paciente reativado', description: back.nome })
+                  })
+                }
+              }
+            }
       )
     }
   })
@@ -159,12 +185,13 @@ function PatientFormPage({ patientId }: { patientId: number | null }): React.JSX
   const nome = useWatch({ control, name: 'nome' })
   const nascimento = useWatch({ control, name: 'data_nascimento' })
   const idade = formatAge(nascimento)
+  const tabs = isNew ? undefined : <PatientTabs patientId={patientId} value="ficha" />
 
   // Ficha existente ainda não carregada (ou com falha): só o cabeçalho e o estado, nunca o
   // formulário vazio com o título "Novo paciente".
   if (!isNew && !patient) {
     return (
-      <Page trail={[PATIENTS_CRUMB, { label: 'Ficha do paciente' }]}>
+      <Page trail={[PATIENTS_CRUMB, { label: 'Ficha do paciente' }]} toolbar={tabs}>
         {loadError ? (
           <ErrorState
             title="Não foi possível abrir a ficha"
@@ -193,6 +220,7 @@ function PatientFormPage({ patientId }: { patientId: number | null }): React.JSX
           // o nome salvo, não o que está sendo digitado (esse aparece grande no corpo)
           { label: isNew ? 'Novo paciente' : (patient?.nome ?? 'Ficha do paciente') }
         ]}
+        toolbar={tabs}
         actions={
           <>
             {!isNew && patient && (
@@ -211,39 +239,29 @@ function PatientFormPage({ patientId }: { patientId: number | null }): React.JSX
         }
       >
         <div className="mx-auto max-w-[840px] px-8 pt-6 pb-16">
-          <header className="mb-6 flex items-center gap-4">
-            <Avatar name={nomeAtual} size="lg" />
-            <div className="min-w-0">
-              <p className="truncate text-[26px] leading-tight font-semibold tracking-tight">
-                {nomeAtual || 'Novo paciente'}
-              </p>
-              <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs">
-                {idade && (
-                  <span className="rounded-chip bg-fill px-2 py-0.5 font-medium text-ink-soft tabular-nums">
-                    {idade}
-                  </span>
-                )}
-                {patient && !patient.ativo && (
-                  <span className="animate-pop-in rounded-chip bg-danger/8 px-2 py-0.5 font-medium text-danger">
-                    Inativo
-                  </span>
-                )}
-                {isNew && !idade && (
-                  <span className="text-[13px] text-ink-soft">
-                    Preencha a ficha de entrada. Só o nome é obrigatório.
-                  </span>
-                )}
-              </div>
-            </div>
-          </header>
+          <PatientHeader
+            nome={nomeAtual}
+            nascimento={nascimento}
+            inativo={patient ? !patient.ativo : false}
+            placeholder="Novo paciente"
+          >
+            {isNew && !idade && (
+              <span className="text-[13px] text-ink-soft">
+                Preencha a ficha de entrada. Só o nome é obrigatório.
+              </span>
+            )}
+          </PatientHeader>
 
           {(save.error || toggleAtivo.error) && (
-            <p
-              className="mb-5 animate-error-in rounded-card bg-danger/8 p-3 text-xs text-danger"
-              role="alert"
+            <Callout
+              tone="danger"
+              title={
+                save.error ? 'Não foi possível salvar a ficha' : 'Não foi possível mudar o cadastro'
+              }
+              className="mb-5"
             >
               {(save.error ?? toggleAtivo.error)!.message}
-            </p>
+            </Callout>
           )}
 
           <div className="flex flex-col">

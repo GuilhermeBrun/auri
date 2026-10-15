@@ -9,6 +9,7 @@ import { NewPasswordFields } from '@renderer/components/backup/PasswordFields'
 import { RecoveryCode } from '@renderer/components/backup/RecoveryCode'
 import { RestoreDialog } from '@renderer/components/backup/RestoreDialog'
 import { Button } from '@renderer/components/ui/button'
+import { Callout } from '@renderer/components/ui/callout'
 import { Loading } from '@renderer/components/ui/loading'
 import { ErrorText, SectionTitle, StatusDot } from '@renderer/components/ui/section'
 import { Segmented } from '@renderer/components/ui/segmented'
@@ -234,13 +235,17 @@ function Status({ info }: { info: BackupInfo }): React.JSX.Element {
         </div>
       </div>
       {problem && <DestinationRepair info={info} problem={problem} />}
-      {failed && !problem && !run.error && <ErrorText>{info.lastError!.message}</ErrorText>}
+      {failed && !problem && !run.error && (
+        <Callout tone="warning" title="A última cópia não foi feita" className="mt-4">
+          {info.lastError!.message} Tente “Fazer cópia agora”; se continuar, confira a pasta.
+        </Callout>
+      )}
       {run.error && <ErrorText>{run.error.message}</ErrorText>}
       {open.error && <ErrorText>{open.error.message}</ErrorText>}
       {!failed && info.stale && info.lastSuccessAt && !info.running && (
-        <p role="status" className="mt-2 text-xs text-ink-soft">
-          Faz mais de 3 dias sem cópia. Confira se a pasta está disponível ou faça uma cópia agora.
-        </p>
+        <Callout tone="warning" title="Faz mais de 3 dias sem cópia" className="mt-4">
+          Confira se a pasta está disponível ou faça uma cópia agora.
+        </Callout>
       )}
     </section>
   )

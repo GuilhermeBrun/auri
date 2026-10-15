@@ -212,6 +212,26 @@
       "requiredOn": ["darwin", "win32", "linux"]
     },
     {
+      "file": "src/main/db/anamneses.test.ts",
+      "name": "anamnese ainda não escrita vem vazia e sem updated_at",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/db/anamneses.test.ts",
+      "name": "anamnese cria na primeira gravação e atualiza nas seguintes",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/db/anamneses.test.ts",
+      "name": "anamnese recusa gravar por cima de quem salvou depois de aberta",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/db/anamneses.test.ts",
+      "name": "anamnese valida a entrada e avisa as telas pela operação",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
       "file": "src/main/db/appointments-properties.test.ts",
       "name": "intervalos gerados rejeitam sobreposição, aceitam adjacência e preservam edição recusada",
       "requiredOn": ["darwin", "win32", "linux"]
@@ -409,6 +429,31 @@
     {
       "file": "src/main/db/recovery.test.ts",
       "name": "recuperação de dados restaura um backup cifrado histórico e reabre a base recuperada",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/db/sessions.test.ts",
+      "name": "migração do registro da sessão sessões do banco v1 viram sessões comuns sem registro",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/db/sessions.test.ts",
+      "name": "registro da sessão agendar sem registro grava sessão comum, sem presença nem evolução",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/db/sessions.test.ts",
+      "name": "registro da sessão grava tipo, presença e evolução e os devolve na edição",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/db/sessions.test.ts",
+      "name": "registro da sessão lista o histórico do paciente da sessão mais nova para a mais antiga",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/db/sessions.test.ts",
+      "name": "registro da sessão recusa presença ou tipo desconhecidos",
       "requiredOn": ["darwin", "win32", "linux"]
     },
     {
@@ -839,6 +884,161 @@
     {
       "file": "src/shared/search.test.ts",
       "name": "busca de pacientes sem busca devolve todos, na ordem recebida",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/renderer/src/components/AttendanceChart.test.tsx",
+      "name": "gráfico de frequência a legenda acende um tipo ao passar o mouse e fixa ao clicar",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/renderer/src/components/AttendanceChart.test.tsx",
+      "name": "gráfico de frequência calcula a frequência só sobre as sessões com presença registrada",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/renderer/src/components/AttendanceChart.test.tsx",
+      "name": "gráfico de frequência passar o mouse mostra a sessão na linha de baixo; sair volta à dica",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/renderer/src/components/AttendanceChart.test.tsx",
+      "name": "gráfico de frequência sem presença registrada e com muitas sessões, diz isso em texto",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/renderer/src/components/AttendanceChart.test.tsx",
+      "name": "gráfico de frequência setas, Home e End percorrem as sessões; Enter e clique abrem o registro",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/renderer/src/components/ui/feedback.test.tsx",
+      "name": "aviso na página erro e atenção são anunciados; explicação neutra é só nota",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/renderer/src/components/ui/feedback.test.tsx",
+      "name": "busca aceita uma função como ref",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/renderer/src/components/ui/feedback.test.tsx",
+      "name": "busca Esc com texto limpa sem deixar o Esc chegar a quem está em volta",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/renderer/src/components/ui/feedback.test.tsx",
+      "name": "busca limpa pelo botão próprio e devolve o foco ao campo",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/renderer/src/components/ui/feedback.test.tsx",
+      "name": "confirmação no lugar controlada por fora, avisa a troca de passo",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/renderer/src/components/ui/feedback.test.tsx",
+      "name": "confirmação no lugar pergunta antes, permite desistir e só então confirma",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/renderer/src/components/ui/feedback.test.tsx",
+      "name": "selo mostra a palavra e o ícone no tom pedido",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/renderer/src/lib/drafts.test.tsx",
+      "name": "rascunho ao trocar de tela esquece o rascunho se o registro foi salvo em outro lugar enquanto esperava",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/renderer/src/lib/drafts.test.tsx",
+      "name": "rascunho ao trocar de tela guarda o que não foi salvo ao sair e devolve uma vez ao voltar",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/renderer/src/lib/drafts.test.tsx",
+      "name": "rascunho ao trocar de tela não guarda nada depois de salvar nem quando não houve mudança",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/renderer/src/lib/drafts.test.tsx",
+      "name": "rascunho ao trocar de tela sem chave ou com o registro ainda carregando, não guarda",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/renderer/src/lib/session.test.ts",
+      "name": "próximo horário para agendar antes do expediente sugere o começo do dia",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/renderer/src/lib/session.test.ts",
+      "name": "próximo horário para agendar arredonda para a próxima meia hora ou hora cheia",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/renderer/src/lib/session.test.ts",
+      "name": "próximo horário para agendar oferece os tipos e as presenças com os nomes da ficha",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/renderer/src/lib/session.test.ts",
+      "name": "próximo horário para agendar sem lugar para uma sessão padrão hoje, sugere o começo de amanhã",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/renderer/src/pages/PatientAnamnesePage.test.tsx",
+      "name": "anamnese do paciente falha ao abrir mostra o erro e tenta de novo",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/renderer/src/pages/PatientAnamnesePage.test.tsx",
+      "name": "anamnese do paciente falha ao salvar mantém o texto e explica num aviso na página",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/renderer/src/pages/PatientAnamnesePage.test.tsx",
+      "name": "anamnese do paciente nova anamnese sugere a data de entrada e salva só depois de mudar algo",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/renderer/src/pages/PatientAnamnesePage.test.tsx",
+      "name": "anamnese do paciente o que não foi salvo volta ao sair da aba e retornar",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/renderer/src/pages/PatientFormPage.test.tsx",
+      "name": "inativar paciente na ficha falha ao inativar aparece como aviso na página",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/renderer/src/pages/PatientFormPage.test.tsx",
+      "name": "inativar paciente na ficha o aviso permite desfazer, reativando o cadastro",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/renderer/src/pages/PatientSessionsPage.test.tsx",
+      "name": "aba Sessões do paciente excluir pede confirmação e o aviso permite desfazer",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/renderer/src/pages/PatientSessionsPage.test.tsx",
+      "name": "aba Sessões do paciente falha ao abrir mostra o erro e tenta de novo",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/renderer/src/pages/PatientSessionsPage.test.tsx",
+      "name": "aba Sessões do paciente o botão de nova sessão e a aba Ficha",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/renderer/src/pages/PatientSessionsPage.test.tsx",
+      "name": "aba Sessões do paciente sem sessões, convida a agendar e abre o agendamento com o paciente escolhido",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/renderer/src/pages/PatientSessionsPage.test.tsx",
+      "name": "aba Sessões do paciente separa próximas e anteriores, agrupa por mês e mostra presença e evolução",
       "requiredOn": ["darwin", "win32", "linux"]
     }
   ]

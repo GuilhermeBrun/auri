@@ -1,26 +1,46 @@
 import { formatTime, parseIsoLocalDateTime } from '../../shared/dates'
-import type { Appointment, AppointmentInput } from '../../shared/schemas'
+import {
+  appointmentInputSchema,
+  type Appointment,
+  type AppointmentInput
+} from '../../shared/schemas'
 import { assertUnchanged } from './concurrency'
 import type { Db } from './connection'
 
-type AppointmentRow = Omit<Appointment, 'observacao'> & { observacao: string | null }
+type AppointmentRow = Omit<Appointment, 'observacao' | 'presenca' | 'evolucao'> & {
+  observacao: string | null
+  presenca: Appointment['presenca'] | null
+  evolucao: string | null
+}
 
 const SELECT = `
-  SELECT a.id, a.patient_id, a.inicio, a.fim, a.observacao, a.created_at, a.updated_at,
-         p.nome AS patient_nome
+  SELECT a.id, a.patient_id, a.inicio, a.fim, a.observacao, a.tipo, a.presenca, a.evolucao,
+         a.created_at, a.updated_at, p.nome AS patient_nome
   FROM appointments a
   JOIN patients p ON p.id = a.patient_id`
 
 function fromRow(row: AppointmentRow): Appointment {
-  return { ...row, observacao: row.observacao ?? '' }
+  return {
+    ...row,
+    observacao: row.observacao ?? '',
+    presenca: row.presenca ?? '',
+    evolucao: row.evolucao ?? ''
+  }
 }
 
+const orNull = (value: string): string | null => (value === '' ? null : value)
+
 function toParams(input: AppointmentInput): Record<string, string | number | null> {
+  // os campos do registro são opcionais na entrada: o schema completa com os padrões
+  const full = appointmentInputSchema.parse(input)
   return {
-    patient_id: input.patient_id,
-    inicio: input.inicio,
-    fim: input.fim,
-    observacao: input.observacao === '' ? null : input.observacao
+    patient_id: full.patient_id,
+    inicio: full.inicio,
+    fim: full.fim,
+    observacao: orNull(full.observacao),
+    tipo: full.tipo,
+    presenca: orNull(full.presenca),
+    evolucao: orNull(full.evolucao)
   }
 }
 
@@ -35,7 +55,11 @@ function assertPatientExists(db: Db, patientId: number): void {
  * ao editar. Fica aqui, e não só no formulário, para valer para qualquer chamada da API; o driver é
  * síncrono, então nada entra entre esta checagem e a gravação.
  */
-function assertSlotFree(db: Db, input: AppointmentInput, ignoreId: number | null): void {
+function assertSlotFree(
+  db: Db,
+  input: Pick<AppointmentInput, 'inicio' | 'fim'>,
+  ignoreId: number | null
+): void {
   const busy = db
     .prepare(
       `${SELECT}
@@ -62,6 +86,14 @@ export function getAppointment(db: Db, id: number): Appointment {
   return fromRow(row)
 }
 
+/** Todas as sessões do paciente, da mais nova para a mais antiga (o histórico da ficha). */
+export function listPatientAppointments(db: Db, patientId: number): Appointment[] {
+  const rows = db
+    .prepare(`${SELECT} WHERE a.patient_id = ? ORDER BY a.inicio DESC, a.id DESC`)
+    .all(patientId) as AppointmentRow[]
+  return rows.map(fromRow)
+}
+
 /** Agendamentos que se sobrepõem a [de, ate). Datas locais em texto ISO comparam em ordem. */
 export function listAppointments(db: Db, de: string, ate: string): Appointment[] {
   const rows = db
@@ -75,8 +107,8 @@ export function createAppointment(db: Db, input: AppointmentInput): Appointment 
   assertSlotFree(db, input, null)
   const result = db
     .prepare(
-      `INSERT INTO appointments (patient_id, inicio, fim, observacao)
-       VALUES (@patient_id, @inicio, @fim, @observacao)`
+      `INSERT INTO appointments (patient_id, inicio, fim, observacao, tipo, presenca, evolucao)
+       VALUES (@patient_id, @inicio, @fim, @observacao, @tipo, @presenca, @evolucao)`
     )
     .run(toParams(input))
   return getAppointment(db, Number(result.lastInsertRowid))
@@ -96,6 +128,7 @@ export function updateAppointment(
     .prepare(
       `UPDATE appointments
        SET patient_id = @patient_id, inicio = @inicio, fim = @fim, observacao = @observacao,
+           tipo = @tipo, presenca = @presenca, evolucao = @evolucao,
            updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
        WHERE id = @id`
     )

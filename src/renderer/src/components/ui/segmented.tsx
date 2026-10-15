@@ -29,7 +29,8 @@ export function Segmented<T extends string>({
     if (!track) return
     const measure = (): void => {
       const active = track.querySelector<HTMLElement>('[aria-pressed="true"]')
-      if (!active) return
+      // nenhuma opção escolhida (ex.: presença ainda não registrada): sem bloco
+      if (!active) return setThumb(null)
       const next = { x: active.offsetLeft, width: active.offsetWidth }
       setThumb((prev) => (prev?.x === next.x && prev.width === next.width ? prev : next))
     }

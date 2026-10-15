@@ -47,7 +47,7 @@ type NavItem = {
 function AlertDot(): React.JSX.Element {
   return (
     <>
-      <span aria-hidden="true" className="ml-auto size-1.5 shrink-0 rounded-full bg-danger" />
+      <span aria-hidden="true" className="ml-auto size-1.5 shrink-0 rounded-full bg-attention" />
       <span className="sr-only">(precisa de atenção)</span>
     </>
   )
@@ -182,6 +182,7 @@ function SidebarBody(): React.JSX.Element {
 function BackupAttention(): null {
   const info = useBackup()
   const toast = useToast()
+  const navigate = useNavigate()
   const shown = useRef(false)
   const attention = needsAttention(info)
   const message = info?.destinationProblem?.message
@@ -191,9 +192,14 @@ function BackupAttention(): null {
     toast({
       title: 'A cópia de segurança parou',
       description: message ?? 'Veja em Configurações › Cópia de segurança.',
-      icon: <TriangleAlert className="size-4 stroke-[1.75] text-danger" />
+      icon: <TriangleAlert className="text-warning" />,
+      action: {
+        label: 'Resolver',
+        altText: 'Abra Configurações › Cópia de segurança.',
+        onClick: () => void navigate('/configuracoes/copia')
+      }
     })
-  }, [attention, message, toast])
+  }, [attention, message, toast, navigate])
   return null
 }
 

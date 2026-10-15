@@ -1,8 +1,8 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { TriangleAlert } from 'lucide-react'
 import { useState } from 'react'
 import { DestinationPicker, ProviderAction } from '@renderer/components/backup/DestinationPicker'
 import { Button } from '@renderer/components/ui/button'
+import { Callout } from '@renderer/components/ui/callout'
 import { ErrorText } from '@renderer/components/ui/section'
 import { DESTINATION_LABEL, setBackupInfo, useInstallProgress } from '@renderer/lib/backup'
 import { useToast } from '@renderer/lib/toast'
@@ -62,18 +62,9 @@ export function DestinationRepair({
   }
 
   return (
-    <div role="alert" className="mt-4 animate-fade-in rounded-card bg-fill p-4">
-      <p className="flex items-start gap-2 text-[13px] font-medium">
-        <TriangleAlert
-          className="mt-0.5 size-4 shrink-0 stroke-[1.75] text-danger"
-          aria-hidden="true"
-        />
-        {problem.message}
-      </p>
-      <p className="mt-1 pl-6 text-xs text-ink-soft">
-        As cópias estão paradas. Resolva por aqui e o Auri volta a copiar sozinho.
-      </p>
-      <div className="mt-3 pl-6">
+    <Callout tone="warning" title={problem.message} className="mt-4">
+      <p>As cópias estão paradas. Resolva por aqui e o Auri volta a copiar sozinho.</p>
+      <div className="mt-3">
         {problem.state === 'ready' && problem.folder ? (
           <Button
             variant="secondary"
@@ -103,14 +94,14 @@ export function DestinationRepair({
         )}
       </div>
       {choosing && (
-        <div className="mt-4 animate-fade-in pl-6">
+        <div className="mt-4 animate-fade-in">
           <DestinationPicker onPick={(next) => change.mutate(next)} />
           <Button variant="secondary" size="sm" className="mt-3" onClick={() => setChoosing(false)}>
             Cancelar
           </Button>
         </div>
       )}
-      {change.error && <ErrorText className="pl-6">{change.error.message}</ErrorText>}
-    </div>
+      {change.error && <ErrorText>{change.error.message}</ErrorText>}
+    </Callout>
   )
 }
