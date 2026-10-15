@@ -3,6 +3,7 @@ import {
   ArrowLeftRight,
   CalendarDays,
   DatabaseBackup,
+  Download,
   Network,
   PanelLeft,
   PanelLeftClose,
@@ -19,6 +20,7 @@ import { AuriLogo } from '@renderer/components/ui/brand'
 import { EmptyState } from '@renderer/components/ui/empty'
 import { ErrorState } from '@renderer/components/ui/error'
 import { ToastProvider } from '@renderer/components/ui/toast'
+import { UpdateReady } from '@renderer/components/UpdateReady'
 import { WelcomeDialog } from '@renderer/components/WelcomeDialog'
 import { needsAttention, useBackup } from '@renderer/lib/backup'
 import { useConnection } from '@renderer/lib/connection'
@@ -66,7 +68,8 @@ const SETTINGS_ITEMS: NavItem[] = [
   { to: `${SETTINGS_PATH}/aparencia`, label: 'Aparência', icon: <SunMoon /> },
   { to: CONNECTION_PATH, label: 'Conexão', icon: <Network /> },
   { to: BACKUP_PATH, label: 'Cópia de segurança', icon: <DatabaseBackup /> },
-  { to: `${SETTINGS_PATH}/transferir`, label: 'Importar e exportar', icon: <ArrowLeftRight /> }
+  { to: `${SETTINGS_PATH}/transferir`, label: 'Importar e exportar', icon: <ArrowLeftRight /> },
+  { to: `${SETTINGS_PATH}/atualizacoes`, label: 'Atualizações', icon: <Download /> }
 ]
 
 /**
@@ -313,6 +316,7 @@ export function Layout(): React.JSX.Element {
         </div>
         <WelcomeDialog />
         <BackupAttention />
+        <UpdateReady />
       </ToastProvider>
     </SidebarContext>
   )

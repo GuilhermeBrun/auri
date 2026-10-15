@@ -4,6 +4,7 @@ import type { Connection } from './connection'
 import type { BackupService } from './backup-service'
 import type { AuriTransfer } from '../shared/api'
 import type { PrefsStore } from './prefs'
+import type { UpdateService } from './updates'
 import { trustRenderer } from './ipc-security'
 import { registerIpc } from './ipc'
 
@@ -23,6 +24,10 @@ vi.mock('electron', () => ({
 const call = vi.fn(() => ({ ok: true, data: [] }))
 const save = vi.fn()
 const exportSettings = vi.fn(() => 'arquivo fictício')
+const checkUpdates = vi.fn(() => ({ status: 'checking' }))
+const installUpdate = vi.fn(() => {
+  throw new Error('Nenhuma versão nova pronta.')
+})
 beforeEach(() => {
   vi.clearAllMocks()
   handlers.clear()
@@ -31,7 +36,8 @@ beforeEach(() => {
     { call } as unknown as Connection,
     { save } as unknown as PrefsStore,
     {} as BackupService,
-    { exportSettings } as unknown as AuriTransfer
+    { exportSettings } as unknown as AuriTransfer,
+    { check: checkUpdates, install: installUpdate } as unknown as UpdateService
   )
 })
 
@@ -45,6 +51,8 @@ describe('handlers IPC', () => {
     expect(call).not.toHaveBeenCalled()
     expect(save).not.toHaveBeenCalled()
     expect(exportSettings).not.toHaveBeenCalled()
+    expect(checkUpdates).not.toHaveBeenCalled()
+    expect(installUpdate).not.toHaveBeenCalled()
   })
   it('janela autorizada usa a API, mas um subframe não pode ler dados nem gravar preferências', async () => {
     const mainFrame = { url: 'file:///auri/out/renderer/index.html#/pacientes' }
@@ -61,6 +69,14 @@ describe('handlers IPC', () => {
     expect(await handlers.get('transfer:export')!(event)).toEqual({
       ok: true,
       data: 'arquivo fictício'
+    })
+    expect(await handlers.get('updates:check')!(event)).toEqual({
+      ok: true,
+      data: { status: 'checking' }
+    })
+    expect(await handlers.get('updates:install')!(event)).toEqual({
+      ok: false,
+      error: 'Nenhuma versão nova pronta.'
     })
     listeners.get('prefs:save')!(event as unknown as IpcMainEvent, { theme: 'dark' })
     expect(save).toHaveBeenCalledExactlyOnceWith({ theme: 'dark' })

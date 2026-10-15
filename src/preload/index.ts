@@ -8,9 +8,11 @@ import {
   type BackupInfo,
   type AuriPrefs,
   type AuriTransfer,
+  type AuriUpdates,
   type ConnectionInfo,
   type DataTopic,
-  type IpcResult
+  type IpcResult,
+  type UpdateState
 } from '../shared/api'
 import type { UiPrefs } from '../shared/schemas'
 
@@ -108,10 +110,18 @@ const transfer: AuriTransfer = {
   applySettings: (token) => invoke('transfer:apply', token)
 }
 
+const updates: AuriUpdates = {
+  info: () => invoke('updates:info'),
+  check: () => invoke('updates:check'),
+  install: () => invoke('updates:install'),
+  onChange: (listener) => subscribe<UpdateState>('updates:changed', listener)
+}
+
 contextBridge.exposeInMainWorld('api', api)
 contextBridge.exposeInMainWorld('prefs', prefs)
 contextBridge.exposeInMainWorld('connection', connection)
 contextBridge.exposeInMainWorld('backup', backup)
 contextBridge.exposeInMainWorld('transfer', transfer)
+contextBridge.exposeInMainWorld('updates', updates)
 // A interface ajusta espaços e atalhos ao sistema (ex.: botões da janela no Mac, ⌘ x Ctrl)
 contextBridge.exposeInMainWorld('platform', process.platform)

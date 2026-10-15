@@ -13,11 +13,14 @@ import { trustRenderer } from './ipc-security'
 import { pathToFileURL } from 'node:url'
 import { createPrefsStore, type PrefsStore } from './prefs'
 import { createTransferService } from './transfer-service'
+import { createUpdateService, type UpdateService, type Updater } from './updates'
+import { existsSync } from 'node:fs'
 
 let connection: Connection | null = null
 let backup: BackupService | null = null
 let prefs: PrefsStore | null = null
 let tray: Tray | null = null
+let updates: UpdateService | null = null
 /** O usuário já confirmou sair mesmo com outro computador conectado. */
 let quitConfirmed = false
 
@@ -101,6 +104,17 @@ function createWindow(prefs: UiPrefs): void {
 /** Manda um aviso do main para todas as janelas abertas. */
 function sendToWindows(channel: string, value: unknown): void {
   for (const window of BrowserWindow.getAllWindows()) window.webContents.send(channel, value)
+}
+
+/**
+ * O instalador do Windows sai com `app-update.yml` quando o Build recebe o repositório de
+ * atualizações. No Mac a troca automática exige app assinado; lá a versão nova vai por cima.
+ */
+async function loadUpdater(): Promise<Updater | null> {
+  if (!app.isPackaged || process.platform !== 'win32') return null
+  if (!existsSync(join(process.resourcesPath, 'app-update.yml'))) return null
+  const { autoUpdater } = await import('electron-updater')
+  return autoUpdater as unknown as Updater
 }
 
 /** Mostra a janela que já existe ou abre uma nova (bandeja, segunda abertura do app). */
@@ -194,7 +208,18 @@ void app.whenReady().then(async () => {
     // configurações importadas: as telas abertas acompanham (tema marcado, barra lateral)
     sendToWindows('prefs:changed', next)
   })
-  registerIpc(connection, prefs, backup, createTransferService({ prefs, connection, backup }))
+  updates = createUpdateService({
+    version: app.getVersion(),
+    updater: await loadUpdater(),
+    onChange: (state) => sendToWindows('updates:changed', state)
+  })
+  registerIpc(
+    connection,
+    prefs,
+    backup,
+    createTransferService({ prefs, connection, backup }),
+    updates
+  )
   applyTheme(prefs.get().theme)
   // o sistema trocou de tema (com "system" escolhido)
   nativeTheme.on('updated', syncWindowBackgrounds)
@@ -234,6 +259,8 @@ app.on('before-quit', (event) => {
 })
 
 app.on('will-quit', () => {
+  updates?.close()
+  updates = null
   backup?.close()
   backup = null
   connection?.close()

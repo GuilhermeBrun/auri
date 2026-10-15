@@ -325,3 +325,37 @@ export interface AuriTransfer {
   /** Aplica as configurações lidas por `pickSettings`. */
   applySettings(token: string): Promise<void>
 }
+
+/**
+ * Atualização do próprio Auri.
+ * - `unavailable`: este computador não se atualiza sozinho (Mac, que exige app assinado, ou
+ *   instalação sem endereço de atualizações). A versão nova é instalada por cima, à mão.
+ * - `idle`: na versão mais nova encontrada. `checking`: procurando.
+ * - `downloading`: baixando `next`. `ready`: `next` baixada; instala ao reiniciar ou ao sair.
+ * - `error`: a última procura ou download falhou (`error` diz por quê).
+ */
+export type UpdateStatus = 'unavailable' | 'idle' | 'checking' | 'downloading' | 'ready' | 'error'
+
+export type UpdateState = {
+  /** Versão instalada. */
+  version: string
+  status: UpdateStatus
+  /** Versão nova encontrada (baixando ou pronta). */
+  next: string | null
+  /** 0–100 enquanto baixa. */
+  progress: number | null
+  /** ISO da última procura concluída. */
+  checkedAt: string | null
+  error: string | null
+}
+
+/** Configurações / Atualizações. Exposto em window.updates pelo preload. */
+export interface AuriUpdates {
+  info(): Promise<UpdateState>
+  /** Procura agora (não faz nada se já está procurando, baixando ou pronta). */
+  check(): Promise<UpdateState>
+  /** Fecha o Auri, instala a versão baixada e abre de novo. */
+  install(): Promise<void>
+  /** Avisa a cada mudança. Devolve a função que cancela. */
+  onChange(listener: (state: UpdateState) => void): () => void
+}
