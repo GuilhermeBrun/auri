@@ -1,5 +1,5 @@
 import { execFileSync, spawnSync } from 'node:child_process'
-import { cpSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { appendFileSync, cpSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { resolve, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
@@ -12,14 +12,17 @@ import {
   validateCiExecution,
   validatePolicyChanges,
   parseNameStatus,
-  policyFiles
+  policyFiles,
+  packagingChanged
 } from './checks.mjs'
-import { validateExtendedBundle } from './extended-checks.mjs'
+import { MUTATION_PLATFORMS, validateExtendedBundle } from './extended-checks.mjs'
 import { collectChangedLines, sha256, validateSast } from './risk-checks.mjs'
 
 const trusted = resolve(fileURLToPath(new URL('../../', import.meta.url)))
 const json = (file) => JSON.parse(readFileSync(file, 'utf8'))
 const git = (...args) => execFileSync('git', args, { encoding: 'utf8' }).trim()
+const show = (ref, file) =>
+  execFileSync('git', ['show', `${ref}:${file}`], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 })
 const sha = () => process.env.EXPECTED_SHA || git('rev-parse', 'HEAD')
 const write = (file, value) => {
   mkdirSync(resolve(file, '..'), { recursive: true })
@@ -79,13 +82,25 @@ async function policy() {
     .filter(Boolean)
     .map((file) => ({ status: 'A', file }))
   const reviewed = process.env.GITHUB_EVENT_NAME !== 'pull_request' || (await reviewedSha())
-  const sensitive = validatePolicyChanges(policyFiles([...changed, ...local]), reviewed, bootstrap)
-  if (
-    reviewed &&
-    sensitive.some((file) => file.startsWith('docs/qualidade/')) &&
-    trusted !== process.cwd()
-  ) {
-    // Expectativas novas só substituem a base depois da revisão explícita do SHA.
+  const entries = [...changed, ...local]
+  const sensitive = validatePolicyChanges(
+    // Só o manifesto e os JSON de política são comparados por conteúdo.
+    policyFiles(entries, ({ status, file }) =>
+      file === 'package.json' || /^docs\/qualidade\/[^/]+\.json$/.test(file)
+        ? {
+            before: status === 'A' ? null : show(base, file),
+            after: status === 'D' ? null : readFileSync(file, 'utf8')
+          }
+        : {}
+    ),
+    reviewed,
+    bootstrap
+  )
+  const docsChanged = entries.some(({ file }) => file.startsWith('docs/qualidade/'))
+  const docsReviewed = reviewed || !sensitive.some((file) => file.startsWith('docs/qualidade/'))
+  if (docsChanged && docsReviewed && trusted !== process.cwd()) {
+    // Expectativas só entram no lugar das da base revisadas, ou quando apenas acrescentam
+    // (teste, cenário, mutação ou arquivo de cobertura novo): nunca afrouxam a base.
     cpSync(resolve('docs/qualidade'), join(trusted, 'docs/qualidade'), { recursive: true })
   }
   requireCondition(
@@ -101,9 +116,19 @@ async function policy() {
     bootstrap,
     reviewed,
     sensitive,
+    packaging: packagingChanged(
+      entries.map(({ file }) => file),
+      process.env.GITHUB_EVENT_NAME === 'pull_request'
+    ),
     changedCoverage: collectChangedLines(base)
   }
   write('.quality/policy.json', report)
+  // O workflow pula o que esta política não vai exigir (ver quality.yml).
+  if (process.env.GITHUB_OUTPUT)
+    appendFileSync(
+      process.env.GITHUB_OUTPUT,
+      `packaging=${report.packaging}\nmutation=${MUTATION_PLATFORMS.join(',')}\n`
+    )
   console.log(
     bootstrap
       ? 'Política: adoção inicial; conferir revisão antes de integrar.'
@@ -114,7 +139,8 @@ async function policy() {
 function validateBundle(
   directory,
   platform,
-  changedCoverage = collectChangedLines(process.env.BASE_SHA)
+  changedCoverage = collectChangedLines(process.env.BASE_SHA),
+  packaging = true
 ) {
   const run = json(join(directory, 'test-run.json'))
   const report = json(join(directory, 'tests.json'))
@@ -139,7 +165,10 @@ function validateBundle(
     platform,
     tests: tests.size,
     scenarios: validateScenarios(catalog(), tests, e2e),
-    ...validateExtendedBundle(directory, trusted, sha(), platform, changedCoverage)
+    ...validateExtendedBundle(directory, trusted, sha(), platform, changedCoverage, {
+      packaging,
+      mutation: MUTATION_PLATFORMS.includes(platform)
+    })
   }
 }
 
@@ -186,10 +215,14 @@ function aggregate(directory) {
         policyReport.runAttempt === process.env.GITHUB_RUN_ATTEMPT,
       'Política de outra execução/tentativa.'
     )
-  const bundles = [
-    validateBundle(join(directory, 'quality-darwin'), 'darwin', policyReport.changedCoverage),
-    validateBundle(join(directory, 'quality-win32'), 'win32', policyReport.changedCoverage)
-  ]
+  const bundles = ['darwin', 'win32'].map((platform) =>
+    validateBundle(
+      join(directory, `quality-${platform}`),
+      platform,
+      policyReport.changedCoverage,
+      policyReport.packaging !== false
+    )
+  )
   validateSecurity(join(directory, 'quality-security'))
   write(join(directory, 'summary.json'), { success: true, sha: sha(), bundles })
   console.log('quality: política, Windows, macOS, cenários e segurança aprovados.')

@@ -93,18 +93,43 @@ export function validateMutations(report, catalog, sha, platform) {
   return actual.size
 }
 
-export function validateExtendedBundle(directory, trusted, sha, platform, changedCoverage) {
+/** A mutação não depende do sistema: basta rodá-la no macOS, que é mais rápido. */
+export const MUTATION_PLATFORMS = ['darwin']
+
+/**
+ * `required.packaging` vem da política: só fica false em PR que não toca o que vai no pacote
+ * (ver `packagingChanged`). O push em main e a execução local exigem tudo.
+ */
+export function validateExtendedBundle(
+  directory,
+  trusted,
+  sha,
+  platform,
+  changedCoverage,
+  required = { packaging: true, mutation: true }
+) {
   const policy = json(join(trusted, 'docs/qualidade/gates.json'))
   const run = json(join(directory, 'test-run.json'))
   const coveragePolicy = json(join(trusted, 'docs/qualidade/cobertura.json'))
+  const packaging = required.packaging
+    ? {
+        delivery: validateDelivery(
+          json(join(directory, 'delivery/results.json')),
+          json(join(directory, 'delivery/sbom.cdx.json')),
+          sha,
+          platform,
+          sha256(readFileSync(join(directory, 'delivery/sbom.cdx.json')))
+        ),
+        package: validateExtendedReport(
+          json(join(directory, 'package/results.json')),
+          policy.package,
+          sha,
+          platform
+        )
+      }
+    : {}
   return {
-    delivery: validateDelivery(
-      json(join(directory, 'delivery/results.json')),
-      json(join(directory, 'delivery/sbom.cdx.json')),
-      sha,
-      platform,
-      sha256(readFileSync(join(directory, 'delivery/sbom.cdx.json')))
-    ),
+    ...packaging,
     changedCoverage: validateChangedCoverage(
       json(join(directory, 'changed-coverage.json')),
       json(join(directory, 'coverage/coverage-final.json')),
@@ -126,17 +151,15 @@ export function validateExtendedBundle(directory, trusted, sha, platform, change
       run.root
     ),
     ui: validateExtendedReport(json(join(directory, 'ui/results.json')), policy.ui, sha, platform),
-    package: validateExtendedReport(
-      json(join(directory, 'package/results.json')),
-      policy.package,
-      sha,
-      platform
-    ),
-    mutations: validateMutations(
-      json(join(directory, 'mutation/results.json')),
-      json(join(trusted, 'docs/qualidade/mutacoes.json')),
-      sha,
-      platform
-    )
+    ...(required.mutation
+      ? {
+          mutations: validateMutations(
+            json(join(directory, 'mutation/results.json')),
+            json(join(trusted, 'docs/qualidade/mutacoes.json')),
+            sha,
+            platform
+          )
+        }
+      : {})
   }
 }

@@ -36,7 +36,8 @@ try {
     'Branch já protegida: revise a regra existente antes de alterar; este comando não a substitui.'
   )
   const payload = {
-    required_status_checks: { strict: true, checks: [{ context: 'quality', app_id: app.id }] },
+    // Sem exigir base atualizada: mantenedor solo; o push em main roda o Qualidade de novo.
+    required_status_checks: { strict: false, checks: [{ context: 'quality', app_id: app.id }] },
     enforce_admins: true,
     required_pull_request_reviews: {
       dismiss_stale_reviews: true,
@@ -58,8 +59,7 @@ try {
   ])
   const verified = api(`repos/${repo.nameWithOwner}/branches/${branch}/protection`)
   requireCondition(
-    verified.required_status_checks.strict &&
-      verified.enforce_admins.enabled &&
+    verified.enforce_admins.enabled &&
       verified.required_status_checks.checks.some(
         (check) => check.context === 'quality' && check.app_id === app.id
       ),
