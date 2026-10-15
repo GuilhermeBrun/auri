@@ -140,12 +140,38 @@ export function validateCiExecution(evidence, runId, attempt) {
   requireCondition(evidence.worktreeDirty === false, 'Código do CI modificado após o checkout.')
 }
 
+const protectedConfig =
+  /^(\.github\/|\.gitattributes$|\.editorconfig$|docs\/qualidade\/|scripts\/|src\/main\/ipc(-security)?\.ts$|package(-lock)?\.json$|(electron\.)?vite(st)?\.config\.|eslint\.config\.|\.prettier|tsconfig|electron-builder\.yml$)/
+const testFile = /\.test\.[cm]?[jt]sx?$/
+
 export function protectedPath(file) {
-  return (
-    /^(\.github\/|\.gitattributes$|\.editorconfig$|docs\/qualidade\/|scripts\/|src\/main\/ipc(-security)?\.ts$|package(-lock)?\.json$|(electron\.)?vite(st)?\.config\.|eslint\.config\.|\.prettier|tsconfig|electron-builder\.yml$)/.test(
-      file
-    ) || /\.test\.[cm]?[jt]sx?$/.test(file)
-  )
+  return protectedConfig.test(file) || testFile.test(file)
+}
+
+// Recebe a saída de `git diff --name-status --no-renames`: renomear vira remoção + adição.
+export function parseNameStatus(output) {
+  return output
+    .split('\n')
+    .filter(Boolean)
+    .map((line) => {
+      const [status, file] = line.split('\t')
+      return { status: status[0], file }
+    })
+}
+
+// Teste novo não enfraquece o inventário obrigatório, que vem da base aprovada;
+// alterar, renomear ou remover um teste existente continua exigindo revisão do SHA.
+export function policyFiles(entries) {
+  return [
+    ...new Set(
+      entries
+        .filter(
+          ({ status, file }) =>
+            !(status === 'A' && testFile.test(file) && !protectedConfig.test(file))
+        )
+        .map(({ file }) => file)
+    )
+  ]
 }
 
 export function validatePolicyChanges(files, reviewed, bootstrap = false) {

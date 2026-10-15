@@ -10,7 +10,9 @@ import {
   validateAudit,
   validateJobs,
   validateCiExecution,
-  validatePolicyChanges
+  validatePolicyChanges,
+  parseNameStatus,
+  policyFiles
 } from './checks.mjs'
 import { validateExtendedBundle } from './extended-checks.mjs'
 import { collectChangedLines, sha256, validateSast } from './risk-checks.mjs'
@@ -68,11 +70,16 @@ async function policy() {
   )
   const bootstrap = false
   const changed = knownBase
-    ? git('diff', '--name-only', base, '--').split('\n').filter(Boolean)
+    ? parseNameStatus(
+        git('-c', 'core.quotePath=false', 'diff', '--name-status', '--no-renames', base, '--')
+      )
     : []
-  const local = git('ls-files', '--others', '--exclude-standard').split('\n').filter(Boolean)
+  const local = git('ls-files', '--others', '--exclude-standard')
+    .split('\n')
+    .filter(Boolean)
+    .map((file) => ({ status: 'A', file }))
   const reviewed = process.env.GITHUB_EVENT_NAME !== 'pull_request' || (await reviewedSha())
-  const sensitive = validatePolicyChanges([...new Set([...changed, ...local])], reviewed, bootstrap)
+  const sensitive = validatePolicyChanges(policyFiles([...changed, ...local]), reviewed, bootstrap)
   if (
     reviewed &&
     sensitive.some((file) => file.startsWith('docs/qualidade/')) &&
