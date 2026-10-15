@@ -190,7 +190,7 @@ Grupos de opções (**‹ Hoje ›** e Dia/Semana/Mês) ficam num trilho `fill`,
 - `ui/badge.tsx`: `Badge`, selo de uma ou duas palavras ("Inativo", idade): `neutral`, `outline`, `strong`, `warning`, `danger`.
 - `ui/callout.tsx`: `Callout`, aviso que fica na página até ser resolvido (`neutral`, `warning`, `danger`), fundo suave inteiro, sem barra lateral. Erros de gravação da ficha, da anamnese e do diálogo de agendamento, e os problemas da cópia de segurança, usam este componente.
 - `ui/search-field.tsx`: `SearchField`, a busca do cabeçalho (`fill`, lupa, limpar próprio; Esc limpa).
-- `ui/confirm-action.tsx`: `ConfirmAction`, confirmação em dois passos no lugar ("Excluir este agendamento?" · Manter · Excluir). No diálogo de agendamento os botões da direita somem enquanto confirma, para não haver dois "Cancelar".
+- `ui/confirm-action.tsx`: `ConfirmAction`, confirmação em dois passos no lugar ("Cortar o acesso?" · Cancelar · Remover), onde há espaço na linha (lista de computadores em Conexão). No rodapé do diálogo de agendamento, que é estreito, o "Excluir" continua virando "Confirmar exclusão" no próprio botão.
 - Avisos com ação (`useToast` com `action`): "Desfazer" depois de excluir um agendamento (agenda de novo com os mesmos dados) e de inativar um paciente; "Resolver" no aviso da cópia parada. Com ação o aviso fica 6s.
 - `ui/kbd.tsx`: tecla de atalho. Use `MOD_KEY` de `lib/platform.ts` para ⌘ ou Ctrl.
 - `Layout.tsx`: `Layout` (barra lateral recolhível e área do conteúdo) e `Page` (cabeçalho de uma linha com `trail`, `badge`, `toolbar` e `actions`; subtelas passam o caminho inteiro, ex.: `[{ label: 'Pacientes', to: '/pacientes' }, { label: nome }]`).

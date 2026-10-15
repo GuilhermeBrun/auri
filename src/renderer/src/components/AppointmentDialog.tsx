@@ -24,7 +24,6 @@ import {
 import { PatientCombobox } from '@renderer/components/PatientCombobox'
 import { Button } from '@renderer/components/ui/button'
 import { Callout } from '@renderer/components/ui/callout'
-import { ConfirmAction } from '@renderer/components/ui/confirm-action'
 import { Dialog, DialogBody, DialogFooter } from '@renderer/components/ui/dialog'
 import { DateField } from '@renderer/components/ui/date-field'
 import { Field, Textarea } from '@renderer/components/ui/input'
@@ -35,7 +34,6 @@ import { TimeField } from '@renderer/components/ui/time-field'
 import { MOD_KEY } from '@renderer/lib/platform'
 import { PRESENCA_OPTIONS, TIPO_OPTIONS } from '@renderer/lib/session'
 import { useToast } from '@renderer/lib/toast'
-import { cn } from '@renderer/lib/utils'
 
 /**
  * O que abriu o diálogo: um horário livre na agenda ou um agendamento existente. `patient`: já
@@ -445,25 +443,20 @@ function AppointmentForm({
       <DialogFooter>
         <div>
           {editing ? (
-            // confirmando, a pergunta ocupa o rodapé: os botões da direita saem para não haver dois "Cancelar"
-            <ConfirmAction
-              size="md"
-              confirming={confirmDelete}
-              onConfirmingChange={setConfirmDelete}
-              question={
-                editing.evolucao ? 'Excluir a sessão e a evolução?' : 'Excluir este agendamento?'
-              }
-              cancelLabel="Manter"
-              confirmLabel={
-                <>
-                  <Trash2 /> Excluir
-                </>
-              }
-              loading={remove.isPending}
-              onConfirm={() => remove.mutate()}
-            >
-              <Trash2 /> Excluir
-            </ConfirmAction>
+            confirmDelete ? (
+              <Button
+                variant="danger"
+                className="animate-fade-in"
+                onClick={() => remove.mutate()}
+                loading={remove.isPending}
+              >
+                <Trash2 /> {editing.evolucao ? 'Excluir com a evolução' : 'Confirmar exclusão'}
+              </Button>
+            ) : (
+              <Button variant="danger-ghost" onClick={() => setConfirmDelete(true)}>
+                <Trash2 /> Excluir
+              </Button>
+            )
           ) : (
             <span className="flex items-center gap-1 text-xs text-ink-soft">
               <Kbd>{MOD_KEY}</Kbd>
@@ -472,7 +465,7 @@ function AppointmentForm({
             </span>
           )}
         </div>
-        <div className={cn('flex gap-2', confirmDelete && 'hidden')}>
+        <div className="flex gap-2">
           <Button variant="secondary" onClick={onClose}>
             Cancelar
           </Button>
