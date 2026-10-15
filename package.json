@@ -36,13 +36,16 @@
     "test:ui": "node scripts/quality/ui.mjs",
     "test:mutation": "node scripts/quality/mutation.mjs",
     "test:package": "node scripts/quality/package.mjs",
-    "test:installer": "node scripts/quality/install.mjs"
+    "test:installer": "node scripts/quality/install.mjs",
+    "visual:aceitar": "node scripts/quality/visual-accept.mjs",
+    "release": "node scripts/release.mjs"
   },
   "dependencies": {
     "@electron-toolkit/utils": "^4.0.0",
     "@hyperswarm/secret-stream": "^6.9.2",
     "better-sqlite3": "^13.0.3",
     "bonjour-service": "^1.4.4",
+    "electron-updater": "^6.8.9",
     "hyperdht": "^6.34.1",
     "zod": "^4.6.6"
   },

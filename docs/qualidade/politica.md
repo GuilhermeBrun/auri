@@ -57,19 +57,42 @@ esta etapa não muda a regra do main/rede.
 
 ## Alterar testes ou a própria proteção
 
-`.github/`, scripts, inventário, cenários, fixtures, `vite.config.ts`,
-package/lockfile e arquivos `.test.*` são sensíveis. No PR, o verificador é carregado do commit
-base, antes de instalar dependências. Mudança nesses arquivos exige uma revisão GitHub
-**COMMENTED** ou **APPROVED** de alguém com permissão write/maintain/admin, no commit exato,
-com o corpo:
+A revisão do SHA vale só para o que pode **afrouxar** a proteção. No PR, o verificador é
+carregado do commit base, antes de instalar dependências, e decide arquivo por arquivo
+(`needsReview` em `scripts/quality/checks.mjs`):
+
+| Mudança                                                                                       | Revisão do SHA                     |
+| --------------------------------------------------------------------------------------------- | ---------------------------------- |
+| `.github/`, `scripts/`, `vite.config.ts`, tsconfig, lint, `electron-builder.yml`, IPC         | Sempre                             |
+| JSON de `docs/qualidade/` (inventário, cenários, cobertura, mutação, gates, SAST, desempenho) | Só se remover ou alterar algo      |
+| `package.json` fora de `version`, `dependencies` e `devDependencies`                          | Sempre (ex.: `scripts`, `engines`) |
+| Fixture histórica alterada ou removida, `gitleaks.toml`                                       | Sempre                             |
+| Arquivos `.test.*` (novos, alterados, renomeados ou removidos) e código comum                 | Não                                |
+| `package-lock.json`, versão e dependências no `package.json`                                  | Não (o job security audita)        |
+| Referências visuais, textos `.md` e fixture nova                                              | Não (aparecem no diff do PR)       |
+
+Acrescentar ao JSON (teste, cenário, mutação, fonte de cobertura, regra de SAST, módulo crítico)
+não pede revisão: listas só podem ganhar itens idênticos aos novos, e itens existentes precisam
+continuar idênticos; um `reason` novo num teste ou um número de mínimo trocado já conta como
+alteração. Nesse caso as expectativas do candidato substituem as da base na própria execução.
+Teste é livre porque o inventário obrigatório vem da base: remover, renomear ou pular um teste
+listado reprova sem a revisão que reduziria o inventário, e nos módulos de `mutacoes.json` a
+mutação reprova assertion enfraquecida. Fica aceito o risco de enfraquecer a assertion de um
+teste fora desses módulos sem revisão; registre teste novo no inventário para protegê-lo.
+
+Quando a revisão é exigida, publique uma revisão GitHub **COMMENTED** ou **APPROVED**, de alguém
+com permissão write/maintain/admin, no commit exato, com o corpo:
 
 ```text
 quality-policy-reviewed: SHA_COMPLETO_DO_HEAD_DO_PR
 ```
 
+O workflow **Revisão da política** (`revisao.yml`) reexecuta o Qualidade desse commit sozinho
+quando a revisão chega; não precisa mais de "Re-run all jobs".
+
 Na interface de revisão do PR, escolha **Comment** quando você for o autor, confira o diff e
 registre a razão da mudança fora dessa revisão de corpo exato (na descrição do PR, por exemplo).
-Depois reexecute **todos os jobs** (Re-run all jobs), para renovar as evidências da tentativa.
+A nova tentativa sai pelo workflow **Revisão da política**.
 Um novo commit exige nova revisão; comentário comum na conversa
 não conta. Não publique essa revisão automaticamente por IA. Compare assertions, skips,
 globs, exclusões, dependências e resultados anteriores/novos antes de registrar a revisão.
@@ -97,7 +120,8 @@ npm run quality:protect
 
 Esse comando administrativo verifica o check do GitHub Actions no SHA atual, exige que não
 haja proteção anterior a preservar, aplica a regra e consulta o servidor novamente. A regra
-exige PR, base atualizada, check `quality` do GitHub Actions, conversas resolvidas e aplicação
+exige PR, check `quality` do GitHub Actions (sem exigir a branch atualizada com `main`: o
+push em `main` roda o Qualidade de novo), conversas resolvidas e aplicação
 a administradores; proíbe force push e deleção. Não faz commit/push. Requer permissão admin,
 GitHub CLI autenticado e plano que permita proteção em repositório privado; falha de licença
 ou permissão não é contornada. Se já houver regra, revise-a separadamente em vez de sobrescrevê-la.
@@ -120,7 +144,7 @@ históricas quando houver novas versões publicadas, mantendo as anteriores.
 `npm run quality` inclui cobertura de todas as fontes TS/TSX, os testes de proteção,
 E2E de integração, jornadas pela interface, mutação, pacote executável e segurança.
 `npm run quality:validate` revalida esse conjunto completo, incluindo audit e segredos.
-O CI usa Node 24.15.0 e npm 11.13.0, as versões verificadas na instalação limpa.
+O CI usa Node 24.15.0 e o npm que vem com ele.
 A configuração de formato, lint, testes e cobertura continua em `vite.config.ts`.
 
 - `cobertura.json` registra o inventário das fontes de produção, a referência global medida
@@ -150,21 +174,29 @@ A configuração de formato, lint, testes e cobertura continua em `vite.config.t
 - Tags precisam corresponder à versão do `package.json` e só geram distribuição quando
   apontam para o HEAD de `main` com Qualidade aprovado
   naquele push. Build manual continua gerando artefatos para validação, sem publicar release.
+  Ver "Release e atualização automática".
 
 ## Revisar referências visuais
 
-A atualização de imagens é uma operação de revisão, sem aprovação automática:
+A atualização de imagens é uma operação de revisão, sem aprovação automática. No Mac:
 
 ```bash
 AURI_UPDATE_VISUAL=1 npm run test:ui
 ```
 
-As imagens propostas ficam em `.quality/ui/reference/<plataforma>/`. Inspecione todas,
-compare o comportamento e copie apenas as aprovadas para `docs/qualidade/visual/`.
-No GitHub, execute Qualidade com `visual_reference=true` para obter imagens do Windows/macOS
-nos próprios runners. Essa execução produz artefatos, mas o agregador **reprova** o modo de
-referência; ela não pode ser usada para integrar código. Depois de revisar/versionar as imagens,
-execute novamente sem essa opção. Uma IA não deve atualizar referências para esconder regressões.
+As imagens propostas ficam em `.quality/ui/reference/<plataforma>/`. Para as dos dois sistemas,
+depois do push da branch:
+
+```bash
+gh workflow run referencias-visuais.yml --ref NOME_DA_BRANCH
+npm run visual:aceitar
+```
+
+O workflow **Referências visuais** só captura e guarda as imagens como artefato; não aprova
+nada (o agregador continua reprovando o modo de referência). `visual:aceitar` confere que as
+capturas são do commit atual e copia para `docs/qualidade/visual/`. Inspecione o diff das
+imagens antes do commit, que passa pelo Qualidade normal sem revisão do SHA. Uma IA não deve
+atualizar referências para esconder regressões.
 
 ## Integridade e distribuição
 
@@ -174,13 +206,18 @@ além de testar o verificador candidato. Os artefatos precisam corresponder ao c
 sistema operacional e tentativa atuais; remover uma jornada, mutação ou fonte de cobertura
 impede a aprovação. Mudanças nas políticas e referências continuam exigindo revisão do SHA.
 
-Arquivos de teste adicionados (status `A` em `git diff --name-status --no-renames` contra a
-base, ou ainda não rastreados) não exigem a revisão: o inventário de testes obrigatórios vem
-da base aprovada, e nos módulos de `mutacoes.json` a mutação reprova teste que não detecta o
-erro. Em módulo fora dessa lista, um teste novo sem assertion ainda cumpre a cobertura
-diferencial sem revisão; esse risco foi aceito para tirar o atrito. Alterar, remover ou renomear um teste
-existente continua exigindo revisão; a renomeação conta como remoção do teste antigo mais
-adição do novo. Teste novo dentro de `scripts/` ou outro caminho protegido também exige.
+O que exige revisão está em "Alterar testes ou a própria proteção".
+
+O que o PR precisa rodar também vem do verificador da base, pelas saídas do job `policy`:
+
+- Empacotar e testar o pacote (`build:unpack`, `test:package`, `quality:delivery`) só quando o
+  PR toca o que vai no pacote: `src/main`, `src/preload`, `src/shared`, dependências,
+  `electron-builder.yml`, `build/`, `resources/`, configuração do Vite, `scripts/` ou
+  `.github/`. Push em `main`, execução manual e semanal sempre empacotam.
+- A mutação roda só no macOS: os erros dirigidos não dependem do sistema.
+
+Sem essas saídas (verificador anterior) o workflow roda tudo, como antes. O `node_modules`
+fica em cache por sistema e lockfile; o `npm ci` só roda quando o lockfile muda.
 
 A proteção da branch precisa ser ativada somente depois do sucesso remoto em Windows e macOS.
 O arquivo do workflow ainda pode ser alterado por quem administra o repositório; revisão
@@ -194,6 +231,32 @@ não publica uma versão pública nem afirma que um certificado ad-hoc identific
 Os testes abrem somente a arquitetura nativa do runner; outros alvos gerados precisam de
 execução em hardware correspondente antes de prometer compatibilidade. Performance e avaliação
 manual com leitores de tela continuam tendo evidências próprias.
+
+## Release e atualização automática
+
+1. Suba a versão num PR comum (sem revisão do SHA): `npm version minor --no-git-tag-version`.
+2. Com o PR integrado e o Qualidade aprovado no push de `main`, em `main` atualizado:
+   `npm run release`. O script confere as mesmas regras do Build e envia a tag `vX.Y.Z`.
+3. O Build não repete o Qualidade: o job `origem aprovada` exige o Qualidade aprovado no push
+   desse commit. Em cada sistema ele testa os instaladores oficiais das nuvens, gera o
+   instalador, testa o aplicativo instalado e roda o E2E (no Windows com a instalação real do
+   Google Drive). O job `release` publica a release da tag com `.exe`, `.dmg` e `latest*.yml`, e o
+   job `atualização` leva os mesmos arquivos ao GitHub Pages.
+
+O Auri instalado no Windows procura versão nova 30 s depois de abrir e a cada 4 horas, baixa
+sozinho e instala ao sair ou por Configurações › Atualizações ("Reiniciar e atualizar"). Como
+os dois computadores conectados precisam estar na mesma versão, isso evita o estado "versões
+diferentes" da Conexão. No Mac a troca automática exige app assinado: lá a tela mostra a
+versão e a nova é instalada por cima.
+
+Este repositório é privado, então o Auri instalado procura versões no GitHub Pages dele
+(`https://guilhermebrun.github.io/auri/`, em `publish` do `electron-builder.yml`), que é
+público. O job `atualização` do Build publica lá, só com o token do próprio workflow, o
+`.exe`, o `.dmg`, os `.blockmap`, o `latest.yml` e uma página de download. Fica só a versão
+atual. Nenhum token vai dentro do app nem em secret. O ambiente `github-pages` aceita a branch
+`main` e as tags `v*`. Instaladores gerados antes desta mudança não se atualizam sozinhos:
+instale uma vez a primeira versão publicada pelo Build. Sem certificado, o Windows ainda
+mostra o aviso do SmartScreen ao instalar à mão; a atualização automática não passa por ele.
 
 ## Dependências moderadas em 14/10/2026
 

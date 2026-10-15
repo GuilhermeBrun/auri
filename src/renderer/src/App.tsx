@@ -9,6 +9,7 @@ import { PatientSessionsRoute } from './pages/PatientSessionsPage'
 import { PatientsPage } from './pages/PatientsPage'
 import { AppearancePage } from './pages/SettingsPage'
 import { TransferPage } from './pages/TransferPage'
+import { UpdatesPage } from './pages/UpdatesPage'
 
 function App(): React.JSX.Element {
   return (
@@ -27,6 +28,7 @@ function App(): React.JSX.Element {
         <Route path="configuracoes/conexao" element={<ConnectionPage />} />
         <Route path="configuracoes/copia" element={<BackupPage />} />
         <Route path="configuracoes/transferir" element={<TransferPage />} />
+        <Route path="configuracoes/atualizacoes" element={<UpdatesPage />} />
         <Route path="*" element={<Navigate to="/agenda" replace />} />
       </Route>
     </Routes>

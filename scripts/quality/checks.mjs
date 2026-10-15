@@ -140,12 +140,85 @@ export function validateCiExecution(evidence, runId, attempt) {
   requireCondition(evidence.worktreeDirty === false, 'Código do CI modificado após o checkout.')
 }
 
+// Código que decide o que é testado e como: qualquer mudança exige revisão do SHA.
 const protectedConfig =
-  /^(\.github\/|\.gitattributes$|\.editorconfig$|docs\/qualidade\/|scripts\/|src\/main\/ipc(-security)?\.ts$|package(-lock)?\.json$|(electron\.)?vite(st)?\.config\.|eslint\.config\.|\.prettier|tsconfig|electron-builder\.yml$)/
-const testFile = /\.test\.[cm]?[jt]sx?$/
+  /^(\.github\/|\.gitattributes$|\.editorconfig$|scripts\/|src\/main\/ipc(-security)?\.ts$|(electron\.)?vite(st)?\.config\.|eslint\.config\.|\.prettier|tsconfig|electron-builder\.yml$)/
+const policyJson = /^docs\/qualidade\/[^/]+\.json$/
+// Campos do package.json que mudam sem alterar o que é testado: dependências passam pelo
+// audit do job security, e a versão só nomeia a release.
+const freeManifestFields = new Set(['version', 'dependencies', 'devDependencies'])
 
-export function protectedPath(file) {
-  return protectedConfig.test(file) || testFile.test(file)
+/** `after` mantém tudo de `before`: listas só ganham itens, objetos só ganham chaves. */
+export function isAdditive(before, after) {
+  if (Array.isArray(before))
+    return (
+      Array.isArray(after) &&
+      before.every((item) => after.some((candidate) => sameValue(item, candidate)))
+    )
+  if (before && typeof before === 'object')
+    return (
+      Boolean(after) &&
+      typeof after === 'object' &&
+      !Array.isArray(after) &&
+      Object.keys(before).every(
+        (key) => Object.hasOwn(after, key) && isAdditive(before[key], after[key])
+      )
+    )
+  return Object.is(before, after)
+}
+
+// Dentro de listas o item precisa continuar idêntico: ganhar uma chave pode afrouxar a regra
+// (ex.: `reason` permite pular um teste, uma exclusão a mais numa regra de SAST).
+function sameValue(a, b) {
+  return isAdditive(a, b) && isAdditive(b, a)
+}
+
+function parse(text) {
+  try {
+    return JSON.parse(text)
+  } catch {
+    return undefined
+  }
+}
+
+function manifestChanged(before, after) {
+  const strip = (manifest) =>
+    manifest &&
+    Object.fromEntries(Object.entries(manifest).filter(([key]) => !freeManifestFields.has(key)))
+  const [a, b] = [strip(parse(before)), strip(parse(after))]
+  return !a || !b || !sameValue(a, b)
+}
+
+/**
+ * Se a mudança pode enfraquecer a proteção. `before`/`after` são o conteúdo na base e no
+ * candidato (null quando o arquivo não existe ali). Testes e código comum ficam livres: o
+ * inventário obrigatório vem da base, então remover, renomear ou pular um teste listado já
+ * reprova; a mutação pega assertion enfraquecida nos módulos de `mutacoes.json`.
+ */
+export function needsReview({ status, file }, before = null, after = null) {
+  if (protectedConfig.test(file)) return true
+  if (file.startsWith('docs/qualidade/')) {
+    // Referências visuais e texto aparecem no diff do PR; não mudam o que é exigido.
+    if (file.startsWith('docs/qualidade/visual/') || file.endsWith('.md')) return false
+    if (status === 'A') return false
+    if (status === 'M' && policyJson.test(file)) {
+      const [a, b] = [parse(before), parse(after)]
+      return a === undefined || b === undefined || !isAdditive(a, b)
+    }
+    return true
+  }
+  if (file === 'package.json') return status !== 'M' || manifestChanged(before, after)
+  return false
+}
+
+// O que muda o app empacotado: processo main, preload, dependências, configuração do build e a
+// própria verificação. Mudança só na interface ou na documentação não reempacota no PR.
+const packagingInput =
+  /^(package(-lock)?\.json$|electron-builder\.yml$|build\/|resources\/|src\/(main|preload|shared)\/|(electron\.)?vite\.config\.|scripts\/|\.github\/)/
+
+/** Se o PR precisa empacotar e testar o pacote; fora de PR sempre precisa. */
+export function packagingChanged(files, pullRequest) {
+  return !pullRequest || files.some((file) => packagingInput.test(file))
 }
 
 // Recebe a saída de `git diff --name-status --no-renames`: renomear vira remoção + adição.
@@ -159,23 +232,22 @@ export function parseNameStatus(output) {
     })
 }
 
-// Teste novo não enfraquece o inventário obrigatório, que vem da base aprovada;
-// alterar, renomear ou remover um teste existente continua exigindo revisão do SHA.
-export function policyFiles(entries) {
+/** Arquivos que exigem revisão. `read(entry)` devolve `{ before, after }` do arquivo. */
+export function policyFiles(entries, read = () => ({})) {
   return [
     ...new Set(
       entries
-        .filter(
-          ({ status, file }) =>
-            !(status === 'A' && testFile.test(file) && !protectedConfig.test(file))
-        )
+        .filter((entry) => {
+          const { before = null, after = null } = read(entry)
+          return needsReview(entry, before, after)
+        })
         .map(({ file }) => file)
     )
   ]
 }
 
 export function validatePolicyChanges(files, reviewed, bootstrap = false) {
-  const sensitive = files.filter(protectedPath)
+  const sensitive = files
   requireCondition(
     bootstrap || reviewed || sensitive.length === 0,
     `Mudanças na proteção exigem revisão do SHA: ${sensitive.join(', ')}`

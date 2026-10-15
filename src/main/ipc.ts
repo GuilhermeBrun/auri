@@ -5,6 +5,7 @@ import type { BackupService } from './backup-service'
 import type { Connection } from './connection'
 import { DATA_CHANNELS, errorMessage } from './operations'
 import type { PrefsStore } from './prefs'
+import type { UpdateService } from './updates'
 import { assertTrustedSender } from './ipc-security'
 
 /** Todo handler valida a entrada no main: o renderer nunca é tratado como confiável. */
@@ -34,7 +35,8 @@ export function registerIpc(
   connection: Connection,
   prefs: PrefsStore,
   backup: BackupService,
-  transfer: AuriTransfer
+  transfer: AuriTransfer,
+  updates: UpdateService
 ): void {
   // Dados: no banco deste computador ou no outro, conforme o papel (ver main/connection.ts).
   for (const channel of DATA_CHANNELS) {
@@ -134,6 +136,11 @@ export function registerIpc(
   handle('transfer:apply', (token: unknown) =>
     transfer.applySettings(z.string().uuid().parse(token))
   )
+
+  // Configurações / Atualizações
+  handle('updates:info', () => updates.info())
+  handle('updates:check', () => updates.check())
+  handle('updates:install', () => updates.install())
 
   // Sem resposta: a janela manda gravar e segue (ver main/prefs.ts)
   ipcMain.on('prefs:save', (event, value: unknown) => {

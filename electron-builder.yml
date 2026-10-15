@@ -52,3 +52,8 @@ mac:
       arch: [arm64, x64]
 dmg:
   artifactName: ${name}-${version}-${arch}.${ext}
+# Onde o Auri instalado procura versões novas: o GitHub Pages deste repositório, que o Build
+# publica a cada tag (ver docs/qualidade/politica.md, "Release e atualização automática").
+publish:
+  provider: generic
+  url: https://guilhermebrun.github.io/auri/

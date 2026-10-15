@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { execFileSync, spawnSync } from 'node:child_process'
-import { cpSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -14,7 +14,10 @@ import {
   validateCiExecution,
   validatePolicyChanges,
   parseNameStatus,
-  policyFiles
+  policyFiles,
+  needsReview,
+  isAdditive,
+  packagingChanged
 } from './checks.mjs'
 
 function fixture() {
@@ -191,49 +194,126 @@ await test('erro do audit e vulnerabilidade alta bloqueiam; moderadas são regis
   assert.throws(() => validateAudit(audit), /altas/)
 })
 
-await test('alterar assertion, configuração ou catálogo precisa de revisão explícita', () => {
+await test('configuração e verificador exigem revisão; testes e código comum não', () => {
   for (const file of [
-    'src/main/a.test.ts',
     'vitest.config.ts',
     'vite.config.ts',
     '.github/workflows/quality.yml',
-    'docs/qualidade/testes.json'
+    'scripts/quality/util.mjs',
+    'scripts/quality/novo.test.mjs',
+    'src/main/ipc-security.ts',
+    'electron-builder.yml'
   ]) {
-    assert.throws(() => validatePolicyChanges([file], false), /revisão/)
-    assert.deepEqual(validatePolicyChanges([file], true), [file])
+    assert.equal(needsReview({ status: 'M', file }), true, file)
+    assert.equal(needsReview({ status: 'A', file }), true, file)
   }
-  assert.deepEqual(validatePolicyChanges(['src/main/a.ts'], false), [])
+  for (const entry of [
+    { status: 'M', file: 'src/main/a.ts' },
+    { status: 'A', file: 'src/renderer/novo.test.tsx' },
+    { status: 'M', file: 'src/main/a.test.ts' },
+    { status: 'D', file: 'src/main/antigo.test.ts' },
+    { status: 'M', file: 'package-lock.json' },
+    { status: 'M', file: 'docs/qualidade/visual/darwin/aparencia-claro.png' },
+    { status: 'M', file: 'docs/qualidade/politica.md' },
+    { status: 'A', file: 'docs/qualidade/fixtures/v2.sql' }
+  ])
+    assert.equal(needsReview(entry), false, entry.file)
+  for (const entry of [
+    { status: 'M', file: 'docs/qualidade/fixtures/v1.sql' },
+    { status: 'D', file: 'docs/qualidade/fixtures/v1.sql' },
+    { status: 'M', file: 'docs/qualidade/gitleaks.toml' },
+    { status: 'D', file: 'docs/qualidade/testes.json' }
+  ])
+    assert.equal(needsReview(entry), true, entry.file)
+  assert.deepEqual(validatePolicyChanges([], false), [])
+  assert.throws(() => validatePolicyChanges(['vite.config.ts'], false), /revisão/)
+  assert.deepEqual(validatePolicyChanges(['vite.config.ts'], true), ['vite.config.ts'])
 })
 
-await test('teste adicionado dispensa revisão; teste existente alterado ou removido não', () => {
+await test('política em JSON só dispensa revisão quando apenas acrescenta', () => {
+  const file = 'docs/qualidade/testes.json'
+  const review = (before, after) =>
+    needsReview({ status: 'M', file }, JSON.stringify(before), JSON.stringify(after))
+  const test = { file: 'a.test.ts', name: 'a', requiredOn: ['darwin', 'win32'] }
+  const base = { version: 1, tests: [test] }
+  assert.equal(review(base, { version: 1, tests: [test, { ...test, name: 'b' }] }), false)
+  assert.equal(review(base, { version: 1, tests: [] }), true)
+  assert.equal(review(base, { version: 1, tests: [{ ...test, requiredOn: ['darwin'] }] }), true)
+  assert.equal(review(base, { version: 1, tests: [{ ...test, reason: 'pular' }] }), true)
+  assert.equal(review(base, { version: 2, tests: [test] }), true)
+  const coverage = { minimums: { lines: 35 }, critical: { 'a.ts': { lines: 100 } } }
+  assert.equal(
+    review(coverage, { ...coverage, critical: { ...coverage.critical, 'b.ts': { lines: 90 } } }),
+    false
+  )
+  assert.equal(review(coverage, { ...coverage, minimums: { lines: 30 } }), true)
+  assert.equal(review(coverage, { minimums: coverage.minimums }), true)
+  assert.equal(needsReview({ status: 'M', file }, '{', '{}'), true)
+  assert.equal(isAdditive([1, 2], [2, 1, 3]), true)
+  assert.equal(isAdditive({ a: [1] }, { a: 1 }), false)
+})
+
+await test('package.json dispensa revisão só em versão e dependências', () => {
+  const manifest = {
+    name: 'auri',
+    version: '1.0.0',
+    scripts: { test: 'node scripts/run-tests.mjs' },
+    dependencies: { zod: '^4.6.5' },
+    devDependencies: { vite: '^7.2.6' }
+  }
+  const review = (after, status = 'M') =>
+    needsReview({ status, file: 'package.json' }, JSON.stringify(manifest), JSON.stringify(after))
+  assert.equal(
+    review({
+      ...manifest,
+      version: '1.1.0',
+      dependencies: { zod: '^4.7.0', novo: '1.0.0' },
+      devDependencies: {}
+    }),
+    false
+  )
+  assert.equal(review({ ...manifest, scripts: { test: 'true' } }), true)
+  assert.equal(review({ ...manifest, engines: { node: '>=20' } }), true)
+  assert.equal(review(manifest, 'D'), true)
+})
+
+await test('PR só da interface não reempacota; main e mudanças do pacote reempacotam', () => {
+  const ui = ['src/renderer/src/pages/AgendaPage.tsx', 'docs/qualidade/visual/win32/a.png']
+  assert.equal(packagingChanged(ui, true), false)
+  assert.equal(packagingChanged(ui, false), true)
+  assert.equal(packagingChanged([], false), true)
+  for (const file of [
+    'package-lock.json',
+    'electron-builder.yml',
+    'src/main/index.ts',
+    'src/preload/index.ts',
+    'src/shared/api.ts',
+    'resources/icon.png',
+    'scripts/e2e.mjs',
+    '.github/workflows/build.yml'
+  ])
+    assert.equal(packagingChanged([...ui, file], true), true, file)
+})
+
+await test('lista de arquivos usa o conteúdo da base e do candidato', () => {
   const entries = parseNameStatus(
     [
       'A\tsrc/renderer/novo.test.tsx',
       'M\tsrc/main/a.test.ts',
-      'D\tsrc/main/antigo.test.ts',
-      'A\tsrc/main/renomeado.test.ts',
       'M\tdocs/qualidade/testes.json',
-      'A\tscripts/quality/novo.test.mjs',
-      'A\tscripts/quality/util.mjs',
-      'M\tsrc/main/a.ts'
+      'M\tscripts/quality/cli.mjs'
     ].join('\n')
   )
   assert.deepEqual(entries[0], { status: 'A', file: 'src/renderer/novo.test.tsx' })
-  const files = policyFiles(entries)
-  assert.deepEqual(validatePolicyChanges(policyFiles(entries.slice(0, 1)), false), [])
-  assert.deepEqual(validatePolicyChanges(policyFiles([entries[3]]), false), [])
-  for (const entry of [entries[1], entries[2], entries[4], entries[5], entries[6]])
-    assert.throws(() => validatePolicyChanges(policyFiles([entry]), false), /revisão/)
-  assert.deepEqual(validatePolicyChanges(files, true), [
-    'src/main/a.test.ts',
-    'src/main/antigo.test.ts',
+  const read = ({ file }) =>
+    file === 'docs/qualidade/testes.json' ? { before: '{"tests":[1]}', after: '{"tests":[]}' } : {}
+  assert.deepEqual(policyFiles(entries, read), [
     'docs/qualidade/testes.json',
-    'scripts/quality/novo.test.mjs',
-    'scripts/quality/util.mjs'
+    'scripts/quality/cli.mjs'
   ])
 })
 
-await test('política aceita teste novo sem revisão e recusa teste existente alterado ou removido', () => {
+await test('política aceita testes e inventário acrescido; recusa inventário reduzido e scripts', () => {
   const dir = mkdtempSync(join(tmpdir(), 'auri-policy-tests-'))
   const source = fileURLToPath(new URL('../../', import.meta.url))
   const git = (...args) => execFileSync('git', args, { cwd: dir, encoding: 'utf8' }).trim()
@@ -280,16 +360,27 @@ await test('política aceita teste novo sem revisão e recusa teste existente al
     git('add', '.')
     commit('teste novo')
     assert.equal(check().status, 0)
-    // Renomear conta como remoção do teste da base: exige revisão.
+    // Alterar ou renomear teste também: o inventário da base reprova o que sumir dele.
     git('mv', 'src/main/a.test.ts', 'src/main/b.test.ts')
     commit('renomeia')
-    assert.match(check().stderr, /revisão do SHA: src\/main\/a\.test\.ts$/m)
+    assert.equal(check().status, 0)
     git('reset', '--quiet', '--hard', base)
     writeFileSync(join(dir, 'src/main/a.test.ts'), "test.skip('a', () => {})\n")
-    assert.match(check().stderr, /revisão do SHA: src\/main\/a\.test\.ts$/m)
+    assert.equal(check().status, 0)
     git('reset', '--quiet', '--hard', base)
-    rmSync(join(dir, 'src/main/a.test.ts'))
-    assert.match(check().stderr, /revisão do SHA: src\/main\/a\.test\.ts$/m)
+    const inventoryFile = join(dir, 'docs/qualidade/testes.json')
+    const inventory = JSON.parse(readFileSync(inventoryFile, 'utf8'))
+    const extra = { file: 'src/main/novo.test.ts', name: 'novo', requiredOn: ['darwin'] }
+    writeFileSync(
+      inventoryFile,
+      JSON.stringify({ ...inventory, tests: [...inventory.tests, extra] })
+    )
+    assert.equal(check().status, 0)
+    writeFileSync(inventoryFile, JSON.stringify({ ...inventory, tests: inventory.tests.slice(1) }))
+    assert.match(check().stderr, /revisão do SHA: docs\/qualidade\/testes\.json$/m)
+    git('reset', '--quiet', '--hard', base)
+    writeFileSync(join(dir, 'scripts/quality/novo.mjs'), '\n')
+    assert.match(check().stderr, /revisão do SHA: scripts\/quality\/novo\.mjs$/m)
   } finally {
     rmSync(dir, { recursive: true, force: true })
   }

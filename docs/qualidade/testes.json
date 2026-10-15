@@ -1040,6 +1040,51 @@
       "file": "src/renderer/src/pages/PatientSessionsPage.test.tsx",
       "name": "aba Sessões do paciente separa próximas e anteriores, agrupa por mês e mostra presença e evolução",
       "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/updates.test.ts",
+      "name": "atualização automática sem atualizador fica indisponível e não procura nem instala",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/updates.test.ts",
+      "name": "atualização automática procura logo depois de abrir e a cada 4 horas; ao fechar, para",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/updates.test.ts",
+      "name": "atualização automática acompanha procura, download e versão pronta, e instala só quando pronta",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/updates.test.ts",
+      "name": "atualização automática sem versão nova registra a procura; falha mostra o motivo e permite tentar de novo",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/renderer/src/pages/UpdatesPage.test.tsx",
+      "name": "Configurações › Atualizações mostra a versão e procura na hora",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/renderer/src/pages/UpdatesPage.test.tsx",
+      "name": "Configurações › Atualizações acompanha o download e reinicia com a versão pronta",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/renderer/src/pages/UpdatesPage.test.tsx",
+      "name": "Configurações › Atualizações explica a procura anterior, a falha e a instalação que não se atualiza sozinha",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/main/updates.test.ts",
+      "name": "atualização automática com os relógios de verdade, agenda as procuras sem segurar o app aberto e cancela ao fechar",
+      "requiredOn": ["darwin", "win32", "linux"]
+    },
+    {
+      "file": "src/renderer/src/components/UpdateReady.test.tsx",
+      "name": "aviso de versão pronta avisa uma vez quando a versão termina de baixar e reinicia pelo aviso",
+      "requiredOn": ["darwin", "win32", "linux"]
     }
   ]
 }

@@ -5,11 +5,6 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
-    inputs:
-      visual_reference:
-        description: Gerar referências para revisão (essa execução não aprova quality)
-        type: boolean
-        default: false
   workflow_call:
   schedule:
     - cron: '0 10 * * 1'
@@ -32,6 +27,11 @@ jobs:
     name: policy
     runs-on: ubuntu-24.04
     timeout-minutes: 5
+    # Decididos pelo verificador da base: o que ele não vai exigir, os checks não rodam.
+    # Vazios (verificador antigo) significam rodar tudo.
+    outputs:
+      packaging: ${{ steps.policy.outputs.packaging }}
+      mutation: ${{ steps.policy.outputs.mutation }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -54,6 +54,7 @@ jobs:
       - name: Testar também o verificador aprovado
         run: node --test .quality/trusted/scripts/quality/*.test.mjs
       - name: Conferir integridade da política
+        id: policy
         run: node .quality/trusted/scripts/quality/cli.mjs policy
         env:
           GH_TOKEN: ${{ github.token }}
@@ -91,9 +92,15 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24.15.0
-          cache: npm
-      - run: npm install --global npm@11.13.0
-      - run: npm ci
+          package-manager-cache: false
+      # node_modules inteiro (Electron e SQLite já compilados): no Windows o npm ci levava ~2 min.
+      - id: modules
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: node_modules
+          key: modules-${{ runner.os }}-${{ runner.arch }}-node24.15.0-${{ hashFiles('package-lock.json') }}
+      - if: steps.modules.outputs.cache-hit != 'true'
+        run: npm ci
       - run: npm run check
       - run: npm run test:quality
       - run: npm run test:ci
@@ -102,12 +109,14 @@ jobs:
       - run: npm run test:performance
       - run: npm run test:e2e
       - run: npm run test:ui
-        env:
-          AURI_UPDATE_VISUAL: ${{ inputs.visual_reference && '1' || '' }}
-      - run: npm run test:mutation
-      - run: npm run build:unpack
-      - run: npm run test:package
-      - run: npm run quality:delivery
+      - if: matrix.platform == 'darwin' || needs.policy.outputs.mutation != 'darwin'
+        run: npm run test:mutation
+      - if: needs.policy.outputs.packaging != 'false'
+        run: npm run build:unpack
+      - if: needs.policy.outputs.packaging != 'false'
+        run: npm run test:package
+      - if: needs.policy.outputs.packaging != 'false'
+        run: npm run quality:delivery
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
@@ -140,7 +149,6 @@ jobs:
         with:
           name: quality-policy
           path: .quality/policy-source
-      - run: npm install --global npm@11.13.0
       - run: npm ci --ignore-scripts
       - name: Audit e scan de segredos com política da base
         run: node .quality/policy-source/trusted/scripts/quality/security.mjs
