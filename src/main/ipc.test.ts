@@ -74,6 +74,7 @@ describe('handlers IPC', () => {
       ok: true,
       data: { status: 'checking' }
     })
+    expect(await handlers.get('updates:setChannel')!(event, 'nightly')).toMatchObject({ ok: false })
     expect(await handlers.get('updates:install')!(event)).toEqual({
       ok: false,
       error: 'Nenhuma versão nova pronta.'

@@ -13,7 +13,7 @@ import { trustRenderer } from './ipc-security'
 import { pathToFileURL } from 'node:url'
 import { createPrefsStore, type PrefsStore } from './prefs'
 import { createTransferService } from './transfer-service'
-import { createUpdateService, type UpdateService, type Updater } from './updates'
+import { channelFile, createUpdateService, type UpdateService, type Updater } from './updates'
 import { existsSync } from 'node:fs'
 
 let connection: Connection | null = null
@@ -208,10 +208,13 @@ void app.whenReady().then(async () => {
     // configurações importadas: as telas abertas acompanham (tema marcado, barra lateral)
     sendToWindows('prefs:changed', next)
   })
+  const channel = channelFile(join(app.getPath('userData'), 'atualizacoes.json'))
   updates = createUpdateService({
     version: app.getVersion(),
     updater: await loadUpdater(),
-    onChange: (state) => sendToWindows('updates:changed', state)
+    channel: channel.read(),
+    onChange: (state) => sendToWindows('updates:changed', state),
+    onChannelChange: (next) => channel.save(next)
   })
   registerIpc(
     connection,

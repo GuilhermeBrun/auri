@@ -114,6 +114,7 @@ const updates: AuriUpdates = {
   info: () => invoke('updates:info'),
   check: () => invoke('updates:check'),
   install: () => invoke('updates:install'),
+  setChannel: (channel) => invoke('updates:setChannel', channel),
   onChange: (listener) => subscribe<UpdateState>('updates:changed', listener)
 }
 

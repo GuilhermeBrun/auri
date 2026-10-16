@@ -3,11 +3,12 @@ import { RefreshCw, RotateCcw } from 'lucide-react'
 import { Page } from '@renderer/components/Layout'
 import { Button } from '@renderer/components/ui/button'
 import { ErrorText, SectionTitle } from '@renderer/components/ui/section'
+import { SwitchField } from '@renderer/components/ui/switch'
 import { formatWhen } from '@renderer/lib/backup'
 import { isMac } from '@renderer/lib/platform'
 import { SETTINGS_CRUMB } from '@renderer/lib/settings'
 import { setUpdateState, useUpdates } from '@renderer/lib/updates'
-import type { UpdateState } from '@shared/api'
+import type { UpdateChannel, UpdateState } from '@shared/api'
 
 /** A frase do estado, embaixo da versão instalada. */
 function describe(state: UpdateState): string {
@@ -42,6 +43,10 @@ export function UpdatesPage(): React.JSX.Element {
     onSuccess: setUpdateState
   })
   const install = useMutation({ mutationFn: () => window.updates.install() })
+  const channel = useMutation({
+    mutationFn: (next: UpdateChannel) => window.updates.setChannel(next),
+    onSuccess: setUpdateState
+  })
   return (
     <Page trail={[SETTINGS_CRUMB, { label: 'Atualizações' }]}>
       <div className="mx-auto max-w-[720px] px-8 pt-8 pb-16">
@@ -71,6 +76,25 @@ export function UpdatesPage(): React.JSX.Element {
             {(check.error ?? install.error) && (
               <ErrorText>{(check.error ?? install.error)?.message}</ErrorText>
             )}
+          </section>
+        )}
+        {/* Sem atualização automática (Mac), não há canal a escolher. */}
+        {state && state.status !== 'unavailable' && (
+          <section className="mt-10">
+            <SwitchField
+              label="Receber versões beta"
+              description={
+                state.channel === 'beta'
+                  ? 'Uma versão nova por dia, com as novidades antes. Pode ter erros: desligue para voltar à versão estável.'
+                  : 'Só as versões estáveis, que já foram usadas no beta.'
+              }
+              checked={state.channel === 'beta'}
+              disabled={
+                channel.isPending || state.status === 'downloading' || state.status === 'ready'
+              }
+              onCheckedChange={(on) => channel.mutate(on ? 'beta' : 'latest')}
+            />
+            {channel.error && <ErrorText>{channel.error.message}</ErrorText>}
           </section>
         )}
       </div>

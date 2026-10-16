@@ -336,9 +336,16 @@ export interface AuriTransfer {
  */
 export type UpdateStatus = 'unavailable' | 'idle' | 'checking' | 'downloading' | 'ready' | 'error'
 
+/**
+ * De onde vêm as versões novas: `latest` só as estáveis; `beta` também as diárias, que trazem as
+ * novidades antes e podem ter erros. Escolhido em Configurações / Atualizações.
+ */
+export type UpdateChannel = 'latest' | 'beta'
+
 export type UpdateState = {
   /** Versão instalada. */
   version: string
+  channel: UpdateChannel
   status: UpdateStatus
   /** Versão nova encontrada (baixando ou pronta). */
   next: string | null
@@ -356,6 +363,8 @@ export interface AuriUpdates {
   check(): Promise<UpdateState>
   /** Fecha o Auri, instala a versão baixada e abre de novo. */
   install(): Promise<void>
+  /** Troca o canal e procura de novo. Recusa enquanto baixa ou com uma versão pronta. */
+  setChannel(channel: UpdateChannel): Promise<UpdateState>
   /** Avisa a cada mudança. Devolve a função que cancela. */
   onChange(listener: (state: UpdateState) => void): () => void
 }

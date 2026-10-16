@@ -22,6 +22,7 @@ import { UpdateReady } from './UpdateReady'
 
 const idle: UpdateState = {
   version: '1.0.0',
+  channel: 'latest',
   status: 'idle',
   next: null,
   progress: null,

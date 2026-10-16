@@ -1,7 +1,16 @@
 import { EventEmitter } from 'node:events'
+import { mkdtempSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { describe, expect, it, vi, type Mock } from 'vite-plus/test'
 import type { UpdateState } from '../shared/api'
-import { CHECK_EVERY_MS, createUpdateService, FIRST_CHECK_MS, type Updater } from './updates'
+import {
+  channelFile,
+  CHECK_EVERY_MS,
+  createUpdateService,
+  FIRST_CHECK_MS,
+  type Updater
+} from './updates'
 
 /** `autoUpdater` falso: os eventos são disparados pelo teste. */
 function fakeUpdater(): Updater & EventEmitter & { check: Mock<() => Promise<unknown>> } {
@@ -9,6 +18,9 @@ function fakeUpdater(): Updater & EventEmitter & { check: Mock<() => Promise<unk
   return Object.assign(new EventEmitter(), {
     autoDownload: false,
     autoInstallOnAppQuit: false,
+    channel: null,
+    allowPrerelease: false,
+    allowDowngrade: false,
     checkForUpdates: check,
     quitAndInstall: vi.fn(),
     check
@@ -134,5 +146,63 @@ describe('atualização automática', () => {
     })
     service.check()
     expect(updater.check).toHaveBeenCalledTimes(2)
+  })
+
+  it('o canal vem da versão instalada ou da escolha e muda as versões procuradas', () => {
+    const stable = fakeUpdater()
+    const timers = fakeTimers().timers
+    createUpdateService({ version: '1.1.0', updater: stable, onChange: vi.fn(), timers })
+    expect(stable).toMatchObject({
+      channel: 'latest',
+      allowPrerelease: false,
+      allowDowngrade: false
+    })
+
+    const beta = fakeUpdater()
+    const saved = vi.fn()
+    const service = createUpdateService({
+      version: '1.1.1-beta.20261016.1',
+      updater: beta,
+      onChange: vi.fn(),
+      onChannelChange: saved,
+      timers
+    })
+    expect(service.info().channel).toBe('beta')
+    expect(beta).toMatchObject({ channel: 'beta', allowPrerelease: true })
+
+    // voltar para a estável com um beta instalado aceita descer de versão
+    expect(service.setChannel('latest').channel).toBe('latest')
+    expect(beta).toMatchObject({ channel: 'latest', allowPrerelease: false, allowDowngrade: true })
+    expect(saved).toHaveBeenCalledExactlyOnceWith('latest')
+    expect(beta.check).toHaveBeenCalledOnce()
+    service.setChannel('latest')
+    expect(saved).toHaveBeenCalledOnce()
+  })
+
+  it('não troca de canal com uma versão baixando ou pronta', () => {
+    const updater = fakeUpdater()
+    const service = createUpdateService({
+      version: '1.1.0',
+      updater,
+      channel: 'beta',
+      onChange: vi.fn(),
+      timers: fakeTimers().timers
+    })
+    expect(updater.channel).toBe('beta')
+    updater.emit('update-available', { version: '1.1.1-beta.20261016.1' })
+    expect(() => service.setChannel('latest')).toThrow('Espere a versão nova')
+    expect(service.info().channel).toBe('beta')
+  })
+
+  it('guarda o canal escolhido e ignora arquivo ausente ou inválido', () => {
+    const file = join(mkdtempSync(join(tmpdir(), 'auri-canal-')), 'atualizacoes.json')
+    const store = channelFile(file)
+    expect(store.read()).toBeUndefined()
+    store.save('beta')
+    expect(store.read()).toBe('beta')
+    writeFileSync(file, '{"channel":"nightly"}')
+    expect(store.read()).toBeUndefined()
+    writeFileSync(file, 'quebrado')
+    expect(store.read()).toBeUndefined()
   })
 })
