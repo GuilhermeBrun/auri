@@ -9,7 +9,7 @@ import type { Appointment, Patient, Presenca } from '@shared/schemas'
 import { AttendanceChart } from '@renderer/components/AttendanceChart'
 import { AppointmentDialog, type AppointmentDraft } from '@renderer/components/AppointmentDialog'
 import { Page } from '@renderer/components/Layout'
-import { PatientHeader, PatientTabs } from '@renderer/components/PatientHeader'
+import { PATIENT_COLUMN, PatientHeader } from '@renderer/components/PatientHeader'
 import { Button } from '@renderer/components/ui/button'
 import { EmptyState } from '@renderer/components/ui/empty'
 import { ErrorState } from '@renderer/components/ui/error'
@@ -39,10 +39,24 @@ function PatientSessionsPage({ patientId }: { patientId: number }): React.JSX.El
     })
   }
 
+  const state = error ? (
+    <ErrorState
+      title="Não foi possível abrir as sessões"
+      detail={error.message}
+      onRetry={() => {
+        void patient.refetch()
+        void sessions.refetch()
+      }}
+    >
+      Tente de novo. Se o problema continuar, feche e abra o Auri.
+    </ErrorState>
+  ) : (
+    <Loading />
+  )
+
   return (
     <Page
       trail={[PATIENTS_CRUMB, { label: patient.data?.nome ?? 'Sessões' }]}
-      toolbar={<PatientTabs patientId={patientId} value="sessoes" />}
       actions={
         <Button
           variant="ghost"
@@ -63,19 +77,19 @@ function PatientSessionsPage({ patientId }: { patientId: number }): React.JSX.El
           onOpen={(appointment) => setDraft({ mode: 'edit', appointment })}
           onSchedule={schedule}
         />
-      ) : error ? (
-        <ErrorState
-          title="Não foi possível abrir as sessões"
-          detail={error.message}
-          onRetry={() => {
-            void patient.refetch()
-            void sessions.refetch()
-          }}
-        >
-          Tente de novo. Se o problema continuar, feche e abra o Auri.
-        </ErrorState>
+      ) : patient.data ? (
+        // com o paciente já em mãos, nome e abas ficam no lugar enquanto as sessões chegam
+        <div className={PATIENT_COLUMN}>
+          <PatientHeader
+            nome={patient.data.nome}
+            nascimento={patient.data.data_nascimento}
+            inativo={!patient.data.ativo}
+            tabs={{ patientId, value: 'sessoes' }}
+          />
+          {state}
+        </div>
       ) : (
-        <Loading />
+        state
       )}
       <AppointmentDialog draft={draft} onClose={() => setDraft(null)} />
     </Page>
@@ -123,11 +137,12 @@ function SessionList({
   }, [sessions, now])
 
   return (
-    <div className="mx-auto max-w-[720px] px-8 pt-6 pb-16">
+    <div className={PATIENT_COLUMN}>
       <PatientHeader
         nome={patient.nome}
         nascimento={patient.data_nascimento}
         inativo={!patient.ativo}
+        tabs={{ patientId: patient.id, value: 'sessoes' }}
       />
 
       {sessions.length === 0 ? (

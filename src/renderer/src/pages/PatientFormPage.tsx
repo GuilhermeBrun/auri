@@ -14,7 +14,7 @@ import {
   type PatientInput
 } from '@shared/schemas'
 import { Page } from '@renderer/components/Layout'
-import { PatientHeader, PatientTabs } from '@renderer/components/PatientHeader'
+import { PATIENT_COLUMN, PatientHeader } from '@renderer/components/PatientHeader'
 import { Loading } from '@renderer/components/ui/loading'
 import { Button } from '@renderer/components/ui/button'
 import { Callout } from '@renderer/components/ui/callout'
@@ -46,7 +46,7 @@ function Section({
   children: ReactNode
 }): React.JSX.Element {
   return (
-    <section aria-labelledby={id} className="grid grid-cols-[200px_1fr] gap-x-8 py-7">
+    <section aria-labelledby={id} className="grid grid-cols-[200px_1fr] gap-x-8 py-7 first:pt-0">
       <div>
         <div className="sticky top-4">
           <h2 id={id} className="text-[15px] font-semibold tracking-tight">
@@ -185,13 +185,12 @@ function PatientFormPage({ patientId }: { patientId: number | null }): React.JSX
   const nome = useWatch({ control, name: 'nome' })
   const nascimento = useWatch({ control, name: 'data_nascimento' })
   const idade = formatAge(nascimento)
-  const tabs = isNew ? undefined : <PatientTabs patientId={patientId} value="ficha" />
 
   // Ficha existente ainda não carregada (ou com falha): só o cabeçalho e o estado, nunca o
   // formulário vazio com o título "Novo paciente".
   if (!isNew && !patient) {
     return (
-      <Page trail={[PATIENTS_CRUMB, { label: 'Ficha do paciente' }]} toolbar={tabs}>
+      <Page trail={[PATIENTS_CRUMB, { label: 'Ficha do paciente' }]}>
         {loadError ? (
           <ErrorState
             title="Não foi possível abrir a ficha"
@@ -220,7 +219,6 @@ function PatientFormPage({ patientId }: { patientId: number | null }): React.JSX
           // o nome salvo, não o que está sendo digitado (esse aparece grande no corpo)
           { label: isNew ? 'Novo paciente' : (patient?.nome ?? 'Ficha do paciente') }
         ]}
-        toolbar={tabs}
         actions={
           <>
             {!isNew && patient && (
@@ -238,12 +236,13 @@ function PatientFormPage({ patientId }: { patientId: number | null }): React.JSX
           </>
         }
       >
-        <div className="mx-auto max-w-[840px] px-8 pt-6 pb-16">
+        <div className={PATIENT_COLUMN}>
           <PatientHeader
             nome={nomeAtual}
             nascimento={nascimento}
             inativo={patient ? !patient.ativo : false}
             placeholder="Novo paciente"
+            tabs={isNew ? undefined : { patientId, value: 'ficha' }}
           >
             {isNew && !idade && (
               <span className="text-[13px] text-ink-soft">

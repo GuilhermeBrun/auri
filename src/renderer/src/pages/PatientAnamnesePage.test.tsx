@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, screen, waitFor } from '@testing-library/react'
+import { cleanup, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { emptyAnamneseInput, type Anamnese } from '@shared/schemas'
@@ -54,11 +54,18 @@ afterEach(cleanup)
 const open = (toast = vi.fn()): ReturnType<typeof renderRoute> =>
   renderRoute('/pacientes/7/anamnese', '/pacientes/:id/anamnese', <PatientAnamneseRoute />, toast)
 
+/** Abre um tema pela lista ao lado e devolve o campo dele. */
+async function topic(name: string): Promise<HTMLTextAreaElement> {
+  const list = await screen.findByRole('navigation', { name: 'Temas da anamnese' })
+  await userEvent.click(within(list).getByRole('button', { name: new RegExp(`^${name}`) }))
+  return (await screen.findByLabelText(name, { selector: 'textarea' })) as HTMLTextAreaElement
+}
+
 describe('anamnese do paciente', () => {
   it('nova anamnese sugere a data de entrada e salva só depois de mudar algo', async () => {
     const toast = vi.fn()
     open(toast)
-    const queixa = await screen.findByLabelText(/^Queixa/)
+    const queixa = await topic('Queixa')
     expect((screen.getByLabelText('Data da anamnese') as HTMLInputElement).value).toBe('29/08/2026')
     const salvar = screen.getByRole('button', { name: 'Salvar anamnese' }) as HTMLButtonElement
     expect(salvar.disabled).toBe(true)
@@ -76,7 +83,7 @@ describe('anamnese do paciente', () => {
   it('falha ao salvar mantém o texto e explica num aviso na página', async () => {
     api.anamneses.save.mockRejectedValueOnce(new Error('Outro computador salvou antes.'))
     open()
-    const sono = await screen.findByLabelText(/^Sono/)
+    const sono = await topic('Sono')
     await userEvent.type(sono, 'Dorme às 21h.')
     await userEvent.click(screen.getByRole('button', { name: 'Salvar anamnese' }))
     const alert = await screen.findByRole('alert')
@@ -87,12 +94,14 @@ describe('anamnese do paciente', () => {
 
   it('o que não foi salvo volta ao sair da aba e retornar', async () => {
     const first = open()
-    await userEvent.type(await screen.findByLabelText(/^Terapias/), 'Nenhuma.')
+    await userEvent.type(await topic('Terapias'), 'Nenhuma.')
     first.unmount()
     open()
-    expect(((await screen.findByLabelText(/^Terapias/)) as HTMLTextAreaElement).value).toBe(
-      'Nenhuma.'
-    )
+    // volta no mesmo tema, com o texto
+    expect(
+      ((await screen.findByLabelText('Terapias', { selector: 'textarea' })) as HTMLTextAreaElement)
+        .value
+    ).toBe('Nenhuma.')
   })
 
   it('falha ao abrir mostra o erro e tenta de novo', async () => {
@@ -100,6 +109,25 @@ describe('anamnese do paciente', () => {
     open()
     expect(await screen.findByText('Não foi possível abrir a anamnese')).toBeTruthy()
     await userEvent.click(screen.getByRole('button', { name: /Tentar de novo/ }))
-    expect(await screen.findByLabelText(/^Queixa/)).toBeTruthy()
+    expect(await screen.findByRole('navigation', { name: 'Temas da anamnese' })).toBeTruthy()
+  })
+
+  it('um tema por vez: pergunta-guia entra no texto e a lista marca o tema escrito', async () => {
+    open()
+    const gestacao = await topic('Gestação e nascimento')
+    const list = screen.getByRole('navigation', { name: 'Temas da anamnese' })
+    const item = within(list).getByRole('button', { name: /^Gestação/ })
+    expect(item.getAttribute('aria-current')).toBe('step')
+    expect(item.textContent).toContain('(vazio)')
+    await userEvent.click(screen.getByRole('button', { name: 'Semanas:' }))
+    await userEvent.keyboard('39')
+    await userEvent.click(screen.getByRole('button', { name: 'Peso:' }))
+    expect(gestacao.value).toBe('Semanas: 39\nPeso: ')
+    expect(item.textContent).toContain('(escrito)')
+    // o próximo tema pelo botão de baixo; o texto do anterior continua lá
+    await userEvent.click(screen.getByRole('button', { name: 'Alimentação' }))
+    expect(await screen.findByLabelText('Alimentação', { selector: 'textarea' })).toBeTruthy()
+    expect(screen.queryByLabelText('Gestação e nascimento', { selector: 'textarea' })).toBeNull()
+    expect((await topic('Gestação e nascimento')).value).toBe('Semanas: 39\nPeso: ')
   })
 })

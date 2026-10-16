@@ -144,7 +144,12 @@ describe('aba Sessões do paciente', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Nova sessão' }))
     expect(await screen.findByRole('dialog')).toBeTruthy()
     await userEvent.keyboard('{Escape}')
-    await userEvent.click(screen.getByRole('button', { name: 'Ficha' }))
+    // as abas são links embaixo do nome; a atual é marcada para leitor de tela
+    const partes = screen.getByRole('navigation', { name: 'Partes do paciente' })
+    expect(within(partes).getByRole('link', { name: 'Sessões' }).getAttribute('aria-current')).toBe(
+      'page'
+    )
+    await userEvent.click(within(partes).getByRole('link', { name: 'Ficha' }))
     expect(await screen.findByText('Outra tela')).toBeTruthy()
   })
 })
