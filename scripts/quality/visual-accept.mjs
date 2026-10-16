@@ -4,7 +4,7 @@ import { execFileSync } from 'node:child_process'
 import { cpSync, mkdtempSync, readdirSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { requireCondition } from './checks.mjs'
+import { requireCondition } from './evidence.mjs'
 
 const run = (command, args) => execFileSync(command, args, { encoding: 'utf8' }).trim()
 const work = mkdtempSync(join(tmpdir(), 'auri-visual-'))

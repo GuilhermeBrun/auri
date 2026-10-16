@@ -13,8 +13,7 @@ import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import electronPath from 'electron'
 import { listPackage } from '@electron/asar'
-import { execution, writeJson } from './evidence.mjs'
-import { sha256 } from './risk-checks.mjs'
+import { execution, sha256, writeJson } from './evidence.mjs'
 
 const startedAt = Date.now()
 const directory = mkdtempSync(join(tmpdir(), 'auri-package-quality-'))
