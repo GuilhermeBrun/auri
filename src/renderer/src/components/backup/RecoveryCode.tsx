@@ -28,6 +28,7 @@ export function RecoveryCode({ code }: { code: string }): React.JSX.Element {
     <div className="rounded-card bg-fill p-5">
       <Sensitive
         label="Código de recuperação"
+        what="o código"
         className="font-mono text-xl font-semibold tracking-[0.08em]"
       >
         {code}

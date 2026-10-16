@@ -338,7 +338,7 @@ export type UpdateStatus = 'unavailable' | 'idle' | 'checking' | 'downloading' |
 
 /**
  * De onde vêm as versões novas: `latest` só as estáveis; `beta` também as diárias, que trazem as
- * novidades antes e podem ter erros. Escolhido em Configurações / Atualizações.
+ * novidades antes e podem ter erros. Escolhido em Configurações › Geral.
  */
 export type UpdateChannel = 'latest' | 'beta'
 
@@ -356,7 +356,7 @@ export type UpdateState = {
   error: string | null
 }
 
-/** Configurações / Atualizações. Exposto em window.updates pelo preload. */
+/** Atualizações (Configurações › Geral). Exposto em window.updates pelo preload. */
 export interface AuriUpdates {
   info(): Promise<UpdateState>
   /** Procura agora (não faz nada se já está procurando, baixando ou pronta). */

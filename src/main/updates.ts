@@ -82,8 +82,8 @@ const defaultTimers = {
 }
 
 /**
- * Atualização automática: procura, baixa sozinha e instala ao sair (ou na hora, por
- * Configurações / Atualizações). Os dados ficam na pasta do usuário, fora da instalação.
+ * Atualização automática: procura, baixa sozinha e instala ao sair (ou na hora,
+ * em Configurações › Geral). Os dados ficam na pasta do usuário, fora da instalação.
  */
 export function createUpdateService({
   version,

@@ -7,9 +7,9 @@ import { PatientAnamneseRoute } from './pages/PatientAnamnesePage'
 import { PatientFormRoute } from './pages/PatientFormPage'
 import { PatientSessionsRoute } from './pages/PatientSessionsPage'
 import { PatientsPage } from './pages/PatientsPage'
+import { GeneralPage } from './pages/GeneralPage'
 import { AppearancePage } from './pages/SettingsPage'
 import { TransferPage } from './pages/TransferPage'
-import { UpdatesPage } from './pages/UpdatesPage'
 
 function App(): React.JSX.Element {
   return (
@@ -23,12 +23,12 @@ function App(): React.JSX.Element {
         <Route path="pacientes/:id/anamnese" element={<PatientAnamneseRoute />} />
         <Route path="pacientes/:id/sessoes" element={<PatientSessionsRoute />} />
         {/* cada seção das Configurações tem o seu endereço; a raiz abre a primeira */}
-        <Route path="configuracoes" element={<Navigate to="aparencia" replace />} />
+        <Route path="configuracoes" element={<Navigate to="geral" replace />} />
+        <Route path="configuracoes/geral" element={<GeneralPage />} />
         <Route path="configuracoes/aparencia" element={<AppearancePage />} />
         <Route path="configuracoes/conexao" element={<ConnectionPage />} />
         <Route path="configuracoes/copia" element={<BackupPage />} />
         <Route path="configuracoes/transferir" element={<TransferPage />} />
-        <Route path="configuracoes/atualizacoes" element={<UpdatesPage />} />
         <Route path="*" element={<Navigate to="/agenda" replace />} />
       </Route>
     </Routes>

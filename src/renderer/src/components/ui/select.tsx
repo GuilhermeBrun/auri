@@ -15,6 +15,7 @@ type SelectProps = {
   onValueChange: (value: string) => void
   options: readonly { value: string; label: string }[]
   invalid?: boolean
+  disabled?: boolean
 }
 
 /**
@@ -27,10 +28,11 @@ export function Select({
   value,
   onValueChange,
   options,
-  invalid
+  invalid,
+  disabled
 }: SelectProps): React.JSX.Element {
   return (
-    <SelectPrimitive.Root value={value} onValueChange={onValueChange}>
+    <SelectPrimitive.Root value={value} onValueChange={onValueChange} disabled={disabled}>
       <SelectPrimitive.Trigger
         id={id}
         aria-invalid={invalid || undefined}

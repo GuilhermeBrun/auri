@@ -182,6 +182,7 @@ function PairingPanel({ devices }: { devices: PairedDevice[] }): React.JSX.Eleme
       </p>
       <Sensitive
         label="Código de conexão"
+        what="o código"
         className="mt-3 font-mono text-2xl font-semibold tracking-[0.12em]"
       >
         {code.code}
@@ -281,7 +282,11 @@ function ServerSection({ info }: { info: ConnectionInfo }): React.JSX.Element {
             {info.addresses.length > 0 && (
               <>
                 Endereço deste computador:{' '}
-                <Sensitive label="Endereço deste computador" className="font-medium text-ink">
+                <Sensitive
+                  label="Endereço deste computador"
+                  what="o endereço"
+                  className="font-medium text-ink"
+                >
                   {info.addresses.join(', ')}
                 </Sensitive>
                 .{' '}
@@ -418,7 +423,9 @@ function LinkedServer({
               {server.address && info.status === 'connected' && info.via === 'local' && (
                 <>
                   {' · '}
-                  <Sensitive label={`Endereço de ${server.name}`}>{server.address}</Sensitive>
+                  <Sensitive label={`Endereço de ${server.name}`} what="o endereço">
+                    {server.address}
+                  </Sensitive>
                 </>
               )}
             </p>

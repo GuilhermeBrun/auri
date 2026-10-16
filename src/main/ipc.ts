@@ -137,7 +137,7 @@ export function registerIpc(
     transfer.applySettings(z.string().uuid().parse(token))
   )
 
-  // Configurações / Atualizações
+  // Atualizações (Configurações › Geral)
   handle('updates:info', () => updates.info())
   handle('updates:check', () => updates.check())
   handle('updates:install', () => updates.install())

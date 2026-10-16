@@ -21,7 +21,7 @@ export function UpdateReady(): null {
       icon: <Download />,
       action: {
         label: 'Reiniciar',
-        altText: 'Em Configurações › Atualizações, use Reiniciar e atualizar.',
+        altText: 'Em Configurações › Geral, use Reiniciar e atualizar.',
         onClick: () => void window.updates.install()
       }
     })

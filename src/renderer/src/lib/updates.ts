@@ -25,7 +25,7 @@ function subscribe(listener: () => void): () => void {
   return () => listeners.delete(listener)
 }
 
-/** Estado da atualização do Auri (Configurações / Atualizações), atualizado pelo main. */
+/** Estado da atualização do Auri (Configurações › Geral), atualizado pelo main. */
 export function useUpdates(): UpdateState | null {
   return useSyncExternalStore(subscribe, () => snapshot)
 }

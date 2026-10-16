@@ -66,7 +66,9 @@ function DestinationLine({ destination }: { destination: BackupDestination }): R
     <div className="min-w-0 flex-1">
       <p className="text-[13px] font-medium">{DESTINATION_LABEL[destination.kind]}</p>
       <p className="truncate text-xs text-ink-soft">
-        <Sensitive label="Pasta das cópias">{destination.folder}</Sensitive>
+        <Sensitive label="Pasta das cópias" what="a pasta">
+          {destination.folder}
+        </Sensitive>
       </p>
     </div>
   )

@@ -44,7 +44,7 @@ versão. O número em `package.json` serve só de ponto de partida antes da prim
 
 O site de atualização (GitHub Pages, `guilhermebrun.github.io/auri`) é remontado das releases a
 cada publicação: `latest.yml` aponta para a última estável e `beta.yml` para o beta mais novo que
-ela. Quem liga "Receber versões beta" em Configurações → Atualizações segue o `beta.yml`. A
+ela. Quem escolhe o canal Beta em Configurações › Geral segue o `beta.yml`. A
 atualização automática é só no Windows: no Mac, sem assinatura, instala-se pela página do site.
 
 ## Dependências

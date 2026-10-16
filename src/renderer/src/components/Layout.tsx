@@ -3,11 +3,11 @@ import {
   ArrowLeftRight,
   CalendarDays,
   DatabaseBackup,
-  Download,
   Network,
   PanelLeft,
   PanelLeftClose,
   Settings,
+  SlidersHorizontal,
   SunMoon,
   TriangleAlert,
   Users,
@@ -20,6 +20,7 @@ import { AuriLogo } from '@renderer/components/ui/brand'
 import { EmptyState } from '@renderer/components/ui/empty'
 import { ErrorState } from '@renderer/components/ui/error'
 import { ToastProvider } from '@renderer/components/ui/toast'
+import { UpdateCorner } from '@renderer/components/UpdateCorner'
 import { UpdateReady } from '@renderer/components/UpdateReady'
 import { WelcomeDialog } from '@renderer/components/WelcomeDialog'
 import { needsAttention, useBackup } from '@renderer/lib/backup'
@@ -65,11 +66,11 @@ const SETTINGS_PATH = '/configuracoes'
 const CONNECTION_PATH = `${SETTINGS_PATH}/conexao`
 const BACKUP_PATH = `${SETTINGS_PATH}/copia`
 const SETTINGS_ITEMS: NavItem[] = [
+  { to: `${SETTINGS_PATH}/geral`, label: 'Geral', icon: <SlidersHorizontal /> },
   { to: `${SETTINGS_PATH}/aparencia`, label: 'Aparência', icon: <SunMoon /> },
   { to: CONNECTION_PATH, label: 'Conexão', icon: <Network /> },
   { to: BACKUP_PATH, label: 'Cópia de segurança', icon: <DatabaseBackup /> },
-  { to: `${SETTINGS_PATH}/transferir`, label: 'Importar e exportar', icon: <ArrowLeftRight /> },
-  { to: `${SETTINGS_PATH}/atualizacoes`, label: 'Atualizações', icon: <Download /> }
+  { to: `${SETTINGS_PATH}/transferir`, label: 'Importar e exportar', icon: <ArrowLeftRight /> }
 ]
 
 /**
@@ -149,14 +150,18 @@ function SidebarBody(): React.JSX.Element {
           label="Configurações"
           pathname={pathname}
         />
-        <button
-          type="button"
-          onClick={() => navigate(backTo.current)}
-          className={cn(navItemClass, 'mt-auto w-full')}
-        >
-          <ArrowLeft aria-hidden="true" />
-          Voltar
-        </button>
+        {/* rodapé: "Voltar" e, no canto direito, o botão de procurar atualização */}
+        <div className="mt-auto flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => navigate(backTo.current)}
+            className={cn(navItemClass, 'min-w-0 flex-1')}
+          >
+            <ArrowLeft aria-hidden="true" />
+            Voltar
+          </button>
+          <UpdateCorner />
+        </div>
       </div>
     )
   }
