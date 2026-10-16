@@ -217,7 +217,9 @@ O que o PR precisa rodar também vem do verificador da base, pelas saídas do jo
 - A mutação roda só no macOS: os erros dirigidos não dependem do sistema.
 
 Sem essas saídas (verificador anterior) o workflow roda tudo, como antes. O `node_modules`
-fica em cache por sistema e lockfile; o `npm ci` só roda quando o lockfile muda.
+fica em cache por sistema e lockfile (sem o campo `version` do app, para que subir a versão
+não perca o cache); o `npm ci` só roda quando as dependências mudam e tenta de novo uma vez
+se falhar.
 
 A proteção da branch precisa ser ativada somente depois do sucesso remoto em Windows e macOS.
 O arquivo do workflow ainda pode ser alterado por quem administra o repositório; revisão
