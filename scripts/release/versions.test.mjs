@@ -35,7 +35,16 @@ await test('a estável promove o último beta', () => {
 
 const stable = {
   tag: 'v1.1.0',
-  assets: ['Auri-1.1.0.exe', 'Auri-1.1.0.exe.blockmap', 'Auri-1.1.0.dmg', 'latest.yml', 'beta.yml']
+  assets: [
+    'Auri-1.1.0.exe',
+    'Auri-1.1.0.exe.blockmap',
+    'Auri-1.1.0.dmg',
+    'Auri-1.1.0-arm64-mac.zip',
+    'latest.yml',
+    'beta.yml',
+    'latest-mac.yml',
+    'beta-mac.yml'
+  ]
 }
 const beta = {
   tag: 'v1.1.1-beta.20261016.1',
@@ -55,6 +64,22 @@ await test('o site leva a estável e o beta mais novo, com o beta.yml do beta', 
   assert.equal(from['Auri-1.1.1-beta.20261016.1.exe'], beta.tag)
   assert.equal(from['Auri-1.1.0.dmg'], 'v1.1.0')
   assert.equal(from['alpha.yml'], undefined)
+  // beta só de Windows: o Mac do canal beta segue na estável
+  assert.equal(from['beta-mac.yml'], 'v1.1.0')
+  assert.equal(from['Auri-1.1.0-arm64-mac.zip'], 'v1.1.0')
+})
+
+await test('um beta com Mac leva o zip e o beta-mac.yml dele', () => {
+  const withMac = {
+    ...beta,
+    assets: [...beta.assets, 'Auri-1.1.1-beta.20261016.1-arm64-mac.zip', 'beta-mac.yml']
+  }
+  const from = Object.fromEntries(
+    siteFiles({ stable, beta: withMac }).map((file) => [file.name, file.tag])
+  )
+  assert.equal(from['beta-mac.yml'], beta.tag)
+  assert.equal(from['Auri-1.1.1-beta.20261016.1-arm64-mac.zip'], beta.tag)
+  assert.equal(from['latest-mac.yml'], 'v1.1.0')
 })
 
 await test('depois da promoção o beta antigo sai do site', () => {

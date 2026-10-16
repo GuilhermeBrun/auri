@@ -44,8 +44,53 @@ versão. O número em `package.json` serve só de ponto de partida antes da prim
 
 O site de atualização (GitHub Pages, `guilhermebrun.github.io/auri`) é remontado das releases a
 cada publicação: `latest.yml` aponta para a última estável e `beta.yml` para o beta mais novo que
-ela. Quem liga "Receber versões beta" em Configurações → Atualizações segue o `beta.yml`. A
-atualização automática é só no Windows: no Mac, sem assinatura, instala-se pela página do site.
+ela. Quem liga "Receber versões beta" em Configurações → Atualizações segue o `beta.yml`. O
+Mac se atualiza sozinho só quando a estável sai assinada com o Developer ID (abaixo); sem isso,
+instala-se pela página do site. No beta, o Mac fica na estável (o beta é só Windows).
+
+## Assinatura do Mac (Developer ID)
+
+Com os segredos abaixo, o Release assina o Mac com o Developer ID, liga o hardened runtime e
+notariza na Apple. Assim o macOS abre o Auri sem aviso e aceita que ele se troque pela versão
+nova (o `.zip` do `latest-mac.yml`). Sem os segredos, o Mac sai com assinatura ad-hoc, como antes,
+e o job avisa. O build local (`npm run build:mac`) e o teste manual continuam ad-hoc.
+
+1. Entrar no Apple Developer Program (US$ 99/ano) com o Apple ID.
+2. Em Xcode › Settings › Accounts › Manage Certificates (ou em developer.apple.com ›
+   Certificates), criar um **Developer ID Application**. No Acesso às Chaves, exportar o
+   certificado com a chave privada como `.p12`, com senha.
+3. Em appleid.apple.com › Senhas de app, gerar uma **senha de app** para a notarização.
+4. O **Team ID** (10 caracteres) está em developer.apple.com › Account › Membership.
+5. Gravar os segredos no repositório:
+
+```bash
+base64 -i DeveloperID.p12 | gh secret set MAC_CERTIFICATE_P12
+```
+
+```bash
+gh secret set MAC_CERTIFICATE_PASSWORD
+```
+
+```bash
+gh secret set APPLE_ID
+```
+
+```bash
+gh secret set APPLE_APP_SPECIFIC_PASSWORD
+```
+
+```bash
+gh secret set APPLE_TEAM_ID
+```
+
+Cada `gh secret set` sem valor pede o valor no terminal, sem deixar no histórico. Na próxima
+estável, o log do build do Mac mostra `signing` com o nome do certificado e
+`notarization successful`. Conferir no `.app` baixado: `spctl -a -vv Auri.app` deve dizer
+`source=Notarized Developer ID`.
+
+Quem já tem o Auri ad-hoc instalado precisa instalar uma vez a versão assinada pelo `.dmg`; daí
+em diante ela se atualiza sozinha. As chaves da conexão ficam no Keychain presas à assinatura, então
+nessa troca o macOS pode pedir a senha do computador uma vez (ou a conexão ser pareada de novo).
 
 ## Dependências
 

@@ -1,5 +1,5 @@
 import { app, shell, BrowserWindow, dialog, Menu, nativeImage, nativeTheme, Tray } from 'electron'
-import { join } from 'path'
+import { join, resolve } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import trayIcon from '../../resources/trayTemplate.png?asset'
@@ -13,8 +13,16 @@ import { trustRenderer } from './ipc-security'
 import { pathToFileURL } from 'node:url'
 import { createPrefsStore, type PrefsStore } from './prefs'
 import { createTransferService } from './transfer-service'
-import { channelFile, createUpdateService, type UpdateService, type Updater } from './updates'
+import {
+  channelFile,
+  createUpdateService,
+  hasTeamIdentifier,
+  type UpdateService,
+  type Updater
+} from './updates'
 import { existsSync } from 'node:fs'
+import { execFile } from 'node:child_process'
+import { promisify } from 'node:util'
 
 let connection: Connection | null = null
 let backup: BackupService | null = null
@@ -106,13 +114,26 @@ function sendToWindows(channel: string, value: unknown): void {
   for (const window of BrowserWindow.getAllWindows()) window.webContents.send(channel, value)
 }
 
+/** O Auri instalado no Mac (o pacote `.app`, três pastas acima do executável) tem Team ID. */
+async function signedByDeveloper(): Promise<boolean> {
+  const bundle = resolve(process.execPath, '../../..')
+  try {
+    const { stderr } = await promisify(execFile)('codesign', ['-dv', bundle])
+    return hasTeamIdentifier(stderr)
+  } catch {
+    return false
+  }
+}
+
 /**
- * O instalador do Windows sai com `app-update.yml` quando o Build recebe o repositório de
- * atualizações. No Mac a troca automática exige app assinado; lá a versão nova vai por cima.
+ * O instalado sai com `app-update.yml` quando o Build recebe o repositório de atualizações. No Mac
+ * a troca automática exige app assinado com um Developer ID (o Release com os segredos da Apple);
+ * no ad-hoc (build local, sem certificado) a versão nova vai por cima, pela página do site.
  */
 async function loadUpdater(): Promise<Updater | null> {
-  if (!app.isPackaged || process.platform !== 'win32') return null
+  if (!app.isPackaged || !['win32', 'darwin'].includes(process.platform)) return null
   if (!existsSync(join(process.resourcesPath, 'app-update.yml'))) return null
+  if (process.platform === 'darwin' && !(await signedByDeveloper())) return null
   const { autoUpdater } = await import('electron-updater')
   return autoUpdater as unknown as Updater
 }

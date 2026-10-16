@@ -79,7 +79,7 @@ function site(directory) {
       '<body style="font-family:system-ui,sans-serif;max-width:560px;margin:48px auto;padding:0 16px">',
       stable ? `<h1>Auri ${stable.slice(1)}</h1><ul>${links(stable)}</ul>` : '',
       betaShown ? `<h2>Beta ${beta.slice(1)}</h2><ul>${links(beta)}</ul>` : '',
-      '<p>No Windows o Auri instalado se atualiza sozinho. O beta é opcional, em Configurações.</p>',
+      `<p>No ${files.some((file) => file.name === 'latest-mac.yml') ? 'Windows e no Mac' : 'Windows'} o Auri instalado se atualiza sozinho. O beta é opcional, em Configurações.</p>`,
       '</body></html>'
     ].join('\n')
   )

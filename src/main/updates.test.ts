@@ -9,6 +9,7 @@ import {
   CHECK_EVERY_MS,
   createUpdateService,
   FIRST_CHECK_MS,
+  hasTeamIdentifier,
   type Updater
 } from './updates'
 
@@ -204,5 +205,24 @@ describe('atualização automática', () => {
     expect(store.read()).toBeUndefined()
     writeFileSync(file, 'quebrado')
     expect(store.read()).toBeUndefined()
+  })
+})
+
+describe('assinatura do Mac', () => {
+  const codesign = (team: string): string =>
+    [
+      'Executable=/Applications/Auri.app/Contents/MacOS/Auri',
+      'Identifier=com.auri.app',
+      'Format=app bundle with Mach-O thin (arm64)',
+      'CodeDirectory v=20500 size=1234 flags=0x10000(runtime) hashes=27+7 location=embedded',
+      'Signature size=9000',
+      `TeamIdentifier=${team}`,
+      'Sealed Resources version=2 rules=13 files=40'
+    ].join('\n')
+
+  it('troca o app sozinho só com Developer ID (Team ID)', () => {
+    expect(hasTeamIdentifier(codesign('A1B2C3D4E5'))).toBe(true)
+    expect(hasTeamIdentifier(codesign('not set'))).toBe(false)
+    expect(hasTeamIdentifier('code object is not signed at all')).toBe(false)
   })
 })

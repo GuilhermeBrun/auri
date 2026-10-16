@@ -65,7 +65,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # O beta é só Windows: o Mac não se atualiza sozinho (sem assinatura) e custa 10x.
+        # O beta é só Windows: o minuto do Mac custa 10x. No beta, o Mac recebe a estável
+        # (o beta-mac.yml que a estável também escreve).
         platform: ${{ needs.resolve.outputs.prerelease == 'true' && fromJSON('["win32"]') || fromJSON('["win32","darwin"]') }}
     runs-on: ${{ matrix.platform == 'win32' && 'windows-latest' || 'macos-latest' }}
     timeout-minutes: 45
@@ -78,15 +79,34 @@ jobs:
       - name: Gravar a versão
         run: npm version ${{ needs.resolve.outputs.version }} --no-git-tag-version --allow-same-version
       # `--publish never`: o instalador sai com o endereço de atualização (electron-builder.yml),
-      # mas quem publica são os jobs abaixo.
+      # mas quem publica são os jobs abaixo. No Mac, com os segredos da Apple, assina com o
+      # Developer ID e notariza (sem eles, sai ad-hoc e não se atualiza sozinho; ver docs/ci.md).
+      # Os segredos só vão para o job do Mac: no Windows o CSC_LINK seria usado para assinar o .exe.
       - name: Gerar o instalador
-        run: npm run ${{ matrix.platform == 'win32' && 'build:win' || 'build:mac' }}
+        shell: bash
+        env:
+          PLATFORM: ${{ matrix.platform }}
+          CSC_LINK: ${{ matrix.platform == 'darwin' && secrets.MAC_CERTIFICATE_P12 || '' }}
+          CSC_KEY_PASSWORD: ${{ matrix.platform == 'darwin' && secrets.MAC_CERTIFICATE_PASSWORD || '' }}
+          APPLE_ID: ${{ matrix.platform == 'darwin' && secrets.APPLE_ID || '' }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ matrix.platform == 'darwin' && secrets.APPLE_APP_SPECIFIC_PASSWORD || '' }}
+          APPLE_TEAM_ID: ${{ matrix.platform == 'darwin' && secrets.APPLE_TEAM_ID || '' }}
+        run: |
+          if [ "$PLATFORM" = win32 ]; then
+            npm run build:win
+          elif [ -n "$CSC_LINK" ] && [ -n "$APPLE_TEAM_ID" ]; then
+            npm run build:mac -- -c.mac.identity="$APPLE_TEAM_ID" -c.mac.hardenedRuntime=true
+          else
+            echo "::warning::Sem os segredos da Apple: o Mac sai com assinatura ad-hoc e não se atualiza sozinho."
+            npm run build:mac
+          fi
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: auri-${{ matrix.platform }}
           path: |
             dist/*.exe
             dist/*.dmg
+            dist/*.zip
             dist/*.blockmap
             dist/*.yml
             !dist/builder-debug.yml
