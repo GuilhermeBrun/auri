@@ -14,8 +14,8 @@ pendrive ou pasta sincronizada com a nuvem. A cópia pode ser diária, após alt
 manual; guarde a senha e o código de recuperação. O Auri precisa estar aberto para executar
 as cópias automáticas. Apenas o computador que guarda os dados realiza essas cópias.
 
-Para copiar o arquivo `auri.db` diretamente, feche o app antes. A documentação operacional
-de validação do código e conteúdo fica em [docs/qualidade/politica.md](docs/qualidade/politica.md).
+Para copiar o arquivo `auri.db` diretamente, feche o app antes. O CI, os testes no Windows e
+as versões beta e estável estão em [docs/ci.md](docs/ci.md).
 
 ## Desenvolvimento
 
@@ -26,7 +26,8 @@ npm test           # testes (rodam no Node do Electron por causa do better-sqlit
 npm run typecheck
 npm run lint
 npm run check      # Vite+: formato, lint e análise de tipos
-npm run quality    # inclui testes Electron, E2E, build e segurança
+npm run knip       # código e dependências sem uso
+npm run test:e2e   # o Auri aberto de verdade (depois de npm run build)
 ```
 
 Estrutura:
@@ -46,7 +47,7 @@ npm run build:mac   # dist/auri-<versão>-arm64.dmg (Apple Silicon) e -x64.dmg (
 npm run build:win   # dist/auri-<versão>-setup.exe (pode ser gerado no próprio Mac)
 ```
 
-O better-sqlite3 já traz binários prontos para cada sistema, então os dois instaladores saem do Mac. O workflow `.github/workflows/build.yml` faz o mesmo no GitHub Actions e testa os instaladores também no Windows. Ele pode ser disparado manualmente (só artefatos) ou por `npm run release`, que cria a tag `v*` e publica a release; ver "Release e atualização automática" em `docs/qualidade/politica.md`.
+O better-sqlite3 já traz binários prontos para cada sistema, então os dois instaladores saem do Mac. As versões publicadas saem do workflow Release (beta diário e estável manual) e os instaladores são testados no Windows pelo workflow Windows; ver [docs/ci.md](docs/ci.md).
 
 O app tem só assinatura ad-hoc: não há certificado da Apple nem da Microsoft.
 

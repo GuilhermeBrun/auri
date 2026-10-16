@@ -2,7 +2,7 @@ name: Referências visuais
 
 # Gera as capturas do Windows e do macOS para a branch escolhida, sem aprovar nada: o resultado
 # vira artefato e `npm run visual:aceitar` traz as imagens para docs/qualidade/visual. Depois de
-# conferir o diff das imagens, o commit passa pelo Qualidade normal.
+# conferir o diff das imagens, o commit passa pelo CI normal.
 on:
   workflow_dispatch:
 
