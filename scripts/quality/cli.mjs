@@ -15,7 +15,7 @@ import {
   policyFiles,
   packagingChanged
 } from './checks.mjs'
-import { MUTATION_PLATFORMS, validateExtendedBundle } from './extended-checks.mjs'
+import { mutationPlatform, requiredPlatforms, validateExtendedBundle } from './extended-checks.mjs'
 import { collectChangedLines, sha256, validateSast } from './risk-checks.mjs'
 
 const trusted = resolve(fileURLToPath(new URL('../../', import.meta.url)))
@@ -107,6 +107,7 @@ async function policy() {
     inventory().tests.length > 0 && catalog().scenarios.length > 0,
     'Política vazia.'
   )
+  const platforms = requiredPlatforms(process.env.GITHUB_EVENT_NAME)
   const report = {
     success: true,
     sha: sha(),
@@ -120,14 +121,16 @@ async function policy() {
       entries.map(({ file }) => file),
       process.env.GITHUB_EVENT_NAME === 'pull_request'
     ),
-    changedCoverage: collectChangedLines(base)
+    changedCoverage: collectChangedLines(base),
+    platforms
   }
   write('.quality/policy.json', report)
   // O workflow pula o que esta política não vai exigir (ver quality.yml).
   if (process.env.GITHUB_OUTPUT)
     appendFileSync(
       process.env.GITHUB_OUTPUT,
-      `packaging=${report.packaging}\nmutation=${MUTATION_PLATFORMS.join(',')}\n`
+      `packaging=${report.packaging}\nplatforms=${JSON.stringify(platforms)}\n` +
+        `mutation=${mutationPlatform(platforms)}\n`
     )
   console.log(
     bootstrap
@@ -140,7 +143,8 @@ function validateBundle(
   directory,
   platform,
   changedCoverage = collectChangedLines(process.env.BASE_SHA),
-  packaging = true
+  packaging = true,
+  mutation = true
 ) {
   const run = json(join(directory, 'test-run.json'))
   const report = json(join(directory, 'tests.json'))
@@ -167,7 +171,7 @@ function validateBundle(
     scenarios: validateScenarios(catalog(), tests, e2e),
     ...validateExtendedBundle(directory, trusted, sha(), platform, changedCoverage, {
       packaging,
-      mutation: MUTATION_PLATFORMS.includes(platform)
+      mutation
     })
   }
 }
@@ -215,17 +219,20 @@ function aggregate(directory) {
         policyReport.runAttempt === process.env.GITHUB_RUN_ATTEMPT,
       'Política de outra execução/tentativa.'
     )
-  const bundles = ['darwin', 'win32'].map((platform) =>
+  // Recalculado aqui, não lido do artefato: o código do candidato roda antes deste job.
+  const platforms = requiredPlatforms(process.env.GITHUB_EVENT_NAME)
+  const bundles = platforms.map((platform) =>
     validateBundle(
       join(directory, `quality-${platform}`),
       platform,
       policyReport.changedCoverage,
-      policyReport.packaging !== false
+      policyReport.packaging !== false,
+      platform === mutationPlatform(platforms)
     )
   )
   validateSecurity(join(directory, 'quality-security'))
   write(join(directory, 'summary.json'), { success: true, sha: sha(), bundles })
-  console.log('quality: política, Windows, macOS, cenários e segurança aprovados.')
+  console.log(`quality: política, ${platforms.join(', ')}, cenários e segurança aprovados.`)
 }
 
 function run(command, args) {

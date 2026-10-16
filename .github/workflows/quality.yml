@@ -6,8 +6,9 @@ on:
     branches: [main]
   workflow_dispatch:
   workflow_call:
+  # Mensal, com macOS: PR e push rodam só no Windows (ver requiredPlatforms).
   schedule:
-    - cron: '0 10 * * 1'
+    - cron: '0 10 1 * *'
 
 permissions:
   contents: read
@@ -31,6 +32,7 @@ jobs:
     # Vazios (verificador antigo) significam rodar tudo.
     outputs:
       packaging: ${{ steps.policy.outputs.packaging }}
+      platforms: ${{ steps.policy.outputs.platforms }}
       mutation: ${{ steps.policy.outputs.mutation }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -77,12 +79,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - os: macos-latest
-            platform: darwin
-          - os: windows-latest
-            platform: win32
-    runs-on: ${{ matrix.os }}
+        platform: ${{ fromJSON(needs.policy.outputs.platforms || '["darwin","win32"]') }}
+    runs-on: ${{ matrix.platform == 'darwin' && 'macos-latest' || 'windows-latest' }}
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -93,14 +91,22 @@ jobs:
         with:
           node-version: 24.15.0
           package-manager-cache: false
+      # Chave sem o campo version do app: um PR que só sobe a versão mantém o cache.
+      - id: lockfile
+        shell: bash
+        run: >-
+          node -e "const l = require('./package-lock.json'); delete l.version; delete l.packages[''].version;
+          require('fs').appendFileSync(process.env.GITHUB_OUTPUT, 'hash=' + require('crypto').createHash('sha256').update(JSON.stringify(l)).digest('hex') + '\\n')"
       # node_modules inteiro (Electron e SQLite já compilados): no Windows o npm ci levava ~2 min.
       - id: modules
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: node_modules
-          key: modules-${{ runner.os }}-${{ runner.arch }}-node24.15.0-${{ hashFiles('package-lock.json') }}
+          key: modules-${{ runner.os }}-${{ runner.arch }}-node24.15.0-${{ steps.lockfile.outputs.hash }}
+      # Uma nova tentativa: o download do Electron às vezes cai no meio.
       - if: steps.modules.outputs.cache-hit != 'true'
-        run: npm ci
+        shell: bash
+        run: npm ci || npm ci
       - run: npm run check
       - run: npm run test:quality
       - run: npm run test:ci
@@ -109,7 +115,7 @@ jobs:
       - run: npm run test:performance
       - run: npm run test:e2e
       - run: npm run test:ui
-      - if: matrix.platform == 'darwin' || needs.policy.outputs.mutation != 'darwin'
+      - if: needs.policy.outputs.mutation == '' || needs.policy.outputs.mutation == matrix.platform
         run: npm run test:mutation
       - if: needs.policy.outputs.packaging != 'false'
         run: npm run build:unpack
