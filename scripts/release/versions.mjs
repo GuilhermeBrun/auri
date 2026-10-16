@@ -73,14 +73,17 @@ export function stableFromBeta({ tagNames, betaTag, requested }) {
 
 /**
  * Arquivos do site de atualização (GitHub Pages). Ficam os da última estável e, se houver um beta
- * mais novo, o instalador dele e o `beta.yml`, que substitui o `beta.yml` da estável.
+ * mais novo, os instaladores dele e o `beta.yml` (e `beta-mac.yml`, se o beta tiver Mac), que
+ * substituem os da estável. Beta só de Windows deixa o Mac do canal beta na estável.
  */
 export function siteFiles({ stable, beta }) {
   const files = new Map()
   for (const name of stable?.assets ?? []) files.set(name, stable.tag)
   if (beta && (!stable || isNewer(beta.tag.slice(1), stable.tag.slice(1)))) {
     for (const name of beta.assets) {
-      if (/\.(exe|blockmap)$/.test(name) || name === 'beta.yml') files.set(name, beta.tag)
+      if (/\.(exe|zip|blockmap)$/.test(name) || /^beta(-mac)?\.yml$/.test(name)) {
+        files.set(name, beta.tag)
+      }
     }
   }
   if (!files.has('latest.yml') && !files.has('beta.yml')) {

@@ -2,6 +2,14 @@ import { readFileSync } from 'node:fs'
 import type { UpdateChannel, UpdateState } from '../shared/api'
 import { writeAtomicJson } from './atomic-file'
 
+/**
+ * Saída de `codesign -dv` (vem no stderr) de um app assinado com um Developer ID: só ele tem Team
+ * ID. Na assinatura ad-hoc vem `TeamIdentifier=not set`, e o macOS não aceita trocar o app.
+ */
+export function hasTeamIdentifier(codesignOutput: string): boolean {
+  return /^TeamIdentifier=(?!not set$)\S+$/m.test(codesignOutput)
+}
+
 /** O que o serviço usa do `autoUpdater` do electron-updater (os testes passam um falso). */
 export interface Updater {
   autoDownload: boolean

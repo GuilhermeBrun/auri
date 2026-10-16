@@ -40,15 +40,21 @@ nsis:
 mac:
   category: public.app-category.medical
   entitlementsInherit: build/entitlements.mac.plist
-  notarize: false
-  # Assinatura ad-hoc: sem certificado da Apple, mas o pacote fica íntegro (sem ela, um
-  # .dmg baixado abre como "danificado"). Com um Developer ID, troque pelo nome dele.
+  # Sem certificado (build local, teste manual, fork), a assinatura é ad-hoc: o pacote fica
+  # íntegro (sem ela, um .dmg baixado abre como "danificado"), mas o macOS não troca o app
+  # sozinho. O Release, com os segredos da Apple, troca por `-c.mac.identity=<Team ID>` e
+  # `-c.mac.hardenedRuntime=true`, assina com o Developer ID e notariza (APPLE_ID,
+  # APPLE_APP_SPECIFIC_PASSWORD e APPLE_TEAM_ID). Sem essas variáveis, a notarização é pulada.
+  # Ver docs/ci.md.
   identity: '-'
-  # O hardened runtime só é exigido para notarizar; com assinatura ad-hoc ele impediria o
-  # carregamento do binário do SQLite (validação de biblioteca).
+  # O hardened runtime é exigido para notarizar; com assinatura ad-hoc ele impediria o
+  # carregamento do binário do SQLite (validação de biblioteca), então só liga com o Developer ID.
   hardenedRuntime: false
+  # O .zip é o que o Auri instalado baixa para se atualizar (latest-mac.yml); o .dmg é para instalar.
   target:
     - target: dmg
+      arch: [arm64, x64]
+    - target: zip
       arch: [arm64, x64]
 dmg:
   artifactName: ${name}-${version}-${arch}.${ext}
