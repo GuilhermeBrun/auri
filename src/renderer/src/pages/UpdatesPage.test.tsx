@@ -16,6 +16,7 @@ const { updates, emit } = vi.hoisted(() => {
     info: vi.fn(() => new Promise(() => {})),
     check: vi.fn(),
     install: vi.fn(() => Promise.resolve()),
+    setChannel: vi.fn(),
     onChange: (next: (state: unknown) => void) => {
       listener = next
       return () => {}
@@ -35,6 +36,7 @@ import { UpdatesPage } from './UpdatesPage'
 
 const base: UpdateState = {
   version: '1.0.0',
+  channel: 'latest',
   status: 'idle',
   next: null,
   progress: null,
@@ -92,5 +94,24 @@ describe('Configurações › Atualizações', () => {
     show({ status: 'unavailable' })
     expect(screen.getByText(/não procura versões novas sozinha/)).toBeTruthy()
     expect(screen.queryByRole('button')).toBeNull()
+    expect(screen.queryByRole('switch')).toBeNull()
+  })
+
+  it('liga e desliga as versões beta', async () => {
+    renderPage()
+    show({})
+    const beta = screen.getByRole('switch', { name: 'Receber versões beta' })
+    expect(beta.getAttribute('aria-checked')).toBe('false')
+    updates.setChannel.mockResolvedValue({ ...base, channel: 'beta', status: 'checking' })
+    await userEvent.click(beta)
+    expect(updates.setChannel).toHaveBeenCalledExactlyOnceWith('beta')
+    expect(beta.getAttribute('aria-checked')).toBe('true')
+    expect(screen.getByText(/Pode ter erros/)).toBeTruthy()
+
+    updates.setChannel.mockRejectedValue(new Error('Espere a versão nova terminar de baixar.'))
+    await userEvent.click(beta)
+    expect((await screen.findByRole('alert')).textContent).toContain('Espere')
+    show({ channel: 'beta', status: 'ready', next: '1.1.1' })
+    expect((beta as HTMLButtonElement).disabled).toBe(true)
   })
 })

@@ -1,9 +1,15 @@
-import type { UpdateState } from '../shared/api'
+import { readFileSync } from 'node:fs'
+import type { UpdateChannel, UpdateState } from '../shared/api'
+import { writeAtomicJson } from './atomic-file'
 
 /** O que o serviço usa do `autoUpdater` do electron-updater (os testes passam um falso). */
 export interface Updater {
   autoDownload: boolean
   autoInstallOnAppQuit: boolean
+  /** Arquivo procurado no site de atualização: `latest.yml` ou `beta.yml`. */
+  channel: string | null
+  allowPrerelease: boolean
+  allowDowngrade: boolean
   checkForUpdates: () => Promise<unknown>
   quitAndInstall: (isSilent?: boolean, isForceRunAfter?: boolean) => void
   on(
@@ -18,8 +24,34 @@ export interface UpdateService {
   info(): UpdateState
   check(): UpdateState
   install(): void
+  setChannel(channel: UpdateChannel): UpdateState
   close(): void
 }
+
+/**
+ * O canal escolhido fica em `atualizacoes.json`, ao lado das preferências. Sem arquivo (ou
+ * inválido), vale o da versão instalada.
+ */
+export function channelFile(file: string): {
+  read(): UpdateChannel | undefined
+  save(channel: UpdateChannel): void
+} {
+  return {
+    read() {
+      try {
+        const { channel } = JSON.parse(readFileSync(file, 'utf8')) as { channel?: unknown }
+        return channel === 'beta' || channel === 'latest' ? channel : undefined
+      } catch {
+        return undefined
+      }
+    },
+    save: (channel) => writeAtomicJson(file, { channel })
+  }
+}
+
+/** Uma versão beta instalada (`1.2.3-beta.20261016.1`) começa no canal beta. */
+export const defaultChannel = (version: string): UpdateChannel =>
+  version.includes('-beta.') ? 'beta' : 'latest'
 
 /** Procura de novo a cada 4 horas: a clínica deixa o Auri aberto o dia todo. */
 export const CHECK_EVERY_MS = 4 * 60 * 60 * 1000
@@ -30,7 +62,11 @@ type Options = {
   version: string
   /** null: este computador não se atualiza sozinho (ver `UpdateStatus`). */
   updater: Updater | null
+  /** O canal escolhido antes; sem escolha, o da versão instalada. */
+  channel?: UpdateChannel
   onChange: (state: UpdateState) => void
+  /** Grava a escolha do canal (o main guarda num arquivo ao lado das preferências). */
+  onChannelChange?: (channel: UpdateChannel) => void
   now?: () => Date
   timers?: {
     setTimeout(fn: () => void, ms: number): unknown
@@ -52,12 +88,15 @@ const defaultTimers = {
 export function createUpdateService({
   version,
   updater,
+  channel = defaultChannel(version),
   onChange,
+  onChannelChange,
   now = () => new Date(),
   timers = defaultTimers
 }: Options): UpdateService {
   let state: UpdateState = {
     version,
+    channel,
     status: updater ? 'idle' : 'unavailable',
     next: null,
     progress: null,
@@ -70,9 +109,19 @@ export function createUpdateService({
   }
   const handles: unknown[] = []
 
+  // No beta também valem as prereleases. Voltando para a estável com um beta instalado, a estável
+  // pode ser "mais velha" que ele (1.2.0 < 1.2.1-beta): aceita descer para não ficar preso no beta.
+  function applyChannel(): void {
+    if (!updater) return
+    updater.channel = state.channel
+    updater.allowPrerelease = state.channel === 'beta'
+    updater.allowDowngrade = state.channel === 'latest' && defaultChannel(version) === 'beta'
+  }
+
   if (updater) {
     updater.autoDownload = true
     updater.autoInstallOnAppQuit = true
+    applyChannel()
     updater.on('checking-for-update', () => set({ status: 'checking', error: null }))
     updater.on('update-not-available', () =>
       set({ status: 'idle', next: null, progress: null, checkedAt: now().toISOString() })
@@ -118,6 +167,16 @@ export function createUpdateService({
       if (!updater || state.status !== 'ready') throw new Error('Nenhuma versão nova pronta.')
       // silencioso (sem as telas do instalador) e abrindo o Auri de novo no fim
       updater.quitAndInstall(true, true)
+    },
+    setChannel(next) {
+      if (next === state.channel) return state
+      if (state.status === 'downloading' || state.status === 'ready') {
+        throw new Error('Espere a versão nova terminar de baixar e ser instalada para trocar.')
+      }
+      set({ channel: next })
+      onChannelChange?.(next)
+      applyChannel()
+      return check()
     },
     close() {
       for (const handle of handles) timers.clear(handle)
