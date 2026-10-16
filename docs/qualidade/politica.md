@@ -1,8 +1,9 @@
 # Validação de qualidade do Auri
 
-A primeira etapa valida cada PR e push em `main`, além de execuções manuais e semanais.
-O check final **`quality`** só aprova se política, Windows, macOS e segurança terminarem
-com sucesso e as evidências esperadas estiverem presentes. O workflow Build depende desse
+A primeira etapa valida cada PR e push em `main`, além de execuções manuais e mensais.
+O check final **`quality`** só aprova se política, os sistemas exigidos e segurança terminarem
+com sucesso e as evidências esperadas estiverem presentes. PR e push em `main` exigem o
+Windows; a execução mensal e a manual exigem Windows e macOS. O workflow Build depende desse
 resultado antes de gerar os instaladores. Nenhum desses jobs publica versões ou usa certificados.
 
 ## Executar localmente
@@ -213,8 +214,13 @@ O que o PR precisa rodar também vem do verificador da base, pelas saídas do jo
 - Empacotar e testar o pacote (`build:unpack`, `test:package`, `quality:delivery`) só quando o
   PR toca o que vai no pacote: `src/main`, `src/preload`, `src/shared`, dependências,
   `electron-builder.yml`, `build/`, `resources/`, configuração do Vite, `scripts/` ou
-  `.github/`. Push em `main`, execução manual e semanal sempre empacotam.
-- A mutação roda só no macOS: os erros dirigidos não dependem do sistema.
+  `.github/`. Push em `main`, execução manual e mensal sempre empacotam.
+- Os sistemas (`requiredPlatforms` em `scripts/quality/extended-checks.mjs`): PR e push em
+  `main` rodam só no Windows, porque no repositório privado o minuto de macOS custa 10x o de
+  Linux (o de Windows, 2x). O macOS entra na execução mensal, na manual (Actions → Qualidade
+  → Run workflow) e no Build da release, que gera e testa o pacote nos dois sistemas.
+- A mutação roda em um só sistema, o macOS quando ele está na execução: os erros dirigidos
+  não dependem do sistema.
 
 Sem essas saídas (verificador anterior) o workflow roda tudo, como antes. O `node_modules`
 fica em cache por sistema e lockfile (sem o campo `version` do app, para que subir a versão
@@ -269,7 +275,7 @@ A versão publicada mais recente de `sprintf-js` é 1.1.3 e o advisory não info
 versão corrigida. `npm audit fix --dry-run --ignore-scripts` não propõe atualização.
 A cadeia pertence às ferramentas de empacotamento; a inspeção do ASAR deve confirmar
 que essas ferramentas não acompanham o aplicativo. Achados altos/críticos continuam
-bloqueantes e o audit semanal permite reavaliar quando houver correção publicada.
+bloqueantes e o audit mensal permite reavaliar quando houver correção publicada.
 
 ## Controles adicionais de código e entrega
 

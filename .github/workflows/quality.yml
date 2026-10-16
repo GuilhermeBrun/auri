@@ -6,8 +6,9 @@ on:
     branches: [main]
   workflow_dispatch:
   workflow_call:
+  # Mensal, com macOS: PR e push rodam só no Windows (ver requiredPlatforms).
   schedule:
-    - cron: '0 10 * * 1'
+    - cron: '0 10 1 * *'
 
 permissions:
   contents: read
@@ -31,6 +32,7 @@ jobs:
     # Vazios (verificador antigo) significam rodar tudo.
     outputs:
       packaging: ${{ steps.policy.outputs.packaging }}
+      platforms: ${{ steps.policy.outputs.platforms }}
       mutation: ${{ steps.policy.outputs.mutation }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -77,12 +79,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - os: macos-latest
-            platform: darwin
-          - os: windows-latest
-            platform: win32
-    runs-on: ${{ matrix.os }}
+        platform: ${{ fromJSON(needs.policy.outputs.platforms || '["darwin","win32"]') }}
+    runs-on: ${{ matrix.platform == 'darwin' && 'macos-latest' || 'windows-latest' }}
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -117,7 +115,7 @@ jobs:
       - run: npm run test:performance
       - run: npm run test:e2e
       - run: npm run test:ui
-      - if: matrix.platform == 'darwin' || needs.policy.outputs.mutation != 'darwin'
+      - if: needs.policy.outputs.mutation == '' || needs.policy.outputs.mutation == matrix.platform
         run: npm run test:mutation
       - if: needs.policy.outputs.packaging != 'false'
         run: npm run build:unpack

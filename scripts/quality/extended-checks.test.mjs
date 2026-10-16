@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
+  mutationPlatform,
+  requiredPlatforms,
   validateCoverage,
   validateExtendedReport,
   validateMutations,
@@ -93,6 +95,15 @@ await test('mutação precisa conter todos os erros previstos, detectados por as
       ),
     /duplicado/
   )
+})
+
+await test('PR e push exigem só o Windows; mensal e manual exigem os dois sistemas', () => {
+  assert.deepEqual(requiredPlatforms('pull_request'), ['win32'])
+  assert.deepEqual(requiredPlatforms('push'), ['win32'])
+  for (const event of ['schedule', 'workflow_dispatch', 'workflow_call', undefined])
+    assert.deepEqual(requiredPlatforms(event), ['darwin', 'win32'], String(event))
+  assert.equal(mutationPlatform(['darwin', 'win32']), 'darwin')
+  assert.equal(mutationPlatform(['win32']), 'win32')
 })
 
 await test('release exige versão correta e sucesso no push do commit atual de main', () => {

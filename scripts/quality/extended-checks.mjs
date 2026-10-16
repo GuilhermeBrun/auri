@@ -93,8 +93,19 @@ export function validateMutations(report, catalog, sha, platform) {
   return actual.size
 }
 
-/** A mutação não depende do sistema: basta rodá-la no macOS, que é mais rápido. */
-export const MUTATION_PLATFORMS = ['darwin']
+/**
+ * PR e push em main rodam só no Windows: no repositório privado o minuto de macOS custa 10x
+ * o de Linux. A execução mensal e a manual exigem os dois sistemas; a release testa o pacote
+ * no macOS pelo Build.
+ */
+export function requiredPlatforms(event) {
+  return ['pull_request', 'push'].includes(event) ? ['win32'] : ['darwin', 'win32']
+}
+
+/** A mutação não depende do sistema: roda em um só, o macOS quando ele está na execução. */
+export function mutationPlatform(platforms) {
+  return platforms.includes('darwin') ? 'darwin' : platforms[0]
+}
 
 /**
  * `required.packaging` vem da política: só fica false em PR que não toca o que vai no pacote
