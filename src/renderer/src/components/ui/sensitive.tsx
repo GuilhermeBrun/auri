@@ -19,6 +19,8 @@ type SensitiveProps = {
  * pílula acima diz o que o clique faz. O borrão acompanha o tamanho do texto (em `em`), então
  * esconde do código grande ao endereço pequeno. Oculto, o leitor de tela ouve só o rótulo e o
  * texto não pode ser selecionado. A dica vai num portal, então não é cortada por `truncate`.
+ * O texto corta com reticências quando não cabe (a pasta do Backup); por isso o botão se alinha pelo
+ * topo, porque o corte tira a linha de base e o deixaria uns pixels acima do texto ao redor.
  */
 export function Sensitive({ label, what, children, className }: SensitiveProps): React.JSX.Element {
   const [shown, setShown] = useState(false)
@@ -32,7 +34,7 @@ export function Sensitive({ label, what, children, className }: SensitiveProps):
             aria-pressed={shown}
             aria-label={shown ? undefined : `${label}: oculto. Clique para mostrar`}
             className={cn(
-              'max-w-full cursor-pointer rounded-chip px-1 text-left transition-[filter,background-color] duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
+              'max-w-full cursor-pointer rounded-chip align-top px-1 text-left transition-[filter,background-color] duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
               !shown && 'bg-fill select-none hover:bg-fill-hover',
               className
             )}
