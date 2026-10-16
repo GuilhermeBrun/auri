@@ -12,8 +12,7 @@ import {
 } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
-import { execution, writeJson } from './evidence.mjs'
-import { requireCondition } from './checks.mjs'
+import { execution, requireCondition, writeJson } from './evidence.mjs'
 
 const startedAt = Date.now()
 const directory = mkdtempSync(join(process.env.RUNNER_TEMP || tmpdir(), 'auri-installer-quality-'))

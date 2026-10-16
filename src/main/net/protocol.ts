@@ -46,7 +46,6 @@ export const REJECT_REASONS = [
   'code-expired',
   'code-wrong'
 ] as const
-export type RejectReason = (typeof REJECT_REASONS)[number]
 
 export const serverMessage = z.discriminatedUnion('t', [
   z.object({ t: z.literal('welcome'), name, proof: hex.optional() }),

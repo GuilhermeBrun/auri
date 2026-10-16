@@ -27,12 +27,6 @@ const INSTALLERS: Record<'google' | 'onedrive', Partial<Record<NodeJS.Platform, 
   }
 }
 
-/** Página oficial, para baixar pelo navegador se o download daqui falhar. */
-export const OFFICIAL_PAGE: Record<'google' | 'onedrive', string> = {
-  google: 'https://www.google.com/drive/download/',
-  onedrive: 'https://www.microsoft.com/microsoft-365/onedrive/download'
-}
-
 /** Só baixa destes endereços (depois dos redirecionamentos). */
 const ALLOWED_HOSTS = ['dl.google.com', 'go.microsoft.com', 'oneclient.sfx.ms']
 
