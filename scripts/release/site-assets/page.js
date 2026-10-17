@@ -65,6 +65,81 @@ function moveThumb(group, button, animate = true) {
   thumb.style.transform = `translateX(${button.offsetLeft}px)`
 }
 
+// Rastro do mouse no topo, como no Codex: as marcas da grade de pontos do fundo (22px) acendem
+// perto do cursor, viram pontos e traços, e se apagam sozinhas. Só com mouse e sem "Reduzir
+// movimento".
+const trailCanvas = document.querySelector('[data-pointer-trail]')
+if (trailCanvas && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+  const GRID = 22
+  const RADIUS = 110
+  const context = trailCanvas.getContext('2d')
+  const glow = new Map()
+  let frame = 0
+  let color = ''
+
+  const resize = () => {
+    const ratio = Math.min(devicePixelRatio || 1, 2)
+    trailCanvas.width = Math.round(trailCanvas.clientWidth * ratio)
+    trailCanvas.height = Math.round(trailCanvas.clientHeight * ratio)
+    context.setTransform(ratio, 0, 0, ratio, 0, 0)
+  }
+  resize()
+  addEventListener('resize', resize)
+
+  // Cada ponto da grade tem sempre a mesma marca: ponto, traço ou dois pontos
+  const shape = (column, row) => ((column * 73856093) ^ (row * 19349663)) & 3
+
+  function draw() {
+    context.clearRect(0, 0, trailCanvas.clientWidth, trailCanvas.clientHeight)
+    context.fillStyle = color
+    for (const [key, value] of glow) {
+      const next = value * 0.955
+      if (next < 0.02) {
+        glow.delete(key)
+        continue
+      }
+      glow.set(key, next)
+      const column = key & 0xffff
+      const row = key >>> 16
+      const x = column * GRID + GRID / 2
+      const y = row * GRID + GRID / 2
+      context.globalAlpha = Math.min(next * 1.15, 1)
+      const kind = shape(column, row)
+      if (kind === 0) context.fillRect(x - 5, y - 1, 10, 2)
+      else if (kind === 1) context.fillRect(x - 1.5, y - 1.5, 3, 3)
+      else if (kind === 2) {
+        context.fillRect(x - 4.5, y - 1, 3, 2)
+        context.fillRect(x + 1.5, y - 1, 3, 2)
+      } else context.fillRect(x - 1, y - 4, 2, 8)
+    }
+    context.globalAlpha = 1
+    frame = glow.size > 0 ? requestAnimationFrame(draw) : 0
+  }
+
+  addEventListener('pointermove', (event) => {
+    if (event.pointerType !== 'mouse') return
+    const box = trailCanvas.getBoundingClientRect()
+    const x = event.clientX - box.left
+    const y = event.clientY - box.top
+    if (y < -RADIUS || y > box.height + RADIUS) return
+    if (!frame) color = getComputedStyle(root).getPropertyValue('--ink').trim()
+    const reach = Math.ceil(RADIUS / GRID)
+    const centerColumn = Math.floor(x / GRID)
+    const centerRow = Math.floor(y / GRID)
+    for (let row = centerRow - reach; row <= centerRow + reach; row++) {
+      for (let column = centerColumn - reach; column <= centerColumn + reach; column++) {
+        if (row < 0 || column < 0) continue
+        const distance = Math.hypot(column * GRID + GRID / 2 - x, row * GRID + GRID / 2 - y)
+        if (distance > RADIUS) continue
+        const key = (row << 16) | column
+        const value = (1 - distance / RADIUS) ** 1.2
+        if (value > (glow.get(key) ?? 0)) glow.set(key, value)
+      }
+    }
+    if (!frame) frame = requestAnimationFrame(draw)
+  })
+}
+
 // Download: no computador, só o botão do sistema detectado e um link para o outro; no celular ou num
 // sistema desconhecido, um seletor Windows/Mac e um botão só.
 for (const block of document.querySelectorAll('[data-download]')) {

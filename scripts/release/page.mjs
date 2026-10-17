@@ -183,13 +183,14 @@ export function downloadPage({ stable, alpha, files }) {
 </head>
 <body>
 <div class="backdrop" aria-hidden="true"></div>
+<canvas class="pointer-trail" aria-hidden="true" data-pointer-trail></canvas>
 <header class="top">
 <a class="top-brand" href="./">${WORDMARK}</a>
 <button type="button" class="theme-toggle" data-theme-toggle aria-label="Tema: igual ao sistema" title="Tema: igual ao sistema"><span data-theme-icon="system">${ICONS.monitor}</span><span data-theme-icon="light">${ICONS.sun}</span><span data-theme-icon="dark">${ICONS.moon}</span></button>
 </header>
 <main>
 <section class="hero" id="baixar" aria-labelledby="titulo">
-<div class="mark" aria-hidden="true"><i></i><i></i><i></i><img src="auri.svg" alt="" width="96" height="96"></div>
+<div class="mark" aria-hidden="true"><img src="auri.svg" alt="" width="96" height="96"></div>
 <h1 id="titulo">${words(['Agenda e fichas,', 'num lugar só.'])}</h1>
 <p class="lead">Os pacientes, as sessões e as anamneses da clínica, guardados no computador dela e funcionando mesmo sem internet.</p>
 <p class="note" data-mobile hidden>O Auri é para computador. Abra esta página no Windows ou no Mac da clínica.</p>
