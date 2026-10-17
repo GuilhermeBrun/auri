@@ -106,7 +106,7 @@ function preview() {
   return `<div class="shot" data-reveal data-agenda>
 <div class="shot-glow" aria-hidden="true"></div>
 ${windowHtml()}
-<p class="shot-hint">${ICONS.pointer}<span>Experimente: clique num horário livre para agendar, numa sessão para ver os detalhes, ou troque entre Dia, Semana e Mês.</span></p>
+<p class="shot-hint">${ICONS.pointer}<span>Experimente: clique num horário livre para agendar.</span></p>
 </div>`
 }
 
@@ -126,7 +126,7 @@ const FEATURES = [
   [
     { image: 'sessoes', zoom: 150, focus: 0.24 },
     'Sessões e frequência',
-    'Presença e evolução de cada sessão, com a frequência do paciente à vista para acompanhar o tratamento.'
+    'Presença e evolução de cada sessão, com um gráfico da frequência para acompanhar o tratamento do paciente.'
   ],
   [
     { image: 'copia', zoom: 135, focus: 0 },
@@ -191,12 +191,10 @@ export function downloadPage({ stable, alpha, files }) {
 <main>
 <section class="hero" id="baixar" aria-labelledby="titulo">
 <div class="mark" aria-hidden="true"><img class="mark-light" src="auri-claro.svg" alt="" width="96" height="96"><img class="mark-dark" src="auri.svg" alt="" width="96" height="96"></div>
-<h1 id="titulo">${words(['Agenda e fichas,', 'num lugar só.'])}</h1>
-<p class="lead">Os pacientes, as sessões e as anamneses da clínica, guardados no computador dela e funcionando mesmo sem internet.</p>
-<p class="note" data-mobile hidden>O Auri é para computador. Abra esta página no Windows ou no Mac da clínica.</p>
+<h1 id="titulo">${words(['A clínica inteira,', 'sem papel.'])}</h1>
+<p class="lead">Pacientes, sessões e anamneses no computador da clínica, mesmo sem internet.</p>
 ${download(options)}
 ${missing ? `<p class="missing meta">${missing}</p>` : ''}
-<p class="version meta">${versionLine}</p>
 </section>
 ${preview()}
 <section class="section" aria-labelledby="recursos">

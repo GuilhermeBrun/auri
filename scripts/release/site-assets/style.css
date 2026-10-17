@@ -365,8 +365,8 @@ main {
 
 .mark {
   position: relative;
-  width: 6rem;
-  height: 6rem;
+  width: 4.5rem;
+  height: 4.5rem;
   margin-bottom: 2rem;
   animation: mark-in 900ms var(--ease-out) both;
 }
@@ -401,15 +401,22 @@ main {
   }
 }
 
-h1 {
-  font-size: clamp(2.5rem, 1.1rem + 5.4vw, 4.75rem);
-  font-weight: 700;
-  line-height: 1.02;
-  letter-spacing: -0.04em;
+/*
+ * Títulos como os do Design System: peso 600, -0.025em e o corte de texto da fonte (opsz 28, o do
+ * maior título do app). Sem isso, o tamanho óptico automático usa o corte de cartaz nos títulos grandes.
+ */
+h1,
+h2 {
+  font-variation-settings: 'opsz' 28;
 }
 
-.line {
-  display: block;
+/* Numa linha só no computador; no celular quebra em duas, equilibradas. */
+h1 {
+  font-size: clamp(2.25rem, 1.25rem + 3.6vw, 4rem);
+  font-weight: 600;
+  line-height: 1.08;
+  letter-spacing: -0.025em;
+  text-wrap: balance;
 }
 
 .line-soft {
@@ -423,18 +430,17 @@ h1 {
 }
 
 .lead {
-  max-width: 34rem;
+  max-width: 46rem;
   margin-top: 1.5rem;
   color: var(--ink-soft);
-  font-size: clamp(1.0625rem, 1rem + 0.35vw, 1.25rem);
-  line-height: 1.45;
+  font-size: clamp(1rem, 0.95rem + 0.2vw, 1.125rem);
+  line-height: 1.5;
+  text-wrap: pretty;
 }
 
 .hero > .lead,
-.hero > .note,
 .hero > .download,
-.hero > .missing,
-.hero > .version {
+.hero > .missing {
   animation: rise 900ms var(--ease-out) both;
 }
 
@@ -442,23 +448,12 @@ h1 {
   animation-delay: 450ms;
 }
 
-.hero > .note,
 .hero > .download {
   animation-delay: 580ms;
 }
 
-.hero > .missing,
-.hero > .version {
+.hero > .missing {
   animation-delay: 700ms;
-}
-
-.note {
-  max-width: 30rem;
-  margin-top: 1.5rem;
-  padding: 0.75rem 1rem;
-  border-radius: 12px;
-  background: var(--fill);
-  color: var(--ink-soft);
 }
 
 .choices {
@@ -564,15 +559,6 @@ h1 {
 
 .missing {
   margin-top: 1rem;
-}
-
-.version {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  margin-top: 1.5rem;
 }
 
 .chip {
@@ -1592,9 +1578,9 @@ h1 {
 
 h2 {
   font-size: clamp(1.75rem, 1.15rem + 2.2vw, 2.75rem);
-  font-weight: 680;
+  font-weight: 600;
   line-height: 1.1;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.025em;
   text-align: center;
 }
 
@@ -1631,9 +1617,9 @@ h2 {
 
 .feature-text h3 {
   font-size: clamp(1.25rem, 1.05rem + 0.6vw, 1.5rem);
-  font-weight: 640;
+  font-weight: 600;
   line-height: 1.25;
-  letter-spacing: -0.015em;
+  letter-spacing: -0.025em;
 }
 
 .feature-text p {
@@ -1910,10 +1896,8 @@ h2 {
   .mark,
   .word,
   .hero > .lead,
-  .hero > .note,
   .hero > .download,
   .hero > .missing,
-  .hero > .version,
   .pop,
   .js .shot.in:not(.ready) .ev,
   .js .shot.ready .ev.enter,
