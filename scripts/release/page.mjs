@@ -28,25 +28,6 @@ const ICONS = {
   download: icon(
     '<path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/>'
   ),
-  calendar: icon(
-    '<rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/>'
-  ),
-  users: icon(
-    '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>'
-  ),
-  clipboard: icon(
-    '<rect width="8" height="4" x="8" y="2" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/>'
-  ),
-  lock: icon(
-    '<rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>'
-  ),
-  network: icon(
-    '<rect x="16" y="16" width="6" height="6" rx="1"/><rect x="2" y="16" width="6" height="6" rx="1"/><rect x="9" y="2" width="6" height="6" rx="1"/><path d="M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3"/><path d="M12 12V8"/>'
-  ),
-  settings: icon(
-    '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9 7 7M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/>'
-  ),
-  check: icon('<path d="M20 6 9 17l-5-5"/>'),
   arrowUp: icon('<path d="m5 12 7-7 7 7"/><path d="M12 19V5"/>'),
   monitor: icon(
     '<rect width="20" height="14" x="2" y="3" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/>'
@@ -57,9 +38,6 @@ const ICONS = {
   moon: icon('<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>'),
   pointer: icon(
     '<path d="M14 4.1 12 6"/><path d="m5.1 8-2.9-.8"/><path d="m6 12-1.9 2"/><path d="M7.2 2.2 8 5.1"/><path d="M9.037 9.69a.498.498 0 0 1 .653-.653l11 4.5a.5.5 0 0 1-.074.949l-4.349 1.041a1 1 0 0 0-.74.739l-1.04 4.35a.5.5 0 0 1-.95.074z"/>'
-  ),
-  refresh: icon(
-    '<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>'
   )
 }
 
@@ -132,28 +110,43 @@ ${windowHtml()}
 </div>`
 }
 
+// Recursos: tela do app (site-assets/telas, capturadas do app real com pacientes fictícios), com
+// o zoom e a parte da tela que aparece no canto do quadro, título e texto.
 const FEATURES = [
   [
-    'calendar',
+    { image: 'agenda', zoom: 150, focus: 0 },
     'Agenda da clínica',
-    'Dia, semana ou mês, com o horário de agora sempre à vista e as sessões de cada paciente.'
+    'Dia, semana ou mês, com o horário de agora sempre à vista. Um clique num horário livre agenda a sessão, e o Auri confirma quando ela foi salva.'
   ],
   [
-    'clipboard',
+    { image: 'anamnese', zoom: 150, focus: 0.24 },
     'Fichas e anamnese',
-    'Cadastro completo e anamnese em roteiro, um tema por vez, junto do registro de cada sessão.'
+    'A ficha completa de cada paciente e a anamnese em roteiro, um tema por vez, com perguntas para guiar a conversa com a família.'
   ],
   [
-    'lock',
+    { image: 'sessoes', zoom: 150, focus: 0.24 },
+    'Sessões e frequência',
+    'Presença e evolução de cada sessão, com a frequência do paciente à vista para acompanhar o tratamento.'
+  ],
+  [
+    { image: 'copia', zoom: 135, focus: 0 },
     'Seus dados, no seu computador',
-    'Os dados ficam no computador da clínica, e uma cópia cifrada vai para o Drive, OneDrive ou iCloud que ela já usa.'
+    'Os pacientes e a agenda ficam no computador da clínica. Uma cópia cifrada vai para o Google Drive, OneDrive ou iCloud que vocês já usam.'
   ],
   [
-    'network',
+    { image: 'conexao', zoom: 135, focus: 0 },
     'Recepção e consultório',
-    'O consultório usa os mesmos dados da recepção, pela rede da clínica ou pela internet.'
+    'Um computador guarda os dados e os outros usam pela rede da clínica ou pela internet, só com a sua permissão.'
   ]
 ]
+
+function feature([{ image, zoom, focus }, title, text]) {
+  const crop = `--zoom:${zoom};--focus:${focus}`
+  return `<article class="feature">
+<div class="feature-text" data-reveal><h3>${title}</h3><p>${text}</p></div>
+<div class="feature-media" data-reveal style="--i:1"><img class="shot-light" style="${crop}" src="telas/${image}-claro.webp" alt="Tela do Auri: ${title.toLowerCase()}, no tema claro" width="1600" height="950" loading="lazy" decoding="async"><img class="shot-dark" style="${crop}" src="telas/${image}-escuro.webp" alt="Tela do Auri: ${title.toLowerCase()}, no tema escuro" width="1600" height="950" loading="lazy" decoding="async"></div>
+</article>`
+}
 
 /**
  * HTML da página. `stable` e `alpha` são `{ tag, publishedAt, assets: [{ name, size }] }` (ou nada);
@@ -208,7 +201,7 @@ ${preview()}
 <section class="section" aria-labelledby="recursos">
 <h2 id="recursos" data-reveal>Feito para o dia a dia da clínica</h2>
 <div class="features">
-${FEATURES.map(([name, title, text], index) => `<article class="card" data-reveal data-spotlight style="--i:${index}"><span class="card-icon">${ICONS[name]}</span><h3>${title}</h3><p>${text}</p></article>`).join('\n')}
+${FEATURES.map(feature).join('\n')}
 </div>
 </section>
 <section class="section closing" aria-labelledby="fim">

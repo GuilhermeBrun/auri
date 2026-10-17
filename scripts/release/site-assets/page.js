@@ -1,5 +1,5 @@
-// Página de download: tema, botão pelo sistema de quem visita, entradas conforme a rolagem, luz
-// nos cards e a prévia da agenda respondendo a cliques. Sem este script a página continua inteira,
+// Página de download: tema, botão pelo sistema de quem visita, entradas conforme a rolagem e a
+// prévia da agenda respondendo a cliques. Sem este script a página continua inteira,
 // com os dois botões e a agenda parada.
 import {
   DAY_END,
@@ -140,16 +140,6 @@ if ('IntersectionObserver' in window) {
   for (const element of revealed) observer.observe(element)
 } else {
   for (const element of revealed) reveal(element)
-}
-
-// Luz que acompanha o ponteiro nos cards (só com mouse; no toque não há hover)
-for (const card of document.querySelectorAll('[data-spotlight]')) {
-  card.addEventListener('pointermove', (event) => {
-    if (event.pointerType !== 'mouse') return
-    const box = card.getBoundingClientRect()
-    card.style.setProperty('--x', `${event.clientX - box.left}px`)
-    card.style.setProperty('--y', `${event.clientY - box.top}px`)
-  })
 }
 
 // ---------------------------------------------------------------------------------------------
