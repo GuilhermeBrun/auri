@@ -64,6 +64,6 @@ dmg:
 # publica (ver docs/ci.md). latest.yml é a estável e alpha.yml o canal alpha.
 publish:
   provider: generic
-  url: https://guilhermebrun.github.io/auri/
+  url: https://auri.dev.br/
 # A estável também escreve alpha.yml: quem está no alpha recebe a estável quando ela é mais nova.
 generateUpdatesFilesForAllChannels: true

@@ -82,11 +82,15 @@ tinha escolhido o canal Beta passa para o Alpha sozinho.
   pedida), para Windows e Mac (só Apple Silicon). Antes, rodar `npm run ci:mac` no Mac e o
   workflow Windows: `gh workflow run release.yml -f channel=stable [-f version=1.2.0]`.
 
-O site de atualização (GitHub Pages, `guilhermebrun.github.io/auri`) é remontado das releases a
+O site de atualização (GitHub Pages, `auri.dev.br`) é remontado das releases a
 cada publicação: `latest.yml` aponta para a última estável e `alpha.yml` para o alpha mais novo que
 ela. Quem escolhe o canal Alpha em Configurações › Geral segue o `alpha.yml`. O Mac se atualiza
 sozinho só quando a estável sai assinada com o Developer ID (abaixo); sem isso, instala-se pela
 página do site. No alpha, o Mac fica na estável (o alpha é só Windows).
+
+Uma mudança na página de download (`scripts/release/page.mjs`, `scripts/release/site-assets/`)
+só vai ao ar quando o site é remontado. Para não esperar a próxima release, remontar só o site,
+a partir do `main`: `gh workflow run release.yml -f channel=site`.
 
 ## Assinatura do Mac (Developer ID)
 
