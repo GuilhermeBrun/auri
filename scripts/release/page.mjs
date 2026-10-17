@@ -106,7 +106,7 @@ function preview() {
   return `<div class="shot" data-reveal data-agenda>
 <div class="shot-glow" aria-hidden="true"></div>
 ${windowHtml()}
-<p class="shot-hint">${ICONS.pointer}<span>Experimente: clique num horário livre para agendar, numa sessão para ver os detalhes, ou troque entre Dia, Semana e Mês.</span></p>
+<p class="shot-hint">${ICONS.pointer}<span>Experimente: clique num horário livre para agendar.</span></p>
 </div>`
 }
 
