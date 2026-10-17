@@ -2,7 +2,7 @@ name: Windows
 
 # Teste manual no sistema da clínica: o Auri aberto de verdade, a interface, o pacote, o instalador
 # e os instaladores oficiais das nuvens. Não roda sozinho: o PR é validado pelo CI e o uso real vem
-# do beta. Os mesmos passos no Mac rodam na máquina de quem desenvolve (`npm run ci:mac`), não aqui,
+# do alpha. Os mesmos passos no Mac rodam na máquina de quem desenvolve (`npm run ci:mac`), não aqui,
 # onde o minuto do Mac custa 10x o do Linux.
 #
 #   gh workflow run windows.yml --ref <branch>

@@ -4,7 +4,7 @@
 import { execFileSync } from 'node:child_process'
 import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { latestTags, nextBeta, onlyDocs, siteFiles, stableFromBeta } from './versions.mjs'
+import { latestTags, nextAlpha, onlyDocs, siteFiles, stableFromAlpha } from './versions.mjs'
 
 const run = (command, args) => execFileSync(command, args, { encoding: 'utf8' }).trim()
 const lines = (text) => text.split('\n').filter(Boolean)
@@ -19,17 +19,17 @@ function output(values) {
 function resolve() {
   const tagNames = lines(run('git', ['tag', '--list', 'v*']))
   const commitOf = (tag) => run('git', ['rev-list', '-n', '1', tag])
-  const { beta } = latestTags(tagNames)
+  const { alpha } = latestTags(tagNames)
 
   if (process.env.CHANNEL === 'stable') {
-    const version = stableFromBeta({
+    const version = stableFromAlpha({
       tagNames,
-      betaTag: beta,
+      alphaTag: alpha,
       requested: process.env.VERSION_INPUT
     })
     return output({
       skip: false,
-      ref: commitOf(beta),
+      ref: commitOf(alpha),
       version,
       tag: `v${version}`,
       prerelease: false
@@ -37,16 +37,16 @@ function resolve() {
   }
 
   const head = run('git', ['rev-parse', 'HEAD'])
-  if (beta && commitOf(beta) === head) {
-    console.log(`O main não mudou desde o ${beta}.`)
+  if (alpha && commitOf(alpha) === head) {
+    console.log(`O main não mudou desde o ${alpha}.`)
     return output({ skip: true })
   }
-  if (beta && onlyDocs(lines(run('git', ['diff', '--name-only', commitOf(beta), head])))) {
-    console.log(`Desde o ${beta} o main só mudou documentação.`)
+  if (alpha && onlyDocs(lines(run('git', ['diff', '--name-only', commitOf(alpha), head])))) {
+    console.log(`Desde o ${alpha} o main só mudou documentação.`)
     return output({ skip: true })
   }
   const { version: firstVersion } = JSON.parse(readFileSync('package.json', 'utf8'))
-  const version = nextBeta({ tagNames, firstVersion, date: new Date() })
+  const version = nextAlpha({ tagNames, firstVersion, date: new Date() })
   output({ skip: false, ref: head, version, tag: `v${version}`, prerelease: true })
 }
 
@@ -54,7 +54,7 @@ function site(directory) {
   const releases = JSON.parse(
     run('gh', ['release', 'list', '--limit', '100', '--json', 'tagName,isDraft'])
   ).filter((release) => !release.isDraft)
-  const { stable, beta } = latestTags(releases.map((release) => release.tagName))
+  const { stable, alpha } = latestTags(releases.map((release) => release.tagName))
   const withAssets = (tag) =>
     tag && {
       tag,
@@ -62,7 +62,7 @@ function site(directory) {
         (asset) => asset.name
       )
     }
-  const files = siteFiles({ stable: withAssets(stable), beta: withAssets(beta) })
+  const files = siteFiles({ stable: withAssets(stable), alpha: withAssets(alpha) })
 
   mkdirSync(directory, { recursive: true })
   for (const { name, tag } of files) {
@@ -73,7 +73,7 @@ function site(directory) {
       .filter((file) => file.tag === tag && /\.(exe|dmg)$/.test(file.name))
       .map((file) => `<li><a href="${file.name}">${file.name}</a></li>`)
       .join('')
-  const betaShown = files.some((file) => file.tag === beta && file.tag !== stable)
+  const alphaShown = files.some((file) => file.tag === alpha && file.tag !== stable)
   writeFileSync(
     join(directory, 'index.html'),
     [
@@ -82,8 +82,8 @@ function site(directory) {
       `<title>Auri ${stable ? stable.slice(1) : ''}</title>`,
       '<body style="font-family:system-ui,sans-serif;max-width:560px;margin:48px auto;padding:0 16px">',
       stable ? `<h1>Auri ${stable.slice(1)}</h1><ul>${links(stable)}</ul>` : '',
-      betaShown ? `<h2>Beta ${beta.slice(1)}</h2><ul>${links(beta)}</ul>` : '',
-      `<p>No ${files.some((file) => file.name === 'latest-mac.yml') ? 'Windows e no Mac' : 'Windows'} o Auri instalado se atualiza sozinho. O beta é opcional, em Configurações.</p>`,
+      alphaShown ? `<h2>Alpha ${alpha.slice(1)}</h2><ul>${links(alpha)}</ul>` : '',
+      `<p>No ${files.some((file) => file.name === 'latest-mac.yml') ? 'Windows e no Mac' : 'Windows'} o Auri instalado se atualiza sozinho. O alpha é opcional, em Configurações.</p>`,
       '</body></html>'
     ].join('\n')
   )

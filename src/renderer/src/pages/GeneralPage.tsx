@@ -36,7 +36,7 @@ function describe(state: UpdateState): string {
 
 const CHANNELS = [
   { value: 'latest', label: 'Estável' },
-  { value: 'beta', label: 'Beta' }
+  { value: 'alpha', label: 'Alpha' }
 ] as const
 
 /** Linha do quadro "Sobre": nome e explicação à esquerda, a ação à direita. */
@@ -62,7 +62,7 @@ function Row({
 
 /**
  * Configurações → Geral. Por ora, o "Sobre": a versão instalada com o botão de procurar a nova
- * (ou reiniciar com ela, quando já baixou) e o canal, estável ou beta. O Auri procura e baixa
+ * (ou reiniciar com ela, quando já baixou) e o canal, estável ou alpha. O Auri procura e baixa
  * sozinho; aqui dá para procurar na hora. O mesmo botão fica no canto do rodapé das Configurações.
  */
 export function GeneralPage(): React.JSX.Element {
@@ -119,9 +119,9 @@ export function GeneralPage(): React.JSX.Element {
               <Row
                 title={<label htmlFor={channelId}>Canal de atualização</label>}
                 description={
-                  state.channel === 'beta'
+                  state.channel === 'alpha'
                     ? 'Uma versão nova por dia, com as novidades antes. Pode ter erros: volte para Estável quando quiser.'
-                    : 'Só as versões estáveis, que já foram usadas no beta.'
+                    : 'Só as versões estáveis, que já foram usadas no alpha.'
                 }
               >
                 <div className="w-36">

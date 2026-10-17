@@ -2,7 +2,7 @@ name: CI
 
 # Uma vez por PR, quando ele fica pronto para revisão, em ~3 min. Roda em Ubuntu só por ser a
 # máquina mais barata do Actions: o Auri é testado no Windows pelo workflow Windows (manual), no Mac
-# pelo `npm run ci:mac` e por quem usa o beta. Os passos são os do `npm run ci:local`, que o hook de
+# pelo `npm run ci:mac` e por quem usa o alpha. Os passos são os do `npm run ci:local`, que o hook de
 # pre-push roda em cada push: o rascunho fica só nele e o Actions confere quando o PR fica pronto.
 #
 # Não roda no push no main: a proteção exige o PR atualizado com o main antes do merge, então o
@@ -46,6 +46,6 @@ jobs:
       - name: Test
         if: ${{ !cancelled() && steps.deps.outcome == 'success' }}
         run: npm test
-      - name: 'Release Smoke: versões do beta e da estável, arquivos do site de atualização'
+      - name: 'Release Smoke: versões do alpha e da estável, arquivos do site de atualização'
         if: ${{ !cancelled() && steps.deps.outcome == 'success' }}
         run: node --test scripts/release/*.test.mjs

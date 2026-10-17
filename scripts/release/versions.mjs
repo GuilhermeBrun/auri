@@ -1,18 +1,20 @@
 // Decide o que cada execução do Release publica, a partir das tags `v*` do repositório.
 //
-// Beta: o commit atual de main, como `X.Y.(Z+1)-beta.AAAAMMDD.N` (acima da última estável no
-// semver, para quem está no canal beta recebê-lo). Pula se main não mudou desde o último beta.
-// Estável: promove o commit do último beta, que já foi usado, como `X.Y.Z` (a base do beta ou a
-// versão pedida). Um main que só mudou documentação não gera beta. Funções puras: quem lê o git e escreve as saídas é o cli.mjs.
+// Alpha: o commit atual de main, como `X.Y.(Z+1)-alpha.AAAAMMDD.N` (acima da última estável no
+// semver, para quem está no canal alpha recebê-lo). Pula se main não mudou desde o último alpha.
+// Estável: promove o commit do último alpha, que já foi usado, como `X.Y.Z` (a base do alpha ou a
+// versão pedida). Um main que só mudou documentação não gera alpha. Funções puras: quem lê o git
+// e escreve as saídas é o cli.mjs.
 
 const STABLE = /^v(\d+)\.(\d+)\.(\d+)$/
-const BETA = /^v(\d+)\.(\d+)\.(\d+)-beta\.(\d{8})\.(\d+)$/
+// `beta` era o nome do alpha até a 0.0.1: as tags antigas contam como alpha.
+const ALPHA = /^v(\d+)\.(\d+)\.(\d+)-(?:alpha|beta)\.(\d{8})\.(\d+)$/
 
 function parse(tag) {
   const stable = STABLE.exec(tag)
   if (stable) return { tag, parts: [...stable.slice(1, 4).map(Number), Infinity, Infinity] }
-  const beta = BETA.exec(tag)
-  if (beta) return { tag, parts: beta.slice(1, 6).map(Number) }
+  const alpha = ALPHA.exec(tag)
+  if (alpha) return { tag, parts: alpha.slice(1, 6).map(Number) }
   return null
 }
 
@@ -26,12 +28,12 @@ function compare(a, b) {
 const newest = (tags) =>
   tags.reduce((best, tag) => (!best || compare(tag, best) > 0 ? tag : best), null)
 
-/** A estável e o beta mais recentes entre as tags (`null` quando não há). */
+/** A estável e o alpha mais recentes entre as tags (`null` quando não há). */
 export function latestTags(tagNames) {
   const tags = tagNames.map(parse).filter(Boolean)
   const stable = newest(tags.filter((tag) => tag.parts[3] === Infinity))
-  const beta = newest(tags.filter((tag) => tag.parts[3] !== Infinity))
-  return { stable: stable?.tag ?? null, beta: beta?.tag ?? null }
+  const alpha = newest(tags.filter((tag) => tag.parts[3] !== Infinity))
+  return { stable: stable?.tag ?? null, alpha: alpha?.tag ?? null }
 }
 
 /** `true` quando a versão `a` é mais nova que `b` (ambas sem o `v`). */
@@ -44,19 +46,19 @@ export function isNewer(a, b) {
 const day = (date) => date.toISOString().slice(0, 10).replaceAll('-', '')
 
 /**
- * Próximo beta. `tagNames`: todas as tags; `firstVersion`: a versão do package.json, a primeira
- * estável a sair. Enquanto não existe nenhuma estável, os betas são dela (`0.0.1-beta...`);
+ * Próximo alpha. `tagNames`: todas as tags; `firstVersion`: a versão do package.json, a primeira
+ * estável a sair. Enquanto não existe nenhuma estável, os alphas são dela (`0.0.1-alpha...`);
  * depois, da seguinte à última estável.
  */
-export function nextBeta({ tagNames, firstVersion, date }) {
+export function nextAlpha({ tagNames, firstVersion, date }) {
   const { stable } = latestTags(tagNames)
   const [major, minor, patch] = stable ? parse(stable).parts : parse(`v${firstVersion}`).parts
   const base = `${major}.${minor}.${stable ? patch + 1 : patch}`
-  const prefix = `v${base}-beta.${day(date)}.`
+  const prefix = `v${base}-alpha.${day(date)}.`
   const today = tagNames
     .filter((tag) => tag.startsWith(prefix))
     .map((tag) => Number(tag.slice(prefix.length)))
-  return `${base}-beta.${day(date)}.${Math.max(0, ...today) + 1}`
+  return `${base}-alpha.${day(date)}.${Math.max(0, ...today) + 1}`
 }
 
 const DOCS = [/^docs\//, /\.md$/i]
@@ -66,10 +68,10 @@ export function onlyDocs(changedFiles) {
   return changedFiles.every((file) => DOCS.some((pattern) => pattern.test(file)))
 }
 
-/** Versão estável que promove `betaTag`: a pedida ou a base do beta. */
-export function stableFromBeta({ tagNames, betaTag, requested }) {
-  if (!betaTag) throw new Error('Nenhum beta publicado para promover.')
-  const version = requested?.trim().replace(/^v/, '') || BETA.exec(betaTag).slice(1, 4).join('.')
+/** Versão estável que promove `alphaTag`: a pedida ou a base do alpha. */
+export function stableFromAlpha({ tagNames, alphaTag, requested }) {
+  if (!alphaTag) throw new Error('Nenhum alpha publicado para promover.')
+  const version = requested?.trim().replace(/^v/, '') || ALPHA.exec(alphaTag).slice(1, 4).join('.')
   if (!STABLE.test(`v${version}`)) throw new Error(`Versão estável inválida: ${version}`)
   if (tagNames.includes(`v${version}`)) throw new Error(`A versão ${version} já existe.`)
   const { stable } = latestTags(tagNames)
@@ -80,22 +82,22 @@ export function stableFromBeta({ tagNames, betaTag, requested }) {
 }
 
 /**
- * Arquivos do site de atualização (GitHub Pages). Ficam os da última estável e, se houver um beta
- * mais novo, os instaladores dele e o `beta.yml` (e `beta-mac.yml`, se o beta tiver Mac), que
- * substituem os da estável. Beta só de Windows deixa o Mac do canal beta na estável.
+ * Arquivos do site de atualização (GitHub Pages). Ficam os da última estável e, se houver um alpha
+ * mais novo, os instaladores dele e o `alpha.yml` (e `alpha-mac.yml`, se o alpha tiver Mac), que
+ * substituem os da estável. Alpha só de Windows deixa o Mac do canal alpha na estável.
  */
-export function siteFiles({ stable, beta }) {
+export function siteFiles({ stable, alpha }) {
   const files = new Map()
   for (const name of stable?.assets ?? []) files.set(name, stable.tag)
-  if (beta && (!stable || isNewer(beta.tag.slice(1), stable.tag.slice(1)))) {
-    for (const name of beta.assets) {
-      if (/\.(exe|zip|blockmap)$/.test(name) || /^beta(-mac)?\.yml$/.test(name)) {
-        files.set(name, beta.tag)
+  if (alpha && (!stable || isNewer(alpha.tag.slice(1), stable.tag.slice(1)))) {
+    for (const name of alpha.assets) {
+      if (/\.(exe|zip|blockmap)$/.test(name) || /^alpha(-mac)?\.yml$/.test(name)) {
+        files.set(name, alpha.tag)
       }
     }
   }
-  if (!files.has('latest.yml') && !files.has('beta.yml')) {
-    throw new Error('Nenhum latest.yml ou beta.yml para publicar.')
+  if (!files.has('latest.yml') && !files.has('alpha.yml')) {
+    throw new Error('Nenhum latest.yml ou alpha.yml para publicar.')
   }
   return [...files]
     .map(([name, tag]) => ({ name, tag }))

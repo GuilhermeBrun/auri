@@ -14,7 +14,7 @@ export function hasTeamIdentifier(codesignOutput: string): boolean {
 export interface Updater {
   autoDownload: boolean
   autoInstallOnAppQuit: boolean
-  /** Arquivo procurado no site de atualização: `latest.yml` ou `beta.yml`. */
+  /** Arquivo procurado no site de atualização: `latest.yml` ou `alpha.yml`. */
   channel: string | null
   allowPrerelease: boolean
   allowDowngrade: boolean
@@ -48,7 +48,9 @@ export function channelFile(file: string): {
     read() {
       try {
         const { channel } = JSON.parse(readFileSync(file, 'utf8')) as { channel?: unknown }
-        return channel === 'beta' || channel === 'latest' ? channel : undefined
+        // `beta` era o nome do canal alpha até a 0.0.1.
+        if (channel === 'beta') return 'alpha'
+        return channel === 'alpha' || channel === 'latest' ? channel : undefined
       } catch {
         return undefined
       }
@@ -57,9 +59,12 @@ export function channelFile(file: string): {
   }
 }
 
-/** Uma versão beta instalada (`1.2.3-beta.20261016.1`) começa no canal beta. */
+/**
+ * Uma versão alpha instalada (`1.2.3-alpha.20261016.1`) começa no canal alpha, como as que saíram
+ * com o nome antigo (`0.0.1-beta.20261017.1`).
+ */
 export const defaultChannel = (version: string): UpdateChannel =>
-  version.includes('-beta.') ? 'beta' : 'latest'
+  /-(alpha|beta)\./.test(version) ? 'alpha' : 'latest'
 
 /** Procura de novo a cada 4 horas: a clínica deixa o Auri aberto o dia todo. */
 export const CHECK_EVERY_MS = 4 * 60 * 60 * 1000
@@ -117,13 +122,13 @@ export function createUpdateService({
   }
   const handles: unknown[] = []
 
-  // No beta também valem as prereleases. Voltando para a estável com um beta instalado, a estável
-  // pode ser "mais velha" que ele (1.2.0 < 1.2.1-beta): aceita descer para não ficar preso no beta.
+  // No alpha também valem as prereleases. Voltando para a estável com um alpha instalado, a estável
+  // pode ser "mais velha" que ele (1.2.0 < 1.2.1-alpha): aceita descer para não ficar preso no alpha.
   function applyChannel(): void {
     if (!updater) return
     updater.channel = state.channel
-    updater.allowPrerelease = state.channel === 'beta'
-    updater.allowDowngrade = state.channel === 'latest' && defaultChannel(version) === 'beta'
+    updater.allowPrerelease = state.channel === 'alpha'
+    updater.allowDowngrade = state.channel === 'latest' && defaultChannel(version) === 'alpha'
   }
 
   if (updater) {

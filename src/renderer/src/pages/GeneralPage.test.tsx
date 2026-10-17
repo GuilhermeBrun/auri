@@ -105,18 +105,18 @@ describe('Configurações › Geral', () => {
     expect(screen.queryByRole('combobox')).toBeNull()
   })
 
-  it('troca o canal entre estável e beta', async () => {
+  it('troca o canal entre estável e alpha', async () => {
     renderPage()
     show({})
     const channel = screen.getByRole('combobox', { name: 'Canal de atualização' })
     expect(channel.textContent).toContain('Estável')
-    updates.setChannel.mockResolvedValue({ ...base, channel: 'beta', status: 'checking' })
+    updates.setChannel.mockResolvedValue({ ...base, channel: 'alpha', status: 'checking' })
     await userEvent.click(channel)
-    await userEvent.click(await screen.findByRole('option', { name: 'Beta' }))
-    expect(updates.setChannel).toHaveBeenCalledExactlyOnceWith('beta')
+    await userEvent.click(await screen.findByRole('option', { name: 'Alpha' }))
+    expect(updates.setChannel).toHaveBeenCalledExactlyOnceWith('alpha')
     expect(screen.getByText(/Pode ter erros/)).toBeTruthy()
 
-    show({ channel: 'beta', status: 'ready', next: '1.1.1' })
+    show({ channel: 'alpha', status: 'ready', next: '1.1.1' })
     expect(
       screen.getByRole('combobox', { name: 'Canal de atualização' }).hasAttribute('disabled')
     ).toBe(true)

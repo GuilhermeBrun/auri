@@ -61,9 +61,9 @@ mac:
 dmg:
   artifactName: ${name}-${version}-${arch}.${ext}
 # Onde o Auri instalado procura versões novas: o GitHub Pages deste repositório, que o Release
-# publica (ver docs/ci.md). latest.yml é a estável e beta.yml o canal beta.
+# publica (ver docs/ci.md). latest.yml é a estável e alpha.yml o canal alpha.
 publish:
   provider: generic
   url: https://guilhermebrun.github.io/auri/
-# A estável também escreve beta.yml: quem está no beta recebe a estável quando ela é mais nova.
+# A estável também escreve alpha.yml: quem está no alpha recebe a estável quando ela é mais nova.
 generateUpdatesFilesForAllChannels: true
