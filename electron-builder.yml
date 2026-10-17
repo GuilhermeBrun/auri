@@ -51,11 +51,13 @@ mac:
   # carregamento do binário do SQLite (validação de biblioteca), então só liga com o Developer ID.
   hardenedRuntime: false
   # O .zip é o que o Auri instalado baixa para se atualizar (latest-mac.yml); o .dmg é para instalar.
+  # Só Apple Silicon: a clínica não tem Mac Intel, e cada arquitetura dobra o tempo (pago a 10x)
+  # do build do Mac no Release.
   target:
     - target: dmg
-      arch: [arm64, x64]
+      arch: [arm64]
     - target: zip
-      arch: [arm64, x64]
+      arch: [arm64]
 dmg:
   artifactName: ${name}-${version}-${arch}.${ext}
 # Onde o Auri instalado procura versões novas: o GitHub Pages deste repositório, que o Release

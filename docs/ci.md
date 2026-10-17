@@ -5,42 +5,74 @@ um beta que já foi usado.
 
 ## Pull requests
 
-O workflow **CI** roda em cada PR e push no `main`, em ~2 min, numa máquina Ubuntu. O Linux não
-faz parte do produto: é só a máquina mais rápida e barata do Actions para estas verificações.
+O workflow **CI** roda num job só, o **Check**, em ~3 min numa máquina Ubuntu. O Linux não faz
+parte do produto: é só a máquina mais barata do Actions para estas verificações. Um job só porque
+cada job paga de novo checkout, Node e cache, e o Actions arredonda cada um para o minuto inteiro.
 
-| Job           | O que confere                                                                            |
+| Passo         | O que confere                                                                            |
 | ------------- | ---------------------------------------------------------------------------------------- |
 | Lint          | `npm run check` (formato, lint e tipos) e `npm run knip` (código e dependências sem uso) |
 | Build         | `npm run build` (typecheck e electron-vite)                                              |
 | Test          | `npm test` (Vitest no Node do Electron)                                                  |
 | Release Smoke | `node --test scripts/release/*.test.mjs` (versões e site de atualização)                 |
-| **Check**     | Passa só se todos os outros passarem. É o único check exigido pela proteção do `main`    |
 
-Não há aprovação obrigatória: com o `Check` verde o PR pode ser mesclado por squash ou rebase.
+Os passos rodam mesmo depois de um erro, para o PR mostrar todos de uma vez. O `Check` é o único
+check exigido pela proteção do `main`. Não há aprovação obrigatória: com ele verde o PR pode ser
+mesclado por squash ou rebase.
 
-## Windows e Mac (manual)
+Os mesmos passos rodam na sua máquina antes de cada `git push` (`npm run ci:local`, pelo hook
+`.githooks/pre-push`). Por isso o Actions não roda em **rascunho**: abra o PR como rascunho
+enquanto ajusta (`gh pr create --draft`) e marque como pronto (`gh pr ready`) quando terminar. Aí
+o CI roda, e de novo no push no `main`. Um rascunho não pode ser mesclado.
+
+## Windows (manual) e Mac (local)
 
 O workflow **Windows** abre o Auri de verdade (E2E), testa a interface, o pacote, o instalador e os
 instaladores oficiais das nuvens. Não roda sozinho:
 
 ```bash
 gh workflow run windows.yml --ref <branch>
-gh workflow run windows.yml --ref <branch> -f macos=true
 ```
 
-Mudanças visuais: `gh workflow run referencias-visuais.yml --ref <branch>` e depois
-`npm run visual:aceitar`, conferindo o diff das imagens antes do commit.
+No Mac, os mesmos passos rodam na própria máquina, não no Actions, onde o minuto do Mac custa 10x
+o do Linux. Rodar antes de cada estável e em mudanças que mexem no Mac:
+
+```bash
+npm run ci:mac
+```
+
+Mudanças visuais: `gh workflow run referencias-visuais.yml --ref <branch>` (capturas do Windows) e
+depois, no Mac, `npm run visual:aceitar`, que baixa as do Windows, gera as do Mac na hora e as
+copia para `docs/qualidade/visual`. Conferir o diff das imagens antes do commit.
+
+## Custo do Actions
+
+O repositório é privado: o Actions cobra por minuto, cada job arredondado para cima, e os 2.000
+minutos grátis do mês descontam 1 por minuto de Linux, 2 de Windows e 10 de Mac. Estimativas:
+
+| Execução                         | Minutos da cota | Fora da cota |
+| -------------------------------- | --------------- | ------------ |
+| CI (PR pronto ou push no `main`) | ~3              | ~US$ 0,02    |
+| Beta (Windows)                   | ~28             | ~US$ 0,14    |
+| Estável (Windows + Mac arm64)    | ~130            | ~US$ 0,80    |
+| Windows manual                   | ~60             | ~US$ 0,30    |
+| Referências visuais (só Windows) | ~20             | ~US$ 0,10    |
+
+Os artefatos ficam 1 dia (3 no Windows manual): a release guarda os instaladores sem custo, e o
+armazenamento de artefatos acima de 500 MB é pago.
 
 ## Beta e estável
 
 O workflow **Release** publica as versões. A versão é gravada só no build, então não há PR de
 versão. O número em `package.json` serve só de ponto de partida antes da primeira estável.
 
-- **Beta**: todo dia às 02:17 (Cuiabá), se o `main` mudou desde o último beta. Sai como
-  `X.Y.(Z+1)-beta.AAAAMMDD.N`, só para Windows, numa prerelease do GitHub. Também pode ser
-  disparado à mão: `gh workflow run release.yml -f channel=beta`.
+- **Beta**: todo dia às 02:17 (Cuiabá), se o `main` mudou desde o último beta (mudança só em
+  `docs/` ou em arquivos `.md` não conta). Sai como `X.Y.(Z+1)-beta.AAAAMMDD.N`, só para
+  Windows, numa prerelease do GitHub. Também pode ser disparado à mão:
+  `gh workflow run release.yml -f channel=beta`.
 - **Estável**: manual. Promove o commit do último beta como `X.Y.Z` (a base do beta ou a versão
-  pedida), para Windows e Mac: `gh workflow run release.yml -f channel=stable [-f version=1.2.0]`.
+  pedida), para Windows e Mac (só Apple Silicon). Antes, rodar `npm run ci:mac` no Mac e o
+  workflow Windows: `gh workflow run release.yml -f channel=stable [-f version=1.2.0]`.
 
 O site de atualização (GitHub Pages, `guilhermebrun.github.io/auri`) é remontado das releases a
 cada publicação: `latest.yml` aponta para a última estável e `beta.yml` para o beta mais novo que

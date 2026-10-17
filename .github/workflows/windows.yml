@@ -1,18 +1,13 @@
 name: Windows
 
-# Teste manual no sistema da clínica (e no Mac, se marcado): o Auri aberto de verdade, a interface,
-# o pacote, o instalador e os instaladores oficiais das nuvens. Não roda sozinho: o PR é validado
-# pelo CI e o uso real vem do beta.
+# Teste manual no sistema da clínica: o Auri aberto de verdade, a interface, o pacote, o instalador
+# e os instaladores oficiais das nuvens. Não roda sozinho: o PR é validado pelo CI e o uso real vem
+# do beta. Os mesmos passos no Mac rodam na máquina de quem desenvolve (`npm run ci:mac`), não aqui,
+# onde o minuto do Mac custa 10x o do Linux.
 #
 #   gh workflow run windows.yml --ref <branch>
-#   gh workflow run windows.yml --ref <branch> -f macos=true
 on:
   workflow_dispatch:
-    inputs:
-      macos:
-        description: 'Rodar também no macOS (custa 10x o minuto do Linux)'
-        type: boolean
-        default: false
 
 permissions:
   contents: read
@@ -23,12 +18,8 @@ concurrency:
 
 jobs:
   test:
-    name: test (${{ matrix.platform }})
-    strategy:
-      fail-fast: false
-      matrix:
-        platform: ${{ inputs.macos && fromJSON('["win32","darwin"]') || fromJSON('["win32"]') }}
-    runs-on: ${{ matrix.platform == 'win32' && 'windows-latest' || 'macos-latest' }}
+    name: test (win32)
+    runs-on: windows-latest
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -48,20 +39,20 @@ jobs:
       - name: Gerar e testar o instalador
         shell: bash
         run: |
-          npm run ${{ matrix.platform == 'win32' && 'build:win' || 'build:mac' }}
+          npm run build:win
           npm run test:installer
-      # No Windows também baixa e roda o instalador oficial do Google Drive (máquina descartável).
+      # Também baixa e roda o instalador oficial do Google Drive (máquina descartável).
       - name: E2E com instalação real
         run: node scripts/e2e.mjs e2e-saida
         env:
-          AURI_E2E_INSTALAR: ${{ matrix.platform == 'win32' && '1' || '' }}
+          AURI_E2E_INSTALAR: '1'
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
-          name: evidencias-${{ matrix.platform }}
+          name: evidencias-win32
           path: |
             .quality/
             e2e-saida/
           include-hidden-files: true
           if-no-files-found: ignore
-          retention-days: 14
+          retention-days: 3

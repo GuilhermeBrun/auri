@@ -43,7 +43,7 @@ Estrutura:
 ## Instaladores
 
 ```bash
-npm run build:mac   # dist/auri-<versão>-arm64.dmg (Apple Silicon) e -x64.dmg (Intel)
+npm run build:mac   # dist/auri-<versão>-arm64.dmg (só Apple Silicon)
 npm run build:win   # dist/auri-<versão>-setup.exe (pode ser gerado no próprio Mac)
 ```
 

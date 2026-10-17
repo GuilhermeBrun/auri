@@ -3,7 +3,7 @@
 // Beta: o commit atual de main, como `X.Y.(Z+1)-beta.AAAAMMDD.N` (acima da última estável no
 // semver, para quem está no canal beta recebê-lo). Pula se main não mudou desde o último beta.
 // Estável: promove o commit do último beta, que já foi usado, como `X.Y.Z` (a base do beta ou a
-// versão pedida). Funções puras: quem lê o git e escreve as saídas é o cli.mjs.
+// versão pedida). Um main que só mudou documentação não gera beta. Funções puras: quem lê o git e escreve as saídas é o cli.mjs.
 
 const STABLE = /^v(\d+)\.(\d+)\.(\d+)$/
 const BETA = /^v(\d+)\.(\d+)\.(\d+)-beta\.(\d{8})\.(\d+)$/
@@ -56,6 +56,13 @@ export function nextBeta({ tagNames, stableFallback, date }) {
     .filter((tag) => tag.startsWith(prefix))
     .map((tag) => Number(tag.slice(prefix.length)))
   return `${base}-beta.${day(date)}.${Math.max(0, ...today) + 1}`
+}
+
+const DOCS = [/^docs\//, /\.md$/i]
+
+/** `true` quando nenhum dos arquivos mudados chega ao Auri: só documentação. */
+export function onlyDocs(changedFiles) {
+  return changedFiles.every((file) => DOCS.some((pattern) => pattern.test(file)))
 }
 
 /** Versão estável que promove `betaTag`: a pedida ou a base do beta. */

@@ -4,7 +4,7 @@
 import { execFileSync } from 'node:child_process'
 import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { latestTags, nextBeta, siteFiles, stableFromBeta } from './versions.mjs'
+import { latestTags, nextBeta, onlyDocs, siteFiles, stableFromBeta } from './versions.mjs'
 
 const run = (command, args) => execFileSync(command, args, { encoding: 'utf8' }).trim()
 const lines = (text) => text.split('\n').filter(Boolean)
@@ -39,6 +39,10 @@ function resolve() {
   const head = run('git', ['rev-parse', 'HEAD'])
   if (beta && commitOf(beta) === head) {
     console.log(`O main não mudou desde o ${beta}.`)
+    return output({ skip: true })
+  }
+  if (beta && onlyDocs(lines(run('git', ['diff', '--name-only', commitOf(beta), head])))) {
+    console.log(`Desde o ${beta} o main só mudou documentação.`)
     return output({ skip: true })
   }
   const { version: stableFallback } = JSON.parse(readFileSync('package.json', 'utf8'))

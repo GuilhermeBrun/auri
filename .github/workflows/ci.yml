@@ -1,9 +1,12 @@
 name: CI
 
-# Cada PR e push em main, em ~2 min. Roda em Ubuntu só por ser a máquina mais rápida e barata do
-# Actions: o Auri é testado no Windows e no Mac pelo workflow Windows (manual) e por quem usa o beta.
+# Cada PR pronto para revisão e push em main, em ~3 min. Roda em Ubuntu só por ser a máquina mais
+# barata do Actions: o Auri é testado no Windows pelo workflow Windows (manual), no Mac pelo
+# `npm run ci:mac` e por quem usa o beta. Os passos são os do `npm run ci:local`, que o hook de
+# pre-push roda em cada push: o rascunho fica só nele e o Actions confere quando o PR fica pronto.
 on:
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
   push:
     branches: [main]
 
@@ -15,69 +18,33 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  lint:
-    name: Lint
-    runs-on: ubuntu-24.04
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - uses: ./.github/actions/setup-deps
-      # Formato, lint e tipos (Vite+).
-      - run: npm run check
-      - name: Código não usado
-        run: npm run knip
-
-  build:
-    name: Build
-    runs-on: ubuntu-24.04
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - uses: ./.github/actions/setup-deps
-      - run: npm run build
-
-  test:
-    name: Test
-    runs-on: ubuntu-24.04
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - uses: ./.github/actions/setup-deps
-      - run: npm test
-
-  release_smoke:
-    name: Release Smoke
-    runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version: 24.15.0
-          package-manager-cache: false
-      - name: Versões do beta e da estável, arquivos do site de atualização
-        run: node --test scripts/release/*.test.mjs
-
-  # A proteção do main exige só este job, pelo nome `Check`. Ele reprova quando qualquer outro
-  # falha, é cancelado ou pulado: novos jobs entram em `needs` sem mexer na proteção.
+  # Um job só: cada job paga de novo checkout, Node e cache, e o Actions arredonda cada um para o
+  # minuto inteiro. A proteção do main exige este job pelo nome `Check`. No rascunho ele é pulado,
+  # e um rascunho não pode ser mesclado; ao ficar pronto (`ready_for_review`), roda de verdade.
   check:
     name: Check
-    if: always()
-    needs: [lint, build, test, release_smoke]
+    if: github.event_name == 'push' || !github.event.pull_request.draft
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    timeout-minutes: 15
     steps:
-      - name: Exigir sucesso de todos os jobs
-        env:
-          RESULTS: ${{ toJSON(needs) }}
-        run: |
-          echo "$RESULTS" | jq -r 'to_entries[] | "\(.key): \(.value.result)"'
-          echo "$RESULTS" | jq -e 'all(.[]; .result == "success")' > /dev/null
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - id: deps
+        uses: ./.github/actions/setup-deps
+      # Cada passo roda mesmo se o anterior falhar, para o PR mostrar todos os erros de uma vez.
+      - name: 'Lint: formato, lint e tipos'
+        if: ${{ !cancelled() && steps.deps.outcome == 'success' }}
+        run: npm run check
+      - name: 'Lint: código não usado'
+        if: ${{ !cancelled() && steps.deps.outcome == 'success' }}
+        run: npm run knip
+      - name: Build
+        if: ${{ !cancelled() && steps.deps.outcome == 'success' }}
+        run: npm run build
+      - name: Test
+        if: ${{ !cancelled() && steps.deps.outcome == 'success' }}
+        run: npm test
+      - name: 'Release Smoke: versões do beta e da estável, arquivos do site de atualização'
+        if: ${{ !cancelled() && steps.deps.outcome == 'success' }}
+        run: node --test scripts/release/*.test.mjs

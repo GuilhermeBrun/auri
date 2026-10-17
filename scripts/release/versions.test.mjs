@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { isNewer, latestTags, nextBeta, siteFiles, stableFromBeta } from './versions.mjs'
+import { isNewer, latestTags, nextBeta, onlyDocs, siteFiles, stableFromBeta } from './versions.mjs'
 
 const date = new Date('2026-10-16T06:00:00Z')
 
@@ -20,6 +20,12 @@ await test('o beta fica acima da estável e numera os do mesmo dia', () => {
   assert.ok(isNewer('1.1.1-beta.20261016.1', '1.1.0'))
   assert.ok(isNewer('1.1.1', '1.1.1-beta.20261016.9'))
   assert.ok(isNewer('1.1.1-beta.20261017.1', '1.1.1-beta.20261016.9'))
+})
+
+await test('só documentação não gera beta', () => {
+  assert.ok(onlyDocs(['docs/ci.md', 'README.md', 'docs/qualidade/visual/win32/agenda.png']))
+  assert.ok(!onlyDocs(['docs/ci.md', 'src/main/index.ts']))
+  assert.ok(!onlyDocs(['electron-builder.yml']))
 })
 
 await test('a estável promove o último beta', () => {

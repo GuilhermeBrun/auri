@@ -1,8 +1,9 @@
 name: Release
 
-# Beta: todo dia, se o main mudou, sai `X.Y.Z-beta.AAAAMMDD.N` só para Windows (quem liga
-# "Receber versões beta" em Configurações). Estável: manual, promove o commit do último beta,
-# que já foi usado, para Windows e Mac. A versão é gravada só no build: não há PR de versão.
+# Beta: todo dia, se o main mudou (além de documentação), sai `X.Y.Z-beta.AAAAMMDD.N` só para
+# Windows (quem escolhe o canal Beta em Configurações › Geral). Estável: manual, promove o commit do
+# último beta, que já foi usado, para Windows e Mac (Apple Silicon). A versão é gravada só no
+# build: não há PR de versão.
 #
 #   gh workflow run release.yml -f channel=beta
 #   gh workflow run release.yml -f channel=stable            # versão = base do último beta
@@ -112,7 +113,9 @@ jobs:
             !dist/builder-debug.yml
             !dist/builder-effective-config.yaml
           if-no-files-found: error
-          retention-days: 7
+          # O job Publicar baixa logo em seguida e a release guarda os arquivos (sem custo):
+          # o artefato só ocupa o armazenamento pago do Actions.
+          retention-days: 1
 
   publish:
     name: Publicar release
