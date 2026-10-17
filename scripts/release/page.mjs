@@ -190,7 +190,7 @@ export function downloadPage({ stable, alpha, files }) {
 </header>
 <main>
 <section class="hero" id="baixar" aria-labelledby="titulo">
-<div class="mark" aria-hidden="true"><img src="auri.svg" alt="" width="96" height="96"></div>
+<div class="mark" aria-hidden="true"><img class="mark-light" src="auri-claro.svg" alt="" width="96" height="96"><img class="mark-dark" src="auri.svg" alt="" width="96" height="96"></div>
 <h1 id="titulo">${words(['Agenda e fichas,', 'num lugar só.'])}</h1>
 <p class="lead">Os pacientes, as sessões e as anamneses da clínica, guardados no computador dela e funcionando mesmo sem internet.</p>
 <p class="note" data-mobile hidden>O Auri é para computador. Abra esta página no Windows ou no Mac da clínica.</p>
