@@ -48,7 +48,7 @@ await test('com um alpha mais novo, a página continua mostrando só a estável'
   assert.doesNotMatch(html, /alpha\.20261021/)
 })
 
-await test('só alpha: o topo mostra o alpha e diz que não há Mac', () => {
+await test('só alpha: a página mostra o alpha e diz que não há Mac', () => {
   const html = page(null, alpha)
   assert.match(html, /<span class="chip">Alpha<\/span>/)
   assert.match(html, /Ainda não há versão para Mac\./)

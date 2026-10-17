@@ -60,9 +60,9 @@ const SESSIONS = [
 ]
 /** Pacientes das sessões criadas na prévia e das outras semanas. */
 export const NAMES = [
-  'Bernardo Lima Freitas',
-  'Cecília Ramos Duarte',
-  'Heitor Campos Silva',
+  'Maria Eduarda',
+  'Mike',
+  'Jade',
   'Lívia Teixeira Gomes',
   'Arthur Moraes Pinto',
   'Valentina Rocha Lopes',

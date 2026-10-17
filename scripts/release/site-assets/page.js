@@ -54,8 +54,6 @@ const mobile =
 const platform = navigator.userAgentData?.platform || navigator.platform || ua
 const system = mobile ? null : /mac/i.test(platform) ? 'mac' : /win/i.test(platform) ? 'win' : null
 
-if (mobile) document.querySelector('[data-mobile]').hidden = false
-
 /** Desliza o bloco `.thumb` de um seletor até o botão escolhido. */
 function moveThumb(group, button, animate = true) {
   const thumb = group?.querySelector('.thumb')
