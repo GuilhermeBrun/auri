@@ -5,9 +5,10 @@ um beta que já foi usado.
 
 ## Pull requests
 
-O workflow **CI** roda num job só, o **Check**, em ~3 min numa máquina Ubuntu. O Linux não faz
-parte do produto: é só a máquina mais barata do Actions para estas verificações. Um job só porque
-cada job paga de novo checkout, Node e cache, e o Actions arredonda cada um para o minuto inteiro.
+O workflow **CI** roda num job só, o **Check**, uma vez por PR, em ~3 min numa máquina Ubuntu.
+O Linux não faz parte do produto: é só a máquina mais barata do Actions para estas verificações.
+Um job só porque cada job paga de novo checkout, Node e cache, e o Actions arredonda cada um para
+o minuto inteiro.
 
 | Passo         | O que confere                                                                            |
 | ------------- | ---------------------------------------------------------------------------------------- |
@@ -17,13 +18,17 @@ cada job paga de novo checkout, Node e cache, e o Actions arredonda cada um para
 | Release Smoke | `node --test scripts/release/*.test.mjs` (versões e site de atualização)                 |
 
 Os passos rodam mesmo depois de um erro, para o PR mostrar todos de uma vez. O `Check` é o único
-check exigido pela proteção do `main`. Não há aprovação obrigatória: com ele verde o PR pode ser
-mesclado por squash ou rebase.
+check exigido pela proteção do `main`, que também exige o PR **atualizado com o `main`**: o que
+entra é exatamente o que o CI testou, então não há outra execução no push no `main`. Se o `main`
+andou desde o último CI do PR, o GitHub pede **Update branch**
+(`gh pr update-branch --rebase`) e o CI roda de novo, com os dois juntos. Não há aprovação obrigatória: com o `Check` verde e o PR
+atualizado, ele pode ser mesclado por squash ou rebase.
 
 Os mesmos passos rodam na sua máquina antes de cada `git push` (`npm run ci:local`, pelo hook
 `.githooks/pre-push`). Por isso o Actions não roda em **rascunho**: abra o PR como rascunho
-enquanto ajusta (`gh pr create --draft`) e marque como pronto (`gh pr ready`) quando terminar. Aí
-o CI roda, e de novo no push no `main`. Um rascunho não pode ser mesclado.
+enquanto ajusta (`gh pr create --draft`) e marque como pronto (`gh pr ready`) quando terminar. Um
+rascunho não pode ser mesclado. Para o CI rodar só uma vez: um PR pronto de cada vez, mesclado
+antes de marcar o próximo como pronto, e sem push depois de pronto.
 
 ## Windows (manual) e Mac (local)
 
@@ -52,7 +57,7 @@ minutos grátis do mês descontam 1 por minuto de Linux, 2 de Windows e 10 de Ma
 
 | Execução                         | Minutos da cota | Fora da cota |
 | -------------------------------- | --------------- | ------------ |
-| CI (PR pronto ou push no `main`) | ~3              | ~US$ 0,02    |
+| CI (PR pronto)                   | ~3              | ~US$ 0,02    |
 | Beta (Windows)                   | ~28             | ~US$ 0,14    |
 | Estável (Windows + Mac arm64)    | ~130            | ~US$ 0,80    |
 | Windows manual                   | ~60             | ~US$ 0,30    |
