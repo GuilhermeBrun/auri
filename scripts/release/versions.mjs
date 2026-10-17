@@ -44,13 +44,14 @@ export function isNewer(a, b) {
 const day = (date) => date.toISOString().slice(0, 10).replaceAll('-', '')
 
 /**
- * Próximo beta. `tagNames`: todas as tags; `stableFallback`: a versão do package.json, usada
- * só enquanto não existe nenhuma estável.
+ * Próximo beta. `tagNames`: todas as tags; `firstVersion`: a versão do package.json, a primeira
+ * estável a sair. Enquanto não existe nenhuma estável, os betas são dela (`0.0.1-beta...`);
+ * depois, da seguinte à última estável.
  */
-export function nextBeta({ tagNames, stableFallback, date }) {
+export function nextBeta({ tagNames, firstVersion, date }) {
   const { stable } = latestTags(tagNames)
-  const [major, minor, patch] = stable ? parse(stable).parts : parse(`v${stableFallback}`).parts
-  const base = `${major}.${minor}.${patch + 1}`
+  const [major, minor, patch] = stable ? parse(stable).parts : parse(`v${firstVersion}`).parts
+  const base = `${major}.${minor}.${stable ? patch + 1 : patch}`
   const prefix = `v${base}-beta.${day(date)}.`
   const today = tagNames
     .filter((tag) => tag.startsWith(prefix))

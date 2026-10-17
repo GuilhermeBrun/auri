@@ -69,7 +69,8 @@ armazenamento de artefatos acima de 500 MB é pago.
 ## Beta e estável
 
 O workflow **Release** publica as versões. A versão é gravada só no build, então não há PR de
-versão. O número em `package.json` serve só de ponto de partida antes da primeira estável.
+versão. O número em `package.json` (`0.0.1`, o Auri está em alpha) é a primeira estável a sair:
+enquanto ela não existe, os betas são `0.0.1-beta.AAAAMMDD.N`; depois, da versão seguinte.
 
 - **Beta**: todo dia às 02:17 (Cuiabá), se o `main` mudou desde o último beta (mudança só em
   `docs/` ou em arquivos `.md` não conta). Sai como `X.Y.(Z+1)-beta.AAAAMMDD.N`, só para

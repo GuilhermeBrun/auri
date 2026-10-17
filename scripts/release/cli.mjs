@@ -45,8 +45,8 @@ function resolve() {
     console.log(`Desde o ${beta} o main só mudou documentação.`)
     return output({ skip: true })
   }
-  const { version: stableFallback } = JSON.parse(readFileSync('package.json', 'utf8'))
-  const version = nextBeta({ tagNames, stableFallback, date: new Date() })
+  const { version: firstVersion } = JSON.parse(readFileSync('package.json', 'utf8'))
+  const version = nextBeta({ tagNames, firstVersion, date: new Date() })
   output({ skip: false, ref: head, version, tag: `v${version}`, prerelease: true })
 }
 

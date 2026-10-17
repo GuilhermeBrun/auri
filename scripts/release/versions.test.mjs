@@ -16,7 +16,12 @@ await test('o beta fica acima da estável e numera os do mesmo dia', () => {
     nextBeta({ tagNames: ['v1.1.0', 'v1.1.1-beta.20261016.1'], date }),
     '1.1.1-beta.20261016.2'
   )
-  assert.equal(nextBeta({ tagNames: [], stableFallback: '1.1.0', date }), '1.1.1-beta.20261016.1')
+  // Sem nenhuma estável, os betas são da primeira versão, que a estável depois promove.
+  assert.equal(nextBeta({ tagNames: [], firstVersion: '0.0.1', date }), '0.0.1-beta.20261016.1')
+  assert.equal(
+    stableFromBeta({ tagNames: ['v0.0.1-beta.20261016.1'], betaTag: 'v0.0.1-beta.20261016.1' }),
+    '0.0.1'
+  )
   assert.ok(isNewer('1.1.1-beta.20261016.1', '1.1.0'))
   assert.ok(isNewer('1.1.1', '1.1.1-beta.20261016.9'))
   assert.ok(isNewer('1.1.1-beta.20261017.1', '1.1.1-beta.20261016.9'))
