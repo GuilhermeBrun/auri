@@ -1,7 +1,7 @@
 # CI e releases
 
-Modelo inspirado no T3 Code: o PR é validado rápido, o uso real vem do beta e a estável promove
-um beta que já foi usado.
+Modelo inspirado no T3 Code: o PR é validado rápido, o uso real vem do alpha e a estável promove
+um alpha que já foi usado.
 
 ## Pull requests
 
@@ -58,7 +58,7 @@ minutos grátis do mês descontam 1 por minuto de Linux, 2 de Windows e 10 de Ma
 | Execução                         | Minutos da cota | Fora da cota |
 | -------------------------------- | --------------- | ------------ |
 | CI (PR pronto)                   | ~3              | ~US$ 0,02    |
-| Beta (Windows)                   | ~28             | ~US$ 0,14    |
+| Alpha (Windows)                  | ~28             | ~US$ 0,14    |
 | Estável (Windows + Mac arm64)    | ~130            | ~US$ 0,80    |
 | Windows manual                   | ~60             | ~US$ 0,30    |
 | Referências visuais (só Windows) | ~20             | ~US$ 0,10    |
@@ -66,25 +66,27 @@ minutos grátis do mês descontam 1 por minuto de Linux, 2 de Windows e 10 de Ma
 Os artefatos ficam 1 dia (3 no Windows manual): a release guarda os instaladores sem custo, e o
 armazenamento de artefatos acima de 500 MB é pago.
 
-## Beta e estável
+## Alpha e estável
 
 O workflow **Release** publica as versões. A versão é gravada só no build, então não há PR de
 versão. O número em `package.json` (`0.0.1`, o Auri está em alpha) é a primeira estável a sair:
-enquanto ela não existe, os betas são `0.0.1-beta.AAAAMMDD.N`; depois, da versão seguinte.
+enquanto ela não existe, os alphas são `0.0.1-alpha.AAAAMMDD.N`; depois, da versão seguinte.
+Até a 0.0.1 o canal alpha se chamava beta: as tags `-beta.` antigas contam como alpha, e quem
+tinha escolhido o canal Beta passa para o Alpha sozinho.
 
-- **Beta**: todo dia às 02:17 (Cuiabá), se o `main` mudou desde o último beta (mudança só em
-  `docs/` ou em arquivos `.md` não conta). Sai como `X.Y.(Z+1)-beta.AAAAMMDD.N`, só para
+- **Alpha**: todo dia às 02:17 (Cuiabá), se o `main` mudou desde o último alpha (mudança só em
+  `docs/` ou em arquivos `.md` não conta). Sai como `X.Y.(Z+1)-alpha.AAAAMMDD.N`, só para
   Windows, numa prerelease do GitHub. Também pode ser disparado à mão:
-  `gh workflow run release.yml -f channel=beta`.
-- **Estável**: manual. Promove o commit do último beta como `X.Y.Z` (a base do beta ou a versão
+  `gh workflow run release.yml -f channel=alpha`.
+- **Estável**: manual. Promove o commit do último alpha como `X.Y.Z` (a base do alpha ou a versão
   pedida), para Windows e Mac (só Apple Silicon). Antes, rodar `npm run ci:mac` no Mac e o
   workflow Windows: `gh workflow run release.yml -f channel=stable [-f version=1.2.0]`.
 
 O site de atualização (GitHub Pages, `guilhermebrun.github.io/auri`) é remontado das releases a
-cada publicação: `latest.yml` aponta para a última estável e `beta.yml` para o beta mais novo que
-ela. Quem escolhe o canal Beta em Configurações › Geral segue o `beta.yml`. O Mac se atualiza
+cada publicação: `latest.yml` aponta para a última estável e `alpha.yml` para o alpha mais novo que
+ela. Quem escolhe o canal Alpha em Configurações › Geral segue o `alpha.yml`. O Mac se atualiza
 sozinho só quando a estável sai assinada com o Developer ID (abaixo); sem isso, instala-se pela
-página do site. No beta, o Mac fica na estável (o beta é só Windows).
+página do site. No alpha, o Mac fica na estável (o alpha é só Windows).
 
 ## Assinatura do Mac (Developer ID)
 

@@ -337,10 +337,10 @@ export interface AuriTransfer {
 export type UpdateStatus = 'unavailable' | 'idle' | 'checking' | 'downloading' | 'ready' | 'error'
 
 /**
- * De onde vêm as versões novas: `latest` só as estáveis; `beta` também as diárias, que trazem as
+ * De onde vêm as versões novas: `latest` só as estáveis; `alpha` também as diárias, que trazem as
  * novidades antes e podem ter erros. Escolhido em Configurações › Geral.
  */
-export type UpdateChannel = 'latest' | 'beta'
+export type UpdateChannel = 'latest' | 'alpha'
 
 export type UpdateState = {
   /** Versão instalada. */

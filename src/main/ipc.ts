@@ -142,7 +142,7 @@ export function registerIpc(
   handle('updates:check', () => updates.check())
   handle('updates:install', () => updates.install())
   handle('updates:setChannel', (channel: unknown) =>
-    updates.setChannel(z.enum(['latest', 'beta']).parse(channel))
+    updates.setChannel(z.enum(['latest', 'alpha']).parse(channel))
   )
 
   // Sem resposta: a janela manda gravar e segue (ver main/prefs.ts)

@@ -15,7 +15,7 @@ manual; guarde a senha e o código de recuperação. O Auri precisa estar aberto
 as cópias automáticas. Apenas o computador que guarda os dados realiza essas cópias.
 
 Para copiar o arquivo `auri.db` diretamente, feche o app antes. O CI, os testes no Windows e
-as versões beta e estável estão em [docs/ci.md](docs/ci.md).
+as versões alpha e estável estão em [docs/ci.md](docs/ci.md).
 
 ## Desenvolvimento
 
@@ -81,7 +81,7 @@ npm run build:mac   # dist/auri-<versão>-arm64.dmg (só Apple Silicon)
 npm run build:win   # dist/auri-<versão>-setup.exe (pode ser gerado no próprio Mac)
 ```
 
-O better-sqlite3 já traz binários prontos para cada sistema, então os dois instaladores saem do Mac. As versões publicadas saem do workflow Release (beta diário e estável manual) e os instaladores são testados no Windows pelo workflow Windows; ver [docs/ci.md](docs/ci.md).
+O better-sqlite3 já traz binários prontos para cada sistema, então os dois instaladores saem do Mac. As versões publicadas saem do workflow Release (alpha diário e estável manual) e os instaladores são testados no Windows pelo workflow Windows; ver [docs/ci.md](docs/ci.md).
 
 O app tem só assinatura ad-hoc: não há certificado da Apple nem da Microsoft.
 

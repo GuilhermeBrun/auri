@@ -1,12 +1,12 @@
 name: Release
 
-# Beta: todo dia, se o main mudou (além de documentação), sai `X.Y.Z-beta.AAAAMMDD.N` só para
-# Windows (quem escolhe o canal Beta em Configurações › Geral). Estável: manual, promove o commit do
-# último beta, que já foi usado, para Windows e Mac (Apple Silicon). A versão é gravada só no
+# Alpha: todo dia, se o main mudou (além de documentação), sai `X.Y.Z-alpha.AAAAMMDD.N` só para
+# Windows (quem escolhe o canal Alpha em Configurações › Geral). Estável: manual, promove o commit
+# do último alpha, que já foi usado, para Windows e Mac (Apple Silicon). A versão é gravada só no
 # build: não há PR de versão.
 #
-#   gh workflow run release.yml -f channel=beta
-#   gh workflow run release.yml -f channel=stable            # versão = base do último beta
+#   gh workflow run release.yml -f channel=alpha
+#   gh workflow run release.yml -f channel=stable            # versão = base do último alpha
 #   gh workflow run release.yml -f channel=stable -f version=1.2.0
 on:
   schedule:
@@ -17,10 +17,10 @@ on:
       channel:
         description: 'Canal'
         type: choice
-        options: [beta, stable]
-        default: beta
+        options: [alpha, stable]
+        default: alpha
       version:
-        description: 'Versão estável (ex.: 1.2.0). Vazio: a base do último beta.'
+        description: 'Versão estável (ex.: 1.2.0). Vazio: a base do último alpha.'
         type: string
         default: ''
 
@@ -56,7 +56,7 @@ jobs:
       - id: resolve
         run: node scripts/release/cli.mjs resolve
         env:
-          CHANNEL: ${{ inputs.channel || 'beta' }}
+          CHANNEL: ${{ inputs.channel || 'alpha' }}
           VERSION_INPUT: ${{ inputs.version }}
 
   build:
@@ -66,8 +66,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # O beta é só Windows: o minuto do Mac custa 10x. No beta, o Mac recebe a estável
-        # (o beta-mac.yml que a estável também escreve).
+        # O alpha é só Windows: o minuto do Mac custa 10x. No alpha, o Mac recebe a estável
+        # (o alpha-mac.yml que a estável também escreve).
         platform: ${{ needs.resolve.outputs.prerelease == 'true' && fromJSON('["win32"]') || fromJSON('["win32","darwin"]') }}
     runs-on: ${{ matrix.platform == 'win32' && 'windows-latest' || 'macos-latest' }}
     timeout-minutes: 45
@@ -93,6 +93,11 @@ jobs:
           APPLE_APP_SPECIFIC_PASSWORD: ${{ matrix.platform == 'darwin' && secrets.APPLE_APP_SPECIFIC_PASSWORD || '' }}
           APPLE_TEAM_ID: ${{ matrix.platform == 'darwin' && secrets.APPLE_TEAM_ID || '' }}
         run: |
+          # Segredo ausente chega como texto vazio, e o electron-builder lê um CSC_LINK vazio como a
+          # pasta do projeto ("not a file"): sem valor, a variável nem existe.
+          for name in CSC_LINK CSC_KEY_PASSWORD APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID; do
+            [ -n "${!name}" ] || unset "$name"
+          done
           if [ "$PLATFORM" = win32 ]; then
             npm run build:win
           elif [ -n "$CSC_LINK" ] && [ -n "$APPLE_TEAM_ID" ]; then
@@ -145,7 +150,7 @@ jobs:
 
   # O repositório é privado: o Auri instalado procura versões novas no Pages, que é público e
   # publicado só com o token do próprio workflow. O site é remontado das releases: a última
-  # estável (latest.yml) e o beta mais novo que ela (beta.yml).
+  # estável (latest.yml) e o alpha mais novo que ela (alpha.yml).
   pages:
     name: Atualização
     needs: publish

@@ -16,6 +16,12 @@ const profiles = {
     { name: 'Release Smoke', command: 'node', args: ['--test', 'scripts/release/*.test.mjs'] }
   ],
   mac: [
+    // Sem instaladores de versões anteriores: a conferência do instalador espera um só.
+    {
+      name: 'Limpar dist',
+      command: 'node',
+      args: ['-e', "require('fs').rmSync('dist', { recursive: true, force: true })"]
+    },
     { name: 'Test', command: 'npm', args: ['test'] },
     {
       name: 'Instaladores oficiais das nuvens (download e assinatura)',

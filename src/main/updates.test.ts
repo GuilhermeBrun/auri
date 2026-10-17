@@ -159,23 +159,23 @@ describe('atualização automática', () => {
       allowDowngrade: false
     })
 
-    const beta = fakeUpdater()
+    const alpha = fakeUpdater()
     const saved = vi.fn()
     const service = createUpdateService({
-      version: '1.1.1-beta.20261016.1',
-      updater: beta,
+      version: '1.1.1-alpha.20261016.1',
+      updater: alpha,
       onChange: vi.fn(),
       onChannelChange: saved,
       timers
     })
-    expect(service.info().channel).toBe('beta')
-    expect(beta).toMatchObject({ channel: 'beta', allowPrerelease: true })
+    expect(service.info().channel).toBe('alpha')
+    expect(alpha).toMatchObject({ channel: 'alpha', allowPrerelease: true })
 
-    // voltar para a estável com um beta instalado aceita descer de versão
+    // voltar para a estável com um alpha instalado aceita descer de versão
     expect(service.setChannel('latest').channel).toBe('latest')
-    expect(beta).toMatchObject({ channel: 'latest', allowPrerelease: false, allowDowngrade: true })
+    expect(alpha).toMatchObject({ channel: 'latest', allowPrerelease: false, allowDowngrade: true })
     expect(saved).toHaveBeenCalledExactlyOnceWith('latest')
-    expect(beta.check).toHaveBeenCalledOnce()
+    expect(alpha.check).toHaveBeenCalledOnce()
     service.setChannel('latest')
     expect(saved).toHaveBeenCalledOnce()
   })
@@ -185,22 +185,24 @@ describe('atualização automática', () => {
     const service = createUpdateService({
       version: '1.1.0',
       updater,
-      channel: 'beta',
+      channel: 'alpha',
       onChange: vi.fn(),
       timers: fakeTimers().timers
     })
-    expect(updater.channel).toBe('beta')
-    updater.emit('update-available', { version: '1.1.1-beta.20261016.1' })
+    expect(updater.channel).toBe('alpha')
+    updater.emit('update-available', { version: '1.1.1-alpha.20261016.1' })
     expect(() => service.setChannel('latest')).toThrow('Espere a versão nova')
-    expect(service.info().channel).toBe('beta')
+    expect(service.info().channel).toBe('alpha')
   })
 
   it('guarda o canal escolhido e ignora arquivo ausente ou inválido', () => {
     const file = join(mkdtempSync(join(tmpdir(), 'auri-canal-')), 'atualizacoes.json')
     const store = channelFile(file)
     expect(store.read()).toBeUndefined()
-    store.save('beta')
-    expect(store.read()).toBe('beta')
+    store.save('alpha')
+    expect(store.read()).toBe('alpha')
+    writeFileSync(file, '{"channel":"beta"}')
+    expect(store.read()).toBe('alpha')
     writeFileSync(file, '{"channel":"nightly"}')
     expect(store.read()).toBeUndefined()
     writeFileSync(file, 'quebrado')
