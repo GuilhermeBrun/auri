@@ -40,6 +40,38 @@ Estrutura:
 - `docs/identidade-visual.md`: identidade visual (cores, tipografia, componentes). Toda tela nova deve segui-la.
 - `vite.config.ts`: configuração única do build Electron, testes, lint e formatação com Vite+.
 
+## Antes de abrir um PR
+
+O CI do GitHub roda só quando o PR sai do rascunho e confere apenas lint, build e testes (o job
+`Check`). O resto é testado aqui, no Mac, antes do PR:
+
+1. **Sempre:** `npm run ci:local`, os mesmos passos do `Check` (formato, lint, tipos, código sem
+   uso, build, testes e scripts de release). Também roda sozinho antes de cada `git push`.
+2. **Conforme o que mudou:**
+
+| Mudou                                                              | Rodar                                                  |
+| ------------------------------------------------------------------ | ------------------------------------------------------ |
+| Telas, estilos ou textos                                           | `npm run build && npm run test:ui`                     |
+| Uma tela mudou de propósito (a comparação de imagens reprova)      | `npm run visual:aceitar` e conferir o diff das imagens |
+| Processo main, IPC, banco, cópia de segurança, conexão, importação | `npm run build && npm run test:e2e`                    |
+| Empacotamento, `electron-builder.yml`, atualização, dependências   | `npm run ci:mac`                                       |
+| Algo só do Windows (caminhos, instaladores das nuvens, instalador) | `gh workflow run windows.yml --ref <branch>`           |
+
+O `npm run ci:mac` cobre todas as linhas do Mac de uma vez (testes, E2E, interface, pacote e
+instalador, ~2 min) e também deve rodar antes de cada versão estável. O `visual:aceitar` precisa
+das capturas do Windows, geradas pelo workflow Referências visuais (ver [docs/ci.md](docs/ci.md)).
+
+3. **Abrir o PR como rascunho** e marcar como pronto só quando terminar: cada push num PR pronto
+   roda o CI pago do Actions.
+
+```bash
+gh pr create --draft
+```
+
+```bash
+gh pr ready
+```
+
 ## Instaladores
 
 ```bash
