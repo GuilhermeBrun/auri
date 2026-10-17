@@ -274,6 +274,7 @@ try {
   })
   await check('UI: temas claro e escuro têm referências visuais e acessibilidade', async () => {
     await page.getByRole('link', { name: 'Configurações', exact: true }).click()
+    await page.getByRole('link', { name: 'Aparência', exact: true }).click()
     for (const [label, name] of [
       ['Claro', 'aparencia-claro'],
       ['Escuro', 'aparencia-escuro']
@@ -306,6 +307,7 @@ try {
     await accessibility('pacientes-escuro')
     await visual('pacientes-escuro')
     await page.getByRole('link', { name: 'Configurações', exact: true }).click()
+    await page.getByRole('link', { name: 'Aparência', exact: true }).click()
     await expect(page.getByRole('radio', { name: 'Escuro', exact: true })).toBeChecked()
   })
   await check('UI: execução não contém erros JavaScript', async () => expect(errors).toEqual([]))
