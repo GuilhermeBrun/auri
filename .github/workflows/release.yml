@@ -8,6 +8,7 @@ name: Release
 #   gh workflow run release.yml -f channel=alpha
 #   gh workflow run release.yml -f channel=stable            # versão = base do último alpha
 #   gh workflow run release.yml -f channel=stable -f version=1.2.0
+#   gh workflow run release.yml -f channel=site              # só remonta o site, sem release
 on:
   schedule:
     # 06:17 UTC (02:17 em Cuiabá), fora do minuto zero, quando o Actions fica mais cheio.
@@ -17,7 +18,7 @@ on:
       channel:
         description: 'Canal'
         type: choice
-        options: [alpha, stable]
+        options: [alpha, stable, site]
         default: alpha
       version:
         description: 'Versão estável (ex.: 1.2.0). Vazio: a base do último alpha.'
@@ -35,6 +36,8 @@ concurrency:
 jobs:
   resolve:
     name: Resolver versão
+    # `site` não publica release: só o job Atualização roda.
+    if: inputs.channel != 'site'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     outputs:
@@ -150,10 +153,12 @@ jobs:
 
   # O repositório é privado: o Auri instalado procura versões novas no Pages, que é público e
   # publicado só com o token do próprio workflow. O site é remontado das releases: a última
-  # estável (latest.yml) e o alpha mais novo que ela (alpha.yml).
+  # estável (latest.yml) e o alpha mais novo que ela (alpha.yml). Com `channel=site`, roda sozinho
+  # (os jobs de cima ficam de fora), para pôr no ar uma mudança na página sem release nova.
   pages:
     name: Atualização
     needs: publish
+    if: ${{ !cancelled() && (needs.publish.result == 'success' || inputs.channel == 'site') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:

@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-labelledby="title">
+  <title id="title">Ícone do aplicativo Auri, versão clara</title>
+  <defs>
+    <linearGradient id="surface" x1="512" y1="100" x2="512" y2="924" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF"/>
+      <stop offset="0.45" stop-color="#F6F6F9"/>
+      <stop offset="1" stop-color="#E7E7ED"/>
+    </linearGradient>
+    <linearGradient id="rim" x1="512" y1="100" x2="512" y2="924" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF" stop-opacity="0.9"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0.2"/>
+    </linearGradient>
+    <filter id="shadow" x="0" y="0" width="1024" height="1024" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="16" stdDeviation="18" flood-color="#1B1B22" flood-opacity="0.16"/>
+    </filter>
+    <path id="tile" d="M306 100H718C859 100 924 165 924 306V718C924 859 859 924 718 924H306C165 924 100 859 100 718V306C100 165 165 100 306 100Z"/>
+  </defs>
+  <use href="#tile" fill="url(#surface)" filter="url(#shadow)"/>
+  <use href="#tile" fill="none" stroke="#1B1B22" stroke-opacity="0.12" stroke-width="6"/>
+  <use href="#tile" fill="none" stroke="url(#rim)" stroke-width="3"/>
+  <g transform="translate(247 260) scale(4.5)" fill="#1B1B22">
+    <path d="M10 51C3 52 0 46 1 37C5 16 29 0 52 0C84 0 105 19 106 47L106 66C106 76 109 80 113 84C123 96 116 110 102 110C90 110 82 103 74 92L63 77C56 67 49 67 41 73C31 80 27 89 31 96C35 103 44 106 48 109C34 114 15 111 7 101C-1 92-2 77 5 66C13 55 27 49 39 49C58 49 68 58 78 70C82 75 85 80 88 77C90 75 89 70 89 64L88 53C87 40 82 32 73 30C61 25 52 31 40 39L20 49C16 51 12 52 10 51Z"/>
+  </g>
+</svg>
