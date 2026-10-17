@@ -1,0 +1,1909 @@
+/*
+ * Página de download (GitHub Pages). Mesma identidade do app (src/renderer/src/assets/main.css e
+ * docs/identidade-visual.md): grafite, sem verde, espaço como divisor, retângulos arredondados.
+ * Movimento só com transform e opacity; em "Reduzir movimento" sobra o fade.
+ */
+@font-face {
+  font-family: 'Bricolage Grotesque Variable';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 200 800;
+  src: url(bricolage-latin-ext.woff2) format('woff2-variations');
+  unicode-range:
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329,
+    U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F,
+    U+A720-A7FF;
+}
+
+@font-face {
+  font-family: 'Bricolage Grotesque Variable';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 200 800;
+  src: url(bricolage-latin.woff2) format('woff2-variations');
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+:root {
+  color-scheme: light dark;
+  --bg: #ffffff;
+  --ink: #1b1b22;
+  --ink-soft: #5b5b68;
+  --ink-faint: #6e6e7c;
+  --fill: rgba(27, 27, 34, 0.055);
+  --fill-hover: rgba(27, 27, 34, 0.09);
+  --solid: #1b1b22;
+  --solid-hover: #34343f;
+  --solid-active: #000000;
+  --on-solid: #ffffff;
+  --accent: #1b1b22;
+  --raised: #ffffff;
+  --selected: #ffffff;
+  --now: #e5484d;
+  --danger: #c4271b;
+  --danger-soft: #fdeeec;
+  --danger-soft-hover: #f9d5d1;
+  --card: #f6f6f8;
+  --spot: rgba(27, 27, 34, 0.06);
+  --edge: rgba(27, 27, 34, 0.07);
+  --ring: rgba(27, 27, 34, 0.32);
+  --glow: rgba(27, 27, 34, 0.07);
+  --dots: rgba(27, 27, 34, 0.1);
+  --selection: rgba(27, 27, 34, 0.14);
+  /* Janela de exemplo: os tokens do app (src/renderer/src/assets/main.css), no mesmo tema */
+  --app-surface: #ffffff;
+  --app-sidebar: #f4f4f7;
+  --app-solid: #1b1b22;
+  --app-subtle: #f8f8fa;
+  --app-canvas: #f4f4f7;
+  --app-line: #e6e6ec;
+  --app-accent-soft: #eeeef3;
+  --app-session: #e6e6ec;
+  --app-session-hover: #dcdce5;
+  --app-session-edge: rgba(27, 27, 34, 0.12);
+  --app-grid-faint: rgba(27, 27, 34, 0.07);
+  --app-slot-selection: rgba(27, 27, 34, 0.08);
+  --app-dot: #d4d4dc;
+  --app-lift: 0 0 0 1px rgba(27, 27, 34, 0.06), 0 1px 2px rgba(27, 27, 34, 0.12);
+  --app-pop:
+    0 0 0 1px rgba(27, 27, 34, 0.08), 0 20px 44px -14px rgba(27, 27, 34, 0.34),
+    0 2px 6px rgba(27, 27, 34, 0.06);
+  --shadow-button: 0 1px 2px rgba(27, 27, 34, 0.2), 0 10px 24px -10px rgba(27, 27, 34, 0.55);
+  --shadow-window:
+    0 0 0 1px var(--edge), 0 2px 4px rgba(27, 27, 34, 0.04),
+    0 24px 48px -16px rgba(27, 27, 34, 0.18), 0 60px 120px -40px rgba(27, 27, 34, 0.22);
+  --shadow-pop: 0 0 0 1px var(--edge), 0 8px 24px -6px rgba(27, 27, 34, 0.18);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Tema: o do sistema, ou o escolhido no botão do topo (data-theme no <html>) */
+:root[data-theme='light'] {
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+    --bg: #0f0f12;
+    --ink: #ececf1;
+    --ink-soft: #a9a9b7;
+    --ink-faint: #8a8a98;
+    --fill: rgba(236, 236, 245, 0.06);
+    --fill-hover: rgba(236, 236, 245, 0.1);
+    /*
+     * Grafite médio, como no app (um bloco quase branco ofuscava a tela), um passo acima do
+     * `solid` do app: aqui ele precisa se destacar do botão secundário ao lado.
+     */
+    --solid: #4b4b57;
+    --solid-hover: #55555f;
+    --solid-active: #60606b;
+    --on-solid: #ececf1;
+    --accent: #ececf1;
+    --raised: #212128;
+    --selected: #36363f;
+    --now: #ff5a5f;
+    --danger: #f0675b;
+    --danger-soft: #3a1b1a;
+    --danger-soft-hover: #562826;
+    --card: #17171c;
+    --spot: rgba(255, 255, 255, 0.06);
+    --edge: rgba(255, 255, 255, 0.08);
+    --ring: rgba(236, 236, 241, 0.3);
+    --glow: rgba(150, 150, 185, 0.16);
+    --dots: rgba(255, 255, 255, 0.075);
+    --selection: rgba(255, 255, 255, 0.18);
+    --app-surface: #17171c;
+    --app-sidebar: #101014;
+    --app-solid: #42424d;
+    --app-subtle: #1c1c22;
+    --app-canvas: #212128;
+    --app-line: #2a2a32;
+    --app-accent-soft: #2a2a32;
+    --app-session: #2f2f38;
+    --app-session-hover: #36363f;
+    --app-session-edge: rgba(236, 236, 245, 0.08);
+    --app-grid-faint: rgba(236, 236, 245, 0.06);
+    --app-slot-selection: rgba(236, 236, 245, 0.08);
+    --app-dot: #3a3a44;
+    --app-lift: 0 0 0 1px rgba(236, 236, 245, 0.08), 0 1px 2px rgba(0, 0, 0, 0.5);
+    --app-pop:
+      0 0 0 1px rgba(236, 236, 245, 0.09), 0 20px 44px -14px rgba(0, 0, 0, 0.7),
+      0 2px 6px rgba(0, 0, 0, 0.3);
+    --shadow-button: 0 1px 2px rgba(0, 0, 0, 0.4), 0 10px 24px -10px rgba(0, 0, 0, 0.7);
+    --shadow-window:
+      0 0 0 1px var(--edge), 0 24px 48px -16px rgba(0, 0, 0, 0.6),
+      0 60px 120px -40px rgba(0, 0, 0, 0.7);
+    --shadow-pop: 0 0 0 1px var(--edge), 0 8px 24px -6px rgba(0, 0, 0, 0.5);
+  }
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #0f0f12;
+  --ink: #ececf1;
+  --ink-soft: #a9a9b7;
+  --ink-faint: #8a8a98;
+  --fill: rgba(236, 236, 245, 0.06);
+  --fill-hover: rgba(236, 236, 245, 0.1);
+  /*
+   * Grafite médio, como no app (um bloco quase branco ofuscava a tela), um passo acima do
+   * `solid` do app: aqui ele precisa se destacar do botão secundário ao lado.
+   */
+  --solid: #4b4b57;
+  --solid-hover: #55555f;
+  --solid-active: #60606b;
+  --on-solid: #ececf1;
+  --accent: #ececf1;
+  --raised: #212128;
+  --selected: #36363f;
+  --now: #ff5a5f;
+  --danger: #f0675b;
+  --danger-soft: #3a1b1a;
+  --danger-soft-hover: #562826;
+  --card: #17171c;
+  --spot: rgba(255, 255, 255, 0.06);
+  --edge: rgba(255, 255, 255, 0.08);
+  --ring: rgba(236, 236, 241, 0.3);
+  --glow: rgba(150, 150, 185, 0.16);
+  --dots: rgba(255, 255, 255, 0.075);
+  --selection: rgba(255, 255, 255, 0.18);
+  --app-surface: #17171c;
+  --app-sidebar: #101014;
+  --app-solid: #42424d;
+  --app-subtle: #1c1c22;
+  --app-canvas: #212128;
+  --app-line: #2a2a32;
+  --app-accent-soft: #2a2a32;
+  --app-session: #2f2f38;
+  --app-session-hover: #36363f;
+  --app-session-edge: rgba(236, 236, 245, 0.08);
+  --app-grid-faint: rgba(236, 236, 245, 0.06);
+  --app-slot-selection: rgba(236, 236, 245, 0.08);
+  --app-dot: #3a3a44;
+  --app-lift: 0 0 0 1px rgba(236, 236, 245, 0.08), 0 1px 2px rgba(0, 0, 0, 0.5);
+  --app-pop:
+    0 0 0 1px rgba(236, 236, 245, 0.09), 0 20px 44px -14px rgba(0, 0, 0, 0.7),
+    0 2px 6px rgba(0, 0, 0, 0.3);
+  --shadow-button: 0 1px 2px rgba(0, 0, 0, 0.4), 0 10px 24px -10px rgba(0, 0, 0, 0.7);
+  --shadow-window:
+    0 0 0 1px var(--edge), 0 24px 48px -16px rgba(0, 0, 0, 0.6),
+    0 60px 120px -40px rgba(0, 0, 0, 0.7);
+  --shadow-pop: 0 0 0 1px var(--edge), 0 8px 24px -6px rgba(0, 0, 0, 0.5);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  scroll-behavior: smooth;
+}
+
+body {
+  position: relative;
+  margin: 0;
+  overflow-x: clip;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: 'Bricolage Grotesque Variable', ui-sans-serif, system-ui, sans-serif;
+  font-optical-sizing: auto;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: var(--selection);
+}
+
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+
+h1,
+h2,
+h3 {
+  text-wrap: balance;
+}
+
+a {
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+/* Fundo do topo: pontos que somem em direção às bordas e uma luz suave atrás do título */
+.backdrop {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 68rem;
+  z-index: -1;
+  pointer-events: none;
+  background-image: radial-gradient(var(--dots) 1px, transparent 1.2px);
+  background-size: 22px 22px;
+  mask-image: radial-gradient(ellipse 70% 55% at 50% 0%, #000 25%, transparent 75%);
+}
+
+.backdrop::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: -12rem;
+  width: min(60rem, 120vw);
+  height: 36rem;
+  transform: translateX(-50%);
+  background: radial-gradient(closest-side, var(--glow), transparent);
+}
+
+.top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 70rem;
+  margin: 0 auto;
+  padding: 1.25rem 1rem;
+}
+
+.top-brand {
+  display: inline-flex;
+  padding: 0.25rem;
+  margin: -0.25rem;
+}
+
+.wordmark {
+  display: block;
+  height: 1.75rem;
+  width: auto;
+}
+
+.theme-toggle {
+  display: grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  margin-right: -0.375rem;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition:
+    background-color 150ms ease-out,
+    color 150ms ease-out;
+}
+
+.theme-toggle:hover {
+  background: var(--fill);
+  color: var(--ink);
+}
+
+.theme-toggle svg {
+  width: 1.125rem;
+  height: 1.125rem;
+}
+
+.theme-toggle [data-theme-icon] {
+  display: none;
+}
+
+.theme-toggle[data-current='system'] [data-theme-icon='system'],
+.theme-toggle[data-current='light'] [data-theme-icon='light'],
+.theme-toggle[data-current='dark'] [data-theme-icon='dark'] {
+  display: grid;
+}
+
+/* Sem script o botão não funciona: fica escondido */
+html:not(.js) .theme-toggle {
+  visibility: hidden;
+}
+
+main {
+  max-width: 70rem;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+/* Topo */
+.hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: clamp(2rem, 5vw, 4rem);
+  text-align: center;
+}
+
+/* Ícone com ondas de "escuta" saindo dele, na forma do próprio ícone (sem círculos) */
+.mark {
+  position: relative;
+  width: 6rem;
+  height: 6rem;
+  margin-bottom: 2rem;
+  animation: mark-in 900ms var(--ease-out) both;
+}
+
+.mark img {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.mark i {
+  position: absolute;
+  inset: 9%;
+  border: 1.5px solid var(--ring);
+  border-radius: 21%;
+  opacity: 0;
+  animation: listen 3.6s cubic-bezier(0.2, 0.6, 0.3, 1) infinite;
+}
+
+.mark i:nth-child(1) {
+  animation-delay: 1.2s;
+}
+
+.mark i:nth-child(2) {
+  animation-delay: 2.4s;
+}
+
+.mark i:nth-child(3) {
+  animation-delay: 3.6s;
+}
+
+h1 {
+  font-size: clamp(2.5rem, 1.1rem + 5.4vw, 4.75rem);
+  font-weight: 700;
+  line-height: 1.02;
+  letter-spacing: -0.04em;
+}
+
+.line {
+  display: block;
+}
+
+.line-soft {
+  color: var(--ink-faint);
+}
+
+.word {
+  display: inline-block;
+  animation: word-in 900ms var(--ease-out) both;
+  animation-delay: calc(150ms + var(--i) * 45ms);
+}
+
+.lead {
+  max-width: 34rem;
+  margin-top: 1.5rem;
+  color: var(--ink-soft);
+  font-size: clamp(1.0625rem, 1rem + 0.35vw, 1.25rem);
+  line-height: 1.45;
+}
+
+.hero > .lead,
+.hero > .note,
+.hero > .download,
+.hero > .missing,
+.hero > .version {
+  animation: rise 900ms var(--ease-out) both;
+}
+
+.hero > .lead {
+  animation-delay: 450ms;
+}
+
+.hero > .note,
+.hero > .download {
+  animation-delay: 580ms;
+}
+
+.hero > .missing,
+.hero > .version {
+  animation-delay: 700ms;
+}
+
+.note {
+  max-width: 30rem;
+  margin-top: 1.5rem;
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  background: var(--fill);
+  color: var(--ink-soft);
+}
+
+.choices {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 1rem 1.25rem;
+  margin-top: 2.5rem;
+}
+
+.choice {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.625rem;
+  min-width: 0;
+}
+
+.btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 3rem;
+  padding: 0 1.375rem;
+  overflow: hidden;
+  border-radius: 10px;
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 580;
+  text-decoration: none;
+  transition:
+    background-color 150ms ease-out,
+    transform 200ms var(--ease-out);
+}
+
+.btn svg {
+  flex: none;
+  width: 1.125rem;
+  height: 1.125rem;
+}
+
+.btn:hover {
+  transform: translateY(-1px);
+}
+
+.btn:active {
+  transform: scale(0.97);
+}
+
+.btn-primary {
+  background: var(--solid);
+  color: var(--on-solid);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    var(--shadow-button);
+}
+
+.btn-primary:hover {
+  background: var(--solid-hover);
+}
+
+.btn-primary:active {
+  background: var(--solid-active);
+}
+
+/* Brilho que atravessa o botão principal ao passar o mouse */
+.btn-primary::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 35%,
+    rgba(255, 255, 255, 0.2) 50%,
+    transparent 65%
+  );
+  transform: translateX(-110%);
+  pointer-events: none;
+}
+
+.btn-primary:hover::after {
+  transform: translateX(110%);
+  transition: transform 900ms var(--ease-out);
+}
+
+.btn-secondary {
+  background: var(--fill);
+  color: var(--ink);
+}
+
+.btn-secondary:hover {
+  background: var(--fill-hover);
+}
+
+.meta {
+  color: var(--ink-faint);
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.missing {
+  margin-top: 1rem;
+}
+
+.version {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+}
+
+.chip {
+  padding: 0.125rem 0.5rem;
+  border-radius: 6px;
+  background: var(--fill);
+  color: var(--ink-soft);
+  font-size: 0.75rem;
+  font-weight: 580;
+}
+
+/* Seletor de sistema (celular ou sistema desconhecido) e link para o outro sistema */
+.download {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.os-switch,
+.seg-switch {
+  position: relative;
+  display: inline-flex;
+  isolation: isolate;
+}
+
+.os-switch {
+  gap: 0.25rem;
+  margin-top: 2.5rem;
+  padding: 0.25rem;
+  border-radius: 10px;
+  background: var(--fill);
+}
+
+.os-switch button {
+  min-width: 6.5rem;
+  min-height: 2.25rem;
+  padding: 0 1rem;
+  border: 0;
+  border-radius: 7px;
+  background: none;
+  color: var(--ink-soft);
+  font: inherit;
+  font-weight: 560;
+  cursor: pointer;
+  transition: color 150ms ease-out;
+}
+
+.os-switch button[aria-pressed='true'] {
+  color: var(--ink);
+}
+
+.thumb {
+  position: absolute;
+  top: 0.25rem;
+  bottom: 0.25rem;
+  left: 0;
+  z-index: -1;
+  border-radius: 7px;
+  background: var(--selected);
+  box-shadow:
+    0 0 0 1px var(--edge),
+    0 1px 3px rgba(0, 0, 0, 0.1);
+  transition:
+    transform 250ms cubic-bezier(0.32, 0.72, 0, 1),
+    width 250ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.os-switch + .choices {
+  margin-top: 1.25rem;
+}
+
+.other {
+  margin-top: 1rem;
+}
+
+.other a {
+  color: var(--ink-soft);
+  font-weight: 560;
+  text-underline-offset: 3px;
+}
+
+.other a:hover {
+  color: var(--ink);
+}
+
+/*
+ * Prévia do app: a janela do Auri com as medidas do app em px (Layout.tsx, AgendaPage.tsx,
+ * main.css), multiplicadas por --u. A janela tem 1280 de largura no app; aqui --u encolhe tudo
+ * junto para caber na coluna, como uma captura, mas nítido e clicável.
+ */
+.shot {
+  position: relative;
+  margin-top: clamp(3rem, 6vw, 4.5rem);
+  perspective: 1800px;
+  container: shot / inline-size;
+}
+
+.shot-glow {
+  position: absolute;
+  inset: 8% 6% -4%;
+  z-index: -1;
+  background: radial-gradient(closest-side, var(--glow), transparent);
+}
+
+.shot-hint {
+  display: none;
+  max-width: 36rem;
+  margin: 1.5rem auto 0;
+  color: var(--ink-faint);
+  font-size: 0.875rem;
+  text-align: center;
+  text-wrap: balance;
+}
+
+.js .shot-hint {
+  display: block;
+}
+
+.shot-hint svg {
+  display: inline-block;
+  width: 1rem;
+  height: 1rem;
+  margin-right: 0.375rem;
+  vertical-align: -0.2em;
+}
+
+.win {
+  --u: min(1px, calc(100cqi / 1280));
+  --row: calc(56 * var(--u));
+  position: relative;
+  display: grid;
+  grid-template-columns: calc(216 * var(--u)) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  height: calc(561 * var(--u));
+  overflow: hidden;
+  border-radius: calc(12 * var(--u));
+  background: var(--app-surface);
+  box-shadow: var(--shadow-window);
+  color: var(--ink);
+  font-size: calc(13 * var(--u));
+  line-height: calc(20 * var(--u));
+  text-align: left;
+  transform-origin: 50% 0;
+}
+
+.win button {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  line-height: inherit;
+  text-align: inherit;
+  cursor: pointer;
+}
+
+.win :focus-visible {
+  outline: calc(2 * var(--u)) solid var(--accent);
+  outline-offset: calc(1 * var(--u));
+}
+
+.win svg {
+  flex: none;
+  width: calc(16 * var(--u));
+  height: calc(16 * var(--u));
+}
+
+/* Barra lateral (216px): faixa da janela, menu e Configurações no rodapé */
+.win-side {
+  display: flex;
+  flex-direction: column;
+  padding: 0 calc(12 * var(--u)) calc(12 * var(--u));
+  background: var(--app-sidebar);
+}
+
+.win-strip {
+  display: flex;
+  align-items: center;
+  height: calc(48 * var(--u));
+  margin-bottom: calc(12 * var(--u));
+  padding-left: calc(112 * var(--u));
+}
+
+/* Botões da janela do Mac (aqui no tom da janela inativa) e o botão de recolher */
+.lights {
+  position: absolute;
+  top: calc(18 * var(--u));
+  left: calc(22 * var(--u));
+  z-index: 2;
+  display: flex;
+  gap: calc(8 * var(--u));
+}
+
+.lights i {
+  width: calc(12 * var(--u));
+  height: calc(12 * var(--u));
+  border-radius: 50%;
+  background: var(--app-dot);
+}
+
+.toggle {
+  position: absolute;
+  top: calc(8 * var(--u));
+  left: calc(84 * var(--u));
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: calc(32 * var(--u));
+  height: calc(32 * var(--u));
+  color: var(--ink-soft);
+}
+
+.win .toggle svg {
+  width: calc(18 * var(--u));
+  height: calc(18 * var(--u));
+}
+
+.win .win-logo {
+  width: calc(48 * var(--u));
+  height: auto;
+  transform: translateY(calc(-2 * var(--u)));
+}
+
+.win-nav {
+  --active: 0;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: calc(6 * var(--u));
+}
+
+.nav-thumb {
+  position: absolute;
+  inset: 0 0 auto;
+  height: calc(34 * var(--u));
+  border-radius: calc(8 * var(--u));
+  background: var(--fill-hover);
+  transform: translateY(calc(var(--active) * 40 * var(--u)));
+  transition: transform 250ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.win .win-nav button,
+.win-foot {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: calc(10 * var(--u));
+  height: calc(34 * var(--u));
+  padding: 0 calc(12 * var(--u));
+  border-radius: calc(8 * var(--u));
+  color: var(--ink-soft);
+  font-weight: 500;
+  transition:
+    background-color 150ms,
+    color 150ms;
+}
+
+.win .win-nav button:hover {
+  background: var(--fill);
+  color: var(--ink);
+}
+
+.win .win-nav [aria-pressed='true'],
+.win .win-nav [aria-pressed='true']:hover {
+  background: none;
+  color: var(--ink);
+}
+
+.win-foot {
+  margin-top: auto;
+}
+
+/* Página: cabeçalho de 48px (trilha e ferramentas) e o conteúdo */
+.win-main {
+  position: relative;
+  display: grid;
+  grid-template-rows: calc(48 * var(--u)) minmax(0, 1fr);
+  min-width: 0;
+}
+
+.win-head {
+  display: flex;
+  align-items: center;
+  gap: calc(12 * var(--u));
+  min-width: 0;
+  padding: 0 calc(24 * var(--u));
+}
+
+.trail {
+  display: flex;
+  align-items: center;
+  gap: calc(6 * var(--u));
+  min-width: 0;
+  font-size: calc(14 * var(--u));
+  white-space: nowrap;
+}
+
+.crumb {
+  flex: none;
+  color: var(--ink-faint);
+}
+
+.crumb-sep {
+  flex: none;
+  color: var(--ink-faint);
+  opacity: 0.6;
+}
+
+.crumb-current {
+  overflow: hidden;
+  color: var(--ink);
+  font-weight: 500;
+  text-overflow: ellipsis;
+}
+
+.crumb-current::first-letter {
+  text-transform: uppercase;
+}
+
+.tools {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: calc(8 * var(--u));
+  margin-left: auto;
+}
+
+.track {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: calc(2 * var(--u));
+  padding: calc(2 * var(--u));
+  border-radius: calc(8 * var(--u));
+  background: var(--fill);
+  isolation: isolate;
+}
+
+.win .track button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: calc(28 * var(--u));
+  border-radius: calc(6 * var(--u));
+  font-size: calc(12 * var(--u));
+  font-weight: 500;
+  transition:
+    background-color 150ms,
+    color 150ms;
+}
+
+.win .track .icon-sm {
+  width: calc(28 * var(--u));
+  color: var(--ink-soft);
+}
+
+.win .track .today-btn {
+  padding: 0 calc(10 * var(--u));
+  color: var(--ink);
+}
+
+.win .track .icon-sm:hover,
+.win .track .today-btn:hover {
+  background: var(--fill);
+  color: var(--ink);
+}
+
+.win .seg button {
+  padding: 0 calc(12 * var(--u));
+  color: var(--ink-soft);
+}
+
+.win .seg button:hover,
+.win .seg [aria-pressed='true'] {
+  color: var(--ink);
+}
+
+.seg .thumb {
+  position: absolute;
+  top: calc(2 * var(--u));
+  bottom: calc(2 * var(--u));
+  left: 0;
+  z-index: -1;
+  border-radius: calc(6 * var(--u));
+  background: var(--selected);
+  box-shadow: var(--app-lift);
+  transition:
+    transform 250ms cubic-bezier(0.32, 0.72, 0, 1),
+    width 250ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/* Sem script, a opção ligada usa o próprio fundo; com ele, o bloco desliza */
+.seg [aria-pressed='true'] {
+  background: var(--selected);
+}
+
+.js .seg [aria-pressed='true'] {
+  background: none;
+}
+
+.win .ghost-icon {
+  display: grid;
+  place-items: center;
+  width: calc(32 * var(--u));
+  height: calc(32 * var(--u));
+  border-radius: calc(8 * var(--u));
+  color: var(--ink-soft);
+  transition:
+    background-color 150ms,
+    color 150ms;
+}
+
+.win .ghost-icon:hover {
+  background: var(--fill);
+  color: var(--ink);
+}
+
+.search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: calc(208 * var(--u));
+  height: calc(32 * var(--u));
+  padding-left: calc(34 * var(--u));
+  border-radius: calc(8 * var(--u));
+  background: var(--fill);
+  color: var(--ink-faint);
+}
+
+.win .search svg {
+  position: absolute;
+  left: calc(10 * var(--u));
+  color: var(--ink-soft);
+}
+
+.win-body {
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Semana e Dia: a grade do react-big-calendar */
+.cal-week {
+  --cols: 7;
+}
+
+.cal-head,
+.cal-body {
+  display: grid;
+  grid-template-columns: calc(52 * var(--u)) repeat(var(--cols), minmax(0, 1fr));
+}
+
+.cal-head {
+  border-bottom: calc(1 * var(--u)) solid var(--app-line);
+}
+
+.win .dh {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: calc(2 * var(--u));
+  padding: calc(6 * var(--u)) calc(4 * var(--u)) calc(8 * var(--u));
+  border-left: calc(1 * var(--u)) solid var(--app-line);
+}
+
+.dh-wd {
+  color: var(--ink-soft);
+  font-size: calc(12 * var(--u));
+  line-height: calc(16 * var(--u));
+  font-weight: 500;
+}
+
+.today .dh-wd {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.dh-num {
+  display: grid;
+  place-items: center;
+  width: calc(32 * var(--u));
+  height: calc(32 * var(--u));
+  border-radius: calc(8 * var(--u));
+  font-size: calc(18 * var(--u));
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.025em;
+  font-variant-numeric: tabular-nums;
+}
+
+.today .dh-num {
+  background: var(--app-solid);
+  color: var(--on-solid);
+}
+
+.hour {
+  height: var(--row);
+  padding: calc(4 * var(--u)) calc(8 * var(--u)) 0 0;
+  color: var(--ink-faint);
+  font-size: calc(12 * var(--u));
+  line-height: calc(16 * var(--u));
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.cal-cols {
+  grid-column: 2 / -1;
+  display: grid;
+  grid-template-columns: subgrid;
+}
+
+/* Linhas da hora (contínua) e da meia hora (tracejada e fraca), como no app */
+.col {
+  position: relative;
+  height: calc(var(--row) * 8);
+  border-left: calc(1 * var(--u)) solid var(--app-line);
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0 calc(var(--row) - 1 * var(--u)),
+    var(--app-line) calc(var(--row) - 1 * var(--u)) var(--row)
+  );
+  cursor: default;
+}
+
+.col::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(to right, var(--app-grid-faint) 50%, transparent 50%);
+  background-size: calc(6 * var(--u)) var(--row);
+  background-position: 0 calc(var(--row) / 2);
+  background-repeat: repeat;
+  mask-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0 calc(var(--row) / 2),
+    #000 calc(var(--row) / 2) calc(var(--row) / 2 + 1 * var(--u)),
+    transparent calc(var(--row) / 2 + 1 * var(--u)) var(--row)
+  );
+  pointer-events: none;
+}
+
+.col.weekend {
+  background-color: var(--app-subtle);
+}
+
+/* Sessão: bloco cinza com contorno fino; nome curto e horário embaixo */
+.win .ev {
+  position: absolute;
+  top: calc(var(--top) * var(--row));
+  left: 0;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  width: calc(100% - 4 * var(--u));
+  height: calc(var(--len) * var(--row));
+  padding: calc(3 * var(--u)) calc(6 * var(--u)) calc(3 * var(--u)) calc(8 * var(--u));
+  overflow: hidden;
+  border-radius: calc(6 * var(--u));
+  background: var(--app-session);
+  box-shadow: inset 0 0 0 calc(1 * var(--u)) var(--app-session-edge);
+  color: var(--ink);
+  font-size: calc(12.5 * var(--u));
+  font-weight: 600;
+  line-height: 1.3;
+  transition: background-color 120ms;
+}
+
+.win .ev:hover {
+  background: var(--app-session-hover);
+}
+
+.ev-name,
+.ev-time {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.ev-time {
+  font-size: calc(12 * var(--u));
+  font-weight: 400;
+  opacity: 0.75;
+  font-variant-numeric: tabular-nums;
+}
+
+.win .ev.selected {
+  background: var(--app-solid);
+  box-shadow: none;
+  color: var(--on-solid);
+}
+
+/* Recém-agendada: contorno por dentro que se apaga (o .event-arrived do app) */
+.ev::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border: calc(2 * var(--u)) solid var(--accent);
+  border-radius: calc(6 * var(--u));
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Seleção de horário (o .rbc-slot-selection do app), que o clique agenda */
+.ghost {
+  position: absolute;
+  top: calc(var(--top) * var(--row));
+  left: 0;
+  z-index: 1;
+  width: calc(100% - 4 * var(--u));
+  height: calc(0.75 * var(--row));
+  padding: calc(3 * var(--u)) calc(8 * var(--u));
+  border-radius: calc(8 * var(--u));
+  background: var(--app-slot-selection);
+  color: var(--ink);
+  font-size: calc(12 * var(--u));
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+
+.now {
+  position: absolute;
+  top: calc(var(--top) * var(--row));
+  left: 0;
+  right: 0;
+  z-index: 3;
+  height: calc(1.5 * var(--u));
+  background: var(--now);
+  pointer-events: none;
+}
+
+.now::before {
+  content: '';
+  position: absolute;
+  top: calc(-3.25 * var(--u));
+  left: calc(-4 * var(--u));
+  width: calc(8 * var(--u));
+  height: calc(8 * var(--u));
+  border-radius: 50%;
+  background: var(--now);
+}
+
+/* Mês */
+.cal-month {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  height: 100%;
+}
+
+.month-head,
+.month-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+.month-head {
+  border-bottom: calc(1 * var(--u)) solid var(--app-line);
+}
+
+.month-head span {
+  padding: calc(6 * var(--u)) calc(4 * var(--u)) calc(8 * var(--u));
+  color: var(--ink-soft);
+  font-size: calc(12 * var(--u));
+  line-height: calc(16 * var(--u));
+  font-weight: 500;
+  text-align: center;
+  text-transform: capitalize;
+}
+
+.month-head span + span,
+.mc:not(:nth-child(7n + 1)) {
+  border-left: calc(1 * var(--u)) solid var(--app-line);
+}
+
+.month-grid {
+  grid-template-rows: repeat(var(--rows), minmax(0, 1fr));
+}
+
+.mc {
+  display: flex;
+  flex-direction: column;
+  gap: calc(2 * var(--u));
+  min-width: 0;
+  padding: 0 0 calc(2 * var(--u));
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.mc:nth-child(n + 8) {
+  border-top: calc(1 * var(--u)) solid var(--app-line);
+}
+
+.mc.weekend,
+.mc.off {
+  background: var(--app-subtle);
+}
+
+.win .mc-num {
+  align-self: flex-start;
+  display: inline-grid;
+  place-items: center;
+  min-width: calc(24 * var(--u));
+  height: calc(24 * var(--u));
+  margin: calc(6 * var(--u)) calc(8 * var(--u)) 0;
+  padding: 0 calc(4 * var(--u));
+  border-radius: calc(6 * var(--u));
+  font-size: calc(12 * var(--u));
+  font-variant-numeric: tabular-nums;
+  transition: background-color 120ms;
+}
+
+.win .mc-num:hover {
+  background: var(--fill);
+}
+
+.off .mc-num {
+  color: var(--ink-faint);
+}
+
+.win .mc-num.today {
+  padding: 0 calc(7 * var(--u));
+  background: var(--app-solid);
+  color: var(--on-solid);
+  font-weight: 600;
+}
+
+.win .ev.ev-month {
+  position: relative;
+  top: auto;
+  display: block;
+  flex: none;
+  width: auto;
+  height: auto;
+  margin: 0 calc(4 * var(--u));
+  padding: calc(2 * var(--u)) calc(6 * var(--u));
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.ev-start {
+  margin-right: calc(6 * var(--u));
+  font-size: calc(12 * var(--u));
+  font-weight: 400;
+  opacity: 0.75;
+  font-variant-numeric: tabular-nums;
+}
+
+.win .more {
+  align-self: flex-start;
+  min-height: calc(24 * var(--u));
+  margin: 0 calc(4 * var(--u));
+  padding: 0 calc(4 * var(--u));
+  border-radius: calc(6 * var(--u));
+  font-size: calc(12 * var(--u));
+  font-weight: 600;
+}
+
+.win .more:hover {
+  background: var(--fill);
+}
+
+/* Pacientes: a tabela do app */
+.pt {
+  padding: 0 calc(16 * var(--u));
+}
+
+.pt-head,
+.pt-row {
+  display: grid;
+  grid-template-columns: 36% 26% 25% 13%;
+  align-items: center;
+}
+
+.pt-head {
+  height: calc(36 * var(--u));
+  color: var(--ink-soft);
+  font-size: calc(12 * var(--u));
+  font-weight: 500;
+}
+
+.pt-head span,
+.pt-cell {
+  min-width: 0;
+  padding: 0 calc(12 * var(--u));
+}
+
+.pt-row {
+  height: calc(56 * var(--u));
+  border-radius: calc(12 * var(--u));
+  cursor: pointer;
+  transition: background-color 150ms;
+}
+
+.pt-row:hover {
+  background: var(--app-canvas);
+}
+
+.pt-main {
+  display: flex;
+  align-items: center;
+  gap: calc(12 * var(--u));
+}
+
+.avatar {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: calc(32 * var(--u));
+  height: calc(32 * var(--u));
+  border-radius: calc(6 * var(--u));
+  background: var(--app-accent-soft);
+  color: var(--ink-soft);
+  font-size: calc(12 * var(--u));
+  font-weight: 600;
+  letter-spacing: 0.025em;
+}
+
+.two {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.two > * {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.two b {
+  font-weight: 600;
+}
+
+.two > span:last-child:not(:first-child) {
+  color: var(--ink-soft);
+  font-size: calc(12 * var(--u));
+  line-height: calc(16 * var(--u));
+  font-variant-numeric: tabular-nums;
+}
+
+.pt-date {
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Detalhes da sessão: um cartão que flutua, como os menus do app */
+.pop {
+  position: absolute;
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  gap: calc(2 * var(--u));
+  width: calc(248 * var(--u));
+  padding: calc(12 * var(--u)) calc(14 * var(--u));
+  border-radius: calc(12 * var(--u));
+  background: var(--raised);
+  box-shadow: var(--app-pop);
+  animation: pop-in 140ms var(--ease-out);
+}
+
+.pop b {
+  font-weight: 600;
+}
+
+.pop span {
+  color: var(--ink-soft);
+  font-size: calc(12 * var(--u));
+}
+
+.pop span:first-of-type::first-letter {
+  text-transform: uppercase;
+}
+
+.pop-actions {
+  display: flex;
+  gap: calc(8 * var(--u));
+  margin-top: calc(10 * var(--u));
+}
+
+.win .pop-actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(6 * var(--u));
+  height: calc(28 * var(--u));
+  padding: 0 calc(10 * var(--u));
+  border-radius: calc(8 * var(--u));
+  background: var(--fill);
+  font-size: calc(12 * var(--u));
+  font-weight: 500;
+  transition: background-color 150ms;
+}
+
+.win .pop-actions button:hover {
+  background: var(--fill-hover);
+}
+
+.win .pop-actions .pop-danger {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.win .pop-actions .pop-danger:hover {
+  background: var(--danger-soft-hover);
+}
+
+/* Aviso do app (ui/toast.tsx): embaixo no centro */
+.toast {
+  position: absolute;
+  bottom: calc(16 * var(--u));
+  left: 50%;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: calc(12 * var(--u));
+  width: calc(440 * var(--u));
+  padding: calc(10 * var(--u)) calc(8 * var(--u)) calc(10 * var(--u)) calc(12 * var(--u));
+  border-radius: calc(12 * var(--u));
+  background: var(--raised);
+  box-shadow: var(--app-pop);
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.toast-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: calc(24 * var(--u));
+  height: calc(24 * var(--u));
+  border-radius: calc(6 * var(--u));
+  background: var(--fill);
+}
+
+.toast-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.toast-text b {
+  font-weight: 500;
+  line-height: 1.25;
+}
+
+.toast-text span {
+  margin-top: calc(2 * var(--u));
+  overflow: hidden;
+  color: var(--ink-soft);
+  font-size: calc(12 * var(--u));
+  line-height: calc(16 * var(--u));
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.toast-close {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: calc(28 * var(--u));
+  height: calc(28 * var(--u));
+  color: var(--ink-soft);
+}
+
+/*
+ * Coluna estreita (celular): a janela com a barra lateral recolhida e a visão Dia, num passo
+ * maior para o texto continuar legível.
+ */
+@container shot (max-width: 720px) {
+  .win {
+    --u: calc(100cqi / 440);
+    grid-template-columns: minmax(0, 1fr);
+    height: calc(600 * var(--u));
+  }
+
+  .win-side,
+  .seg,
+  .tools .ghost-icon,
+  .search {
+    display: none;
+  }
+
+  .col {
+    height: calc(var(--row) * 9);
+  }
+
+  .pt-head,
+  .pt-row {
+    grid-template-columns: 62% 38% 0 0;
+  }
+
+  .pt-head span:nth-child(n + 3),
+  .pt-row > :nth-child(n + 3) {
+    display: none;
+  }
+
+  .toast {
+    width: calc(100% - 32 * var(--u));
+  }
+}
+
+/* Seções */
+.hero {
+  scroll-margin-top: 1rem;
+}
+
+.closing {
+  text-align: center;
+}
+
+.closing .btn {
+  margin-top: 2rem;
+}
+
+.section {
+  margin-top: clamp(6rem, 12vw, 10rem);
+}
+
+h2 {
+  font-size: clamp(1.75rem, 1.15rem + 2.2vw, 2.75rem);
+  font-weight: 680;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  text-align: center;
+}
+
+.features {
+  display: grid;
+  gap: 1rem;
+  margin: 3rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.features {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+}
+
+.card {
+  position: relative;
+  padding: 1.75rem;
+  overflow: hidden;
+  border-radius: 16px;
+  background: var(--card);
+}
+
+/* Luz que acompanha o ponteiro (posição vem do script) */
+.card[data-spotlight]::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    22rem circle at var(--x, 50%) var(--y, -30%),
+    var(--spot),
+    transparent 70%
+  );
+  opacity: 0;
+  transition: opacity 300ms ease-out;
+  pointer-events: none;
+}
+
+.card[data-spotlight]:hover::before {
+  opacity: 1;
+}
+
+.card-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 10px;
+  background: var(--raised);
+  box-shadow:
+    0 0 0 1px var(--edge),
+    0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+.card-icon svg {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.card h3 {
+  margin-top: 1.25rem;
+  font-size: 1.0625rem;
+  font-weight: 640;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+}
+
+.card p {
+  margin-top: 0.375rem;
+  color: var(--ink-soft);
+}
+
+.card p + p {
+  margin-top: 0.625rem;
+}
+
+.ui {
+  color: var(--ink);
+  font-weight: 580;
+}
+
+.foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  max-width: 70rem;
+  margin: clamp(6rem, 12vw, 9rem) auto 0;
+  padding: 2rem 1rem 3rem;
+  color: var(--ink-faint);
+}
+
+.foot .wordmark {
+  height: 1.375rem;
+}
+
+.foot .meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Entradas conforme a rolagem. Só com script (classe `js` no <html>): sem ele, tudo já aparece. */
+.js [data-reveal] {
+  opacity: 0;
+  transform: translateY(1.5rem);
+}
+
+.js [data-reveal].in {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity 700ms var(--ease-out),
+    transform 1000ms var(--ease-out);
+  transition-delay: calc(var(--i, 0) * 90ms);
+}
+
+/* A prévia entra inclinada e se endireita; as sessões vão aparecendo e, por último, a escolhida */
+.js .shot[data-reveal] {
+  opacity: 1;
+  transform: none;
+}
+
+.js .shot .win {
+  opacity: 0;
+  transform: translateY(3rem) rotateX(14deg) scale(0.96);
+}
+
+.js .shot.in .win {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity 800ms var(--ease-out),
+    transform 1400ms var(--ease-out);
+}
+
+.js .shot:not(.ready) .ev {
+  opacity: 0;
+}
+
+.js .shot.in:not(.ready) .ev {
+  animation: session-in 500ms var(--ease-out) both;
+  animation-delay: calc(600ms + var(--d) * 60ms);
+}
+
+.js .shot.in:not(.ready) .ev.arrived {
+  animation-delay: 1800ms;
+}
+
+.js .shot.in:not(.ready) .ev.arrived::after {
+  animation: ring-out 1400ms ease-out 2000ms both;
+}
+
+/* Depois da entrada, cada mudança anima só o que mudou */
+.js .shot.ready .ev.enter {
+  animation: session-in 320ms var(--ease-out) both;
+  animation-delay: calc(var(--d, 0) * 18ms);
+}
+
+.js .shot.ready .ev.arrived::after {
+  animation: ring-out 1400ms ease-out 160ms both;
+}
+
+.js .shot.ready .pt-row.enter {
+  animation: rise-small 360ms var(--ease-out) both;
+  animation-delay: calc(var(--d, 0) * 25ms);
+}
+
+.js .toast {
+  opacity: 0;
+  transform: translate(-50%, 1em);
+  transition:
+    opacity 200ms ease-in,
+    transform 200ms ease-in;
+}
+
+.js .toast.show {
+  opacity: 1;
+  transform: translate(-50%, 0);
+  transition:
+    opacity 260ms var(--ease-out),
+    transform 420ms var(--ease-out);
+}
+
+@keyframes mark-in {
+  from {
+    opacity: 0;
+    transform: scale(0.8) translateY(0.5rem);
+  }
+}
+
+@keyframes listen {
+  0% {
+    opacity: 0;
+    transform: scale(1);
+  }
+
+  12% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(2.2);
+  }
+}
+
+@keyframes word-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.4em);
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(1rem);
+  }
+}
+
+@keyframes rise-small {
+  from {
+    opacity: 0;
+    transform: translateY(0.5em);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.3em) scale(0.98);
+  }
+}
+
+@keyframes session-in {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes ring-out {
+  from {
+    opacity: 0.7;
+  }
+
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes now-pulse {
+  from {
+    opacity: 0.6;
+    transform: scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: scale(2.6);
+  }
+}
+
+/* Reduzir movimento: nada se desloca nem fica pulsando; as entradas viram só fade */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .mark,
+  .word,
+  .hero > .lead,
+  .hero > .note,
+  .hero > .download,
+  .hero > .missing,
+  .hero > .version,
+  .pop,
+  .js .shot.in:not(.ready) .ev,
+  .js .shot.ready .ev.enter,
+  .js .shot.ready .pt-row.enter {
+    animation-name: fade;
+  }
+
+  .mark i,
+  .now::after,
+  .ev::after,
+  .btn-primary::after {
+    display: none;
+  }
+
+  .js [data-reveal],
+  .js .shot .win,
+  .btn:hover,
+  .btn:active {
+    transform: none;
+  }
+
+  .js .toast,
+  .js .toast.show {
+    transform: translateX(-50%);
+  }
+}

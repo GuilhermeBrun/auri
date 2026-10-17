@@ -2,8 +2,9 @@
 //   node scripts/release/cli.mjs resolve      → saídas skip, ref, version, tag, prerelease
 //   node scripts/release/cli.mjs site <pasta> → baixa os arquivos das releases e monta o site
 import { execFileSync } from 'node:child_process'
-import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { appendFileSync, cpSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { downloadPage } from './page.mjs'
 import { latestTags, nextAlpha, onlyDocs, siteFiles, stableFromAlpha } from './versions.mjs'
 
 const run = (command, args) => execFileSync(command, args, { encoding: 'utf8' }).trim()
@@ -55,37 +56,24 @@ function site(directory) {
     run('gh', ['release', 'list', '--limit', '100', '--json', 'tagName,isDraft'])
   ).filter((release) => !release.isDraft)
   const { stable, alpha } = latestTags(releases.map((release) => release.tagName))
-  const withAssets = (tag) =>
+  const details = (tag) =>
     tag && {
       tag,
-      assets: JSON.parse(run('gh', ['release', 'view', tag, '--json', 'assets'])).assets.map(
-        (asset) => asset.name
-      )
+      ...JSON.parse(run('gh', ['release', 'view', tag, '--json', 'assets,publishedAt']))
     }
-  const files = siteFiles({ stable: withAssets(stable), alpha: withAssets(alpha) })
+  const [stableRelease, alphaRelease] = [details(stable), details(alpha)]
+  const names = (release) =>
+    release && { tag: release.tag, assets: release.assets.map((asset) => asset.name) }
+  const files = siteFiles({ stable: names(stableRelease), alpha: names(alphaRelease) })
 
   mkdirSync(directory, { recursive: true })
   for (const { name, tag } of files) {
     run('gh', ['release', 'download', tag, '--pattern', name, '--dir', directory, '--clobber'])
   }
-  const links = (tag) =>
-    files
-      .filter((file) => file.tag === tag && /\.(exe|dmg)$/.test(file.name))
-      .map((file) => `<li><a href="${file.name}">${file.name}</a></li>`)
-      .join('')
-  const alphaShown = files.some((file) => file.tag === alpha && file.tag !== stable)
+  cpSync(join(import.meta.dirname, 'site-assets'), directory, { recursive: true })
   writeFileSync(
     join(directory, 'index.html'),
-    [
-      '<!doctype html><html lang="pt-BR"><meta charset="utf-8">',
-      '<meta name="viewport" content="width=device-width, initial-scale=1">',
-      `<title>Auri ${stable ? stable.slice(1) : ''}</title>`,
-      '<body style="font-family:system-ui,sans-serif;max-width:560px;margin:48px auto;padding:0 16px">',
-      stable ? `<h1>Auri ${stable.slice(1)}</h1><ul>${links(stable)}</ul>` : '',
-      alphaShown ? `<h2>Alpha ${alpha.slice(1)}</h2><ul>${links(alpha)}</ul>` : '',
-      `<p>No ${files.some((file) => file.name === 'latest-mac.yml') ? 'Windows e no Mac' : 'Windows'} o Auri instalado se atualiza sozinho. O alpha é opcional, em Configurações.</p>`,
-      '</body></html>'
-    ].join('\n')
+    downloadPage({ stable: stableRelease, alpha: alphaRelease, files })
   )
   console.log(files.map((file) => `${file.name} ← ${file.tag}`).join('\n'))
 }
