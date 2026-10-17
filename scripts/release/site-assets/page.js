@@ -65,8 +65,8 @@ function moveThumb(group, button, animate = true) {
   thumb.style.transform = `translateX(${button.offsetLeft}px)`
 }
 
-// Rastro do mouse no topo, como no Codex: as marcas da grade de pontos do fundo (22px) acendem
-// perto do cursor, viram pontos e traços, e se apagam sozinhas. Só com mouse e sem "Reduzir
+// Rastro do mouse no topo, como no Codex: os pontos da grade do fundo (22px) acendem perto do
+// cursor e se apagam sozinhos. Só com mouse e sem "Reduzir
 // movimento".
 const trailCanvas = document.querySelector('[data-pointer-trail]')
 if (trailCanvas && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
@@ -86,9 +86,6 @@ if (trailCanvas && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
   resize()
   addEventListener('resize', resize)
 
-  // Cada ponto da grade tem sempre a mesma marca: ponto, traço ou dois pontos
-  const shape = (column, row) => ((column * 73856093) ^ (row * 19349663)) & 3
-
   function draw() {
     context.clearRect(0, 0, trailCanvas.clientWidth, trailCanvas.clientHeight)
     context.fillStyle = color
@@ -103,14 +100,11 @@ if (trailCanvas && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
       const row = key >>> 16
       const x = column * GRID + GRID / 2
       const y = row * GRID + GRID / 2
-      context.globalAlpha = Math.min(next * 1.15, 1)
-      const kind = shape(column, row)
-      if (kind === 0) context.fillRect(x - 5, y - 1, 10, 2)
-      else if (kind === 1) context.fillRect(x - 1.5, y - 1.5, 3, 3)
-      else if (kind === 2) {
-        context.fillRect(x - 4.5, y - 1, 3, 2)
-        context.fillRect(x + 1.5, y - 1, 3, 2)
-      } else context.fillRect(x - 1, y - 4, 2, 8)
+      // o mesmo ponto do fundo (1px de raio), mais forte e um pouco maior perto do cursor
+      context.globalAlpha = Math.min(next, 1)
+      context.beginPath()
+      context.arc(x, y, 1 + next * 0.9, 0, Math.PI * 2)
+      context.fill()
     }
     context.globalAlpha = 1
     frame = glow.size > 0 ? requestAnimationFrame(draw) : 0

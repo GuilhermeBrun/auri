@@ -275,7 +275,7 @@ a {
   background: radial-gradient(closest-side, var(--glow), transparent);
 }
 
-/* Rastro do mouse no topo (page.js): marcas da grade de pontos acendem perto do cursor */
+/* Rastro do mouse no topo (page.js): os pontos da grade do fundo acendem perto do cursor */
 .pointer-trail {
   position: absolute;
   inset: 0 0 auto;
