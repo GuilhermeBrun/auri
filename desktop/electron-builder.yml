@@ -6,7 +6,7 @@ files:
   - out/**
   - resources/**
   - package.json
-  - '!{docs,reports,research_notes,.github,.quality,.vite-plus}/**'
+  - '!{docs,.quality,.vite-plus}/**'
   - '!vite.config.{js,ts,mjs,cjs}'
   - '!**/.vscode/*'
   - '!src/*'

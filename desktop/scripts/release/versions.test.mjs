@@ -4,7 +4,7 @@ import {
   isNewer,
   latestTags,
   nextAlpha,
-  onlyDocs,
+  outsideApp,
   siteFiles,
   stableFromAlpha
 } from './versions.mjs'
@@ -43,10 +43,14 @@ await test('o alpha fica acima da estável e numera os do mesmo dia', () => {
   assert.ok(isNewer('1.1.1-alpha.20261017.1', '1.1.1-alpha.20261016.9'))
 })
 
-await test('só documentação não gera alpha', () => {
-  assert.ok(onlyDocs(['docs/ci.md', 'README.md', 'docs/qualidade/visual/win32/agenda.png']))
-  assert.ok(!onlyDocs(['docs/ci.md', 'src/main/index.ts']))
-  assert.ok(!onlyDocs(['electron-builder.yml']))
+await test('só documentação ou o site não geram alpha', () => {
+  assert.ok(
+    outsideApp(['docs/ci.md', 'README.md', 'desktop/docs/qualidade/visual/win32/agenda.png'])
+  )
+  assert.ok(outsideApp(['web/src/main.tsx', 'web/package.json']))
+  assert.ok(!outsideApp(['docs/ci.md', 'desktop/src/main/index.ts']))
+  assert.ok(!outsideApp(['desktop/electron-builder.yml']))
+  assert.ok(!outsideApp(['.github/workflows/release.yml']))
 })
 
 await test('a estável promove o último alpha', () => {

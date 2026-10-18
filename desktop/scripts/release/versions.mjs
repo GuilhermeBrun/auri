@@ -61,11 +61,17 @@ export function nextAlpha({ tagNames, firstVersion, date }) {
   return `${base}-alpha.${day(date)}.${Math.max(0, ...today) + 1}`
 }
 
-const DOCS = [/^docs\//, /\.md$/i]
+// Chega ao Auri o que está em desktop/ (menos documentação) e os workflows que o montam. O site
+// (web/) e a documentação não geram alpha.
+const APP = [/^desktop\//, /^\.github\//]
+const DOCS = [/^desktop\/docs\//, /\.md$/i]
 
-/** `true` quando nenhum dos arquivos mudados chega ao Auri: só documentação. */
-export function onlyDocs(changedFiles) {
-  return changedFiles.every((file) => DOCS.some((pattern) => pattern.test(file)))
+/** `true` quando nenhum dos arquivos mudados chega ao Auri. */
+export function outsideApp(changedFiles) {
+  return changedFiles.every(
+    (file) =>
+      !APP.some((pattern) => pattern.test(file)) || DOCS.some((pattern) => pattern.test(file))
+  )
 }
 
 /** Versão estável que promove `alphaTag`: a pedida ou a base do alpha. */

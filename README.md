@@ -17,9 +17,21 @@ as cópias automáticas. Apenas o computador que guarda os dados realiza essas c
 Para copiar o arquivo `auri.db` diretamente, feche o app antes. O CI, os testes no Windows e
 as versões alpha e estável estão em [docs/ci.md](docs/ci.md).
 
+## Projetos
+
+O repositório tem um projeto por pasta, cada um com o próprio `package.json` e
+`package-lock.json` (sem npm workspaces: o electron-builder precisa do `node_modules` ao lado
+do app).
+
+- `desktop/`: o app (Electron + React + SQLite) e os scripts de release.
+- `docs/`: documentação comum.
+
 ## Desenvolvimento
 
+Os comandos abaixo rodam dentro de `desktop/`.
+
 ```bash
+cd desktop
 npm install        # também recompila o better-sqlite3 para o Electron
 npm run dev        # recarrega as telas e reinicia o app ao alterar main/preload
 npm test           # testes (rodam no Node do Electron por causa do better-sqlite3)
@@ -30,15 +42,19 @@ npm run knip       # código e dependências sem uso
 npm run test:e2e   # o Auri aberto de verdade (depois de npm run build)
 ```
 
-Estrutura:
+Estrutura (em `desktop/`):
 
 - `src/shared/`: validações (zod), CPF, máscaras e datas, usadas pelas telas e pelo processo main.
 - `src/main/db/`: SQLite. As migrations ficam em `migrations.ts`: para mudar o banco, acrescente uma nova no final em vez de editar as existentes.
 - `src/main/ipc.ts`: canais IPC. Toda entrada é validada aqui.
 - `src/preload/`: expõe `window.api`. O contrato fica em `src/shared/api.ts`.
 - `src/renderer/`: telas (React + Tailwind).
-- `docs/identidade-visual.md`: identidade visual (cores, tipografia, componentes). Toda tela nova deve segui-la.
+- `docs/qualidade/`: banco de exemplo dos testes e capturas de referência da interface.
+- `scripts/release/`: versões do alpha e da estável e montagem do site de atualização.
 - `vite.config.ts`: configuração única do build Electron, testes, lint e formatação com Vite+.
+
+A identidade visual (cores, tipografia, componentes) está em
+[docs/identidade-visual.md](docs/identidade-visual.md). Toda tela nova deve segui-la.
 
 ## Antes de abrir um PR
 
@@ -77,6 +93,7 @@ gh pr ready
 ## Instaladores
 
 ```bash
+cd desktop
 npm run build:mac   # dist/auri-<versão>-arm64.dmg (só Apple Silicon)
 npm run build:win   # dist/auri-<versão>-setup.exe (pode ser gerado no próprio Mac)
 ```

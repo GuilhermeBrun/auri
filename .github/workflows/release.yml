@@ -1,9 +1,9 @@
 name: Release
 
-# Alpha: todo dia, se o main mudou (além de documentação), sai `X.Y.Z-alpha.AAAAMMDD.N` só para
-# Windows (quem escolhe o canal Alpha em Configurações › Geral). Estável: manual, promove o commit
-# do último alpha, que já foi usado, para Windows e Mac (Apple Silicon). A versão é gravada só no
-# build: não há PR de versão.
+# Alpha: todo dia, se o app mudou no main (desktop/ ou .github/, sem contar documentação nem o
+# site), sai `X.Y.Z-alpha.AAAAMMDD.N` só para Windows (quem escolhe o canal Alpha em Configurações ›
+# Geral). Estável: manual, promove o commit do último alpha, que já foi usado, para Windows e Mac
+# (Apple Silicon). A versão é gravada só no build: não há PR de versão.
 #
 #   gh workflow run release.yml -f channel=alpha
 #   gh workflow run release.yml -f channel=stable            # versão = base do último alpha
@@ -40,6 +40,9 @@ jobs:
     if: inputs.channel != 'site'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
+    defaults:
+      run:
+        working-directory: desktop
     outputs:
       skip: ${{ steps.resolve.outputs.skip }}
       ref: ${{ steps.resolve.outputs.ref }}
@@ -74,6 +77,9 @@ jobs:
         platform: ${{ needs.resolve.outputs.prerelease == 'true' && fromJSON('["win32"]') || fromJSON('["win32","darwin"]') }}
     runs-on: ${{ matrix.platform == 'win32' && 'windows-latest' || 'macos-latest' }}
     timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: desktop
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -113,13 +119,13 @@ jobs:
         with:
           name: auri-${{ matrix.platform }}
           path: |
-            dist/*.exe
-            dist/*.dmg
-            dist/*.zip
-            dist/*.blockmap
-            dist/*.yml
-            !dist/builder-debug.yml
-            !dist/builder-effective-config.yaml
+            desktop/dist/*.exe
+            desktop/dist/*.dmg
+            desktop/dist/*.zip
+            desktop/dist/*.blockmap
+            desktop/dist/*.yml
+            !desktop/dist/builder-debug.yml
+            !desktop/dist/builder-effective-config.yaml
           if-no-files-found: error
           # O job Publicar baixa logo em seguida e a release guarda os arquivos (sem custo):
           # o artefato só ocupa o armazenamento pago do Actions.
@@ -178,7 +184,7 @@ jobs:
           node-version: 24.15.0
           package-manager-cache: false
       - name: Montar o site de atualização
-        run: node scripts/release/cli.mjs site site
+        run: node desktop/scripts/release/cli.mjs site site
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}

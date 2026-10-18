@@ -17,6 +17,8 @@ o minuto inteiro.
 | Test          | `npm test` (Vitest no Node do Electron)                                                  |
 | Release Smoke | `node --test scripts/release/*.test.mjs` (versões e site de atualização)                 |
 
+Os comandos rodam em `desktop/`, a pasta do app (o job define `working-directory: desktop`).
+
 Os passos rodam mesmo depois de um erro, para o PR mostrar todos de uma vez. O `Check` é o único
 check exigido pela proteção do `main`, que também exige o PR **atualizado com o `main`**: o que
 entra é exatamente o que o CI testou, então não há outra execução no push no `main`. Se o `main`
@@ -48,7 +50,7 @@ npm run ci:mac
 
 Mudanças visuais: `gh workflow run referencias-visuais.yml --ref <branch>` (capturas do Windows) e
 depois, no Mac, `npm run visual:aceitar`, que baixa as do Windows, gera as do Mac na hora e as
-copia para `docs/qualidade/visual`. Conferir o diff das imagens antes do commit.
+copia para `desktop/docs/qualidade/visual`. Conferir o diff das imagens antes do commit.
 
 ## Custo do Actions
 
@@ -69,13 +71,13 @@ armazenamento de artefatos acima de 500 MB é pago.
 ## Alpha e estável
 
 O workflow **Release** publica as versões. A versão é gravada só no build, então não há PR de
-versão. O número em `package.json` (`0.0.1`, o Auri está em alpha) é a primeira estável a sair:
+versão. O número em `desktop/package.json` (`0.0.1`, o Auri está em alpha) é a primeira estável a sair:
 enquanto ela não existe, os alphas são `0.0.1-alpha.AAAAMMDD.N`; depois, da versão seguinte.
 Até a 0.0.1 o canal alpha se chamava beta: as tags `-beta.` antigas contam como alpha, e quem
 tinha escolhido o canal Beta passa para o Alpha sozinho.
 
-- **Alpha**: todo dia às 02:17 (Cuiabá), se o `main` mudou desde o último alpha (mudança só em
-  `docs/` ou em arquivos `.md` não conta). Sai como `X.Y.(Z+1)-alpha.AAAAMMDD.N`, só para
+- **Alpha**: todo dia às 02:17 (Cuiabá), se o app mudou no `main` desde o último alpha (conta
+  o que muda em `desktop/` ou `.github/`; documentação, arquivos `.md` e o site não contam). Sai como `X.Y.(Z+1)-alpha.AAAAMMDD.N`, só para
   Windows, numa prerelease do GitHub. Também pode ser disparado à mão:
   `gh workflow run release.yml -f channel=alpha`.
 - **Estável**: manual. Promove o commit do último alpha como `X.Y.Z` (a base do alpha ou a versão
@@ -88,7 +90,7 @@ ela. Quem escolhe o canal Alpha em Configurações › Geral segue o `alpha.yml`
 sozinho só quando a estável sai assinada com o Developer ID (abaixo); sem isso, instala-se pela
 página do site. No alpha, o Mac fica na estável (o alpha é só Windows).
 
-Uma mudança na página de download (`scripts/release/page.mjs`, `scripts/release/site-assets/`)
+Uma mudança na página de download (`desktop/scripts/release/page.mjs`, `desktop/scripts/release/site-assets/`)
 só vai ao ar quando o site é remontado. Para não esperar a próxima release, remontar só o site,
 a partir do `main`: `gh workflow run release.yml -f channel=site`.
 

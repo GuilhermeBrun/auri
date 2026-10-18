@@ -5,7 +5,7 @@ import { execFileSync } from 'node:child_process'
 import { appendFileSync, cpSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { downloadPage } from './page.mjs'
-import { latestTags, nextAlpha, onlyDocs, siteFiles, stableFromAlpha } from './versions.mjs'
+import { latestTags, nextAlpha, outsideApp, siteFiles, stableFromAlpha } from './versions.mjs'
 
 const run = (command, args) => execFileSync(command, args, { encoding: 'utf8' }).trim()
 const lines = (text) => text.split('\n').filter(Boolean)
@@ -42,8 +42,8 @@ function resolve() {
     console.log(`O main não mudou desde o ${alpha}.`)
     return output({ skip: true })
   }
-  if (alpha && onlyDocs(lines(run('git', ['diff', '--name-only', commitOf(alpha), head])))) {
-    console.log(`Desde o ${alpha} o main só mudou documentação.`)
+  if (alpha && outsideApp(lines(run('git', ['diff', '--name-only', commitOf(alpha), head])))) {
+    console.log(`Desde o ${alpha} o main não mudou o Auri (só documentação ou o site).`)
     return output({ skip: true })
   }
   const { version: firstVersion } = JSON.parse(readFileSync('package.json', 'utf8'))
