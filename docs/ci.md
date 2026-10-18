@@ -101,7 +101,8 @@ O **GitHub Pages** (`atualizacoes.auri.dev.br`) guarda o que o Auri instalado us
 `alpha.yml`, os instaladores e o `releases.json`, montados das releases pelo job Atualização (a
 cada release, ou `gh workflow run release.yml -f channel=site`). O Pages também recebe uma cópia
 da página. Na Vercel, `web/vercel.json` redireciona esses arquivos para o Pages, então o Auri que
-procura em `auri.dev.br/` continua achando as versões novas. Depois de publicar, o job chama o
+procura em `auri.dev.br/` (as versões até 0.0.x) continua achando as versões novas; as seguintes
+procuram direto em `atualizacoes.auri.dev.br` (`publish.url` do `desktop/electron-builder.yml`). Depois de publicar, o job chama o
 Deploy Hook da Vercel (secret `VERCEL_DEPLOY_HOOK`) para a página mostrar a versão nova.
 
 ## Assinatura do Mac (Developer ID)

@@ -60,10 +60,12 @@ mac:
       arch: [arm64]
 dmg:
   artifactName: ${name}-${version}-${arch}.${ext}
-# Onde o Auri instalado procura versões novas: o GitHub Pages deste repositório, que o Release
-# publica (ver docs/ci.md). latest.yml é a estável e alpha.yml o canal alpha.
+# Onde o Auri instalado procura versões novas: o GitHub Pages deste repositório
+# (atualizacoes.auri.dev.br), que o Release publica (ver docs/ci.md). latest.yml é a estável e
+# alpha.yml o canal alpha. As versões até 0.0.x procuram em auri.dev.br, e a Vercel as redireciona
+# para cá (web/vercel.json).
 publish:
   provider: generic
-  url: https://auri.dev.br/
+  url: https://atualizacoes.auri.dev.br/
 # A estável também escreve alpha.yml: quem está no alpha recebe a estável quando ela é mais nova.
 generateUpdatesFilesForAllChannels: true
