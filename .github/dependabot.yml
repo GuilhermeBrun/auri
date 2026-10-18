@@ -9,6 +9,11 @@ updates:
       timezone: America/Cuiaba
     open-pull-requests-limit: 5
     groups:
+      # O Vite+ junto com o core (o alias do vite). O Dependabot não muda o "overrides" do
+      # package.json: no PR dele, rodar `npx vp migrate --no-interactive` na pasta, que acerta o
+      # alias para a versão nova.
+      vite-plus:
+        patterns: ['vite-plus', 'vite', '@voidzero-dev/*']
       desenvolvimento:
         dependency-type: development
         update-types: [minor, patch]
@@ -28,6 +33,9 @@ updates:
       timezone: America/Cuiaba
     open-pull-requests-limit: 3
     groups:
+      # Como no /desktop.
+      vite-plus:
+        patterns: ['vite-plus', 'vite', '@voidzero-dev/*']
       site:
         update-types: [minor, patch]
     # Tipos do Node na major do Node do CI (ver o /desktop).

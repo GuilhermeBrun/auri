@@ -1,3 +1,0 @@
-#!/bin/sh
-# CI local antes de cada push (desktop/scripts/ci-local.mjs). Pular: git push --no-verify
-cd "$(git rev-parse --show-toplevel)/desktop" && exec npm run ci:local

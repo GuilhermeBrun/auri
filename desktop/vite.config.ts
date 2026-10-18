@@ -44,13 +44,18 @@ export default defineConfig({
     categories: { correctness: 'error' },
     ignorePatterns: generated,
     options: { typeAware: true, typeCheck: true, maxWarnings: 0 },
+    jsPlugins: [{ name: 'vite-plus', specifier: 'vite-plus/oxlint-plugin' }],
     rules: {
       'react/rules-of-hooks': 'error',
       'react/exhaustive-deps': 'error',
       'react/only-export-components': ['error', { allowConstantExport: true }],
       'typescript/no-unused-vars': ['error', { argsIgnorePattern: '^_', ignoreRestSiblings: true }],
-      'typescript/no-explicit-any': 'error'
+      'typescript/no-explicit-any': 'error',
+      'vite-plus/prefer-vite-plus-imports': 'error'
     }
+  },
+  staged: {
+    '*': 'vp check --fix'
   },
   test: {
     include: ['src/**/*.test.{ts,tsx}'],

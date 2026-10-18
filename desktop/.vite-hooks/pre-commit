@@ -1,0 +1,6 @@
+# Formato e lint só dos arquivos no commit (bloco `staged` de cada vite.config.ts). O web/ entra
+# quando tem as dependências instaladas. O PATH do Vite+ é relativo à raiz, e o `cd` o perde: por
+# isso o caminho do vp.
+cd desktop && node_modules/.bin/vp staged
+cd ../web
+if [ -x node_modules/.bin/vp ]; then node_modules/.bin/vp staged; fi

@@ -27,10 +27,20 @@ andou desde o último CI do PR, o GitHub pede **Update branch**
 atualizado, ele pode ser mesclado por squash ou rebase.
 
 Os mesmos passos rodam na sua máquina antes de cada `git push` (`npm run ci:local`, pelo hook
-`.githooks/pre-push`). Por isso o Actions não roda em **rascunho**: abra o PR como rascunho
-enquanto ajusta (`gh pr create --draft`) e marque como pronto (`gh pr ready`) quando terminar. Um
-rascunho não pode ser mesclado. Para o CI rodar só uma vez: um PR pronto de cada vez, mesclado
-antes de marcar o próximo como pronto, e sem push depois de pronto.
+`desktop/.vite-hooks/pre-push`). Por isso o Actions não roda em **rascunho**: abra o PR como
+rascunho enquanto ajusta (`gh pr create --draft`) e marque como pronto (`gh pr ready`) quando
+terminar. Um rascunho não pode ser mesclado. Para o CI rodar só uma vez: um PR pronto de cada vez,
+mesclado antes de marcar o próximo como pronto, e sem push depois de pronto.
+
+No `ci:local`, lint, testes e o build do site passam pelo cache do Vite+ (`vp run --cache`): se
+nada do que o passo lê mudou desde a última vez que passou, a saída é repetida sem rodar de novo
+(`npx vp cache clean` zera). O `npm ci` do site só roda quando o `package-lock.json` mudou. O Actions
+roda tudo sem cache.
+
+Os hooks são do Vite+. O `npm install` do desktop instala os hooks (`vp config`). Antes de cada
+commit, o `desktop/.vite-hooks/pre-commit` roda o `vp staged`: formato e lint só dos arquivos do
+commit, corrigindo o que der. `npx vp hooks status` mostra o estado, e `VP_GIT_HOOKS=0` desliga os
+hooks num comando.
 
 ## Windows (manual) e Mac (local)
 
