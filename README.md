@@ -49,12 +49,15 @@ O `npm run build` lê as releases publicadas (`releases.json` no Pages), ou um a
 
 Os comandos abaixo rodam dentro de `desktop/`.
 
+No VS Code, abra o `auri.code-workspace`: a extensão do Oxc (no pacote do Vite+) formata e
+aponta os erros com o `vite.config.ts` de cada pasta.
+
 ```bash
 cd desktop
 npm install        # também recompila o better-sqlite3 para o Electron
 npm run dev        # recarrega as telas e reinicia o app ao alterar main/preload
 npm test           # testes (rodam no Node do Electron por causa do better-sqlite3)
-npm run typecheck
+npm run typecheck  # só os tipos (vp check sem formato e lint)
 npm run lint
 npm run check      # Vite+: formato, lint e análise de tipos
 npm run knip       # código e dependências sem uso

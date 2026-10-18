@@ -1,0 +1,66 @@
+// Abra este arquivo no VS Code (File > Open Workspace from File): cada pasta é uma raiz, e a
+// extensão do Oxc acha o Vite+ e o vite.config.ts de cada uma. Com a pasta do repositório aberta
+// direto, ela não acha o vite-plus, que fica em desktop/node_modules e web/node_modules.
+{
+  "folders": [
+    { "name": "desktop", "path": "desktop" },
+    { "name": "web", "path": "web" },
+    { "name": "raiz", "path": "." }
+  ],
+  "settings": {
+    "editor.defaultFormatter": "oxc.oxc-vscode",
+    "[javascript]": { "editor.defaultFormatter": "oxc.oxc-vscode" },
+    "[javascriptreact]": { "editor.defaultFormatter": "oxc.oxc-vscode" },
+    "[typescript]": { "editor.defaultFormatter": "oxc.oxc-vscode" },
+    "[typescriptreact]": { "editor.defaultFormatter": "oxc.oxc-vscode" },
+    "oxc.disableNestedConfig": true,
+    "oxc.fmt.disableNestedConfig": true,
+    "editor.formatOnSave": true,
+    "editor.formatOnSaveMode": "file",
+    "editor.codeActionsOnSave": {
+      "source.fixAll.oxc": "explicit"
+    }
+  },
+  "extensions": {
+    "recommendations": ["VoidZero.vite-plus-extension-pack"]
+  },
+  "launch": {
+    "version": "0.2.0",
+    "configurations": [
+      {
+        "name": "Debug Main Process",
+        "type": "node",
+        "request": "launch",
+        "cwd": "${workspaceFolder:desktop}",
+        "runtimeExecutable": "${workspaceFolder:desktop}/node_modules/.bin/electron-vite",
+        "windows": {
+          "runtimeExecutable": "${workspaceFolder:desktop}/node_modules/.bin/electron-vite.cmd"
+        },
+        "runtimeArgs": ["--sourcemap"],
+        "env": {
+          "REMOTE_DEBUGGING_PORT": "9222"
+        }
+      },
+      {
+        "name": "Debug Renderer Process",
+        "port": 9222,
+        "request": "attach",
+        "type": "chrome",
+        "webRoot": "${workspaceFolder:desktop}/src/renderer",
+        "timeout": 60000,
+        "presentation": {
+          "hidden": true
+        }
+      }
+    ],
+    "compounds": [
+      {
+        "name": "Debug All",
+        "configurations": ["Debug Main Process", "Debug Renderer Process"],
+        "presentation": {
+          "order": 1
+        }
+      }
+    ]
+  }
+}

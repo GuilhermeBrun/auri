@@ -13,7 +13,7 @@ o minuto inteiro.
 | Passo         | O que confere                                                                            |
 | ------------- | ---------------------------------------------------------------------------------------- |
 | Lint          | `npm run check` (formato, lint e tipos) e `npm run knip` (código e dependências sem uso) |
-| Build         | `npm run build` (typecheck e electron-vite)                                              |
+| Build         | `npm run build` (electron-vite; os tipos já passaram no `npm run check`)                 |
 | Test          | `npm test` (Vitest no Node do Electron)                                                  |
 | Release Smoke | `node --test scripts/release/*.test.mjs` (versões e site de atualização)                 |
 
