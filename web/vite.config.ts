@@ -31,6 +31,9 @@ export default defineConfig({
       'vite-plus/prefer-vite-plus-imports': 'error'
     }
   },
+  staged: {
+    '*': 'vp check --fix'
+  },
   test: {
     include: ['src/**/*.test.{ts,tsx}'],
     environment: 'node',

@@ -1,24 +1,38 @@
 // O CI rodando nesta máquina, parando no primeiro erro:
 //
 //   npm run ci:local → os passos do ci.yml (job Check). Roda sozinho antes de cada `git push`
-//                      (hook em .githooks/pre-push); `git push --no-verify` pula.
+//                      (hook em desktop/.vite-hooks/pre-push); `git push --no-verify` pula.
 //   npm run ci:mac   → os passos do workflow Windows, no Mac: o Auri aberto de verdade (E2E), a
 //                      interface, o pacote e o instalador. O Mac é testado aqui, não no Actions,
 //                      onde o minuto do Mac custa 10x o do Linux. Rodar antes de cada estável.
+//
+// No `local`, os passos com `cached` rodam pelo `vp run --cache` do Vite+: se nada que o passo lê
+// mudou desde a última vez que ele passou, a saída é repetida sem rodar de novo. O CI do Actions
+// roda sem cache. Para zerar: `npx vp cache clean` (em desktop/ e em web/).
 import { spawnSync } from 'node:child_process'
+import { statSync } from 'node:fs'
+import { resolve } from 'node:path'
+
+// O npm grava node_modules/.package-lock.json ao instalar: mais novo que o package-lock.json, a
+// instalação é a do lockfile atual (trocar de branch ou mudar dependências muda o package-lock.json).
+const installed = (cwd) => {
+  const modified = (file) => statSync(resolve(cwd, file), { throwIfNoEntry: false })?.mtimeMs
+  return (modified('node_modules/.package-lock.json') ?? 0) > (modified('package-lock.json') ?? 0)
+}
 
 const profiles = {
   local: [
-    { name: 'Lint: formato, lint e tipos', command: 'npm', args: ['run', 'check'] },
-    { name: 'Lint: código não usado', command: 'npm', args: ['run', 'knip'] },
+    { name: 'Lint: formato, lint e tipos', cached: 'check' },
+    { name: 'Lint: código não usado', cached: 'knip' },
     { name: 'Build', command: 'npm', args: ['run', 'build'] },
-    { name: 'Test', command: 'npm', args: ['test'] },
+    { name: 'Test', cached: 'test' },
     { name: 'Release Smoke', command: 'node', args: ['--test', 'scripts/release/*.test.mjs'] },
     // O site (web/), como no job Check
-    { name: 'Site: dependências', command: 'npm', args: ['ci'], cwd: '../web' },
-    { name: 'Site: formato, lint e tipos', command: 'npm', args: ['run', 'check'], cwd: '../web' },
-    { name: 'Site: testes', command: 'npm', args: ['test'], cwd: '../web' },
-    { name: 'Site: build', command: 'npm', args: ['run', 'build:exemplo'], cwd: '../web' }
+    // Sem `npm ci` se o node_modules já é o do lockfile: ele apaga a pasta, e o cache do Vite+ com ela
+    { name: 'Site: dependências', command: 'npm', args: ['ci'], cwd: '../web', skip: installed },
+    { name: 'Site: formato, lint e tipos', cached: 'check', cwd: '../web' },
+    { name: 'Site: testes', cached: 'test', cwd: '../web' },
+    { name: 'Site: build', cached: 'build:exemplo', cwd: '../web' }
   ],
   mac: [
     // Sem instaladores de versões anteriores: a conferência do instalador espera um só.
@@ -61,12 +75,26 @@ if (pending) {
 }
 
 const results = []
-for (const { name, command, args, env, cwd } of steps) {
+// O vp de cada pasta (sem workspaces, cada uma tem o seu node_modules)
+const vitePlusRun = (cwd = '.', script) => ({
+  command: process.execPath,
+  args: [resolve(cwd, 'node_modules/vite-plus/bin/vp'), 'run', '--cache', script]
+})
+
+for (const step of steps) {
+  const { name, env, cwd } = step
+  if (step.skip?.(cwd)) {
+    console.log(`\n▶ ${name}: já em dia`)
+    results.push(`✓ ${name} (já em dia)`)
+    continue
+  }
+  const { command, args } = step.cached ? vitePlusRun(cwd, step.cached) : step
   console.log(`\n▶ ${name}`)
   const start = Date.now()
   const { status } = spawnSync(command, args, {
     stdio: 'inherit',
-    shell: process.platform === 'win32',
+    // O shell só para o npm do Windows (npm.cmd); o node é chamado direto
+    shell: process.platform === 'win32' && !step.cached,
     cwd,
     env: { ...process.env, ...env }
   })

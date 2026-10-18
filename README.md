@@ -84,7 +84,8 @@ O CI do GitHub roda só quando o PR sai do rascunho e confere apenas lint, build
 `Check`). O resto é testado aqui, no Mac, antes do PR:
 
 1. **Sempre:** `npm run ci:local`, os mesmos passos do `Check` (formato, lint, tipos, código sem
-   uso, build, testes e scripts de release). Também roda sozinho antes de cada `git push`.
+   uso, build, testes e scripts de release). Também roda sozinho antes de cada `git push`, com o
+   cache do Vite+ nos passos que não mudaram.
 2. **Conforme o que mudou:**
 
 | Mudou                                                              | Rodar                                                  |
