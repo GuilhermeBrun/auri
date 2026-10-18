@@ -1,6 +1,11 @@
 name: Preparar dependências
 description: Node fixo e node_modules em cache (Electron e SQLite já compilados) pela chave do lockfile.
 
+inputs:
+  directory:
+    description: Pasta do projeto (desktop ou web), com o package.json e o package-lock.json.
+    default: desktop
+
 runs:
   using: composite
   steps:
@@ -11,15 +16,17 @@ runs:
     # Chave sem o campo version do app: a release grava a versão só no build.
     - id: lockfile
       shell: bash
+      working-directory: ${{ inputs.directory }}
       run: >-
         node -e "const l = require('./package-lock.json'); delete l.version; delete l.packages[''].version;
         require('fs').appendFileSync(process.env.GITHUB_OUTPUT, 'hash=' + require('crypto').createHash('sha256').update(JSON.stringify(l)).digest('hex') + '\\n')"
     - id: modules
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
-        path: node_modules
-        key: modules-${{ runner.os }}-${{ runner.arch }}-node24.15.0-${{ steps.lockfile.outputs.hash }}
+        path: ${{ inputs.directory }}/node_modules
+        key: modules-${{ inputs.directory }}-${{ runner.os }}-${{ runner.arch }}-node24.15.0-${{ steps.lockfile.outputs.hash }}
     # Uma nova tentativa: o download do Electron às vezes cai no meio.
     - if: steps.modules.outputs.cache-hit != 'true'
       shell: bash
+      working-directory: ${{ inputs.directory }}
       run: npm ci || npm ci

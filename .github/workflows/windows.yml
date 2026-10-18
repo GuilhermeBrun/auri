@@ -21,6 +21,9 @@ jobs:
     name: test (win32)
     runs-on: windows-latest
     timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: desktop
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -51,8 +54,8 @@ jobs:
         with:
           name: evidencias-win32
           path: |
-            .quality/
-            e2e-saida/
+            desktop/.quality/
+            desktop/e2e-saida/
           include-hidden-files: true
           if-no-files-found: ignore
           retention-days: 3

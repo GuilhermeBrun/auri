@@ -37,12 +37,12 @@ export default defineConfig({
     trailingComma: 'none',
     sortImports: false,
     sortPackageJson: false,
-    ignorePatterns: [...generated, 'research_notes/**', 'reports/**', 'LICENSE.md']
+    ignorePatterns: [...generated, 'LICENSE.md']
   },
   lint: {
     plugins: ['typescript', 'react', 'unicorn', 'oxc'],
     categories: { correctness: 'error' },
-    ignorePatterns: [...generated, 'research_notes/**', 'reports/**'],
+    ignorePatterns: generated,
     options: { typeAware: true, typeCheck: true, maxWarnings: 0 },
     rules: {
       'react/rules-of-hooks': 'error',

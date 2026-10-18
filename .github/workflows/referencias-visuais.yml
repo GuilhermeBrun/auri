@@ -1,7 +1,7 @@
 name: Referências visuais
 
 # Gera as capturas do Windows para a branch escolhida, sem aprovar nada: o resultado vira artefato
-# e `npm run visual:aceitar`, rodado no Mac, traz as imagens para docs/qualidade/visual junto com
+# e `npm run visual:aceitar`, rodado no Mac, traz as imagens para desktop/docs/qualidade/visual junto com
 # as do Mac, geradas na hora pela própria máquina (o minuto do Mac no Actions custa 10x o do
 # Linux). Depois de conferir o diff das imagens, o commit passa pelo CI normal.
 on:
@@ -19,6 +19,9 @@ jobs:
     name: capture (win32)
     runs-on: windows-latest
     timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: desktop
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -36,8 +39,8 @@ jobs:
       - id: modules
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          path: node_modules
-          key: modules-${{ runner.os }}-${{ runner.arch }}-node24.15.0-${{ steps.lockfile.outputs.hash }}
+          path: desktop/node_modules
+          key: modules-desktop-${{ runner.os }}-${{ runner.arch }}-node24.15.0-${{ steps.lockfile.outputs.hash }}
       # Uma nova tentativa: o download do Electron às vezes cai no meio.
       - if: steps.modules.outputs.cache-hit != 'true'
         shell: bash
@@ -49,7 +52,7 @@ jobs:
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: referencias-win32
-          path: .quality/ui/reference/win32/
+          path: desktop/.quality/ui/reference/win32/
           if-no-files-found: error
           # O `npm run visual:aceitar` baixa logo depois; o artefato ocupa armazenamento pago.
           retention-days: 1
