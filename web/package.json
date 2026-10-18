@@ -6,8 +6,9 @@
   "type": "module",
   "scripts": {
     "dev": "vp dev",
-    "build": "vp build && vp build --ssr src/entry-server.tsx --outDir dist-ssr && node scripts/prerender.mjs",
-    "build:exemplo": "AURI_RELEASES=exemplo npm run build",
+    "build": "npm run build:app && node scripts/prerender.mjs",
+    "build:app": "vp build && vp build --ssr src/entry-server.tsx --outDir dist-ssr",
+    "build:exemplo": "npm run build:app && node scripts/prerender.mjs exemplo",
     "preview": "vp preview",
     "check": "vp check",
     "fmt": "vp fmt",
