@@ -99,11 +99,17 @@ export const weekOf = (day: number) => Math.floor(day / 7)
 export const shortName = (name: string) => name.split(' ').slice(0, 2).join(' ')
 export const clock = (hours: number) =>
   `${String(Math.floor(hours)).padStart(2, '0')}:${String(Math.round((hours % 1) * 60)).padStart(2, '0')}`
-export const range = (session: Session) =>
-  `${clock(session.start)} – ${clock(session.start + session.len)}`
+export const range = ({ start, len }: { start: number; len: number }) =>
+  `${clock(start)} – ${clock(start + len)}`
 export const overlaps = (session: Session, start: number, length: number) =>
   start < session.start + session.len && start + length > session.start
 export const isWeekend = (day: number) => [0, 6].includes(dateOf(day).getUTCDay())
+
+/** Data por extenso do cartão da sessão: "quarta-feira, 21 de outubro". */
+export function longDay(day: number) {
+  const date = dateOf(day)
+  return `${WEEKDAYS[date.getUTCDay()]}, ${date.getUTCDate()} de ${MONTHS[date.getUTCMonth()]}`
+}
 
 /** Data curta dos avisos do app: "qua, 21 de out". */
 export function shortDate(day: number) {
@@ -208,8 +214,7 @@ export const initialState = (): State => ({
 export function period(state: State) {
   const date = dateOf(state.focus)
   if (state.mode === 'month') return `${MONTHS[date.getUTCMonth()]} ${date.getUTCFullYear()}`
-  if (state.mode === 'day')
-    return `${WEEKDAYS[date.getUTCDay()]}, ${date.getUTCDate()} de ${MONTHS[date.getUTCMonth()]}`
+  if (state.mode === 'day') return longDay(state.focus)
   const start = dateOf(weekOf(state.focus) * 7)
   const end = dateOf(weekOf(state.focus) * 7 + 6)
   return start.getUTCMonth() === end.getUTCMonth()

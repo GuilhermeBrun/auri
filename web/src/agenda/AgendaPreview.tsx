@@ -35,6 +35,7 @@ import {
   FIRST,
   initialState,
   LENGTH,
+  longDay,
   NAMES,
   overlaps,
   period,
@@ -42,6 +43,7 @@ import {
   shortDate,
   shortName,
   TODAY,
+  VISIBLE,
   type Enter,
   type Mode,
   type State,
@@ -203,7 +205,7 @@ export function AgendaPreview() {
   useBrowserLayoutEffect(() => {
     const modes = toolsRef.current?.querySelector('[data-modes]')
     moveThumb(modes, modes?.querySelector('[aria-pressed="true"]'), false)
-  })
+  }, [state.mode, state.view, view.key])
   useEffect(() => {
     void document.fonts?.ready.then(() => {
       const modes = toolsRef.current?.querySelector('[data-modes]')
@@ -241,6 +243,12 @@ export function AgendaPreview() {
     card.style.top = `${Math.max(gap, top)}px`
     card.querySelector<HTMLElement>('[data-close]')?.focus({ preventScroll: true })
   }, [pop])
+
+  /** Fecha o cartão da sessão e tira o destaque dela. */
+  function closePop() {
+    setPop(null)
+    setView((current) => ({ ...current, state: { ...current.state, selected: null } }))
+  }
 
   function nextName(day: number) {
     const taken = new Set(store.day(day).map((session) => session.name))
@@ -292,7 +300,7 @@ export function AgendaPreview() {
   function onClick(event: MouseEvent) {
     const target = event.target as Element
     if (popRef.current?.contains(target)) {
-      if (target.closest('[data-close]')) setPop(null)
+      if (target.closest('[data-close]')) closePop()
       const remove = target.closest<HTMLElement>('[data-delete]')
       if (remove) {
         const session = store.remove(Number(remove.dataset.delete))
@@ -322,9 +330,10 @@ export function AgendaPreview() {
     const nav = target.closest<HTMLElement>('[data-view]')
     if (target.closest('[data-today]')) return render({ ...state, focus: TODAY }, 'all')
     if (target.closest('[data-new]')) {
-      // como o "+" do app: o próximo horário livre de hoje, depois de agora
+      // como o "+" do app: o próximo horário livre de hoje, depois de agora, dentro das horas que
+      // a prévia mostra (ela não rola como a agenda do app)
       const sessions = store.day(TODAY)
-      for (let start = 10.5; start <= DAY_END - LENGTH; start += 0.5) {
+      for (let start = 10.5; start <= FIRST + VISIBLE - LENGTH; start += 0.5) {
         if (!sessions.some((session) => overlaps(session, start, LENGTH))) {
           const next = {
             ...state,
@@ -359,18 +368,17 @@ export function AgendaPreview() {
       setGhost(null)
       return schedule(state, slot.day, slot.start)
     }
-    setPop(null)
+    if (pop) closePop()
   }
 
   function onKeyDown(event: KeyboardEvent) {
     if (event.key === 'Escape' && pop) {
-      setPop(null)
-      bodyRef.current?.querySelector<HTMLElement>('.ev.selected')?.focus()
+      pop.anchor.focus()
+      closePop()
     }
   }
 
   const session = pop ? store.find(pop.id) : null
-  const date = session ? dateOf(session.day) : null
   const shotClasses = ['shot', inView && 'in', ready && 'ready'].filter(Boolean).join(' ')
 
   return (
@@ -435,12 +443,10 @@ export function AgendaPreview() {
             <Grid key={view.key} state={state} store={store} enter={enter} ghost={ghost} />
           </div>
           <div ref={popRef} className="pop" data-pop="" hidden={!session}>
-            {session && date && (
+            {session && (
               <>
                 <b>{session.name}</b>
-                <span>
-                  {`${date.toLocaleDateString('pt-BR', { weekday: 'long', timeZone: 'UTC' })}, ${date.getUTCDate()} de ${date.toLocaleDateString('pt-BR', { month: 'long', timeZone: 'UTC' })}`}
-                </span>
+                <span>{longDay(session.day)}</span>
                 <span>{`${range(session)} · ${Math.round(session.len * 60)} min`}</span>
                 <div className="pop-actions">
                   <button type="button" className="pop-danger" data-delete={session.id}>

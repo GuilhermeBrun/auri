@@ -140,7 +140,7 @@ function WeekGrid({ state, store, enter, ghost }: GridProps) {
                   aria-hidden="true"
                   style={vars({ '--top': ghost.start - FIRST })}
                 >
-                  {`${clock(ghost.start)} – ${clock(ghost.start + LENGTH)}`}
+                  {range({ start: ghost.start, len: LENGTH })}
                 </div>
               )}
             </div>

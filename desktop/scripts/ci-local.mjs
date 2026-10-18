@@ -13,7 +13,12 @@ const profiles = {
     { name: 'Lint: código não usado', command: 'npm', args: ['run', 'knip'] },
     { name: 'Build', command: 'npm', args: ['run', 'build'] },
     { name: 'Test', command: 'npm', args: ['test'] },
-    { name: 'Release Smoke', command: 'node', args: ['--test', 'scripts/release/*.test.mjs'] }
+    { name: 'Release Smoke', command: 'node', args: ['--test', 'scripts/release/*.test.mjs'] },
+    // O site (web/), como no job Check
+    { name: 'Site: dependências', command: 'npm', args: ['ci'], cwd: '../web' },
+    { name: 'Site: formato, lint e tipos', command: 'npm', args: ['run', 'check'], cwd: '../web' },
+    { name: 'Site: testes', command: 'npm', args: ['test'], cwd: '../web' },
+    { name: 'Site: build', command: 'npm', args: ['run', 'build:exemplo'], cwd: '../web' }
   ],
   mac: [
     // Sem instaladores de versões anteriores: a conferência do instalador espera um só.
@@ -56,12 +61,13 @@ if (pending) {
 }
 
 const results = []
-for (const { name, command, args, env } of steps) {
+for (const { name, command, args, env, cwd } of steps) {
   console.log(`\n▶ ${name}`)
   const start = Date.now()
   const { status } = spawnSync(command, args, {
     stdio: 'inherit',
     shell: process.platform === 'win32',
+    cwd,
     env: { ...process.env, ...env }
   })
   const seconds = Math.round((Date.now() - start) / 1000)

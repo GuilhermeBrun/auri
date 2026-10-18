@@ -42,8 +42,8 @@ npm test
 npm run build:exemplo   # build pré-renderizado com as releases de exemplo
 ```
 
-O `npm run build` lê as releases publicadas (`https://atualizacoes.auri.dev.br/releases.json`, ou
-`AURI_RELEASES=<arquivo ou url>`).
+O `npm run build` lê as releases publicadas (`releases.json` no Pages), ou um arquivo ou url em
+`AURI_RELEASES`.
 
 ### App (`desktop/`)
 
