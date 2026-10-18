@@ -88,7 +88,7 @@ export function stableFromAlpha({ tagNames, alphaTag, requested }) {
 }
 
 /**
- * Arquivos do site de atualização (GitHub Pages). Ficam os da última estável e, se houver um alpha
+ * Arquivos do site de atualização (Vercel Blob). Ficam os da última estável e, se houver um alpha
  * mais novo, os instaladores dele e o `alpha.yml` (e `alpha-mac.yml`, se o alpha tiver Mac), que
  * substituem os da estável. Alpha só de Windows deixa o Mac do canal alpha na estável.
  */

@@ -4,14 +4,13 @@
 // As releases vêm, nesta ordem, de:
 //   `node scripts/prerender.mjs exemplo` ou AURI_RELEASES=exemplo | <arquivo> | <url>
 //   releases.json            gravado pelo workflow Release antes do build
-//   o releases.json publicado no Pages: em atualizacoes.auri.dev.br e, até a troca de DNS, em
-//   auri.dev.br (depois dela, a Vercel redireciona esse endereço para o Pages)
+//   o releases.json publicado no Vercel Blob pelo workflow Release
 import { existsSync } from 'node:fs'
 import { readFile, rm, writeFile } from 'node:fs/promises'
 
 const PUBLISHED = [
-  'https://atualizacoes.auri.dev.br/releases.json',
-  'https://auri.dev.br/releases.json'
+  'https://tmjyk19jrikg8aex.public.blob.vercel-storage.com/releases.json',
+  'https://atualizacoes.auri.dev.br/releases.json'
 ]
 
 async function fetchJson(url) {

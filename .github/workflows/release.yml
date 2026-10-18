@@ -157,30 +157,25 @@ jobs:
           if [ "$PRERELEASE" = true ]; then flags+=(--prerelease); else flags+=(--latest); fi
           gh release create "$TAG" "${flags[@]}" entrega/*
 
-  # O repositório é privado: o Auri instalado procura versões novas no Pages, que é público e
-  # publicado só com o token do próprio workflow. O site é remontado das releases: a última
-  # estável (latest.yml) e o alpha mais novo que ela (alpha.yml), mais o releases.json e a página
-  # de download (web/, a mesma que a Vercel publica em auri.dev.br). Com `channel=site`, roda
-  # sozinho (os jobs de cima ficam de fora), para remontar sem release nova.
-  pages:
+  # O repositório é privado: o Auri instalado procura versões novas no Vercel Blob, que é público.
+  # O job envia para lá a última estável (latest.yml) e o alpha mais novo que ela (alpha.yml), os
+  # instaladores e o releases.json, e apaga as versões antigas. auri.dev.br e
+  # atualizacoes.auri.dev.br (Vercel, web/vercel.json) redirecionam para o Blob. Com
+  # `channel=site`, roda sozinho (os jobs de cima ficam de fora), para publicar de novo sem release.
+  atualizacao:
     name: Atualização
     needs: publish
     if: ${{ !cancelled() && (needs.publish.result == 'success' || inputs.channel == 'site') }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 15
     permissions:
       contents: read
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deploy.outputs.page_url }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: main
           persist-credentials: false
-      # Node e as dependências do site (web/), que monta a página de download
+      # Node e o cliente do Blob (dependência do web/)
       - uses: ./.github/actions/setup-deps
         with:
           directory: web
@@ -189,16 +184,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-      - name: Página de download
-        run: |
-          cp site/releases.json web/releases.json
-          npm --prefix web run build
-          cp -R web/dist/. site/
-      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
-        with:
-          path: site
-      - id: deploy
-        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
+      - name: Publicar no Blob
+        run: node web/scripts/publicar-atualizacoes.mjs site
+        env:
+          BLOB_READ_WRITE_TOKEN: ${{ secrets.BLOB_READ_WRITE_TOKEN }}
       # A página da Vercel lê o releases.json no build: o Deploy Hook a reconstrói com a versão nova.
       - name: Atualizar a página na Vercel
         env:

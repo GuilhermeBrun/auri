@@ -85,7 +85,7 @@ tinha escolhido o canal Beta passa para o Alpha sozinho.
   pedida), para Windows e Mac (só Apple Silicon). Antes, rodar `npm run ci:mac` no Mac e o
   workflow Windows: `gh workflow run release.yml -f channel=stable [-f version=1.2.0]`.
 
-O site de atualização (GitHub Pages, ver abaixo) é remontado das releases a
+Os arquivos de atualização (Vercel Blob, ver abaixo) são remontados das releases a
 cada publicação: `latest.yml` aponta para a última estável e `alpha.yml` para o alpha mais novo que
 ela. Quem escolhe o canal Alpha em Configurações › Geral segue o `alpha.yml`. O Mac se atualiza
 sozinho só quando a estável sai assinada com o Developer ID (abaixo); sem isso, instala-se pela
@@ -94,16 +94,25 @@ página do site. No alpha, o Mac fica na estável (o alpha é só Windows).
 ## Site e atualização
 
 A página de download é o projeto `web/` (React + Vite+). A **Vercel** a publica em `auri.dev.br` a
-cada push no `main` (e faz uma prévia por PR). O build lê o `releases.json` publicado no Pages e
+cada push no `main` (e faz uma prévia por PR). O build lê o `releases.json` publicado no Blob e
 pré-renderiza a página com a versão, os tamanhos e a data.
 
-O **GitHub Pages** (`atualizacoes.auri.dev.br`) guarda o que o Auri instalado usa: `latest.yml`,
-`alpha.yml`, os instaladores e o `releases.json`, montados das releases pelo job Atualização (a
-cada release, ou `gh workflow run release.yml -f channel=site`). O Pages também recebe uma cópia
-da página. Na Vercel, `web/vercel.json` redireciona esses arquivos para o Pages, então o Auri que
-procura em `auri.dev.br/` (as versões até 0.0.x) continua achando as versões novas; as seguintes
-procuram direto em `atualizacoes.auri.dev.br` (`publish.url` do `desktop/electron-builder.yml`). Depois de publicar, o job chama o
-Deploy Hook da Vercel (secret `VERCEL_DEPLOY_HOOK`) para a página mostrar a versão nova.
+O **Vercel Blob** `auri-atualizacoes` (público, região São Paulo) guarda o que o Auri instalado
+usa: `latest.yml`, `alpha.yml`, os instaladores e o `releases.json`. O job Atualização baixa os
+arquivos das releases (`desktop/scripts/release/cli.mjs site`) e os envia com
+`web/scripts/publicar-atualizacoes.mjs` (secret `BLOB_READ_WRITE_TOKEN`), a cada release ou com
+`gh workflow run release.yml -f channel=site`. Um instalador só sobe uma vez; os `.yml` são
+regravados; versões que saíram do site são apagadas. Depois, o job chama o Deploy Hook da Vercel
+(secret `VERCEL_DEPLOY_HOOK`) para a página mostrar a versão nova.
+
+O Auri procura versões em `atualizacoes.auri.dev.br` (`publish.url` do
+`desktop/electron-builder.yml`); as versões até 0.0.x, em `auri.dev.br`. Os dois domínios são da
+Vercel, e o `web/vercel.json` redireciona os `.yml`, os instaladores e o `releases.json` para o
+Blob, sem passar o arquivo pela Vercel.
+
+Limites do plano Hobby: 1 GB guardado (só a estável e o alpha mais novo, ~500 MB) e **10 GB de
+download por mês**. Passando disso, o Blob para por 30 dias, e com ele a página de download e as
+atualizações. O uso aparece em Vercel › Storage › auri-atualizacoes.
 
 ## Assinatura do Mac (Developer ID)
 

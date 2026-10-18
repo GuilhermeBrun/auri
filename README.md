@@ -26,7 +26,7 @@ do app).
 - `desktop/`: o app (Electron + React + SQLite) e os scripts de release.
 - `web/`: o site [auri.dev.br](https://auri.dev.br) (React + Vite+, pré-renderizado), com a
   página de download. Publicado pela Vercel; o feed de atualização e os instaladores ficam no
-  GitHub Pages (ver [docs/ci.md](docs/ci.md)).
+  Vercel Blob (ver [docs/ci.md](docs/ci.md)).
 - `docs/`: documentação comum.
 
 ## Desenvolvimento
@@ -42,7 +42,7 @@ npm test
 npm run build:exemplo   # build pré-renderizado com as releases de exemplo
 ```
 
-O `npm run build` lê as releases publicadas (`releases.json` no Pages), ou um arquivo ou url em
+O `npm run build` lê as releases publicadas (`releases.json` no Blob), ou um arquivo ou url em
 `AURI_RELEASES`.
 
 ### App (`desktop/`)
