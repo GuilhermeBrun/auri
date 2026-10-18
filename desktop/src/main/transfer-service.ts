@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto'
 import { app, BrowserWindow, dialog } from 'electron'
-import { mkdirSync } from 'fs'
+import { existsSync, mkdirSync } from 'fs'
 import { readFile, stat, writeFile } from 'fs/promises'
 import { basename, join } from 'path'
 import type { AuriTransfer } from '../shared/api'
@@ -78,9 +78,12 @@ export function createTransferService(options: {
     },
 
     async pickSettings() {
+      // onde a exportação salva; sem `defaultPath` o Electron abre sempre em Downloads
+      const preferred = options.backup.preferredFolder()
       const dialogOptions = {
         title: 'Importar configurações',
         buttonLabel: 'Importar',
+        defaultPath: preferred && existsSync(preferred) ? preferred : app.getPath('documents'),
         properties: ['openFile'] as Array<'openFile'>,
         filters: [{ name: 'Configurações do Auri', extensions: [SETTINGS_EXTENSION] }]
       }

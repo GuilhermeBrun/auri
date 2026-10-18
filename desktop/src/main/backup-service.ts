@@ -399,6 +399,17 @@ export function createBackupService(options: {
     if (!key.equals(current.key)) throw new WrongSecretError('Senha atual incorreta.')
   }
 
+  /**
+   * Onde as janelas de escolher abrem: na pasta das cópias, se já houver. Sem `defaultPath` o
+   * Electron (desde o 43) abre sempre em Downloads.
+   */
+  function startFolder(): string {
+    const destination = store.get().destination
+    if (!destination || !existsSync(destination.folder)) return app.getPath('home')
+    const folder = backupFolder(destination.folder)
+    return existsSync(folder) ? folder : destination.folder
+  }
+
   return {
     info,
     refresh: changed,
@@ -468,6 +479,7 @@ export function createBackupService(options: {
       const options = {
         title: 'Escolher pasta para as cópias',
         buttonLabel: 'Escolher',
+        defaultPath: startFolder(),
         properties: ['openDirectory', 'createDirectory'] as Array<
           'openDirectory' | 'createDirectory'
         >
@@ -583,6 +595,7 @@ export function createBackupService(options: {
       const options = {
         title: 'Escolher uma cópia de segurança',
         buttonLabel: 'Escolher',
+        defaultPath: startFolder(),
         properties: ['openFile'] as Array<'openFile'>,
         filters: [{ name: 'Cópia de segurança do Auri', extensions: ['auribackup'] }]
       }
