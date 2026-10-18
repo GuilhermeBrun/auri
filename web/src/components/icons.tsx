@@ -1,0 +1,255 @@
+import type { ReactNode } from 'react'
+
+/** Ícone Lucide (traço 1.75, como no app). */
+function Svg({ children }: { children: ReactNode }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      {children}
+    </svg>
+  )
+}
+
+export function Download() {
+  return (
+    <Svg>
+      <>
+        <path d="M12 15V3" />
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+        <path d="m7 10 5 5 5-5" />
+      </>
+    </Svg>
+  )
+}
+export function ArrowUp() {
+  return (
+    <Svg>
+      <>
+        <path d="m5 12 7-7 7 7" />
+        <path d="M12 19V5" />
+      </>
+    </Svg>
+  )
+}
+export function Monitor() {
+  return (
+    <Svg>
+      <>
+        <rect width="20" height="14" x="2" y="3" rx="2" />
+        <path d="M8 21h8" />
+        <path d="M12 17v4" />
+      </>
+    </Svg>
+  )
+}
+export function Sun() {
+  return (
+    <Svg>
+      <>
+        <circle cx="12" cy="12" r="4" />
+        <path d="M12 2v2" />
+        <path d="M12 20v2" />
+        <path d="m4.93 4.93 1.41 1.41" />
+        <path d="m17.66 17.66 1.41 1.41" />
+        <path d="M2 12h2" />
+        <path d="M20 12h2" />
+        <path d="m6.34 17.66-1.41 1.41" />
+        <path d="m19.07 4.93-1.41 1.41" />
+      </>
+    </Svg>
+  )
+}
+export function Moon() {
+  return (
+    <Svg>
+      <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
+    </Svg>
+  )
+}
+export function Pointer() {
+  return (
+    <Svg>
+      <>
+        <path d="M14 4.1 12 6" />
+        <path d="m5.1 8-2.9-.8" />
+        <path d="m6 12-1.9 2" />
+        <path d="M7.2 2.2 8 5.1" />
+        <path d="M9.037 9.69a.498.498 0 0 1 .653-.653l11 4.5a.5.5 0 0 1-.074.949l-4.349 1.041a1 1 0 0 0-.74.739l-1.04 4.35a.5.5 0 0 1-.95.074z" />
+      </>
+    </Svg>
+  )
+}
+export function CalendarDays() {
+  return (
+    <Svg>
+      <>
+        <path d="M8 2v4" />
+        <path d="M16 2v4" />
+        <rect width="18" height="18" x="3" y="4" rx="2" />
+        <path d="M3 10h18" />
+        <path d="M8 14h.01" />
+        <path d="M12 14h.01" />
+        <path d="M16 14h.01" />
+        <path d="M8 18h.01" />
+        <path d="M12 18h.01" />
+        <path d="M16 18h.01" />
+      </>
+    </Svg>
+  )
+}
+export function Users() {
+  return (
+    <Svg>
+      <>
+        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+        <circle cx="9" cy="7" r="4" />
+        <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+      </>
+    </Svg>
+  )
+}
+export function Settings() {
+  return (
+    <Svg>
+      <>
+        <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+        <circle cx="12" cy="12" r="3" />
+      </>
+    </Svg>
+  )
+}
+export function PanelLeftClose() {
+  return (
+    <Svg>
+      <>
+        <rect width="18" height="18" x="3" y="3" rx="2" />
+        <path d="M9 3v18" />
+        <path d="m16 15-3-3 3-3" />
+      </>
+    </Svg>
+  )
+}
+export function ChevronLeft() {
+  return (
+    <Svg>
+      <path d="m15 18-6-6 6-6" />
+    </Svg>
+  )
+}
+export function ChevronRight() {
+  return (
+    <Svg>
+      <path d="m9 18 6-6-6-6" />
+    </Svg>
+  )
+}
+export function Plus() {
+  return (
+    <Svg>
+      <>
+        <path d="M5 12h14" />
+        <path d="M12 5v14" />
+      </>
+    </Svg>
+  )
+}
+export function Search() {
+  return (
+    <Svg>
+      <>
+        <circle cx="11" cy="11" r="8" />
+        <path d="m21 21-4.3-4.3" />
+      </>
+    </Svg>
+  )
+}
+export function Archive() {
+  return (
+    <Svg>
+      <>
+        <rect width="20" height="5" x="2" y="3" rx="1" />
+        <path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8" />
+        <path d="M10 12h4" />
+      </>
+    </Svg>
+  )
+}
+export function Check() {
+  return (
+    <Svg>
+      <path d="M20 6 9 17l-5-5" />
+    </Svg>
+  )
+}
+export function Trash() {
+  return (
+    <Svg>
+      <>
+        <path d="M3 6h18" />
+        <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+        <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+      </>
+    </Svg>
+  )
+}
+export function X() {
+  return (
+    <Svg>
+      <>
+        <path d="M18 6 6 18" />
+        <path d="m6 6 12 12" />
+      </>
+    </Svg>
+  )
+}
+
+const SYMBOL_PATH =
+  'M10 51C3 52 0 46 1 37C5 16 29 0 52 0C84 0 105 19 106 47L106 66C106 76 109 80 113 84C123 96 116 110 102 110C90 110 82 103 74 92L63 77C56 67 49 67 41 73C31 80 27 89 31 96C35 103 44 106 48 109C34 114 15 111 7 101C-1 92-2 77 5 66C13 55 27 49 39 49C58 49 68 58 78 70C82 75 85 80 88 77C90 75 89 70 89 64L88 53C87 40 82 32 73 30C61 25 52 31 40 39L20 49C16 51 12 52 10 51Z'
+
+/** Assinatura "auri" em vetor (desktop/resources/brand/auri-v1/auri-grafite.svg), na cor do texto. */
+function Letters() {
+  return (
+    <>
+      <g transform="translate(10 33) scale(0.64)">
+        <path d={SYMBOL_PATH} />
+      </g>
+      <g transform="translate(-118 2)">
+        <path d="M218 38H231C236 38 239 41 239 46V74C239 82 243 87 251 87C260 87 264 81 264 74V46C264 41 267 38 272 38H284V75C284 94 271 103 251 103C231 103 218 94 218 75V38Z" />
+        <path d="M296 38H314V46C320 39 328 36 340 37V55C324 55 315 62 315 75V94C315 99 312 101 307 101H296V38Z" />
+        <path d="M358 38H366C371 38 374 41 374 46V93C374 98 371 101 366 101H358C353 101 350 98 350 93V46C350 41 353 38 358 38Z" />
+        <circle cx="362" cy="22" r="11" />
+      </g>
+    </>
+  )
+}
+
+export function Wordmark() {
+  return (
+    <svg
+      className="wordmark"
+      viewBox="0 0 268 118"
+      fill="currentColor"
+      role="img"
+      aria-label="Auri"
+    >
+      <Letters />
+    </svg>
+  )
+}
+
+/** A mesma assinatura na barra lateral da prévia, só decorativa. */
+export function WindowLogo() {
+  return (
+    <svg className="win-logo" viewBox="0 0 268 118" fill="currentColor" aria-hidden="true">
+      <Letters />
+    </svg>
+  )
+}

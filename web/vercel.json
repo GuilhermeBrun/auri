@@ -1,0 +1,38 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "vite",
+  "installCommand": "npm ci",
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "redirects": [
+    {
+      "source": "/:file((?:latest|alpha|beta)(?:-mac)?\\.yml)",
+      "destination": "https://atualizacoes.auri.dev.br/:file",
+      "permanent": false
+    },
+    {
+      "source": "/:file([^/]+\\.(?:exe|dmg|zip|blockmap))",
+      "destination": "https://atualizacoes.auri.dev.br/:file",
+      "permanent": false
+    },
+    {
+      "source": "/releases.json",
+      "destination": "https://atualizacoes.auri.dev.br/releases.json",
+      "permanent": false
+    }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+        },
+        { "key": "Referrer-Policy", "value": "no-referrer" },
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=()" }
+      ]
+    }
+  ]
+}

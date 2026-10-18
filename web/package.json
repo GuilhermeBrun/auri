@@ -1,0 +1,37 @@
+{
+  "name": "auri-web",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Site do Auri (auri.dev.br): página de download e, depois, as páginas de assinatura de termos.",
+  "type": "module",
+  "scripts": {
+    "dev": "vp dev",
+    "build": "vp build && vp build --ssr src/entry-server.tsx --outDir dist-ssr && node scripts/prerender.mjs",
+    "build:exemplo": "AURI_RELEASES=exemplo npm run build",
+    "preview": "vp preview",
+    "check": "vp check",
+    "fmt": "vp fmt",
+    "lint": "vp lint",
+    "test": "vp test run"
+  },
+  "dependencies": {
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.3",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.7",
+    "@vitejs/plugin-react": "^6.1.1",
+    "typescript": "~6.0.2",
+    "vite": "npm:@voidzero-dev/vite-plus-core@1.2.0",
+    "vite-plus": "1.2.0"
+  },
+  "overrides": {
+    "vite": "npm:@voidzero-dev/vite-plus-core@1.2.0"
+  },
+  "engines": {
+    "node": "^22.18.0 || ^24.11.0 || >=26.0.0"
+  },
+  "packageManager": "npm@11.13.0"
+}

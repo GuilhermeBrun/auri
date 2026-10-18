@@ -77,22 +77,32 @@ Até a 0.0.1 o canal alpha se chamava beta: as tags `-beta.` antigas contam como
 tinha escolhido o canal Beta passa para o Alpha sozinho.
 
 - **Alpha**: todo dia às 02:17 (Cuiabá), se o app mudou no `main` desde o último alpha (conta
-  o que muda em `desktop/` ou `.github/`; documentação, arquivos `.md` e o site não contam). Sai como `X.Y.(Z+1)-alpha.AAAAMMDD.N`, só para
+  o que muda em `desktop/` ou `.github/`; documentação, arquivos `.md` e o site não contam).
+  Sai como `X.Y.(Z+1)-alpha.AAAAMMDD.N`, só para
   Windows, numa prerelease do GitHub. Também pode ser disparado à mão:
   `gh workflow run release.yml -f channel=alpha`.
 - **Estável**: manual. Promove o commit do último alpha como `X.Y.Z` (a base do alpha ou a versão
   pedida), para Windows e Mac (só Apple Silicon). Antes, rodar `npm run ci:mac` no Mac e o
   workflow Windows: `gh workflow run release.yml -f channel=stable [-f version=1.2.0]`.
 
-O site de atualização (GitHub Pages, `auri.dev.br`) é remontado das releases a
+O site de atualização (GitHub Pages, ver abaixo) é remontado das releases a
 cada publicação: `latest.yml` aponta para a última estável e `alpha.yml` para o alpha mais novo que
 ela. Quem escolhe o canal Alpha em Configurações › Geral segue o `alpha.yml`. O Mac se atualiza
 sozinho só quando a estável sai assinada com o Developer ID (abaixo); sem isso, instala-se pela
 página do site. No alpha, o Mac fica na estável (o alpha é só Windows).
 
-Uma mudança na página de download (`desktop/scripts/release/page.mjs`, `desktop/scripts/release/site-assets/`)
-só vai ao ar quando o site é remontado. Para não esperar a próxima release, remontar só o site,
-a partir do `main`: `gh workflow run release.yml -f channel=site`.
+## Site e atualização
+
+A página de download é o projeto `web/` (React + Vite+). A **Vercel** a publica em `auri.dev.br` a
+cada push no `main` (e faz uma prévia por PR). O build lê o `releases.json` publicado no Pages e
+pré-renderiza a página com a versão, os tamanhos e a data.
+
+O **GitHub Pages** (`atualizacoes.auri.dev.br`) guarda o que o Auri instalado usa: `latest.yml`,
+`alpha.yml`, os instaladores e o `releases.json`, montados das releases pelo job Atualização (a
+cada release, ou `gh workflow run release.yml -f channel=site`). O Pages também recebe uma cópia
+da página. Na Vercel, `web/vercel.json` redireciona esses arquivos para o Pages, então o Auri que
+procura em `auri.dev.br/` continua achando as versões novas. Depois de publicar, o job chama o
+Deploy Hook da Vercel (secret `VERCEL_DEPLOY_HOOK`) para a página mostrar a versão nova.
 
 ## Assinatura do Mac (Developer ID)
 

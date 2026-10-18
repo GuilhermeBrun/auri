@@ -24,9 +24,28 @@ O repositório tem um projeto por pasta, cada um com o próprio `package.json` e
 do app).
 
 - `desktop/`: o app (Electron + React + SQLite) e os scripts de release.
+- `web/`: o site [auri.dev.br](https://auri.dev.br) (React + Vite+, pré-renderizado), com a
+  página de download. Publicado pela Vercel; o feed de atualização e os instaladores ficam no
+  GitHub Pages (ver [docs/ci.md](docs/ci.md)).
 - `docs/`: documentação comum.
 
 ## Desenvolvimento
+
+### Site (`web/`)
+
+```bash
+cd web
+npm install
+npm run dev             # página com releases de exemplo (releases.exemplo.json)
+npm run check           # Vite+: formato, lint e tipos
+npm test
+npm run build:exemplo   # build pré-renderizado com as releases de exemplo
+```
+
+O `npm run build` lê as releases publicadas (`https://atualizacoes.auri.dev.br/releases.json`, ou
+`AURI_RELEASES=<arquivo ou url>`).
+
+### App (`desktop/`)
 
 Os comandos abaixo rodam dentro de `desktop/`.
 
