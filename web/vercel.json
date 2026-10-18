@@ -6,18 +6,40 @@
   "outputDirectory": "dist",
   "redirects": [
     {
+      "source": "/",
+      "has": [
+        {
+          "type": "host",
+          "value": "atualizacoes.auri.dev.br"
+        }
+      ],
+      "destination": "https://auri.dev.br/",
+      "permanent": false
+    },
+    {
+      "source": "/:file(.+)",
+      "has": [
+        {
+          "type": "host",
+          "value": "atualizacoes.auri.dev.br"
+        }
+      ],
+      "destination": "https://tmjyk19jrikg8aex.public.blob.vercel-storage.com/:file",
+      "permanent": false
+    },
+    {
       "source": "/:file((?:latest|alpha|beta)(?:-mac)?\\.yml)",
-      "destination": "https://atualizacoes.auri.dev.br/:file",
+      "destination": "https://tmjyk19jrikg8aex.public.blob.vercel-storage.com/:file",
       "permanent": false
     },
     {
       "source": "/:file([^/]+\\.(?:exe|dmg|zip|blockmap))",
-      "destination": "https://atualizacoes.auri.dev.br/:file",
+      "destination": "https://tmjyk19jrikg8aex.public.blob.vercel-storage.com/:file",
       "permanent": false
     },
     {
       "source": "/releases.json",
-      "destination": "https://atualizacoes.auri.dev.br/releases.json",
+      "destination": "https://tmjyk19jrikg8aex.public.blob.vercel-storage.com/releases.json",
       "permanent": false
     }
   ],
@@ -29,9 +51,18 @@
           "key": "Content-Security-Policy",
           "value": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
         },
-        { "key": "Referrer-Policy", "value": "no-referrer" },
-        { "key": "X-Content-Type-Options", "value": "nosniff" },
-        { "key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=()" }
+        {
+          "key": "Referrer-Policy",
+          "value": "no-referrer"
+        },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Permissions-Policy",
+          "value": "camera=(), microphone=(), geolocation=()"
+        }
       ]
     }
   ]

@@ -60,10 +60,10 @@ mac:
       arch: [arm64]
 dmg:
   artifactName: ${name}-${version}-${arch}.${ext}
-# Onde o Auri instalado procura versões novas: o GitHub Pages deste repositório
-# (atualizacoes.auri.dev.br), que o Release publica (ver docs/ci.md). latest.yml é a estável e
-# alpha.yml o canal alpha. As versões até 0.0.x procuram em auri.dev.br, e a Vercel as redireciona
-# para cá (web/vercel.json).
+# Onde o Auri instalado procura versões novas: atualizacoes.auri.dev.br, que redireciona para o
+# Vercel Blob onde o Release publica os arquivos (ver docs/ci.md e web/vercel.json). latest.yml é
+# a estável e alpha.yml o canal alpha. As versões até 0.0.x procuram em auri.dev.br, que também
+# redireciona.
 publish:
   provider: generic
   url: https://atualizacoes.auri.dev.br/
