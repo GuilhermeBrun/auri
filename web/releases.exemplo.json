@@ -1,0 +1,21 @@
+{
+  "stable": {
+    "tag": "v0.1.0",
+    "publishedAt": "2026-10-17T17:52:14Z",
+    "assets": [
+      { "name": "latest.yml", "size": 512 },
+      { "name": "latest-mac.yml", "size": 512 },
+      { "name": "auri-0.1.0-setup.exe", "size": 106361517 },
+      { "name": "auri-0.1.0-arm64.dmg", "size": 118230016 },
+      { "name": "Auri-0.1.0-arm64-mac.zip", "size": 114032640 }
+    ]
+  },
+  "alpha": null,
+  "files": [
+    { "name": "Auri-0.1.0-arm64-mac.zip", "tag": "v0.1.0" },
+    { "name": "auri-0.1.0-arm64.dmg", "tag": "v0.1.0" },
+    { "name": "auri-0.1.0-setup.exe", "tag": "v0.1.0" },
+    { "name": "latest-mac.yml", "tag": "v0.1.0" },
+    { "name": "latest.yml", "tag": "v0.1.0" }
+  ]
+}

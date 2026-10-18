@@ -1,10 +1,11 @@
 // Usado pelo workflow Release:
 //   node scripts/release/cli.mjs resolve      → saídas skip, ref, version, tag, prerelease
-//   node scripts/release/cli.mjs site <pasta> → baixa os arquivos das releases e monta o site
+//   node scripts/release/cli.mjs site <pasta> → baixa os arquivos das releases para o site de
+//                                               atualização e grava o releases.json, que a página
+//                                               de download (web/) usa no build
 import { execFileSync } from 'node:child_process'
-import { appendFileSync, cpSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { downloadPage } from './page.mjs'
 import { latestTags, nextAlpha, outsideApp, siteFiles, stableFromAlpha } from './versions.mjs'
 
 const run = (command, args) => execFileSync(command, args, { encoding: 'utf8' }).trim()
@@ -56,11 +57,13 @@ function site(directory) {
     run('gh', ['release', 'list', '--limit', '100', '--json', 'tagName,isDraft'])
   ).filter((release) => !release.isDraft)
   const { stable, alpha } = latestTags(releases.map((release) => release.tagName))
-  const details = (tag) =>
-    tag && {
-      tag,
-      ...JSON.parse(run('gh', ['release', 'view', tag, '--json', 'assets,publishedAt']))
-    }
+  const details = (tag) => {
+    if (!tag) return null
+    const { assets, publishedAt } = JSON.parse(
+      run('gh', ['release', 'view', tag, '--json', 'assets,publishedAt'])
+    )
+    return { tag, publishedAt, assets: assets.map(({ name, size }) => ({ name, size })) }
+  }
   const [stableRelease, alphaRelease] = [details(stable), details(alpha)]
   const names = (release) =>
     release && { tag: release.tag, assets: release.assets.map((asset) => asset.name) }
@@ -70,10 +73,9 @@ function site(directory) {
   for (const { name, tag } of files) {
     run('gh', ['release', 'download', tag, '--pattern', name, '--dir', directory, '--clobber'])
   }
-  cpSync(join(import.meta.dirname, 'site-assets'), directory, { recursive: true })
   writeFileSync(
-    join(directory, 'index.html'),
-    downloadPage({ stable: stableRelease, alpha: alphaRelease, files })
+    join(directory, 'releases.json'),
+    `${JSON.stringify({ stable: stableRelease, alpha: alphaRelease, files }, null, 2)}\n`
   )
   console.log(files.map((file) => `${file.name} ← ${file.tag}`).join('\n'))
 }

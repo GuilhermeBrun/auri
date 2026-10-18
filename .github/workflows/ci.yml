@@ -52,3 +52,21 @@ jobs:
       - name: 'Release Smoke: versões do alpha e da estável, arquivos do site de atualização'
         if: ${{ !cancelled() && steps.deps.outcome == 'success' }}
         run: node --test scripts/release/*.test.mjs
+      # O site (web/): o mesmo Vite+, com o build pré-renderizado sobre as releases de exemplo
+      - id: deps-web
+        if: ${{ !cancelled() }}
+        uses: ./.github/actions/setup-deps
+        with:
+          directory: web
+      - name: 'Site: formato, lint e tipos'
+        if: ${{ !cancelled() && steps.deps-web.outcome == 'success' }}
+        working-directory: web
+        run: npm run check
+      - name: 'Site: testes'
+        if: ${{ !cancelled() && steps.deps-web.outcome == 'success' }}
+        working-directory: web
+        run: npm test
+      - name: 'Site: build'
+        if: ${{ !cancelled() && steps.deps-web.outcome == 'success' }}
+        working-directory: web
+        run: npm run build:exemplo
