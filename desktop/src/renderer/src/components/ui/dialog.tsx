@@ -9,6 +9,7 @@ type DialogProps = {
   onOpenChange: (open: boolean) => void
   title: string
   description?: string
+  media?: ReactNode
   children: ReactNode
 }
 
@@ -17,6 +18,7 @@ export function Dialog({
   onOpenChange,
   title,
   description,
+  media,
   children
 }: DialogProps): React.JSX.Element {
   const content = useRef<HTMLDivElement>(null)
@@ -41,6 +43,7 @@ export function Dialog({
           }}
           className="fixed top-[44%] left-1/2 z-50 w-[min(480px,calc(100vw-32px))] -translate-x-1/2 -translate-y-1/2 rounded-sheet bg-raised shadow-pop focus:outline-none data-[state=closed]:animate-pop-out data-[state=open]:animate-pop-in"
         >
+          {media && <div className="px-5 pt-5">{media}</div>}
           <div className="flex items-start justify-between gap-4 px-5 pt-5">
             <div key={title} className="animate-fade-in">
               <DialogPrimitive.Title className="text-[17px] font-semibold tracking-tight">

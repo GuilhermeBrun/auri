@@ -10,6 +10,7 @@ import {
 import { useState, type ReactNode } from 'react'
 import { RestoreDialog } from '@renderer/components/backup/RestoreDialog'
 import { SettingsImport } from '@renderer/components/SettingsImport'
+import { AgendaScene, StorageScene } from '@renderer/components/WelcomeScene'
 import { Button } from '@renderer/components/ui/button'
 import { Dialog, DialogBody, DialogFooter } from '@renderer/components/ui/dialog'
 import { setBackupInfo, useBackup } from '@renderer/lib/backup'
@@ -110,6 +111,13 @@ export function WelcomeDialog(): React.JSX.Element {
         onOpenChange={(open) => !open && dismiss.mutate()}
         title={STEPS[step].title}
         description={STEPS[step].description}
+        media={
+          step < 2 && (
+            <div key={step} className="animate-fade-in">
+              {step === 0 ? <AgendaScene /> : <StorageScene />}
+            </div>
+          )
+        }
       >
         <DialogBody key={step} className="flex animate-page-in flex-col gap-6">
           {step === 0 && (
