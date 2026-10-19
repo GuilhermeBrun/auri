@@ -139,7 +139,7 @@ describe('relatório de presença em HTML', () => {
 
   it('cabeçalho com o mês, idade e profissional', () => {
     expect(html).toContain('<p>Outubro de 2026</p>')
-    expect(html).toContain('12/03/2019 (7 anos)')
+    expect(html).toContain('12/03/2019 (7 anos e 7 meses)')
     expect(html).toContain('Lara Fictícia · CRFa 0-0000')
     expect(html).toContain('Gerado pelo Auri em 31/10/2026 às 18:00')
   })

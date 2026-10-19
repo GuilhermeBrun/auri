@@ -28,10 +28,14 @@ describe('formatAge', () => {
     expect(formatAge('2024-09-08', today)).toBe('11 meses')
   })
 
-  it('mostra anos a partir de 1 ano', () => {
+  it('mostra anos e meses a partir de 1 ano', () => {
     expect(formatAge('2024-09-07', today)).toBe('1 ano')
+    expect(formatAge('2024-08-07', today)).toBe('1 ano e 1 mês')
     expect(formatAge('2019-08-17', today)).toBe('6 anos')
-    expect(formatAge('2014-09-08', today)).toBe('10 anos')
+    expect(formatAge('2019-05-07', today)).toBe('6 anos e 4 meses')
+    expect(formatAge('2019-05-08', today)).toBe('6 anos e 3 meses')
+    expect(formatAge('2014-09-08', today)).toBe('10 anos e 11 meses')
+    expect(formatAge('2015-09-07', today)).toBe('10 anos')
   })
 
   it('retorna vazio para data inválida ou futura', () => {
