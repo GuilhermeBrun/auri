@@ -1,4 +1,5 @@
-import { beforeEach, describe, expect, it } from 'vite-plus/test'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { runOperation } from '../operations'
 import { emptyPatientInput } from '../../shared/schemas'
 import { lerIda, montarVolta, type Decisao } from '../../../../web/contrato/confirmacao/formato'
 import { createAppointment, getAppointment, updateAppointment } from './appointments'
@@ -343,5 +344,16 @@ describe('prazo de 2 horas', () => {
     processarPrazos(db, PC, new Date(2026, 9, 20, 15))
     const row = db.prepare('SELECT chave FROM confirmation_requests').get() as { chave: null }
     expect(row.chave).toBeNull()
+  })
+})
+
+describe('verificador no main', () => {
+  it('só avisa a tela quando algo mudou', () => {
+    const avisar = vi.fn()
+    expect(runOperation(db, 'confirmacoes:prazos', [PC], avisar)).toEqual({ ok: true, data: 0 })
+    expect(avisar).not.toHaveBeenCalled()
+    enviarConfirmacao(db, sessaoId, PC, AGORA)
+    expect(runOperation(db, 'confirmacoes:prazos', [PC], avisar)).toEqual({ ok: true, data: 1 })
+    expect(avisar).toHaveBeenCalledWith(['appointments', 'finance'])
   })
 })

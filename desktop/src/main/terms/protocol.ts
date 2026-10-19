@@ -23,7 +23,7 @@ export type Caixa = {
   retirarConfirmacoes(): string[]
 }
 
-export function criarCaixa(avisar: () => void): Caixa {
+export function criarCaixa(avisar: (tipo: Recebido['tipo']) => void): Caixa {
   const filas: Record<Recebido['tipo'], string[]> = { termo: [], confirmacao: [] }
   const esvaziar = (tipo: Recebido['tipo']): string[] => {
     const tudo = filas[tipo]
@@ -36,7 +36,7 @@ export function criarCaixa(avisar: () => void): Caixa {
       if (!recebido) return false
       const fila = filas[recebido.tipo]
       if (!fila.includes(recebido.fragmento)) fila.push(recebido.fragmento)
-      avisar()
+      avisar(recebido.tipo)
       return true
     },
     retirar: () => esvaziar('termo'),

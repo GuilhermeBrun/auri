@@ -198,8 +198,15 @@ function syncTray(): void {
   })
 }
 
-const inbox = criarCaixa(() => {
-  sendToWindows('terms:incoming', null)
+const PRAZOS_MS = 60_000
+
+function verificarPrazos(): void {
+  if (!connection?.database()) return
+  void connection.call('confirmacoes:prazos', [connection.info().name || 'Este computador'])
+}
+
+const inbox = criarCaixa((tipo) => {
+  sendToWindows(tipo === 'termo' ? 'terms:incoming' : 'confirmacoes:incoming', null)
   if (app.isReady()) showWindow()
 })
 
@@ -296,6 +303,8 @@ void app.whenReady().then(async () => {
   nativeTheme.on('updated', syncWindowBackgrounds)
 
   createWindow(prefs.get())
+  verificarPrazos()
+  setInterval(verificarPrazos, PRAZOS_MS)
 
   app.on('activate', function () {
     if (BrowserWindow.getAllWindows().length === 0) createWindow(prefs!.get())

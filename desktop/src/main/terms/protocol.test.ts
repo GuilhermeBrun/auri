@@ -61,6 +61,7 @@ describe('endereço auri://', () => {
     expect(caixa.receber(`auri://confirmacao#${F}`)).toBe(true)
     expect(caixa.receber(`auri://confirmacao/${F}`)).toBe(true)
     expect(avisar).toHaveBeenCalledTimes(2)
+    expect(avisar).toHaveBeenLastCalledWith('confirmacao')
     expect(caixa.retirar()).toEqual([])
     expect(caixa.retirarConfirmacoes()).toEqual([F])
     expect(caixa.retirarConfirmacoes()).toEqual([])
