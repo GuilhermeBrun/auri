@@ -125,7 +125,7 @@ function SidebarNav({
 /**
  * O que a barra lateral mostra abaixo da marca, conforme a tela: o menu principal, com
  * Configurações no rodapé; ou, dentro de Configurações, as seções dela e "Voltar" no
- * rodapé, que leva à última tela fora das Configurações (como no T3 Code). Fica num componente
+ * rodapé, que leva à última tela fora das Configurações. Fica num componente
  * próprio para só ele redesenhar a cada troca de rota, e não o `Layout` inteiro.
  */
 function SidebarBody(): React.JSX.Element {
@@ -224,7 +224,7 @@ const HEADER_PAD_COLLAPSED = isMac ? 'pl-[136px]' : 'pl-[64px]'
  * Botão de mostrar/ocultar a barra lateral. Fica sempre no mesmo lugar, ao lado dos botões da
  * janela, aberta ou recolhida a barra. Só o ícone, sem caixa nem contorno (o fundo aparece no
  * hover). O ícone diz o que o clique faz: aberta, o painel com a seta "‹" (fechar); recolhida, o
- * painel simples (abrir), como no T3 Code.
+ * painel simples (abrir).
  */
 function SidebarToggle(): React.JSX.Element {
   const { open, toggle } = useSidebar()
