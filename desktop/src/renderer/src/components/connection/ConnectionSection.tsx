@@ -69,8 +69,8 @@ function RolePicker({ role }: { role: ConnectionRole }): React.JSX.Element {
   })
   return (
     <fieldset disabled={change.isPending}>
-      <legend className="sr-only">Papel deste computador</legend>
-      <div className="grid grid-cols-2 gap-3">
+      <legend className="text-[13px] font-medium">Onde ficam os dados</legend>
+      <div className="mt-3 grid grid-cols-2 gap-3">
         {ROLE_OPTIONS.map(({ value, label, description, icon }) => {
           const selected = role === value
           return (
@@ -283,6 +283,7 @@ function ServerSection({ info }: { info: ConnectionInfo }): React.JSX.Element {
       {(info.sharing || info.devices.length > 0) && <DeviceList devices={info.devices} />}
       {info.sharing && (
         <div className="mt-10 flex flex-col gap-5">
+          <SectionTitle title="Acesso dos outros computadores" />
           <div>
             <SwitchField
               label="Permitir acesso de fora da clínica"
@@ -593,8 +594,10 @@ function NameField({ name }: { name: string }): React.JSX.Element {
   }
   return (
     <section className="mt-10">
+      <SectionTitle title="Este computador" />
       <Field
-        label="Nome deste computador"
+        className="mt-3"
+        label="Nome"
         hint="como os outros computadores o veem"
         error={save.error?.message}
       >
@@ -618,7 +621,7 @@ export function ConnectionSection(): React.JSX.Element {
     <PageSection
       id="conexao"
       title="Conexão"
-      description="Onde ficam os pacientes e a agenda, e quais computadores podem usá-los."
+      description="Qual computador guarda os pacientes e a agenda, e quais outros podem usá-los."
     >
       {info ? (
         <>

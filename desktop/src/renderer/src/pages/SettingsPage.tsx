@@ -88,7 +88,7 @@ function ThemePicker(): React.JSX.Element {
   const theme = useTheme()
   return (
     <fieldset>
-      <legend className="text-[13px] font-medium">Tema</legend>
+      <legend className="text-[15px] font-semibold tracking-tight">Tema</legend>
       <div className="mt-3 grid grid-cols-3 gap-3">
         {THEME_OPTIONS.map(({ value, label }) => {
           const selected = theme === value

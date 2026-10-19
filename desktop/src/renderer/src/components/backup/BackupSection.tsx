@@ -193,7 +193,8 @@ function Status({ info }: { info: BackupInfo }): React.JSX.Element {
 
   return (
     <section>
-      <div className="flex items-start gap-3">
+      <SectionTitle title="Situação" />
+      <div className="mt-3 flex items-start gap-3">
         <span className="mt-[5px] flex">
           <StatusDot on={!failed && !info.stale && !problem} />
         </span>
