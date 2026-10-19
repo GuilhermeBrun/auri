@@ -32,13 +32,10 @@ export function evolutionReportName(report: EvolutionReport): string {
 function entry(a: Appointment): string {
   const inicio = parseIsoLocalDateTime(a.inicio)
   const fim = parseIsoLocalDateTime(a.fim)
-  const meta = [
-    `${format(inicio, 'HH:mm')}–${format(fim, 'HH:mm')}`,
-    TIPO[a.tipo],
-    a.presenca ? PRESENCA[a.presenca] : ''
-  ].filter(Boolean)
+  const weekday = capitalize(format(inicio, 'EEEE', { locale: ptBR }).replace('-feira', ''))
+  const kind = [TIPO[a.tipo], a.presenca ? PRESENCA[a.presenca] : ''].filter(Boolean).join(' · ')
   return `<article>
-<div class="when"><span class="day">${format(inicio, 'dd/MM/yyyy')}</span><span class="soft">${esc(capitalize(format(inicio, 'EEEE', { locale: ptBR })))}</span><span class="soft">${meta.map(esc).join(' · ')}</span></div>
+<div class="when"><span class="day">${format(inicio, 'dd/MM/yyyy')}</span><span class="soft">${esc(weekday)} · ${format(inicio, 'HH:mm')}–${format(fim, 'HH:mm')}</span><span class="soft">${esc(kind)}</span></div>
 <div class="text">${esc(a.evolucao)}</div>
 </article>`
 }
@@ -50,7 +47,7 @@ const STYLE = (font: string): string => `${documentStyle(font, {
 })}
 .facts{grid-template-columns:2fr 1fr 2fr}
 .summary{margin:16px 0 6px;font-size:9pt;font-weight:600}
-article{display:grid;grid-template-columns:34mm 1fr;gap:16px;padding:10px 0}
+article{display:grid;grid-template-columns:36mm 1fr;gap:16px;padding:10px 0}
 .when{display:flex;flex-direction:column;font-variant-numeric:tabular-nums;break-inside:avoid}
 .when .day{font-weight:600}
 .when .soft{font-size:8pt}

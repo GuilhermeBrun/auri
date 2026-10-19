@@ -21,7 +21,7 @@ const STYLE = (font: string): string => `${documentStyle(font, {
   fontSize: '10pt',
   lineHeight: 1.5
 })}
-.facts{grid-template-columns:2fr 1fr 2fr}
+.facts{grid-template-columns:2fr auto 2fr}
 section{margin-top:22px}
 h2{font-size:11pt;font-weight:600;margin:0 0 4px;break-after:avoid}
 .text{white-space:pre-wrap;overflow-wrap:anywhere;margin:0}
