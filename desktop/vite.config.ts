@@ -17,6 +17,7 @@ const electron: ElectronConfig = {
   renderer: {
     resolve: { alias },
     plugins: [react(), tailwindcss()],
+    server: { fs: { allow: [resolve('..')] } },
     build: { ...maps.build, minify: true }
   }
 }
