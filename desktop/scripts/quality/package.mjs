@@ -104,7 +104,7 @@ try {
     expect(
       files.filter(
         (file) =>
-          /^\/(src|scripts|docs|reports|research_notes|\.quality|\.github)(\/|$)/.test(file) ||
+          /^\/(src|scripts|docs|\.quality|\.github)(\/|$)/.test(file) ||
           /^\/(vite|vitest|electron\.vite)\.config\./.test(file)
       )
     ).toEqual([])

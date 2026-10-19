@@ -27,7 +27,8 @@ do app).
 - `web/`: o site [auri.dev.br](https://auri.dev.br) (React + Vite+, pré-renderizado), com a
   página de download e o feed de atualização. Publicado pela Vercel; os instaladores ficam nas
   releases do GitHub (ver [docs/ci.md](docs/ci.md)).
-- `docs/`: documentação comum.
+- `docs/`: documentação para quem desenvolve (pessoas e agentes): CI e releases, identidade
+  visual e, em `docs/specs/`, o desenho de cada funcionalidade maior.
 
 ## Desenvolvimento
 
@@ -48,9 +49,6 @@ O `npm run build` lê as releases publicadas no GitHub e grava em `dist/` o feed
 ### App (`desktop/`)
 
 Os comandos abaixo rodam dentro de `desktop/`.
-
-No VS Code, abra o `auri.code-workspace`: a extensão do Oxc (no pacote do Vite+) formata e
-aponta os erros com o `vite.config.ts` de cada pasta.
 
 ```bash
 cd desktop

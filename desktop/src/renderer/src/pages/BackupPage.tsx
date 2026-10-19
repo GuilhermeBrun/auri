@@ -464,7 +464,7 @@ function Disable(): React.JSX.Element {
 
 /**
  * Configurações → Cópia de segurança (ver
- * docs/superpowers/specs/2026-10-13-copia-de-seguranca-design.md). Sem cópia ligada, o assistente
+ * docs/specs/2026-10-13-copia-de-seguranca-design.md). Sem cópia ligada, o assistente
  * (onde, senha, código); ligada, o estado e os ajustes. Só no computador que guarda os dados.
  */
 export function BackupPage(): React.JSX.Element {

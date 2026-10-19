@@ -5,7 +5,7 @@ import { themeSchema, type UiPrefs } from '../shared/schemas'
 /**
  * Arquivo de configurações (`.auriconfig`), separado da cópia dos dados: JSON legível, sem senha,
  * sem dado de paciente e sem segredo (nada de chaves, computadores pareados ou senha da cópia).
- * Ver docs/superpowers/specs/2026-10-13-copia-de-seguranca-design.md.
+ * Ver docs/specs/2026-10-13-copia-de-seguranca-design.md.
  */
 export const SETTINGS_EXTENSION = 'auriconfig'
 
