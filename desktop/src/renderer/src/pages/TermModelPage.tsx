@@ -13,10 +13,14 @@ import { ErrorState } from '@renderer/components/ui/error'
 import { Field, Input, Textarea } from '@renderer/components/ui/input'
 import { Loading } from '@renderer/components/ui/loading'
 import { clinicQuery, termModelsQuery } from '@renderer/lib/queries'
+import { formatar } from '@renderer/lib/term-format'
 import { useToast } from '@renderer/lib/toast'
 import { cn } from '@renderer/lib/utils'
 
 const CLINICA_CRUMB = { label: 'Clínica', to: '/clinica' }
+
+const FERRAMENTA =
+  'inline-flex h-6 min-w-6 items-center justify-center rounded-chip bg-fill text-ink-soft transition-colors hover:bg-fill-hover hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent'
 
 const ESTRUTURA = `# Termo de consentimento
 
@@ -32,6 +36,13 @@ const ESTRUTURA = `# Termo de consentimento
 ## 2. Da assinatura eletrônica
 
 [Cláusula em que quem assina aceita a assinatura pelo celular como válida. Revise com o advogado da clínica.]`
+
+const FORMATOS = [
+  { nome: 'Título', dica: '# no começo da linha', linha: '# ' },
+  { nome: 'Subtítulo', dica: '## no começo da linha', linha: '## ' },
+  { nome: 'Lista', dica: '- no começo da linha', linha: '- ' },
+  { nome: 'Negrito', dica: '**texto**', linha: null }
+] as const
 
 export function TermModelRoute(): React.JSX.Element {
   const { id } = useParams()
@@ -123,6 +134,21 @@ function TermModelEditor({ model }: { model: TermModel | null }): React.JSX.Elem
     })
   }
 
+  const aplicar = (formato: (typeof FORMATOS)[number]): void => {
+    const el = textarea.current
+    const result = formatar(
+      texto,
+      el?.selectionStart ?? texto.length,
+      el?.selectionEnd ?? texto.length,
+      formato.linha
+    )
+    setTexto(result.texto)
+    requestAnimationFrame(() => {
+      el?.focus()
+      el?.setSelectionRange(result.start, result.end)
+    })
+  }
+
   const exemplo = preencher(
     texto,
     valoresDosCampos({
@@ -194,23 +220,42 @@ function TermModelEditor({ model }: { model: TermModel | null }): React.JSX.Elem
                 </Button>
               )}
             </div>
-            <div
-              className="flex flex-wrap items-center gap-1"
-              role="group"
-              aria-label="Inserir campo"
-            >
-              <Braces className="mr-1 size-3.5 text-ink-faint" aria-hidden />
-              {CAMPOS.map(([campo, nome]) => (
-                <button
-                  key={campo}
-                  type="button"
-                  title={`Inserir ${nome.toLowerCase()}`}
-                  onClick={() => inserir(campo)}
-                  className="h-6 rounded-chip bg-fill px-2 font-mono text-[11px] text-ink-soft transition-colors hover:bg-fill-hover hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-                >
-                  {`{${campo}}`}
-                </button>
-              ))}
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-1" role="group" aria-label="Formatar">
+                {FORMATOS.map((formato) => (
+                  <button
+                    key={formato.nome}
+                    type="button"
+                    title={`${formato.nome} (${formato.dica})`}
+                    onClick={() => aplicar(formato)}
+                    className={cn(
+                      FERRAMENTA,
+                      'px-2 text-xs',
+                      formato.linha === null && 'font-semibold'
+                    )}
+                  >
+                    {formato.nome}
+                  </button>
+                ))}
+              </div>
+              <div
+                className="flex flex-wrap items-center gap-1"
+                role="group"
+                aria-label="Inserir campo"
+              >
+                <Braces className="mr-1 size-3.5 text-ink-faint" aria-hidden />
+                {CAMPOS.map(([campo, nome]) => (
+                  <button
+                    key={campo}
+                    type="button"
+                    title={`Inserir ${nome.toLowerCase()}`}
+                    onClick={() => inserir(campo)}
+                    className={cn(FERRAMENTA, 'px-2 font-mono text-[11px]')}
+                  >
+                    {`{${campo}}`}
+                  </button>
+                ))}
+              </div>
             </div>
             <Textarea
               ref={textarea}
@@ -222,8 +267,8 @@ function TermModelEditor({ model }: { model: TermModel | null }): React.JSX.Elem
               placeholder="# Título do termo&#10;&#10;Texto do primeiro parágrafo."
             />
             <p className="text-xs text-ink-soft">
-              <code># Título</code>, <code>## Subtítulo</code>, <code>- item</code> e{' '}
-              <code>**negrito**</code>. Uma linha em branco separa os parágrafos.
+              Uma linha em branco começa outro parágrafo. Os campos entre chaves se preenchem
+              sozinhos no envio.
             </p>
           </div>
         </div>
