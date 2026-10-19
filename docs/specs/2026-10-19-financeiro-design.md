@@ -1,7 +1,7 @@
 # Financeiro (base) — design
 
-Data: 19/10/2026. Estado: implementado na trilha F1 (base). A integração com o registro da sessão
-(F2) e a cobrança automática de falta vêm depois.
+Data: 19/10/2026. Estado: implementado na trilha F1 (base) e na F2 (registro da sessão). A cobrança
+automática de falta não respondida é de outra trilha e só chama `cobrarFalta`.
 
 ## Pedido
 
@@ -16,7 +16,6 @@ no mês.
 ## Fora do escopo
 
 - Gateway de pagamento, cobrança por link, boleto, Pix com QR Code, nota fiscal, recibo em PDF.
-- Integração com o diálogo da sessão, a agenda e a aba Sessões (trilha F2).
 - Cobrança automática de falta não confirmada (trilha da confirmação automática).
 - Relatórios contábeis, comissão de profissional, despesas da clínica.
 
@@ -120,15 +119,22 @@ O lançamento é feito por `lancarSessao(db, appointmentId, computador)` (`main/
 - a descrição é "Sessão de 14/10", com o nome do valor só quando ele não é "Sessão"/"Avaliação"
   ("Sessão de 14/10 · Sessão social"), e "fora do pacote" quando for o caso.
 
-Na F1, ninguém chama isso sozinho: a aba Financeiro da ficha mostra **A lançar**, as sessões com
-presença desde que a forma de cobrança foi definida e ainda sem lançamento, com "Lançar" e "Lançar
-todas". Na F2, o mesmo `lancarSessao` passa a rodar na assinatura da chegada, e "A lançar" fica
-como conferência (sessões que escaparam).
+**Na chegada (F2):** `signArrival` chama `lancarNaChegada` na mesma transação, se o paciente tem
+forma de cobrança. Um erro do financeiro nunca impede a assinatura: o lançamento desfaz só a parte
+dele (savepoint), o erro vai para o log e a sessão fica em **A lançar**, que continua na aba
+Financeiro como conferência (sessões que escaparam e as de antes da F2), com "Lançar" e "Lançar
+todas".
 
-`cobrarFalta(db, appointmentId, computador)` cria a cobrança `falta_cobrada` pelo valor da
-forma de cobrança (sessão particular, ou o valor da sessão no pacote/convênio). Exige presença
-`falta` ou `desmarcou`. Fica exposta para a F2 e para a confirmação automática; a F1 não tem botão
-para ela.
+**Ao anular a assinatura:** `voidArrival` estorna, na mesma transação, o lançamento em vigor daquela
+sessão (cobrança ou uso do pacote) com **o mesmo motivo** e o mesmo computador da anulação. A
+sessão com assinatura anulada não volta para "A lançar" e `lancarSessao` a recusa; assinar de novo
+lança de novo.
+
+**Falta:** `cobrarFalta(db, appointmentId, computador)` cria a cobrança `falta_cobrada` pelo valor
+cheio do valor da sessão da forma de cobrança, também para quem tem pacote ou convênio (a família
+paga; a vaga do pacote não é usada). Exige presença `falta` ou `desmarcou`, não tem tela própria e
+não pergunta nada: a confirmação automática chama direto, com o nome dela no `computador`. No
+registro da sessão, o botão "Cobrar sessão" pede confirmação ("Cobrar R$ 190,00?").
 
 ### Saldo e situação de cada cobrança
 
@@ -158,6 +164,19 @@ caso).
   e o **Extrato**: cobranças e pagamentos juntos, do mais novo ao mais
   velho, cada cobrança com a situação; o estornado fica riscado com o motivo. Ações: Registrar
   pagamento (principal), Cobrar (serviço avulso), Contratar pacote, Estornar (pede motivo).
+- **Registro da sessão** (`AppointmentDialog`, componente `SessionPayment`): numa sessão que já
+  começou e tem presença, um bloco "Pagamento" com o pacote e a contagem ("8 sessões · sessão 3 de
+  8"), ou o valor e a situação ("R$ 190,00 · em aberto", "Saúde Fictícia · R$ 95,00 · a receber do
+  convênio"). Ações: **Abrir financeiro** (fecha o diálogo e vai para a aba), **Registrar
+  pagamento** (cobrança da família ainda não paga) e **Cobrar sessão** (falta sem cobrança).
+- **Aba Sessões:** cada sessão anterior ganha uma linha discreta embaixo da presença: "3/8 do
+  pacote", "Pago", "Em aberto", "Parcial", "Convênio" (numa falta cobrada, a linha já diz "Faltou").
+- **Agenda: nenhuma marca.** Avaliado e deixado de fora: o cartão já é estreito (nome curto na
+  semana e no mês) e qualquer marca disputa espaço com o nome; o saldo é uma conta corrente do
+  paciente, então "em aberto" numa sessão é a distribuição dos pagamentos, não uma dívida daquela
+  sessão, e marcaria várias sessões de quem só deve uma; e a agenda é a tela do consultório
+  também, onde valores não ajudam a terapeuta. Quem cuida do dinheiro vê o bloco Pagamento ao abrir
+  a sessão e a lista Em aberto no Financeiro.
 
 ### Tópico de dados
 
@@ -167,18 +186,20 @@ paciente ou sessão também avisa `patients`/`appointments`; a aba Financeiro es
 
 ## Em aberto para o usuário
 
-1. **Lançar sozinho na assinatura da chegada (F2)?** A proposta é sim, com "A lançar" como
-   conferência. Confirmar com a clínica.
-2. **Sessão sem pacote em vigor** é cobrada avulsa pelo valor da sessão. A clínica prefere isso ou
-   um aviso para contratar o próximo pacote antes?
+1. **Lançar sozinho na assinatura da chegada:** feito na F2, com "A lançar" como conferência.
+   Confirmar com a clínica.
+2. **Sessão sem pacote em vigor** é cobrada avulsa pelo valor da sessão (feito). A clínica prefere
+   isso ou um aviso para contratar o próximo pacote antes?
 3. **Pacote vencido com sessões sobrando**: hoje as vagas simplesmente deixam de valer. A clínica
    costuma estender a validade? (Daria para editar a validade com registro.)
 4. **Convênio com coparticipação** (o convênio paga parte, a família o resto): não existe na F1.
-5. **Falta cobrada**: cobra o valor cheio da sessão? Do pacote, consome a vaga em vez de cobrar?
-   A F1 cobra o valor cheio.
-6. **Avaliação** cobrada à mão como "Cobrar · Avaliação". Quando houver tipos de atendimento
+5. **Falta cobrada**: cobra o valor cheio da sessão (feito), também de quem tem pacote ou
+   convênio. A alternativa seria consumir a vaga do pacote em vez de cobrar.
+6. **Marca na agenda**: nenhuma (ver Telas). Se a clínica quiser, o candidato é um ponto só nas
+   sessões com presença ainda não lançadas, que é o único caso em que a recepção precisa agir.
+7. **Avaliação** cobrada à mão como "Cobrar · Avaliação". Quando houver tipos de atendimento
    cadastráveis, cada tipo pode apontar para um serviço.
-7. **Quem vê o financeiro**: o consultório também vê tudo, como o resto do app. Restringir exige
+8. **Quem vê o financeiro**: o consultório também vê tudo, como o resto do app. Restringir exige
    perfis de acesso, que o Auri ainda não tem.
-8. **Exportar configurações**: o catálogo (serviços, pacotes, convênios) não vai no arquivo de
+9. **Exportar configurações**: o catálogo (serviços, pacotes, convênios) não vai no arquivo de
    configurações ainda; a cópia de segurança leva tudo.

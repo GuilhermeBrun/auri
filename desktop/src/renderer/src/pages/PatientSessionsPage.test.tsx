@@ -62,6 +62,7 @@ let api: {
   patients: Record<string, ReturnType<typeof vi.fn>>
   appointments: Record<string, ReturnType<typeof vi.fn>>
   attendance: Record<string, ReturnType<typeof vi.fn>>
+  finance: Record<string, ReturnType<typeof vi.fn>>
 }
 
 beforeEach(() => {
@@ -99,6 +100,49 @@ beforeEach(() => {
       ]),
       void: vi.fn(async () => ({ ...plain, assinatura: null })),
       sign: vi.fn(async () => today)
+    },
+    finance: {
+      patient: vi.fn(async () => ({
+        patient_id: 1,
+        billing: null,
+        saldo_centavos: 0,
+        convenios: [],
+        packages: [],
+        payments: [],
+        pendentes: [],
+        charges: [
+          {
+            id: 10,
+            data: '2026-10-10',
+            descricao: 'Avaliação de 10/10',
+            valor_centavos: 40000,
+            motivo: 'sessao',
+            appointment_id: past.id,
+            package_id: null,
+            insurer_id: null,
+            insurer_nome: null,
+            computador: 'Recepção',
+            created_at: '2026-10-10T17:00:00.000Z',
+            estorno: null,
+            situacao: 'pago',
+            pago_centavos: 40000
+          }
+        ],
+        uses: [
+          {
+            id: 30,
+            package_id: 4,
+            package_nome: '8 sessões',
+            appointment_id: plain.id,
+            inicio: plain.inicio,
+            numero: 1,
+            sessoes: 8,
+            computador: 'Recepção',
+            created_at: '2026-09-05T17:00:00.000Z',
+            estorno: null
+          }
+        ]
+      }))
     }
   }
   Object.assign(window, { api })
@@ -127,6 +171,8 @@ describe('aba Sessões do paciente', () => {
     expect(screen.getAllByText('Faltou').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Sem registro').length).toBeGreaterThan(0)
     expect(screen.getByText('Inativo')).toBeTruthy()
+    expect(await screen.findByText('Pago')).toBeTruthy()
+    expect(screen.getByText('1/8 do pacote')).toBeTruthy()
   })
 
   it('sem sessões, convida a agendar e abre o agendamento com o paciente escolhido', async () => {

@@ -18,9 +18,11 @@ import { Button } from '@renderer/components/ui/button'
 import { EmptyState } from '@renderer/components/ui/empty'
 import { ErrorState } from '@renderer/components/ui/error'
 import { Loading } from '@renderer/components/ui/loading'
+import { sessionPay, sessionPayLabel } from '@renderer/lib/finance'
 import {
   patientAppointmentsQuery,
   patientAttendanceQuery,
+  patientFinanceQuery,
   patientQuery
 } from '@renderer/lib/queries'
 import {
@@ -274,6 +276,17 @@ function Past({
     return groups
   }, [sessions, now])
 
+  const finance = useQuery(patientFinanceQuery(patientId))
+  const pagamentos = useMemo(() => {
+    const map = new Map<number, string>()
+    if (!finance.data) return map
+    for (const a of sessions) {
+      const label = sessionPayLabel(sessionPay(finance.data, a.id))
+      if (label) map.set(a.id, label)
+    }
+    return map
+  }, [finance.data, sessions])
+
   const byAppointment = useMemo(() => {
     const map = new Map<number, AttendanceRecord[]>()
     for (const r of records) map.set(r.appointment_id, [...(map.get(r.appointment_id) ?? []), r])
@@ -298,6 +311,7 @@ function Past({
                   <SessionRow
                     appointment={a}
                     records={byAppointment.get(a.id) ?? []}
+                    pagamento={pagamentos.get(a.id)}
                     onOpen={onOpen}
                   />
                 </li>
@@ -343,10 +357,12 @@ function SignatureNote({
 function SessionRow({
   appointment: a,
   records,
+  pagamento,
   onOpen
 }: {
   appointment: Appointment
   records: AttendanceRecord[]
+  pagamento?: string
   onOpen: (appointment: Appointment) => void
 }): React.JSX.Element {
   const inicio = parseIsoLocalDateTime(a.inicio)
@@ -407,6 +423,7 @@ function SessionRow({
             )}
           </span>
           <SignatureNote appointment={a} records={records} />
+          {pagamento && <span className="text-xs text-ink-soft">{pagamento}</span>}
         </span>
       </span>
     </button>

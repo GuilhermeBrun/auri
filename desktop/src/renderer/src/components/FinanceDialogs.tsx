@@ -95,7 +95,11 @@ function FormDialog({
 }): React.JSX.Element {
   return (
     <Dialog open={open} onOpenChange={onOpenChange} title={title} description={description}>
-      {open && children}
+      {open && (
+        <div onSubmit={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+          {children}
+        </div>
+      )}
     </Dialog>
   )
 }

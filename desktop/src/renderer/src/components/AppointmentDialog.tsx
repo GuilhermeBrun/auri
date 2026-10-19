@@ -21,6 +21,7 @@ import { ArrivalSignature } from '@renderer/components/ArrivalSignature'
 import { EtiquetasEscolha } from '@renderer/components/EtiquetasEscolha'
 import { PatientCombobox } from '@renderer/components/PatientCombobox'
 import { TipoSelect } from '@renderer/components/TipoSelect'
+import { SessionPayment } from '@renderer/components/SessionPayment'
 import { SignatureImage } from '@renderer/components/SignatureImage'
 import { Button } from '@renderer/components/ui/button'
 import { Callout } from '@renderer/components/ui/callout'
@@ -579,6 +580,7 @@ function AppointmentForm({
           name="etiquetas"
           render={({ field }) => <EtiquetasEscolha value={field.value} onChange={field.onChange} />}
         />
+        {editing && started && <SessionPayment appointment={editing} onLeave={onClose} />}
         <Field label="Observação" error={errors.observacao?.message}>
           <Textarea
             {...register('observacao')}

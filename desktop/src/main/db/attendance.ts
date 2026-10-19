@@ -11,6 +11,7 @@ import { deBase64url, paraBase64url } from '../../../../web/contrato/assinatura/
 import { assinaturaMinima, decodificar } from '../../../../web/contrato/assinatura/traco'
 import { getAppointment, listPatientAppointments } from './appointments'
 import { getClinic } from './clinic'
+import { estornarSessao, lancarNaChegada } from './finance'
 import type { Db } from './connection'
 import { getPatient } from './patients'
 import { TIPO_JOIN } from './tipos'
@@ -134,6 +135,7 @@ export function signArrival(
       computador,
       registro_sha256: createHash('sha256').update(registro).digest('hex')
     })
+    lancarNaChegada(db, appointmentId, computador)
     return getAppointment(db, appointmentId)
   })()
 }
@@ -144,18 +146,21 @@ export function voidArrival(
   motivo: string,
   computador: string
 ): Appointment {
-  const row = db
-    .prepare('SELECT appointment_id FROM attendance_signatures WHERE id = ?')
-    .get(signatureId) as { appointment_id: number } | undefined
-  if (!row) throw new Error('Assinatura não encontrada')
-  const voided = db
-    .prepare('SELECT 1 FROM attendance_voids WHERE signature_id = ?')
-    .get(signatureId)
-  if (voided) throw new Error('Esta assinatura já foi anulada.')
-  db.prepare(
-    'INSERT INTO attendance_voids (signature_id, motivo, computador) VALUES (?, ?, ?)'
-  ).run(signatureId, motivo, computador)
-  return getAppointment(db, row.appointment_id)
+  return db.transaction(() => {
+    const row = db
+      .prepare('SELECT appointment_id FROM attendance_signatures WHERE id = ?')
+      .get(signatureId) as { appointment_id: number } | undefined
+    if (!row) throw new Error('Assinatura não encontrada')
+    const voided = db
+      .prepare('SELECT 1 FROM attendance_voids WHERE signature_id = ?')
+      .get(signatureId)
+    if (voided) throw new Error('Esta assinatura já foi anulada.')
+    db.prepare(
+      'INSERT INTO attendance_voids (signature_id, motivo, computador) VALUES (?, ?, ?)'
+    ).run(signatureId, motivo, computador)
+    estornarSessao(db, row.appointment_id, motivo, computador)
+    return getAppointment(db, row.appointment_id)
+  })()
 }
 
 export function listPatientAttendance(db: Db, patientId: number): AttendanceRecord[] {
