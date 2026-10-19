@@ -81,7 +81,7 @@ recusar o que as versões antigas mandam, e o app descarta o que é recusado.
 
 ## O banco
 
-Uma linha por falha na tabela `error_reports`, criada por `web/db/erros.sql`. A função não cria
+Uma linha por falha na tabela `error_reports`, criada pelas migrações de `web/db/migracoes/`. A função não cria
 nada: ela entra com um usuário que **só grava** nessa tabela (papel `erros_gravacao`). O `id` é o
 do app, então um envio repetido não duplica nada.
 
@@ -96,12 +96,23 @@ Se o banco recusar uma falha pelo conteúdo (erros `22` e `23` do Postgres), a f
 e o app não manda aquela de novo, em vez de tentar o mesmo envio para sempre. O caractere nulo, que
 o Postgres não aceita em texto, sai antes de gravar.
 
-A tabela é criada, ou atualizada, com o dono do banco:
+### Migrações
+
+Cada mudança no banco é um arquivo numerado em `web/db/migracoes/` (`001_relatorios_de_erro.sql`,
+`002_…sql`). O `npm run erros:migrar`, com o dono do banco, aplica em ordem só as que ainda não
+rodaram, todas numa transação: se uma falhar, nada fica pela metade. A tabela `schema_migrations`
+guarda quais rodaram e o SHA-256 de cada arquivo.
 
 ```sh
 cd web
 DATABASE_URL=<endereço do dono> npm run erros:migrar
 ```
+
+- **Mudar o banco:** crie a próxima migração (`002_…sql`). Nunca edite uma que já rodou: o
+  `erros:migrar` recusa, porque o arquivo não bate mais com o que foi aplicado.
+- **Antes do deploy:** rode a migração antes de publicar uma função que dependa dela. Se a ordem
+  inverter, os envios respondem `503` e ficam na fila dos apps até a migração rodar.
+- **O deploy não migra:** o usuário da função só grava e não pode criar nem alterar tabelas.
 
 Algumas consultas, com o dono:
 
@@ -127,7 +138,8 @@ Para ligar:
 
 1. Crie o Neon pelo Marketplace (Storage › Neon) e **não** deixe ele gravar as variáveis no projeto:
    o endereço que ele daria é o do dono, que lê tudo.
-2. Com o endereço do dono, rode `npm run erros:migrar` (acima).
+2. Com o endereço do dono, rode `npm run erros:migrar` (acima): cria a tabela, os limites e o
+   papel `erros_gravacao`.
 3. Crie o usuário da função com uma senha longa e aleatória, no SQL Editor do Neon:
    `CREATE ROLE erros_funcao LOGIN PASSWORD '<senha>' IN ROLE erros_gravacao;`
 4. Em Settings › Environment Variables do projeto `auri`, crie `DATABASE_URL` com o endereço

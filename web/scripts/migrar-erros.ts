@@ -1,5 +1,5 @@
-import { readFileSync } from 'node:fs'
 import { connect } from '../api/erros.ts'
+import { migrate } from '../db/migrar.ts'
 
 const url = process.env.DATABASE_URL
 if (!url) {
@@ -8,8 +8,12 @@ if (!url) {
 }
 const sql = connect(url, { max: 1, onnotice: () => {} })
 try {
-  await sql.unsafe(readFileSync(new URL('../db/erros.sql', import.meta.url), 'utf8'))
-  console.log('[erros] tabela pronta')
+  const applied = await migrate(sql)
+  console.log(
+    applied.length > 0
+      ? `[erros] migrações aplicadas: ${applied.join(', ')}`
+      : '[erros] banco já está na última migração'
+  )
 } finally {
   await sql.end()
 }
