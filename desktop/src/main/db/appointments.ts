@@ -7,24 +7,48 @@ import {
 import { assertUnchanged } from './concurrency'
 import type { Db } from './connection'
 
-type AppointmentRow = Omit<Appointment, 'observacao' | 'presenca' | 'evolucao'> & {
+type AppointmentRow = Omit<Appointment, 'observacao' | 'presenca' | 'evolucao' | 'assinatura'> & {
   observacao: string | null
   presenca: Appointment['presenca'] | null
   evolucao: string | null
+  assinatura_id: number | null
+  assinatura_nome: string | null
+  assinatura_parentesco: string | null
+  assinatura_em: string | null
 }
 
 const SELECT = `
   SELECT a.id, a.patient_id, a.inicio, a.fim, a.observacao, a.tipo, a.presenca, a.evolucao,
-         a.created_at, a.updated_at, p.nome AS patient_nome
+         a.created_at, a.updated_at, p.nome AS patient_nome,
+         s.id AS assinatura_id, s.signer_nome AS assinatura_nome,
+         s.signer_parentesco AS assinatura_parentesco, s.assinado_em AS assinatura_em
   FROM appointments a
-  JOIN patients p ON p.id = a.patient_id`
+  JOIN patients p ON p.id = a.patient_id
+  LEFT JOIN attendance_signatures s
+    ON s.appointment_id = a.id AND s.id NOT IN (SELECT signature_id FROM attendance_voids)`
 
 function fromRow(row: AppointmentRow): Appointment {
+  const {
+    assinatura_id: id,
+    assinatura_nome: nome,
+    assinatura_parentesco: parentesco,
+    assinatura_em: em,
+    ...rest
+  } = row
   return {
-    ...row,
+    ...rest,
     observacao: row.observacao ?? '',
     presenca: row.presenca ?? '',
-    evolucao: row.evolucao ?? ''
+    evolucao: row.evolucao ?? '',
+    assinatura:
+      id === null
+        ? null
+        : {
+            id,
+            signer_nome: nome ?? '',
+            signer_parentesco: parentesco ?? '',
+            assinado_em: em ?? ''
+          }
   }
 }
 

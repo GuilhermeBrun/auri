@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { addMinutes, differenceInMinutes, format } from 'date-fns'
-import { CalendarCheck2, Trash2, Undo2 } from 'lucide-react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { addMinutes, differenceInMinutes, format, isSameDay } from 'date-fns'
+import { CalendarCheck2, Check, PenLine, Trash2, Undo2 } from 'lucide-react'
 import { ptBR } from 'date-fns/locale/pt-BR'
 import { useId, useState } from 'react'
 import { Controller, useForm, useWatch } from 'react-hook-form'
@@ -21,7 +21,9 @@ import {
   type Appointment,
   type AppointmentInput
 } from '@shared/schemas'
+import { ArrivalSignature } from '@renderer/components/ArrivalSignature'
 import { PatientCombobox } from '@renderer/components/PatientCombobox'
+import { SignatureImage } from '@renderer/components/SignatureImage'
 import { Button } from '@renderer/components/ui/button'
 import { Callout } from '@renderer/components/ui/callout'
 import { Dialog, DialogBody, DialogFooter } from '@renderer/components/ui/dialog'
@@ -31,7 +33,9 @@ import { Kbd } from '@renderer/components/ui/kbd'
 import { Segmented } from '@renderer/components/ui/segmented'
 import { Select } from '@renderer/components/ui/select'
 import { TimeField } from '@renderer/components/ui/time-field'
+import { useConnection } from '@renderer/lib/connection'
 import { MOD_KEY } from '@renderer/lib/platform'
+import { patientAttendanceQuery } from '@renderer/lib/queries'
 import { PRESENCA_OPTIONS, TIPO_OPTIONS } from '@renderer/lib/session'
 import { useToast } from '@renderer/lib/toast'
 
@@ -103,7 +107,7 @@ function hasStarted(data: string | undefined, hora: string | undefined, now: Dat
   return parseIsoLocalDateTime(`${data}T${hora}`) <= now
 }
 
-function toInput(values: ValidValues, now: Date): AppointmentInput {
+function toInput(values: ValidValues, now: Date, signed: boolean): AppointmentInput {
   const inicio = `${values.data}T${values.hora}`
   return {
     patient_id: values.patient.id,
@@ -111,9 +115,13 @@ function toInput(values: ValidValues, now: Date): AppointmentInput {
     fim: toIsoLocalDateTime(addMinutes(parseIsoLocalDateTime(inicio), values.duracao)),
     observacao: values.observacao,
     tipo: values.tipo,
-    presenca: hasStarted(values.data, values.hora, now) ? values.presenca : '',
+    presenca: signed || hasStarted(values.data, values.hora, now) ? values.presenca : '',
     evolucao: values.evolucao
   }
+}
+
+function clock(iso: string): string {
+  return format(new Date(iso), 'HH:mm')
 }
 
 function when(inicio: string): string {
@@ -194,6 +202,18 @@ function AppointmentForm({
   const editing = draft.mode === 'edit' ? draft.appointment : null
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [now] = useState(() => new Date())
+  const [signing, setSigning] = useState(false)
+  const [voiding, setVoiding] = useState(false)
+  const [motivo, setMotivo] = useState('')
+  const { info } = useConnection()
+  const signed = editing?.assinatura ?? null
+  const canSign =
+    editing !== null && !signed && isSameDay(parseIsoLocalDateTime(editing.inicio), now)
+  const records = useQuery({
+    ...patientAttendanceQuery(editing?.patient_id ?? 0),
+    enabled: signed !== null
+  })
+  const record = signed ? records.data?.find((r) => r.id === signed.id) : undefined
 
   const {
     register,
@@ -225,6 +245,19 @@ function AppointmentForm({
         description: `${shortName(saved.patient_nome)} · ${when(saved.inicio)}`
       })
       onSaved?.(saved)
+      done()
+    }
+  })
+
+  const voidSignature = useMutation({
+    mutationFn: () =>
+      window.api.attendance.void(signed!.id, motivo.trim(), info?.name || 'Este computador'),
+    onSuccess: (saved) => {
+      toast({
+        title: 'Assinatura anulada',
+        description: `${shortName(saved.patient_nome)} · ${when(saved.inicio)}`
+      })
+      void queryClient.invalidateQueries({ queryKey: ['attendance'] })
       done()
     }
   })
@@ -269,14 +302,14 @@ function AppointmentForm({
     ? DURATIONS
     : [...DURATIONS, initialDuration].sort((a, b) => a - b)
 
-  const error = save.error ?? remove.error
+  const error = save.error ?? remove.error ?? voidSignature.error
   const values = useWatch({ control }) as FormValues
   const started = hasStarted(values.data, values.hora, now)
   const resumo = started ? null : summary(values)
 
   return (
     <form
-      onSubmit={handleSubmit((valid) => save.mutate(toInput(valid, now)))}
+      onSubmit={handleSubmit((valid) => save.mutate(toInput(valid, now, signed !== null)))}
       onKeyDown={(e) => {
         if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
           e.preventDefault()
@@ -286,82 +319,96 @@ function AppointmentForm({
       noValidate
     >
       <DialogBody className="flex flex-col gap-4">
-        <Field label="Paciente" as="group" error={errors.patient?.message}>
-          <Controller
-            control={control}
-            name="patient"
-            render={({ field, fieldState }) => (
-              <PatientCombobox
-                value={field.value}
-                onChange={field.onChange}
-                invalid={fieldState.invalid}
-                autoFocus={!editing && !(draft.mode === 'create' && draft.patient)}
+        {signed && editing ? (
+          <div className="flex flex-col gap-1 rounded-control bg-canvas px-3 py-2.5">
+            <span className="text-[13px] font-medium">{editing.patient_nome}</span>
+            <span className="text-xs text-ink-soft tabular-nums">
+              {when(editing.inicio)} · {values.duracao} min ·{' '}
+              {editing.tipo === 'avaliacao' ? 'Avaliação' : 'Sessão'}
+            </span>
+          </div>
+        ) : (
+          <>
+            <Field label="Paciente" as="group" error={errors.patient?.message}>
+              <Controller
+                control={control}
+                name="patient"
+                render={({ field, fieldState }) => (
+                  <PatientCombobox
+                    value={field.value}
+                    onChange={field.onChange}
+                    invalid={fieldState.invalid}
+                    autoFocus={!editing && !(draft.mode === 'create' && draft.patient)}
+                  />
+                )}
               />
-            )}
-          />
-        </Field>
-        <div className="grid grid-cols-[1.4fr_1fr_1fr] gap-3">
-          <Field label="Data" htmlFor={`${ids}-data`} error={errors.data?.message}>
-            <Controller
-              control={control}
-              name="data"
-              render={({ field, fieldState }) => (
-                <DateField
-                  id={`${ids}-data`}
-                  value={field.value}
-                  onChange={field.onChange}
-                  invalid={fieldState.invalid}
+            </Field>
+            <div className="grid grid-cols-[1.4fr_1fr_1fr] gap-3">
+              <Field label="Data" htmlFor={`${ids}-data`} error={errors.data?.message}>
+                <Controller
+                  control={control}
+                  name="data"
+                  render={({ field, fieldState }) => (
+                    <DateField
+                      id={`${ids}-data`}
+                      value={field.value}
+                      onChange={field.onChange}
+                      invalid={fieldState.invalid}
+                    />
+                  )}
                 />
-              )}
-            />
-          </Field>
-          <Field label="Hora" htmlFor={`${ids}-hora`} error={errors.hora?.message}>
-            <Controller
-              control={control}
-              name="hora"
-              render={({ field, fieldState }) => (
-                <TimeField
-                  id={`${ids}-hora`}
-                  value={field.value}
-                  onChange={field.onChange}
-                  slots={TIME_SLOTS}
-                  invalid={fieldState.invalid}
+              </Field>
+              <Field label="Hora" htmlFor={`${ids}-hora`} error={errors.hora?.message}>
+                <Controller
+                  control={control}
+                  name="hora"
+                  render={({ field, fieldState }) => (
+                    <TimeField
+                      id={`${ids}-hora`}
+                      value={field.value}
+                      onChange={field.onChange}
+                      slots={TIME_SLOTS}
+                      invalid={fieldState.invalid}
+                    />
+                  )}
                 />
-              )}
-            />
-          </Field>
-          <Field label="Duração" htmlFor={`${ids}-duracao`} error={errors.duracao?.message}>
-            <Controller
-              control={control}
-              name="duracao"
-              render={({ field, fieldState }) => (
-                <Select
-                  id={`${ids}-duracao`}
-                  value={String(field.value)}
-                  onValueChange={(v) => field.onChange(Number(v))}
-                  options={durations.map((d) => ({ value: String(d), label: `${d} min` }))}
-                  invalid={fieldState.invalid}
+              </Field>
+              <Field label="Duração" htmlFor={`${ids}-duracao`} error={errors.duracao?.message}>
+                <Controller
+                  control={control}
+                  name="duracao"
+                  render={({ field, fieldState }) => (
+                    <Select
+                      id={`${ids}-duracao`}
+                      value={String(field.value)}
+                      onValueChange={(v) => field.onChange(Number(v))}
+                      options={durations.map((d) => ({ value: String(d), label: `${d} min` }))}
+                      invalid={fieldState.invalid}
+                    />
+                  )}
                 />
-              )}
-            />
-          </Field>
-        </div>
+              </Field>
+            </div>
+          </>
+        )}
         <div className="flex flex-wrap items-end gap-x-6 gap-y-4">
-          <SegmentedField label="Tipo">
-            <Controller
-              control={control}
-              name="tipo"
-              render={({ field }) => (
-                <Segmented
-                  label="Tipo"
-                  value={field.value}
-                  options={TIPO_OPTIONS}
-                  onChange={field.onChange}
-                />
-              )}
-            />
-          </SegmentedField>
-          {started && (
+          {!signed && (
+            <SegmentedField label="Tipo">
+              <Controller
+                control={control}
+                name="tipo"
+                render={({ field }) => (
+                  <Segmented
+                    label="Tipo"
+                    value={field.value}
+                    options={TIPO_OPTIONS}
+                    onChange={field.onChange}
+                  />
+                )}
+              />
+            </SegmentedField>
+          )}
+          {!signed && started && (
             <SegmentedField label="Presença">
               <Controller
                 control={control}
@@ -378,6 +425,78 @@ function AppointmentForm({
             </SegmentedField>
           )}
         </div>
+        {canSign && (
+          <div className="flex items-center justify-between gap-3 rounded-control bg-canvas px-3 py-2.5">
+            <span className="flex flex-col">
+              <span className="text-[13px] font-medium">Chegada</span>
+              <span className="text-xs text-ink-soft">
+                Quem trouxe o paciente assina na tela. A presença fica marcada e travada.
+              </span>
+            </span>
+            <Button variant="secondary" onClick={() => setSigning(true)}>
+              <PenLine /> Assinar chegada
+            </Button>
+          </div>
+        )}
+        {signed && (
+          <div className="flex flex-col gap-3 rounded-control bg-canvas px-3 py-3">
+            <div className="flex items-start justify-between gap-4">
+              <span className="flex flex-col gap-0.5">
+                <span className="flex items-center gap-1.5 text-[13px] font-medium [&_svg]:size-3.5 [&_svg]:stroke-[2]">
+                  <Check /> Presente · chegada assinada às {clock(signed.assinado_em)}
+                </span>
+                <span className="text-xs text-ink-soft">
+                  Por {signed.signer_nome} ({signed.signer_parentesco.toLowerCase()}). Paciente,
+                  horário, tipo e presença não mudam mais.
+                </span>
+              </span>
+              {!voiding && (
+                <Button variant="ghost" size="sm" onClick={() => setVoiding(true)}>
+                  Anular assinatura
+                </Button>
+              )}
+            </div>
+            {record && (
+              <SignatureImage
+                traco={record.traco}
+                label={`Assinatura de ${signed.signer_nome}`}
+                strokeWidth={2}
+                className="h-20 self-start"
+              />
+            )}
+            {voiding && (
+              <div className="flex flex-col gap-2 animate-fade-in">
+                <Field label="Por que anular?">
+                  <Textarea
+                    value={motivo}
+                    onChange={(e) => setMotivo(e.target.value)}
+                    rows={2}
+                    placeholder="Ex.: assinou na sessão de outro paciente."
+                    autoFocus
+                  />
+                </Field>
+                <div className="flex justify-end gap-2">
+                  <Button variant="ghost" size="sm" onClick={() => setVoiding(false)}>
+                    Voltar
+                  </Button>
+                  <Button
+                    variant="danger"
+                    size="sm"
+                    disabled={motivo.trim() === ''}
+                    loading={voidSignature.isPending}
+                    onClick={() => voidSignature.mutate()}
+                  >
+                    Anular assinatura
+                  </Button>
+                </div>
+                <p className="text-xs text-ink-soft">
+                  A assinatura anulada continua guardada, com o motivo, e a sessão volta a poder ser
+                  editada.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
         <Field label="Observação" error={errors.observacao?.message}>
           <Textarea
             {...register('observacao')}
@@ -409,7 +528,13 @@ function AppointmentForm({
         {error && (
           <Callout
             tone="danger"
-            title={remove.error ? 'Não foi possível excluir' : 'Não foi possível salvar'}
+            title={
+              remove.error
+                ? 'Não foi possível excluir'
+                : voidSignature.error
+                  ? 'Não foi possível anular'
+                  : 'Não foi possível salvar'
+            }
           >
             {error.message}
           </Callout>
@@ -418,7 +543,7 @@ function AppointmentForm({
 
       <DialogFooter>
         <div>
-          {editing ? (
+          {editing && signed ? null : editing ? (
             confirmDelete ? (
               <Button
                 variant="danger"
@@ -450,6 +575,17 @@ function AppointmentForm({
           </Button>
         </div>
       </DialogFooter>
+      {editing && (
+        <ArrivalSignature
+          appointment={editing}
+          open={signing}
+          onOpenChange={setSigning}
+          onSigned={() => {
+            setSigning(false)
+            done()
+          }}
+        />
+      )}
     </form>
   )
 }

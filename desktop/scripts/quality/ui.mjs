@@ -171,7 +171,7 @@ try {
     expect(patient.mae_nome).toBe('Maria Interface Fictícia')
     await expect(page.getByRole('columnheader')).toHaveText([
       'Paciente',
-      'Mãe',
+      'Responsável',
       'Escola',
       'Entrada'
     ])
