@@ -87,7 +87,7 @@ export function DownloadButtons({ options }: { options: Installer[] }) {
             >
               <a
                 className={`btn ${primary ? 'btn-primary' : 'btn-secondary'}`}
-                href={option.name}
+                href={option.url}
                 download
               >
                 <Download />
@@ -103,7 +103,7 @@ export function DownloadButtons({ options }: { options: Installer[] }) {
           {other && (
             <>
               {'Também para '}
-              <a href={other.name} download>
+              <a href={other.url} download>
                 {SYSTEMS[other.os].label}
               </a>
             </>

@@ -157,44 +157,25 @@ jobs:
           if [ "$PRERELEASE" = true ]; then flags+=(--prerelease); else flags+=(--latest); fi
           gh release create "$TAG" "${flags[@]}" entrega/*
 
-  # O repositório é privado: o Auri instalado procura versões novas no Vercel Blob, que é público.
-  # O job envia para lá a última estável (latest.yml) e o alpha mais novo que ela (alpha.yml), os
-  # instaladores e o releases.json, e apaga as versões antigas. auri.dev.br e
-  # atualizacoes.auri.dev.br (Vercel, web/vercel.json) redirecionam para o Blob. Com
-  # `channel=site`, roda sozinho (os jobs de cima ficam de fora), para publicar de novo sem release.
+  # O repositório é público: os instaladores e os latest/alpha.yml ficam nas releases do GitHub.
+  # O Auri instalado procura versões em atualizacoes.auri.dev.br (Vercel), cujo build lê as
+  # releases e grava no site os .yml com os instaladores apontando para o GitHub
+  # (web/scripts/prerender.mjs). Este job só pede esse build. Com `channel=site`, roda sozinho (os
+  # jobs de cima ficam de fora), para refazer o site sem release.
   atualizacao:
     name: Atualização
     needs: publish
     if: ${{ !cancelled() && (needs.publish.result == 'success' || inputs.channel == 'site') }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
-    permissions:
-      contents: read
+    timeout-minutes: 5
+    permissions: {}
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: main
-          persist-credentials: false
-      # Node e o cliente do Blob (dependência do web/)
-      - uses: ./.github/actions/setup-deps
-        with:
-          directory: web
-      - name: Baixar os arquivos das releases
-        run: node desktop/scripts/release/cli.mjs site site
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-      - name: Publicar no Blob
-        run: node web/scripts/publicar-atualizacoes.mjs site
-        env:
-          BLOB_READ_WRITE_TOKEN: ${{ secrets.BLOB_READ_WRITE_TOKEN }}
-      # A página da Vercel lê o releases.json no build: o Deploy Hook a reconstrói com a versão nova.
-      - name: Atualizar a página na Vercel
+      - name: Atualizar o site na Vercel
         env:
           HOOK: ${{ secrets.VERCEL_DEPLOY_HOOK }}
         run: |
           if [ -z "$HOOK" ]; then
-            echo "::notice::Sem VERCEL_DEPLOY_HOOK: a página da Vercel fica com a versão anterior."
-          else
-            curl -fsS -X POST "$HOOK" > /dev/null
+            echo "::error::Sem VERCEL_DEPLOY_HOOK: o site e o feed de atualização ficam na versão anterior."
+            exit 1
           fi
+          curl -fsS -X POST "$HOOK" > /dev/null

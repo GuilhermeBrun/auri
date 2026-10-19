@@ -25,8 +25,8 @@ do app).
 
 - `desktop/`: o app (Electron + React + SQLite) e os scripts de release.
 - `web/`: o site [auri.dev.br](https://auri.dev.br) (React + Vite+, pré-renderizado), com a
-  página de download. Publicado pela Vercel; o feed de atualização e os instaladores ficam no
-  Vercel Blob (ver [docs/ci.md](docs/ci.md)).
+  página de download e o feed de atualização. Publicado pela Vercel; os instaladores ficam nas
+  releases do GitHub (ver [docs/ci.md](docs/ci.md)).
 - `docs/`: documentação comum.
 
 ## Desenvolvimento
@@ -42,8 +42,8 @@ npm test
 npm run build:exemplo   # build pré-renderizado com as releases de exemplo
 ```
 
-O `npm run build` lê as releases publicadas (`releases.json` no Blob), ou um arquivo ou url em
-`AURI_RELEASES`.
+O `npm run build` lê as releases publicadas no GitHub e grava em `dist/` o feed de atualização
+(`latest.yml`, `alpha.yml`…) e o `releases.json`; `AURI_RELEASES` aceita um arquivo ou url no lugar.
 
 ### App (`desktop/`)
 
@@ -127,3 +127,8 @@ O app tem só assinatura ad-hoc: não há certificado da Apple nem da Microsoft.
 
 - **No Mac:** na primeira vez o macOS bloqueia a abertura. Vá em Ajustes do Sistema → Privacidade e Segurança → "Abrir mesmo assim".
 - **No Windows:** o SmartScreen pede "Mais informações → Executar assim mesmo".
+
+## Licença
+
+[PolyForm Noncommercial 1.0.0](LICENSE.md): o código pode ser lido, usado e modificado para fins
+não comerciais. Uso comercial só com autorização do autor.

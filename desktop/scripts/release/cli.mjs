@@ -1,12 +1,8 @@
 // Usado pelo workflow Release:
-//   node scripts/release/cli.mjs resolve      → saídas skip, ref, version, tag, prerelease
-//   node scripts/release/cli.mjs site <pasta> → baixa os arquivos das releases para o site de
-//                                               atualização e grava o releases.json, que a página
-//                                               de download (web/) usa no build
+//   node scripts/release/cli.mjs resolve → saídas skip, ref, version, tag, prerelease
 import { execFileSync } from 'node:child_process'
-import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
-import { join } from 'node:path'
-import { latestTags, nextAlpha, outsideApp, siteFiles, stableFromAlpha } from './versions.mjs'
+import { appendFileSync, readFileSync } from 'node:fs'
+import { latestTags, nextAlpha, outsideApp, stableFromAlpha } from './versions.mjs'
 
 const run = (command, args) => execFileSync(command, args, { encoding: 'utf8' }).trim()
 const lines = (text) => text.split('\n').filter(Boolean)
@@ -52,38 +48,9 @@ function resolve() {
   output({ skip: false, ref: head, version, tag: `v${version}`, prerelease: true })
 }
 
-function site(directory) {
-  const releases = JSON.parse(
-    run('gh', ['release', 'list', '--limit', '100', '--json', 'tagName,isDraft'])
-  ).filter((release) => !release.isDraft)
-  const { stable, alpha } = latestTags(releases.map((release) => release.tagName))
-  const details = (tag) => {
-    if (!tag) return null
-    const { assets, publishedAt } = JSON.parse(
-      run('gh', ['release', 'view', tag, '--json', 'assets,publishedAt'])
-    )
-    return { tag, publishedAt, assets: assets.map(({ name, size }) => ({ name, size })) }
-  }
-  const [stableRelease, alphaRelease] = [details(stable), details(alpha)]
-  const names = (release) =>
-    release && { tag: release.tag, assets: release.assets.map((asset) => asset.name) }
-  const files = siteFiles({ stable: names(stableRelease), alpha: names(alphaRelease) })
-
-  mkdirSync(directory, { recursive: true })
-  for (const { name, tag } of files) {
-    run('gh', ['release', 'download', tag, '--pattern', name, '--dir', directory, '--clobber'])
-  }
-  writeFileSync(
-    join(directory, 'releases.json'),
-    `${JSON.stringify({ stable: stableRelease, alpha: alphaRelease, files }, null, 2)}\n`
-  )
-  console.log(files.map((file) => `${file.name} ← ${file.tag}`).join('\n'))
-}
-
 try {
-  const [command, argument] = process.argv.slice(2)
+  const [command] = process.argv.slice(2)
   if (command === 'resolve') resolve()
-  else if (command === 'site') site(argument ?? 'site')
   else throw new Error(`Comando desconhecido: ${command}`)
 } catch (error) {
   console.error(error.message)

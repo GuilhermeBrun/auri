@@ -86,26 +86,3 @@ export function stableFromAlpha({ tagNames, alphaTag, requested }) {
   }
   return version
 }
-
-/**
- * Arquivos do site de atualização (Vercel Blob). Ficam os da última estável e, se houver um alpha
- * mais novo, os instaladores dele e o `alpha.yml` (e `alpha-mac.yml`, se o alpha tiver Mac), que
- * substituem os da estável. Alpha só de Windows deixa o Mac do canal alpha na estável.
- */
-export function siteFiles({ stable, alpha }) {
-  const files = new Map()
-  for (const name of stable?.assets ?? []) files.set(name, stable.tag)
-  if (alpha && (!stable || isNewer(alpha.tag.slice(1), stable.tag.slice(1)))) {
-    for (const name of alpha.assets) {
-      if (/\.(exe|zip|blockmap)$/.test(name) || /^alpha(-mac)?\.yml$/.test(name)) {
-        files.set(name, alpha.tag)
-      }
-    }
-  }
-  if (!files.has('latest.yml') && !files.has('alpha.yml')) {
-    throw new Error('Nenhum latest.yml ou alpha.yml para publicar.')
-  }
-  return [...files]
-    .map(([name, tag]) => ({ name, tag }))
-    .sort((a, b) => a.name.localeCompare(b.name))
-}

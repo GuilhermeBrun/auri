@@ -3,38 +3,71 @@
 //
 // As releases vêm, nesta ordem, de:
 //   `node scripts/prerender.mjs exemplo` ou AURI_RELEASES=exemplo | <arquivo> | <url>
-//   releases.json            gravado pelo workflow Release antes do build
-//   o releases.json publicado no Vercel Blob pelo workflow Release
-import { existsSync } from 'node:fs'
+//   as GitHub Releases (repositório público): o build grava em dist/ o feed de atualização
+//   (latest.yml, alpha.yml…) com os instaladores apontando para o GitHub, e o releases.json
 import { readFile, rm, writeFile } from 'node:fs/promises'
 
-const PUBLISHED = [
-  'https://tmjyk19jrikg8aex.public.blob.vercel-storage.com/releases.json',
-  'https://atualizacoes.auri.dev.br/releases.json'
-]
+const server = await import(new URL('../dist-ssr/entry-server.js', import.meta.url).href)
+const { REPO, downloadUrl, feedSources, newestAlpha, releasesFrom, render, rewriteYml } = server
 
-async function fetchJson(url) {
-  const response = await fetch(url, { signal: AbortSignal.timeout(15_000) })
+const timeout = () => AbortSignal.timeout(15_000)
+
+async function fetchOk(url, init) {
+  const response = await fetch(url, { signal: timeout(), ...init })
   if (!response.ok) throw new Error(`${url} respondeu ${response.status}.`)
-  return response.json()
+  return response
+}
+
+/** A última estável: o GitHub redireciona /releases/latest para a tag dela. */
+async function latestStable() {
+  const response = await fetch(`${REPO}/releases/latest`, { redirect: 'manual', signal: timeout() })
+  const location = response.headers.get('location') ?? ''
+  const tag = /\/releases\/tag\/([^/?#]+)$/.exec(location)?.[1]
+  return tag ? decodeURIComponent(tag) : null
+}
+
+/** Um .yml da release `tag`, ou nada se ela não tiver esse arquivo. */
+async function yml(tag, name) {
+  const response = await fetch(downloadUrl(tag, name), { signal: timeout() })
+  if (response.status === 404) return null
+  if (!response.ok) throw new Error(`${name} de ${tag} respondeu ${response.status}.`)
+  return response.text()
+}
+
+async function fromGitHub() {
+  const [stable, atom] = await Promise.all([
+    latestStable(),
+    fetchOk(`${REPO}/releases.atom`).then((response) => response.text())
+  ])
+  const alpha = newestAlpha(atom)
+  const feed = []
+  for (const { name, tags } of feedSources(stable, alpha)) {
+    for (const tag of tags) {
+      const text = await yml(tag, name)
+      if (text === null) continue
+      feed.push({ name, tag, text })
+      await writeFile(`dist/${name}`, rewriteYml(text, tag))
+      break
+    }
+  }
+  // Sem as releases de verdade, o build para: melhor que publicar a página com outra versão.
+  if (!feed.some((file) => file.name === 'latest.yml' || file.name === 'alpha.yml')) {
+    throw new Error(
+      `Nenhum latest.yml ou alpha.yml nas releases (estável ${stable}, alpha ${alpha}).`
+    )
+  }
+  const releases = releasesFrom(feed, stable, alpha)
+  await writeFile('dist/releases.json', `${JSON.stringify(releases, null, 2)}\n`)
+  console.log(feed.map((file) => `${file.name} ← ${file.tag}`).join('\n'))
+  return releases
 }
 
 async function releases() {
   const source = process.argv[2] || process.env.AURI_RELEASES
   if (source === 'exemplo') return JSON.parse(await readFile('releases.exemplo.json', 'utf8'))
-  if (source && /^https?:\/\//.test(source)) return fetchJson(source)
+  if (source && /^https?:\/\//.test(source)) return (await fetchOk(source)).json()
   if (source) return JSON.parse(await readFile(source, 'utf8'))
-  if (existsSync('releases.json')) return JSON.parse(await readFile('releases.json', 'utf8'))
-  const errors = []
-  for (const url of PUBLISHED) {
-    try {
-      return await fetchJson(url)
-    } catch (error) {
-      errors.push(error.message)
-    }
-  }
-  // Sem as releases de verdade, o build para: melhor que publicar a página com outra versão.
-  throw new Error(`Não consegui ler o releases.json publicado:\n${errors.join('\n')}`)
+  return fromGitHub()
 }
 
 /** Troca o marcador (que precisa existir) pelo texto, sem os padrões especiais do replace. */
@@ -43,7 +76,6 @@ function fill(html, marker, value) {
   return html.replace(marker, () => value)
 }
 
-const { render } = await import(new URL('../dist-ssr/entry-server.js', import.meta.url).href)
 const { info, html } = render(await releases())
 // `<` escapado: o JSON vai dentro de um <script>
 const data = JSON.stringify(info).replaceAll('<', '\\u003c')
