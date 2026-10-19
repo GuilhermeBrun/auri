@@ -75,7 +75,7 @@ export function DestinationRepair({
           />
         )}
         {!choosing && (
-          <Button variant="ghost" className="mt-2 -ml-3.5" onClick={() => setChoosing(true)}>
+          <Button variant="ghost" className="mt-2" onClick={() => setChoosing(true)}>
             Escolher outra nuvem
           </Button>
         )}
