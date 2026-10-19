@@ -2,6 +2,7 @@
 import { cleanup, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
+import { FUNCIONAMENTO_PADRAO } from '@shared/agenda'
 import type { Clinic } from '@shared/schemas'
 import { renderRoute } from '@renderer/testing'
 
@@ -27,6 +28,12 @@ const { clinic } = vi.hoisted(() => {
 
 import { ClinicPage } from './ClinicPage'
 
+globalThis.ResizeObserver ??= class {
+  observe(): void {}
+  disconnect(): void {}
+  unobserve(): void {}
+}
+
 const LOGO = 'iVBORw0KGgo='
 
 const vazia: Clinic = {
@@ -38,6 +45,7 @@ const vazia: Clinic = {
   profissional: '',
   registro: '',
   logo: '',
+  funcionamento: FUNCIONAMENTO_PADRAO,
   updated_at: '2026-10-19T12:00:00.000Z'
 }
 
@@ -96,6 +104,48 @@ describe('Clínica', () => {
     await userEvent.type(await screen.findByLabelText('Telefone'), '6533')
     await userEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
     expect(await screen.findByText('Telefone inválido')).toBeTruthy()
+    expect(clinic.save).not.toHaveBeenCalled()
+  })
+
+  it('abre o domingo, fecha o sábado e salva o funcionamento', async () => {
+    clinic.get.mockResolvedValue(vazia)
+    clinic.save.mockImplementation((input) =>
+      Promise.resolve({ ...input, updated_at: '2026-10-19T12:01:00.000Z' })
+    )
+    renderRoute('/clinica', '/clinica', <ClinicPage />)
+    const domingo = await screen.findByRole('switch', { name: 'Abre no domingo' })
+    expect(domingo.getAttribute('aria-checked')).toBe('false')
+    expect(
+      screen.getByRole('switch', { name: 'Abre no sábado' }).getAttribute('aria-checked')
+    ).toBe('true')
+    expect((screen.getByLabelText('Sábado, fecha às') as HTMLInputElement).value).toBe('12:00')
+
+    await userEvent.click(domingo)
+    await userEvent.click(screen.getByRole('switch', { name: 'Abre no sábado' }))
+    expect(screen.queryByLabelText('Sábado, fecha às')).toBeNull()
+    const fecha = screen.getByLabelText('Domingo, fecha às')
+    await userEvent.clear(fecha)
+    await userEvent.type(fecha, '12:00')
+    await userEvent.tab()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
+    await waitFor(() => expect(clinic.save).toHaveBeenCalled())
+    const { 6: _, ...semSabado } = FUNCIONAMENTO_PADRAO
+    expect(clinic.save.mock.calls[0][0].funcionamento).toEqual({
+      ...semSabado,
+      0: { abre: '07:00', fecha: '12:00' }
+    })
+  })
+
+  it('recusa um dia que fecha antes de abrir', async () => {
+    clinic.get.mockResolvedValue(vazia)
+    renderRoute('/clinica', '/clinica', <ClinicPage />)
+    const fecha = await screen.findByLabelText('Segunda, fecha às')
+    await userEvent.clear(fecha)
+    await userEvent.type(fecha, '06:00')
+    await userEvent.tab()
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
+    expect(await screen.findByText('Fecha depois de abrir')).toBeTruthy()
     expect(clinic.save).not.toHaveBeenCalled()
   })
 })
