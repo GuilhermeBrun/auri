@@ -3,6 +3,7 @@ import {
   Building2,
   CalendarDays,
   Database,
+  Hourglass,
   Network,
   PanelLeft,
   PanelLeftClose,
@@ -58,6 +59,7 @@ function AlertDot(): React.JSX.Element {
 const NAV_ITEMS: NavItem[] = [
   { to: '/agenda', label: 'Agenda', icon: <CalendarDays /> },
   { to: '/pacientes', label: 'Pacientes', icon: <Users /> },
+  { to: '/lista-de-espera', label: 'Lista de espera', icon: <Hourglass /> },
   { to: '/clinica', label: 'Clínica', icon: <Building2 /> }
 ]
 

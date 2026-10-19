@@ -7,6 +7,8 @@ import type {
   TermModel,
   TermRequest
 } from '@shared/schemas'
+import type { Sugestao } from '@shared/encaixe'
+import type { EncaixeNaVaga, SugestaoPedido, Vaga, WaitlistEntry } from '@shared/waitlist'
 
 type Query<T> = { queryKey: readonly unknown[]; queryFn: () => Promise<T> }
 
@@ -58,5 +60,30 @@ export function patientTermsQuery(patientId: number): Query<TermRequest[]> {
   return {
     queryKey: ['terms', 'patient', patientId],
     queryFn: () => window.api.terms.listByPatient(patientId)
+  }
+}
+
+export function waitlistQuery(): Query<WaitlistEntry[]> {
+  return { queryKey: ['waitlist'], queryFn: () => window.api.waitlist.list() }
+}
+
+export function patientWaitlistQuery(patientId: number): Query<WaitlistEntry | null> {
+  return {
+    queryKey: ['waitlist', 'patient', patientId],
+    queryFn: () => window.api.waitlist.getByPatient(patientId)
+  }
+}
+
+export function sugestoesQuery(pedido: SugestaoPedido): Query<Sugestao[]> {
+  return {
+    queryKey: ['encaixe', 'sugerir', pedido],
+    queryFn: () => window.api.encaixe.sugerir(pedido)
+  }
+}
+
+export function quemCabeQuery(vaga: Vaga): Query<EncaixeNaVaga[]> {
+  return {
+    queryKey: ['encaixe', 'quemCabe', vaga],
+    queryFn: () => window.api.encaixe.quemCabe(vaga)
   }
 }
