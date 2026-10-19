@@ -10,7 +10,7 @@ export function ImportButton({ state }: { state: ImportState }): React.JSX.Eleme
   return (
     <div>
       <Button variant="secondary" loading={pick.isPending} onClick={() => pick.mutate()}>
-        {!pick.isPending && <FileDown />} Importar configurações…
+        <FileDown /> Importar configurações…
       </Button>
       {pick.error && <ErrorText>{pick.error.message}</ErrorText>}
     </div>

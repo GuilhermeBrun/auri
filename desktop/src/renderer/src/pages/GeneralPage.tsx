@@ -104,7 +104,7 @@ function ErrorReports(): React.JSX.Element | null {
             description={`${count === 1 ? '1 falha guardada' : `${count} falhas guardadas`}. O texto copiado também não tem dados de pacientes.`}
           >
             <Button variant="secondary" loading={copy.isPending} onClick={() => copy.mutate()}>
-              {!copy.isPending && <Copy />} Copiar relatório
+              <Copy /> Copiar relatório
             </Button>
           </Row>
         )}
@@ -139,7 +139,7 @@ function Transfer(): React.JSX.Element {
           loading={exportFile.isPending}
           onClick={() => exportFile.mutate()}
         >
-          {!exportFile.isPending && <FileUp />} Exportar configurações…
+          <FileUp /> Exportar configurações…
         </Button>
         {!importing.preview && <ImportButton state={importing} />}
       </div>
@@ -191,7 +191,7 @@ export function GeneralPage(): React.JSX.Element {
                 >
                   {state.status === 'ready' ? (
                     <Button loading={install.isPending} onClick={() => install.mutate()}>
-                      {!install.isPending && <RotateCcw />} Reiniciar e atualizar
+                      <RotateCcw /> Reiniciar e atualizar
                     </Button>
                   ) : (
                     state.status !== 'unavailable' && (
@@ -201,7 +201,7 @@ export function GeneralPage(): React.JSX.Element {
                         disabled={state.status === 'downloading'}
                         onClick={() => check.mutate()}
                       >
-                        {!busy && <Download />} Procurar atualizações
+                        <Download /> Procurar atualizações
                       </Button>
                     )
                   )}

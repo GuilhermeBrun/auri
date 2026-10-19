@@ -150,7 +150,7 @@ function PairingPanel({ devices }: { devices: PairedDevice[] }): React.JSX.Eleme
     return (
       <div className="mt-4">
         <Button variant="secondary" loading={create.isPending} onClick={() => create.mutate()}>
-          {!create.isPending && <Plus />} Conectar computador
+          <Plus /> Conectar computador
         </Button>
         {create.error && <ErrorText>{create.error.message}</ErrorText>}
       </div>
@@ -537,7 +537,7 @@ function FindServer(): React.JSX.Element {
             loading={search.isPending}
             onClick={() => search.mutate()}
           >
-            {!search.isPending && <RotateCw />} Procurar de novo
+            <RotateCw /> Procurar de novo
           </Button>
         )}
         <Button variant="secondary" size="sm" onClick={() => setManual((m) => !m)}>

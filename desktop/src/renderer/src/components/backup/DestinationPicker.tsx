@@ -270,7 +270,7 @@ export function DestinationPicker({
         loading={choose.isPending}
         onClick={() => choose.mutate()}
       >
-        {!choose.isPending && <FolderOpen />} Outra pasta (pendrive, HD externo)…
+        <FolderOpen /> Outra pasta (pendrive, HD externo)…
       </Button>
       {(choose.error ?? providers.error) && (
         <ErrorText>{(choose.error ?? providers.error)!.message}</ErrorText>

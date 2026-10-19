@@ -40,7 +40,7 @@ export function RecoveryCode({ code }: { code: string }): React.JSX.Element {
           loading={print.isPending}
           onClick={() => print.mutate()}
         >
-          {!print.isPending && <Printer />} Imprimir
+          <Printer /> Imprimir
         </Button>
       </div>
       {print.error && <ErrorText>{print.error.message}</ErrorText>}

@@ -215,7 +215,12 @@ export function StorageScene(): React.JSX.Element {
       <div className="absolute top-[116px] right-6 flex h-8 items-center rounded-control bg-fill px-3.5 text-[13px] font-medium">
         <span className="scene-storage-label">Fazer cópia agora</span>
         <span className="scene-storage-loading absolute inset-0 flex items-center justify-center opacity-0">
-          <AuriSymbol animated />
+          <span className="relative size-4">
+            <AuriSymbol className="absolute inset-0 size-full opacity-25" />
+            <span className="scene-storage-fill absolute inset-0">
+              <AuriSymbol className="size-full" />
+            </span>
+          </span>
         </span>
       </div>
       <div className="scene-storage-toast absolute inset-x-0 top-[176px] mx-auto flex w-fit items-center gap-2 rounded-card bg-raised px-3.5 py-2.5 text-[13px] whitespace-nowrap shadow-pop">
