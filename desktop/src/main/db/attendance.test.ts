@@ -98,7 +98,7 @@ describe('assinatura de chegada', () => {
       inicio: a.inicio,
       fim: a.fim,
       observacao: '',
-      tipo: a.tipo,
+      tipo_id: a.tipo_id,
       presenca: a.presenca
     }
     expect(() =>
@@ -107,9 +107,7 @@ describe('assinatura de chegada', () => {
     expect(() => updateAppointment(db, id, { ...base, presenca: 'falta' })).toThrow(
       /não mudam mais/
     )
-    expect(() => updateAppointment(db, id, { ...base, tipo: 'avaliacao' })).toThrow(
-      /não mudam mais/
-    )
+    expect(() => updateAppointment(db, id, { ...base, tipo_id: 2 })).toThrow(/não mudam mais/)
     const editada = updateAppointment(db, id, { ...base, evolucao: 'Boa sessão', observacao: 'ok' })
     expect(editada.evolucao).toBe('Boa sessão')
     expect(() => removeAppointment(db, id)).toThrow(/não pode ser excluída/)

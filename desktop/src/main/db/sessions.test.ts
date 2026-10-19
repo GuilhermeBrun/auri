@@ -32,27 +32,33 @@ const slot = (inicio: string, fim: string) => ({
 describe('registro da sessão', () => {
   it('agendar sem registro grava sessão comum, sem presença nem evolução', () => {
     const a = createAppointment(db, slot('2025-09-08T14:00', '2025-09-08T14:30'))
-    expect(a).toMatchObject({ tipo: 'sessao', presenca: '', evolucao: '' })
+    expect(a).toMatchObject({
+      tipo_nome: 'Sessão',
+      categoria: 'sessao',
+      presenca: '',
+      evolucao: ''
+    })
   })
 
   it('grava tipo, presença e evolução e os devolve na edição', () => {
     const a = createAppointment(db, {
       ...slot('2025-08-29T14:00', '2025-08-29T15:00'),
-      tipo: 'avaliacao'
+      tipo_id: 2
     })
     const saved = updateAppointment(
       db,
       a.id,
       {
         ...slot(a.inicio, a.fim),
-        tipo: 'avaliacao',
+        tipo_id: 2,
         presenca: 'falta',
         evolucao: 'Avaliação inicial'
       },
       a.updated_at
     )
     expect(saved).toMatchObject({
-      tipo: 'avaliacao',
+      tipo_nome: 'Avaliação',
+      categoria: 'avaliacao',
       presenca: 'falta',
       evolucao: 'Avaliação inicial'
     })
@@ -111,7 +117,8 @@ describe('migração do registro da sessão', () => {
       legacy.close()
       const migrated = openDatabase(file)
       expect(getAppointment(migrated, 88)).toMatchObject({
-        tipo: 'sessao',
+        tipo_nome: 'Sessão',
+        categoria: 'sessao',
         presenca: '',
         evolucao: '',
         observacao: 'Fixture v1'

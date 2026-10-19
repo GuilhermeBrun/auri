@@ -39,7 +39,8 @@ describe('lista de espera', () => {
     expect(entry).toMatchObject({
       patient_id: ana,
       patient_nome: 'Ana Fictícia',
-      tipo: 'sessao',
+      tipo_nome: 'Sessão',
+      categoria: 'sessao',
       duracao: 45,
       dias: [1, 5],
       periodos: ['manha', 'tarde'],
@@ -101,10 +102,16 @@ describe('lista de espera', () => {
     const updated = updateWaitlist(
       db,
       entry.id,
-      { tipo: 'avaliacao', duracao: 60, dias: [3], prioridade: 'alta' },
+      { tipo_id: 2, duracao: 60, dias: [3], prioridade: 'alta' },
       entry.updated_at
     )
-    expect(updated).toMatchObject({ tipo: 'avaliacao', duracao: 60, dias: [3], prioridade: 'alta' })
+    expect(updated).toMatchObject({
+      tipo_nome: 'Avaliação',
+      categoria: 'avaliacao',
+      duracao: 60,
+      dias: [3],
+      prioridade: 'alta'
+    })
     db.prepare("UPDATE waitlist_entries SET updated_at = '2000-01-01T00:00:00.000Z'").run()
     expect(() => updateWaitlist(db, entry.id, { duracao: 30 }, updated.updated_at)).toThrow(
       /outro computador/

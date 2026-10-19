@@ -42,7 +42,7 @@ beforeEach(() => {
 function atendimento(
   dia: string,
   presenca: 'presente' | 'falta' | '' = 'presente',
-  tipo: 'sessao' | 'avaliacao' = 'sessao',
+  tipo: 'sessao' | 'avaliacao' | 'exame' = 'sessao',
   paciente = patientId
 ): number {
   const h = String(hour++).padStart(2, '0')
@@ -51,7 +51,7 @@ function atendimento(
     inicio: `${dia}T${h}:00`,
     fim: `${dia}T${h}:45`,
     observacao: '',
-    tipo
+    tipo_id: { sessao: 1, avaliacao: 2, exame: 3 }[tipo]
   }).id
   if (presenca !== '')
     db.prepare('UPDATE appointments SET presenca = ? WHERE id = ?').run(presenca, id)
@@ -261,11 +261,14 @@ describe('pacote', () => {
     expect(lancarSessao(db, depoisDaValidade, PC).kind).toBe('charge')
     const av = atendimento('2026-10-06', 'presente', 'avaliacao')
     expect(lancarSessao(db, av, PC).kind).toBe('charge')
+    const exame = atendimento('2026-10-07', 'presente', 'exame')
+    expect(lancarSessao(db, exame, PC).kind).toBe('charge')
 
     const descricoes = fin()
       .charges.filter((c) => c.motivo === 'sessao')
       .map((c) => c.descricao)
     expect(descricoes).toEqual([
+      'Exame de 07/10 · Sessão',
       'Avaliação de 06/10 · Sessão',
       'Sessão de 05/10 · fora do pacote',
       'Sessão de 03/10 · fora do pacote'

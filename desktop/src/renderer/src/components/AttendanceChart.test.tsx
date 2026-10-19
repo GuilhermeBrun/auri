@@ -2,7 +2,7 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
-import { fakeAppointment } from '@renderer/testing'
+import { fakeAppointment, AVALIACAO } from '@renderer/testing'
 import { AttendanceChart } from './AttendanceChart'
 
 afterEach(cleanup)
@@ -14,7 +14,7 @@ const sessions = [
     evolucao: '/r/ em palavras.'
   }),
   fakeAppointment({ inicio: '2026-10-03T14:00', presenca: 'desmarcou' }),
-  fakeAppointment({ inicio: '2026-09-26T14:00', presenca: 'presente', tipo: 'avaliacao' }),
+  fakeAppointment({ inicio: '2026-09-26T14:00', presenca: 'presente', ...AVALIACAO }),
   fakeAppointment({ inicio: '2026-09-19T14:00', presenca: 'falta' }),
   fakeAppointment({ inicio: '2026-09-12T14:00' })
 ]
@@ -22,16 +22,21 @@ const sessions = [
 describe('gráfico de frequência', () => {
   it('calcula a frequência só sobre as sessões com presença registrada', () => {
     render(<AttendanceChart sessions={sessions} onOpen={() => {}} />)
-    expect(screen.getByText('50% · 2 de 4')).toBeTruthy()
-    for (const label of ['2 presenças', '1 falta', '1 desmarcada', '1 sem registro'])
+    expect(screen.getByText('33% · 1 de 3')).toBeTruthy()
+    for (const label of ['1 presença', '1 falta', '1 desmarcada', '1 sem registro'])
       expect(screen.getByRole('button', { name: label })).toBeTruthy()
+  })
+
+  it('avaliações e exames não entram na frequência', () => {
+    render(<AttendanceChart sessions={sessions} onOpen={() => {}} />)
+    expect(screen.queryByRole('button', { name: /26 de setembro/ })).toBeNull()
   })
 
   it('passar o mouse mostra a sessão na linha de baixo; sair volta à dica', () => {
     render(<AttendanceChart sessions={sessions} onOpen={() => {}} />)
-    const bar = screen.getByRole('button', { name: /26 de setembro, Presente/ })
+    const bar = screen.getByRole('button', { name: /19 de setembro, Faltou/ })
     fireEvent.mouseEnter(bar)
-    expect(screen.getByText(/Presente · Avaliação/)).toBeTruthy()
+    expect(screen.getByText(/Faltou · Sessão/)).toBeTruthy()
     fireEvent.mouseEnter(screen.getByRole('button', { name: /10 de outubro, Presente/ }))
     expect(screen.getByText(/— \/r\/ em palavras\./)).toBeTruthy()
     fireEvent.mouseLeave(bar.parentElement!.parentElement!)

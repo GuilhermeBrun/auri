@@ -41,7 +41,7 @@ export function restoreDatabase(current: Db, file: string, source: string): Db {
         .all()
       prepared
         .prepare(
-          'SELECT id, patient_id, inicio, fim, observacao, tipo, presenca, evolucao, created_at, updated_at FROM appointments LIMIT 0'
+          'SELECT id, patient_id, inicio, fim, observacao, tipo_id, presenca, evolucao, created_at, updated_at FROM appointments LIMIT 0'
         )
         .all()
       prepared.prepare('SELECT patient_id, updated_at FROM anamneses LIMIT 0').all()

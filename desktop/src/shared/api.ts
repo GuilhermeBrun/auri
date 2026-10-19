@@ -29,6 +29,7 @@ import type {
   WaitlistEntry,
   WaitlistInput
 } from './waitlist'
+import type { Etiqueta, EtiquetaInput, TipoAtendimento, TipoInput } from './tipos'
 import type {
   Billing,
   BillingInput,
@@ -99,6 +100,16 @@ export interface AuriApi {
     get(patientId: number): Promise<Anamnese>
     save(patientId: number, input: AnamneseInput, expected?: string): Promise<Anamnese>
   }
+  tipos: {
+    list(): Promise<TipoAtendimento[]>
+    save(id: number | null, input: TipoInput): Promise<TipoAtendimento>
+    archive(id: number, arquivado: boolean): Promise<TipoAtendimento>
+  }
+  etiquetas: {
+    list(): Promise<Etiqueta[]>
+    save(id: number | null, input: EtiquetaInput): Promise<Etiqueta>
+    archive(id: number, arquivado: boolean): Promise<Etiqueta>
+  }
   waitlist: {
     list(): Promise<WaitlistEntry[]>
     getByPatient(patientId: number): Promise<WaitlistEntry | null>
@@ -144,7 +155,8 @@ export const DATA_TOPICS = [
   'clinic',
   'terms',
   'waitlist',
-  'finance'
+  'finance',
+  'types'
 ] as const
 export type DataTopic = (typeof DATA_TOPICS)[number]
 

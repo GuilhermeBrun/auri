@@ -11,7 +11,6 @@ import { Badge } from '@renderer/components/ui/badge'
 import { Button } from '@renderer/components/ui/button'
 import { WaitlistDialog, type WaitlistTarget } from '@renderer/components/waitlist/WaitlistDialog'
 import { quemCabeQuery, sugestoesQuery, waitlistQuery } from '@renderer/lib/queries'
-import { TIPO_LABELS } from '@renderer/lib/session'
 import { cn } from '@renderer/lib/utils'
 import { esperaTexto, horarioTexto, preferenciasTexto } from '@renderer/lib/waitlist'
 
@@ -188,8 +187,7 @@ function EntryRow({
           {entry.prioridade === 'alta' && <Badge>Prioridade</Badge>}
         </div>
         <p className="text-xs text-ink-soft">
-          {TIPO_LABELS[entry.tipo]} · {entry.duracao} min ·{' '}
-          {preferenciasTexto(entry.dias, entry.periodos)}
+          {entry.tipo_nome} · {entry.duracao} min · {preferenciasTexto(entry.dias, entry.periodos)}
         </p>
         <p className="text-xs text-ink-faint">{esperaTexto(entry.created_at, now)}</p>
         {entry.observacao && (

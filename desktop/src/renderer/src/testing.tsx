@@ -23,6 +23,13 @@ export function fakePatient(over: Partial<Patient> = {}): Patient {
 
 let nextId = 100
 
+export const AVALIACAO = {
+  tipo_id: 2,
+  tipo_nome: 'Avaliação',
+  tipo_cor: 'azul',
+  categoria: 'avaliacao'
+} as const
+
 export function fakeAppointment(over: Partial<Appointment> & { inicio: string }): Appointment {
   const [day, time] = over.inicio.split('T')
   const [h, m] = time.split(':').map(Number)
@@ -33,7 +40,11 @@ export function fakeAppointment(over: Partial<Appointment> & { inicio: string })
     patient_nome: 'Helena Fictícia Andrade',
     fim: `${day}T${String(end.getHours()).padStart(2, '0')}:${String(end.getMinutes()).padStart(2, '0')}`,
     observacao: '',
-    tipo: 'sessao',
+    tipo_id: 1,
+    tipo_nome: 'Sessão',
+    tipo_cor: 'grafite',
+    categoria: 'sessao',
+    etiquetas: [],
     presenca: '',
     evolucao: '',
     confirmado_em: null,

@@ -503,6 +503,97 @@ ${onlyVoid('finance_packages', ['id', 'patient_id', 'plan_id', 'nome', 'sessoes'
 ${onlyVoid('finance_charges', ['id', 'patient_id', 'data', 'descricao', 'valor_centavos', 'motivo', 'appointment_id', 'package_id', 'insurer_id', 'computador', 'created_at'])}
 ${onlyVoid('finance_package_uses', ['id', 'package_id', 'appointment_id', 'computador', 'created_at'])}
 ${onlyVoid('finance_payments', ['id', 'patient_id', 'data', 'valor_centavos', 'forma', 'insurer_id', 'observacao', 'computador', 'created_at'])}
+  `,
+  `
+  CREATE TABLE appointment_types (
+    id           INTEGER PRIMARY KEY,
+    nome         TEXT NOT NULL CHECK (length(trim(nome)) > 0),
+    categoria    TEXT NOT NULL CHECK (categoria IN ('sessao', 'avaliacao', 'exame')),
+    cor          TEXT NOT NULL CHECK (cor IN ('grafite', 'ardosia', 'azul', 'violeta', 'rosa', 'areia')),
+    duracao      INTEGER NOT NULL CHECK (duracao BETWEEN 15 AND 240 AND duracao % 15 = 0),
+    arquivado_em TEXT,
+    created_at   TEXT NOT NULL DEFAULT ${NOW}
+  );
+
+  INSERT INTO appointment_types (id, nome, categoria, cor, duracao) VALUES
+    (1, 'Sessão', 'sessao', 'grafite', 30),
+    (2, 'Avaliação', 'avaliacao', 'azul', 60),
+    (3, 'Exame', 'exame', 'violeta', 60);
+
+  CREATE TRIGGER appointment_types_categoria_fixa
+  BEFORE UPDATE OF categoria ON appointment_types
+  WHEN NEW.categoria IS NOT OLD.categoria
+  BEGIN
+    SELECT RAISE(ABORT, 'A categoria de um tipo não muda.');
+  END;
+
+  CREATE TRIGGER appointment_types_no_delete
+  BEFORE DELETE ON appointment_types
+  BEGIN
+    SELECT RAISE(ABORT, 'Um tipo não pode ser apagado: arquive.');
+  END;
+
+  CREATE TABLE tags (
+    id           INTEGER PRIMARY KEY,
+    nome         TEXT NOT NULL CHECK (length(trim(nome)) > 0),
+    cor          TEXT NOT NULL CHECK (cor IN ('grafite', 'ardosia', 'azul', 'violeta', 'rosa', 'areia')),
+    arquivado_em TEXT,
+    created_at   TEXT NOT NULL DEFAULT ${NOW}
+  );
+
+  CREATE TRIGGER tags_no_delete
+  BEFORE DELETE ON tags
+  BEGIN
+    SELECT RAISE(ABORT, 'Uma etiqueta não pode ser apagada: arquive.');
+  END;
+
+  CREATE TABLE appointment_tags (
+    appointment_id INTEGER NOT NULL REFERENCES appointments (id) ON DELETE CASCADE,
+    tag_id         INTEGER NOT NULL REFERENCES tags (id) ON DELETE RESTRICT,
+    PRIMARY KEY (appointment_id, tag_id)
+  ) WITHOUT ROWID;
+
+  CREATE INDEX appointment_tags_tag ON appointment_tags (tag_id);
+
+  DROP TRIGGER appointments_signed_locked;
+  ALTER TABLE appointments ADD COLUMN tipo_id INTEGER REFERENCES appointment_types (id);
+  UPDATE appointments SET tipo_id = CASE tipo WHEN 'avaliacao' THEN 2 ELSE 1 END;
+  ALTER TABLE appointments DROP COLUMN tipo;
+  CREATE INDEX appointments_tipo ON appointments (tipo_id);
+
+  CREATE TRIGGER appointments_tipo_padrao
+  AFTER INSERT ON appointments
+  WHEN NEW.tipo_id IS NULL
+  BEGIN
+    UPDATE appointments SET tipo_id = 1 WHERE id = NEW.id;
+  END;
+
+  CREATE TRIGGER appointments_signed_locked
+  BEFORE UPDATE OF patient_id, inicio, fim, tipo_id, presenca ON appointments
+  WHEN (
+    NEW.patient_id IS NOT OLD.patient_id OR NEW.inicio IS NOT OLD.inicio
+    OR NEW.fim IS NOT OLD.fim OR (OLD.tipo_id IS NOT NULL AND NEW.tipo_id IS NOT OLD.tipo_id)
+    OR NEW.presenca IS NOT OLD.presenca
+  )
+  AND EXISTS (
+    SELECT 1 FROM attendance_signatures s
+    WHERE s.appointment_id = OLD.id
+      AND s.id NOT IN (SELECT signature_id FROM attendance_voids)
+  )
+  BEGIN
+    SELECT RAISE(ABORT, 'A chegada desta sessão foi assinada: paciente, horário, tipo e presença não mudam mais.');
+  END;
+
+  ALTER TABLE waitlist_entries ADD COLUMN tipo_id INTEGER REFERENCES appointment_types (id);
+  UPDATE waitlist_entries SET tipo_id = CASE tipo WHEN 'avaliacao' THEN 2 ELSE 1 END;
+  ALTER TABLE waitlist_entries DROP COLUMN tipo;
+
+  CREATE TRIGGER waitlist_entries_tipo_padrao
+  AFTER INSERT ON waitlist_entries
+  WHEN NEW.tipo_id IS NULL
+  BEGIN
+    UPDATE waitlist_entries SET tipo_id = 1 WHERE id = NEW.id;
+  END;
   `
 ]
 
@@ -516,12 +607,12 @@ export class DatabaseTooNewError extends Error {
   }
 }
 
-export function migrate(db: Database.Database): void {
+export function migrate(db: Database.Database, target: number = MIGRATIONS.length): void {
   const current = db.pragma('user_version', { simple: true }) as number
   if (current > MIGRATIONS.length) {
     throw new DatabaseTooNewError(current)
   }
-  for (let version = current; version < MIGRATIONS.length; version++) {
+  for (let version = current; version < target; version++) {
     const migration = MIGRATIONS[version]
     db.transaction(() => {
       if (typeof migration === 'string') db.exec(migration)

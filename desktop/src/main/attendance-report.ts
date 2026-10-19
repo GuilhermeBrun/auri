@@ -24,8 +24,6 @@ const PRESENCA: Record<Presenca, string> = {
   desmarcou: 'Desmarcou'
 }
 
-const TIPO = { sessao: 'Sessão', avaliacao: 'Avaliação' } as const
-
 function localAt(iso: string): string {
   return format(new Date(iso), "dd/MM/yyyy 'às' HH:mm")
 }
@@ -107,7 +105,7 @@ function sessionRow(s: AttendanceReport['sessions'][number]): string {
   return `<tr>
 <td class="date"><span class="day">${format(inicio, 'dd/MM')}</span><span class="soft">${format(inicio, 'EEE', { locale: ptBR }).replace('.', '')}</span></td>
 <td class="num">${format(inicio, 'HH:mm')}–${format(fim, 'HH:mm')}</td>
-<td>${TIPO[s.tipo]}</td>
+<td>${esc(s.tipo_nome)}</td>
 <td class="${s.presenca === 'presente' ? '' : 'soft'}">${presenca}</td>
 <td>${arrivalCell(s)}</td>
 </tr>`

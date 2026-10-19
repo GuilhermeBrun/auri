@@ -2,7 +2,7 @@
 import { cleanup, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { fakeAppointment, fakePatient, renderRoute } from '@renderer/testing'
+import { fakeAppointment, fakePatient, renderRoute, AVALIACAO } from '@renderer/testing'
 import type { ToastInput } from '@renderer/lib/toast'
 
 vi.hoisted(() => {
@@ -37,7 +37,7 @@ const patient = fakePatient()
 const recent = fakeAppointment({
   inicio: '2026-10-10T14:00',
   presenca: 'falta',
-  tipo: 'avaliacao',
+  ...AVALIACAO,
   evolucao: 'Treino de /r/ em sílabas.\nMãe relata melhora em casa.'
 })
 const empty = fakeAppointment({ inicio: '2026-10-03T14:00', presenca: 'presente' })

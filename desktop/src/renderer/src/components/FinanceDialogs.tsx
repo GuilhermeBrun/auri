@@ -18,6 +18,7 @@ import {
   type Lancamento,
   type PendingSession
 } from '@shared/finance'
+import { mesmoNome } from '@shared/tipos'
 import { centavosToInput, formatBRL, maskBRL, parseBRL } from '@shared/money'
 import { PatientCombobox, type PatientOption } from '@renderer/components/PatientCombobox'
 import { Button } from '@renderer/components/ui/button'
@@ -792,8 +793,10 @@ export function LaunchDialog({
     <FormDialog
       open={session !== null}
       onOpenChange={(open) => !open && onClose()}
-      title="Lançar avaliação"
-      description={shown ? `Avaliação de ${formatShortDay(shown.inicio.slice(0, 10))}` : undefined}
+      title={`Lançar ${(shown?.tipo_nome ?? 'avaliação').toLocaleLowerCase('pt-BR')}`}
+      description={
+        shown ? `${shown.tipo_nome} de ${formatShortDay(shown.inicio.slice(0, 10))}` : undefined
+      }
     >
       {shown && <LaunchForm key={shown.appointment_id} session={shown} onClose={onClose} />}
     </FormDialog>
@@ -813,14 +816,17 @@ function LaunchForm({
   const catalog = useQuery(financeCatalogQuery())
   const services = catalog.data ? serviceOptions(catalog.data, null) : []
   const [service, setService] = useState(() => {
-    const avaliacao = catalog.data?.services.find((s) => !s.arquivado && /^avalia/i.test(s.nome))
-    return avaliacao ? String(avaliacao.id) : ''
+    const ativos = catalog.data?.services.filter((s) => !s.arquivado) ?? []
+    const escolhido =
+      ativos.find((s) => mesmoNome(s.nome, session.tipo_nome)) ??
+      (session.categoria === 'avaliacao' ? ativos.find((s) => /^avalia/i.test(s.nome)) : undefined)
+    return escolhido ? String(escolhido.id) : ''
   })
   const launch = useMutation({
     mutationFn: () =>
       window.api.finance.launchSession(session.appointment_id, computador, Number(service)),
     onSuccess: () => {
-      toast({ title: 'Avaliação lançada' })
+      toast({ title: 'Lançamento feito', description: session.tipo_nome })
       onClose()
     }
   })

@@ -2,6 +2,14 @@ import { z } from 'zod'
 import { resumoFuncionamento } from '../shared/agenda'
 import type { SettingsChange } from '../shared/api'
 import {
+  CATEGORIA_LABELS,
+  etiquetaInputSchema,
+  mesmoNome,
+  tipoInputSchema,
+  type EtiquetaInput,
+  type TipoInput
+} from '../shared/tipos'
+import {
   clinicInputSchema,
   termModelInputSchema,
   themeSchema,
@@ -40,7 +48,9 @@ const settingsFileSchema = z.object({
     .partial()
     .default({}),
   clinic: clinicInputSchema.partial().default({}),
-  termModels: z.array(termModelInputSchema).max(200).default([])
+  termModels: z.array(termModelInputSchema).max(200).default([]),
+  tipos: z.array(tipoInputSchema).max(200).default([]),
+  etiquetas: z.array(etiquetaInputSchema).max(200).default([])
 })
 
 export type SettingsFile = z.infer<typeof settingsFileSchema>
@@ -53,6 +63,8 @@ export type SettingsSnapshot = {
   >
   clinic: Required<ClinicInput>
   termModels: TermModelInput[]
+  tipos: TipoInput[]
+  etiquetas: EtiquetaInput[]
 }
 
 export function buildSettingsFile(snapshot: SettingsSnapshot, now: Date = new Date()): string {
@@ -69,7 +81,14 @@ export function buildSettingsFile(snapshot: SettingsSnapshot, now: Date = new Da
       ...(snapshot.backup.kind ? { kind: snapshot.backup.kind } : {})
     },
     clinic: Object.fromEntries(Object.entries(snapshot.clinic).filter(([, value]) => value !== '')),
-    termModels: snapshot.termModels.map(({ titulo, texto }) => ({ titulo, texto }))
+    termModels: snapshot.termModels.map(({ titulo, texto }) => ({ titulo, texto })),
+    tipos: snapshot.tipos.map(({ nome, categoria, cor, duracao }) => ({
+      nome,
+      categoria,
+      cor,
+      duracao
+    })),
+    etiquetas: snapshot.etiquetas.map(({ nome, cor }) => ({ nome, cor }))
   }
   return JSON.stringify(file, null, 2)
 }
@@ -129,6 +148,22 @@ export function newTermModels(current: TermModelInput[], file: SettingsFile): Te
   )
 }
 
+function novos<T extends { nome: string }>(atuais: T[], doArquivo: T[]): T[] {
+  return doArquivo.filter(
+    (item, index) =>
+      !atuais.some((atual) => mesmoNome(atual.nome, item.nome)) &&
+      doArquivo.findIndex((outro) => mesmoNome(outro.nome, item.nome)) === index
+  )
+}
+
+export function newTipos(current: TipoInput[], file: SettingsFile): TipoInput[] {
+  return novos(current, file.tipos)
+}
+
+export function newEtiquetas(current: EtiquetaInput[], file: SettingsFile): EtiquetaInput[] {
+  return novos(current, file.etiquetas)
+}
+
 export function describeChanges(current: SettingsSnapshot, file: SettingsFile): SettingsChange[] {
   const changes: SettingsChange[] = []
   const add = <T>(label: string, from: T, to: T | undefined, show: (v: T) => string): void => {
@@ -170,6 +205,16 @@ export function describeChanges(current: SettingsSnapshot, file: SettingsFile): 
   }
   for (const model of newTermModels(current.termModels, file)) {
     changes.push({ label: `Modelo de termo “${model.titulo}”`, from: 'Não tem', to: 'Novo' })
+  }
+  for (const tipo of newTipos(current.tipos, file)) {
+    changes.push({
+      label: `Tipo de atendimento “${tipo.nome}”`,
+      from: 'Não tem',
+      to: `Novo (${CATEGORIA_LABELS[tipo.categoria]}, ${tipo.duracao} min)`
+    })
+  }
+  for (const etiqueta of newEtiquetas(current.etiquetas, file)) {
+    changes.push({ label: `Etiqueta “${etiqueta.nome}”`, from: 'Não tem', to: 'Nova' })
   }
   return changes
 }

@@ -22,6 +22,7 @@ import type {
   WaitlistClose,
   WaitlistInput
 } from '../shared/waitlist'
+import { etiquetaInputSchema, tipoInputSchema } from '../shared/tipos'
 import {
   billingInputSchema,
   chargeInputSchema,
@@ -59,6 +60,14 @@ import {
   signedTermRecord,
   termLink
 } from './db/terms'
+import {
+  archiveEtiqueta,
+  archiveTipo,
+  listEtiquetas,
+  listTipos,
+  saveEtiqueta,
+  saveTipo
+} from './db/tipos'
 import {
   createAppointment,
   listAppointments,
@@ -205,6 +214,28 @@ const OPERATIONS: Record<string, Operation> = {
     run: (db, [input, expected]) =>
       saveClinic(db, clinicInputSchema.parse(input), expectedSchema.parse(expected)),
     changes: ['clinic']
+  },
+
+  'tipos:list': { run: (db) => listTipos(db) },
+  'tipos:save': {
+    run: (db, [id, input]) =>
+      saveTipo(db, idSchema.nullable().parse(id), tipoInputSchema.parse(input)),
+    changes: ['types', 'appointments']
+  },
+  'tipos:archive': {
+    run: (db, [id, arquivado]) => archiveTipo(db, idSchema.parse(id), z.boolean().parse(arquivado)),
+    changes: ['types']
+  },
+  'etiquetas:list': { run: (db) => listEtiquetas(db) },
+  'etiquetas:save': {
+    run: (db, [id, input]) =>
+      saveEtiqueta(db, idSchema.nullable().parse(id), etiquetaInputSchema.parse(input)),
+    changes: ['types', 'appointments']
+  },
+  'etiquetas:archive': {
+    run: (db, [id, arquivado]) =>
+      archiveEtiqueta(db, idSchema.parse(id), z.boolean().parse(arquivado)),
+    changes: ['types']
   },
 
   'terms:models': { run: (db) => listModels(db) },

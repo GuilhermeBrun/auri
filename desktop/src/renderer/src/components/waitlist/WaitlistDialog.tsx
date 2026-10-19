@@ -2,21 +2,20 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Hourglass, LogOut } from 'lucide-react'
 import { useId, useState, type ReactNode } from 'react'
 import { shortName } from '@shared/names'
-import type { AppointmentTipo } from '@shared/schemas'
 import type { Periodo } from '@shared/encaixe'
 import { waitlistInputSchema, type WaitlistEntry, type WaitlistInput } from '@shared/waitlist'
+import { TipoSelect } from '@renderer/components/TipoSelect'
 import { Button } from '@renderer/components/ui/button'
 import { Callout } from '@renderer/components/ui/callout'
 import { ConfirmAction } from '@renderer/components/ui/confirm-action'
 import { Dialog, DialogBody, DialogFooter } from '@renderer/components/ui/dialog'
 import { Field, Textarea } from '@renderer/components/ui/input'
-import { Segmented } from '@renderer/components/ui/segmented'
 import { Select } from '@renderer/components/ui/select'
 import { SwitchField } from '@renderer/components/ui/switch'
 import { ToggleGroup } from '@renderer/components/ui/toggle-group'
-import { TIPO_LABELS, TIPO_OPTIONS } from '@renderer/lib/session'
 import { useToast } from '@renderer/lib/toast'
 import { DIAS_ESPERA, DURACOES_ESPERA, PERIODO_OPTIONS, resumoEspera } from '@renderer/lib/waitlist'
+import { useTipos } from '@renderer/lib/tipos'
 
 export type WaitlistTarget = {
   patient: { id: number; nome: string }
@@ -42,7 +41,7 @@ export function WaitlistDialog({ target, onClose }: Props): React.JSX.Element {
 }
 
 type Values = {
-  tipo: AppointmentTipo
+  tipo_id: number | undefined
   duracao: number
   dias: number[]
   periodos: Periodo[]
@@ -72,7 +71,7 @@ function Caption({
 
 function initialValues(entry: WaitlistEntry | null): Values {
   return {
-    tipo: entry?.tipo ?? 'sessao',
+    tipo_id: entry?.tipo_id,
     duracao: entry?.duracao ?? 30,
     dias: entry?.dias ?? [],
     periodos: entry?.periodos ?? [],
@@ -81,8 +80,8 @@ function initialValues(entry: WaitlistEntry | null): Values {
   }
 }
 
-function toInput(values: Values): WaitlistInput {
-  return { ...values, prioridade: values.prioridade ? 'alta' : 'normal' }
+function toInput(values: Values, tipoId: number | undefined): WaitlistInput {
+  return { ...values, tipo_id: tipoId, prioridade: values.prioridade ? 'alta' : 'normal' }
 }
 
 function WaitlistForm({
@@ -99,6 +98,9 @@ function WaitlistForm({
   const [invalid, setInvalid] = useState<string | null>(null)
   const set = <K extends keyof Values>(key: K, value: Values[K]): void =>
     setValues((v) => ({ ...v, [key]: value }))
+  const { tipos, porId } = useTipos(entry?.tipo_id)
+  const tipoId = values.tipo_id ?? (tipos.find((t) => t.categoria === 'sessao') ?? tipos.at(0))?.id
+  const tipoNome = (tipoId === undefined ? undefined : porId(tipoId)?.nome) ?? 'Sessão'
 
   const done = (): void => {
     void queryClient.invalidateQueries({ queryKey: ['waitlist'] })
@@ -134,7 +136,7 @@ function WaitlistForm({
   })
 
   const submit = (): void => {
-    const input = toInput(values)
+    const input = toInput(values, tipoId)
     const parsed = waitlistInputSchema.safeParse(input)
     if (!parsed.success) {
       setInvalid(parsed.error.issues[0]?.message ?? 'Dados inválidos')
@@ -160,14 +162,16 @@ function WaitlistForm({
     >
       <DialogBody className="flex flex-col gap-4">
         <div className="flex flex-wrap items-end gap-x-6 gap-y-4">
-          <Caption label="Tipo">
-            <Segmented
-              label="Tipo"
-              value={values.tipo}
-              options={TIPO_OPTIONS}
-              onChange={(v) => set('tipo', v)}
+          <Field label="Tipo" htmlFor={`${ids}-tipo`} className="w-48">
+            <TipoSelect
+              id={`${ids}-tipo`}
+              value={tipoId}
+              tipos={tipos}
+              onChange={(tipo) =>
+                setValues((v) => ({ ...v, tipo_id: tipo.id, duracao: tipo.duracao }))
+              }
             />
-          </Caption>
+          </Field>
           <Field label="Duração" htmlFor={`${ids}-duracao`} className="w-32">
             <Select
               id={`${ids}-duracao`}
@@ -212,7 +216,7 @@ function WaitlistForm({
         </Field>
 
         <p className="rounded-control bg-canvas px-3 py-2 text-xs text-ink-soft" aria-live="polite">
-          {resumoEspera(TIPO_LABELS[values.tipo], values.duracao, values.dias, values.periodos)}
+          {resumoEspera(tipoNome, values.duracao, values.dias, values.periodos)}
         </p>
 
         {error && (
