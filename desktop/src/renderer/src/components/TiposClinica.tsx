@@ -6,6 +6,7 @@ import {
   CATEGORIAS,
   DURACOES,
   etiquetaInputSchema,
+  mesmoNome,
   tipoInputSchema,
   type Categoria,
   type Cor,
@@ -102,7 +103,12 @@ function useEditing<T>(): {
 }
 
 const detalheTipo = (t: TipoAtendimento): string =>
-  `${CATEGORIA_LABELS[t.categoria]} · ${t.duracao} min`
+  [
+    mesmoNome(t.nome, CATEGORIA_LABELS[t.categoria]) ? '' : CATEGORIA_LABELS[t.categoria],
+    `${t.duracao} min`
+  ]
+    .filter(Boolean)
+    .join(' · ')
 
 export function TiposSection(): React.JSX.Element {
   const tipos = useQuery(tiposQuery())

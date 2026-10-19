@@ -324,7 +324,7 @@ function AgendaControls({
   return (
     <>
       {opcoes.length > 0 && (
-        <div className="w-40">
+        <div className="w-48">
           <Select
             aria-label="Filtrar por etiqueta"
             compact

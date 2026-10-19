@@ -479,11 +479,6 @@ function AppointmentForm({
             </SegmentedField>
           )}
         </div>
-        <Controller
-          control={control}
-          name="etiquetas"
-          render={({ field }) => <EtiquetasEscolha value={field.value} onChange={field.onChange} />}
-        />
         {!signed && !started && (
           <Controller
             control={control}
@@ -579,6 +574,11 @@ function AppointmentForm({
             )}
           </div>
         )}
+        <Controller
+          control={control}
+          name="etiquetas"
+          render={({ field }) => <EtiquetasEscolha value={field.value} onChange={field.onChange} />}
+        />
         <Field label="Observação" error={errors.observacao?.message}>
           <Textarea
             {...register('observacao')}

@@ -38,7 +38,7 @@ export function Select({
         aria-invalid={invalid || undefined}
         className={cn(
           controlClass,
-          'flex items-center justify-between gap-2 pr-2.5 text-left pointer-coarse:h-11',
+          'flex items-center justify-between gap-2 pr-2.5 text-left whitespace-nowrap pointer-coarse:h-11',
           compact ? 'h-8' : 'h-9',
           'data-[state=open]:border-ink data-[state=open]:ring-[3px] data-[state=open]:ring-ink/10'
         )}
