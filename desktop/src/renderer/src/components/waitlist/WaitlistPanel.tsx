@@ -245,15 +245,18 @@ function Suggestions({
       aria-label={`Horários livres para ${entry.patient_nome}`}
       className="flex animate-fade-in flex-col"
     >
-      {sugestoes.data.slice(0, SUGESTOES_VISIVEIS).map((s) => (
-        <li key={s.inicio}>
-          <SlotItem
-            horario={s}
-            preferida={s.preferida}
-            onPick={onPick && (() => onPick(entry, s))}
-          />
-        </li>
-      ))}
+      {sugestoes.data
+        .slice(0, SUGESTOES_VISIVEIS)
+        .sort((a, b) => a.inicio.localeCompare(b.inicio))
+        .map((s) => (
+          <li key={s.inicio}>
+            <SlotItem
+              horario={s}
+              preferida={s.preferida}
+              onPick={onPick && (() => onPick(entry, s))}
+            />
+          </li>
+        ))}
     </ul>
   )
 }

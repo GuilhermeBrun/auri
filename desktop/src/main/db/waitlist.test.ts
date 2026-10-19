@@ -207,7 +207,7 @@ describe('operações do encaixe', () => {
       { patient_id: ana, duracao: 45, de: '2026-10-24', ate: '2026-10-24' },
       new Date(2026, 9, 19, 9, 0)
     )
-    expect(sugestoes.map((s) => s.inicio.slice(11))).toEqual(['11:15', '10:30', '10:45'])
+    expect(sugestoes.map((s) => s.inicio.slice(11))).toEqual(['11:15', '10:30'])
   })
 
   it('sugere fugindo da agenda e do que já passou, e libera a sessão que vai ser remarcada', () => {
@@ -221,7 +221,7 @@ describe('operações do encaixe', () => {
     const pedido = { patient_id: ana, duracao: 45, de: '2026-10-19', ate: '2026-10-19' }
     expect(suggestSlots(db, pedido, agora).map((s) => s.inicio.slice(11))).toEqual(['19:15'])
     const remarcar = suggestSlots(db, { ...pedido, ignorar_appointment_id: ocupada.id }, agora)
-    expect(remarcar.map((s) => s.inicio.slice(11))).toEqual(['07:00', '19:15', '07:15'])
+    expect(remarcar.map((s) => s.inicio.slice(11))).toEqual(['07:00', '19:15', '07:45'])
     expect(suggestSlots(db, pedido, new Date(2026, 9, 19, 19, 30))).toEqual([])
     expect(() => suggestSlots(db, { ...pedido, ate: '2027-01-30' }, agora)).toThrow(/62 dias/)
   })

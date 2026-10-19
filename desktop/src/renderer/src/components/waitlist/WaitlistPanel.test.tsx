@@ -214,6 +214,22 @@ describe('botão da ficha', () => {
     await waitFor(() => expect(toasts.map((t) => t.title)).toEqual(['Na lista de espera']))
   })
 
+  it('dentro do formulário da ficha não envia a ficha junto', async () => {
+    const ficha = vi.fn((e: React.FormEvent) => e.preventDefault())
+    renderRoute(
+      '/',
+      '/',
+      <form onSubmit={ficha}>
+        <WaitlistButton patient={patient} />
+      </form>
+    )
+    const user = userEvent.setup()
+    await user.click(await screen.findByRole('button', { name: 'Pôr na lista de espera' }))
+    await user.click(await screen.findByRole('button', { name: 'Pôr na lista' }))
+    await waitFor(() => expect(api.waitlist.add).toHaveBeenCalled())
+    expect(ficha).not.toHaveBeenCalled()
+  })
+
   it('quem já está na lista abre a edição e pode sair dela', async () => {
     api.waitlist.getByPatient.mockResolvedValue(helena)
     renderRoute('/', '/', <WaitlistButton patient={patient} />)

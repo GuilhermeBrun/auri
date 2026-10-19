@@ -118,7 +118,7 @@ export type PedidoDeSugestao = {
 
 type Candidata = { sugestao: Sugestao; nota: number; data: string }
 
-export function sugerirHorarios(pedido: PedidoDeSugestao): Sugestao[] {
+function candidatas(pedido: PedidoDeSugestao): Candidata[] {
   const {
     duracao,
     funcionamento,
@@ -126,15 +126,13 @@ export function sugerirHorarios(pedido: PedidoDeSugestao): Sugestao[] {
     atividades = [],
     preferencias = SEM_PREFERENCIA,
     margem = MARGEM_PADRAO,
-    depoisDe,
-    porDia = SUGESTOES_POR_DIA,
-    limite = SUGESTOES_LIMITE
+    depoisDe
   } = pedido
   const primeiro = parseIsoDate(pedido.de)
   const dias = differenceInCalendarDays(parseIsoDate(pedido.ate), primeiro) + 1
   if (!duracaoValida(duracao) || !(dias > 0) || dias > DIAS_NO_MAXIMO) return []
 
-  const candidatas: Candidata[] = []
+  const lista: Candidata[] = []
   for (let i = 0; i < dias; i++) {
     const dataDoDia = addDays(primeiro, i)
     const data = toIsoDate(dataDoDia)
@@ -158,7 +156,7 @@ export function sugerirHorarios(pedido: PedidoDeSugestao): Sugestao[] {
           horario[1] === fecha ||
           ocupado.some(([a, b]) => b === inicio || a === horario[1])
         const [diaOk, periodoOk] = bate(preferencias, dia, inicio)
-        candidatas.push({
+        lista.push({
           data,
           sugestao: {
             inicio: comecoIso,
@@ -172,14 +170,26 @@ export function sugerirHorarios(pedido: PedidoDeSugestao): Sugestao[] {
     }
   }
 
-  candidatas.sort((a, b) => a.nota - b.nota || a.sugestao.inicio.localeCompare(b.sugestao.inicio))
-  const porData = new Map<string, number>()
+  return lista
+}
+
+export function horariosLivres(pedido: PedidoDeSugestao): Sugestao[] {
+  return candidatas(pedido).map((c) => c.sugestao)
+}
+
+export function sugerirHorarios(pedido: PedidoDeSugestao): Sugestao[] {
+  const { porDia = SUGESTOES_POR_DIA, limite = SUGESTOES_LIMITE } = pedido
+  const ordenadas = candidatas(pedido).sort(
+    (a, b) => a.nota - b.nota || a.sugestao.inicio.localeCompare(b.sugestao.inicio)
+  )
+  const porData = new Map<string, Sugestao[]>()
   const escolhidas: Sugestao[] = []
-  for (const { data, sugestao } of candidatas) {
+  for (const { data, sugestao } of ordenadas) {
     if (escolhidas.length >= limite) break
-    const n = porData.get(data) ?? 0
-    if (n >= porDia) continue
-    porData.set(data, n + 1)
+    const doDia = porData.get(data) ?? []
+    if (doDia.length >= porDia) continue
+    if (doDia.some((s) => s.inicio < sugestao.fim && sugestao.inicio < s.fim)) continue
+    porData.set(data, [...doDia, sugestao])
     escolhidas.push(sugestao)
   }
   return escolhidas

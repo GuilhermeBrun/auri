@@ -113,7 +113,7 @@ function WaitlistForm({
         : window.api.waitlist.add({ ...input, patient_id: patient.id }),
     onSuccess: () => {
       toast({
-        title: entry ? 'Alterações salvas' : 'Na lista de espera',
+        title: entry ? 'Lista de espera atualizada' : 'Na lista de espera',
         description: shortName(patient.nome),
         icon: entry ? undefined : <Hourglass />
       })
@@ -153,6 +153,7 @@ function WaitlistForm({
     <form
       onSubmit={(e) => {
         e.preventDefault()
+        e.stopPropagation()
         submit()
       }}
       noValidate

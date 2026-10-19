@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vite-plus/test'
 import {
   diaDaSemana,
   minutosDe,
+  horariosLivres,
   periodoDe,
   quemCabe,
   sugerirHorarios,
@@ -25,8 +26,6 @@ const SEMANA: Funcionamento[] = [
   ]),
   { dia_semana: 6, abre: '08:00', fecha: '12:00' }
 ]
-
-const tudo = { porDia: 1000, limite: 100_000 }
 
 function pedido(over: Partial<PedidoDeSugestao>): PedidoDeSugestao {
   return { de: SEG, ate: SEG, duracao: 45, funcionamento: SEMANA, ocupados: [], ...over }
@@ -59,18 +58,18 @@ describe('peças do motor', () => {
 
 describe('sugerirHorarios', () => {
   it('dia fechado não tem horário', () => {
-    expect(sugerirHorarios(pedido({ de: DOM, ate: DOM, ...tudo }))).toEqual([])
+    expect(horariosLivres(pedido({ de: DOM, ate: DOM }))).toEqual([])
   })
 
   it('sábado só de manhã: termina até o meio-dia', () => {
-    const sugestoes = ordem(sugerirHorarios(pedido({ de: SAB, ate: SAB, ...tudo })))
+    const sugestoes = ordem(horariosLivres(pedido({ de: SAB, ate: SAB })))
     expect(sugestoes[0]).toMatchObject({ inicio: `${SAB}T08:00`, fim: `${SAB}T08:45` })
     expect(sugestoes.at(-1)).toMatchObject({ inicio: `${SAB}T11:15`, fim: `${SAB}T12:00` })
     expect(sugestoes).toHaveLength(14)
   })
 
   it('respeita o intervalo do almoço entre os turnos', () => {
-    const inicios = horas(ordem(sugerirHorarios(pedido({ duracao: 60, ...tudo }))))
+    const inicios = horas(ordem(horariosLivres(pedido({ duracao: 60 }))))
     expect(inicios).toContain('11:00')
     expect(inicios).not.toContain('11:15')
     expect(inicios).not.toContain('12:00')
@@ -81,7 +80,7 @@ describe('sugerirHorarios', () => {
   it('atividade no meio da tarde fica longe pela margem de deslocamento', () => {
     const natacao = { atividade: 'Natação', dia_semana: 3, inicio: '15:00', fim: '16:00' }
     const inicios = horas(
-      ordem(sugerirHorarios(pedido({ de: QUA, ate: QUA, atividades: [natacao], ...tudo })))
+      ordem(horariosLivres(pedido({ de: QUA, ate: QUA, atividades: [natacao] })))
     )
     expect(inicios).toContain('13:45')
     for (const perto of ['14:00', '14:30', '15:00', '15:45', '16:15']) {
@@ -93,14 +92,12 @@ describe('sugerirHorarios', () => {
   it('a margem é configurável e a atividade vale só no dia dela', () => {
     const natacao = { atividade: 'Natação', dia_semana: 3, inicio: '15:00', fim: '16:00' }
     const semMargem = horas(
-      sugerirHorarios(
-        pedido({ de: QUA, ate: QUA, atividades: [natacao], margem: 0, duracao: 60, ...tudo })
-      )
+      horariosLivres(pedido({ de: QUA, ate: QUA, atividades: [natacao], margem: 0, duracao: 60 }))
     )
     expect(semMargem).toContain('14:00')
     expect(semMargem).toContain('16:00')
     expect(semMargem).not.toContain('14:15')
-    const segunda = sugerirHorarios(pedido({ atividades: [natacao], ...tudo }))
+    const segunda = horariosLivres(pedido({ atividades: [natacao] }))
     expect(horas(segunda)).toContain('15:00')
   })
 
@@ -109,7 +106,7 @@ describe('sugerirHorarios', () => {
       { inicio: `${SEG}T08:00`, fim: `${SEG}T12:00` },
       { inicio: `${SEG}T13:00`, fim: `${SEG}T18:00` }
     ]
-    expect(sugerirHorarios(pedido({ ocupados, ...tudo }))).toEqual([])
+    expect(horariosLivres(pedido({ ocupados }))).toEqual([])
   })
 
   it('só sobra o buraco que cabe a sessão inteira', () => {
@@ -119,7 +116,7 @@ describe('sugerirHorarios', () => {
       { inicio: `${SEG}T11:45`, fim: `${SEG}T12:00` },
       { inicio: `${SEG}T13:00`, fim: `${SEG}T18:00` }
     ]
-    const sugestoes = sugerirHorarios(pedido({ ocupados, ...tudo }))
+    const sugestoes = horariosLivres(pedido({ ocupados }))
     expect(sugestoes).toEqual([
       {
         inicio: `${SEG}T11:00`,
@@ -133,8 +130,8 @@ describe('sugerirHorarios', () => {
   it('agendamento que atravessa a meia-noite ocupa os dois dias', () => {
     const funcionamento = [0, 1].map((dia) => ({ dia_semana: dia, abre: '00:00', fecha: '24:00' }))
     const ocupados = [{ inicio: `${DOM}T23:00`, fim: '2026-10-26T01:00' }]
-    const sugestoes = sugerirHorarios(
-      pedido({ de: DOM, ate: '2026-10-26', duracao: 60, funcionamento, ocupados, ...tudo })
+    const sugestoes = horariosLivres(
+      pedido({ de: DOM, ate: '2026-10-26', duracao: 60, funcionamento, ocupados })
     )
     const inicios = sugestoes.map((s) => s.inicio)
     expect(inicios).not.toContain(`${DOM}T22:15`)
@@ -146,7 +143,7 @@ describe('sugerirHorarios', () => {
 
   it('abertura fora da grade começa no próximo quarto de hora', () => {
     const funcionamento = [{ dia_semana: 1, abre: '08:10', fecha: '09:30' }]
-    expect(horas(ordem(sugerirHorarios(pedido({ funcionamento, ...tudo }))))).toEqual([
+    expect(horas(ordem(horariosLivres(pedido({ funcionamento }))))).toEqual([
       '08:15',
       '08:30',
       '08:45'
@@ -159,11 +156,11 @@ describe('sugerirHorarios', () => {
       { dia_semana: 1, abre: '8h', fecha: '18:00' },
       { dia_semana: 1, abre: '09:00', fecha: '09:45' }
     ]
-    expect(horas(sugerirHorarios(pedido({ funcionamento, ...tudo })))).toEqual(['09:00'])
+    expect(horas(horariosLivres(pedido({ funcionamento })))).toEqual(['09:00'])
   })
 
   it('não sugere o que já passou', () => {
-    const inicios = horas(ordem(sugerirHorarios(pedido({ depoisDe: `${SEG}T16:20`, ...tudo }))))
+    const inicios = horas(ordem(horariosLivres(pedido({ depoisDe: `${SEG}T16:20` }))))
     expect(inicios).toEqual(['16:30', '16:45', '17:00', '17:15'])
   })
 
@@ -181,7 +178,7 @@ describe('sugerirHorarios', () => {
     const sugestoes = sugerirHorarios(
       pedido({ preferencias: { dias: [], periodos: ['tarde'] }, porDia: 4 })
     )
-    expect(sugestoes.map((s) => s.inicio.slice(11))).toEqual(['13:00', '17:15', '13:15', '13:30'])
+    expect(sugestoes.map((s) => s.inicio.slice(11))).toEqual(['13:00', '17:15', '13:45', '14:30'])
     expect(sugestoes.every((s) => s.preferida)).toBe(true)
   })
 
@@ -192,6 +189,22 @@ describe('sugerirHorarios', () => {
     expect(sugestoes.every((s) => s.encostada)).toBe(true)
     const soltos = sugerirHorarios(pedido({ ocupados, porDia: 6, duracao: 30 }))
     expect(soltos.at(-1)).toMatchObject({ encostada: true, inicio: `${SEG}T17:30` })
+  })
+
+  it('não sugere dois horários sobrepostos no mesmo dia', () => {
+    const sugestoes = sugerirHorarios(pedido({ porDia: 10 }))
+    expect(horas(ordem(sugestoes))).toEqual([
+      '08:00',
+      '08:45',
+      '09:30',
+      '10:15',
+      '11:15',
+      '13:00',
+      '13:45',
+      '14:30',
+      '15:15',
+      '17:15'
+    ])
   })
 
   it('limita por dia e no total, espalhando pelos dias', () => {
@@ -249,6 +262,10 @@ describe('sugerirHorarios', () => {
             limite: 20
           })
           expect(sugestoes.length).toBeLessThanOrEqual(14)
+          for (const a of sugestoes) {
+            const outras = sugestoes.filter((b) => b !== a && b.inicio < a.fim && a.inicio < b.fim)
+            expect(outras).toEqual([])
+          }
           for (const s of sugestoes) {
             const data = s.inicio.slice(0, 10)
             const ini = minutosDe(s.inicio.slice(11))!

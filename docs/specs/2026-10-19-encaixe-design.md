@@ -94,8 +94,9 @@ Ordem: primeiro os que batem com os **dias** preferidos, depois os que batem com
 depois os **encostados** (começam na abertura ou logo depois de outro horário, ou terminam no
 fechamento ou logo antes de outro horário: a agenda fica sem buracos), e por fim os mais cedo.
 Cada sugestão diz se é `preferida` (dia e período batem) e se está `encostada`. No máximo
-`porDia` sugestões por dia (padrão 3) e `limite` no total (padrão 12), para a lista mostrar dias
-diferentes em vez de 12 inícios seguidos do mesmo buraco.
+`porDia` sugestões por dia (padrão 3), sem duas sobrepostas no mesmo dia, e `limite` no total
+(padrão 12), para a lista mostrar dias e horários diferentes em vez de inícios seguidos do mesmo
+buraco. `horariosLivres` devolve todos os inícios livres, sem escolher, em ordem.
 
 Para **remarcar** uma sessão, o main tira a própria sessão dos ocupados
 (`ignorar_appointment_id`), já que o horário dela vai ficar livre.
@@ -128,6 +129,9 @@ integração só precisa conferir os nomes das colunas e depois tirar a reserva 
   (`PatientHeader`); quando o paciente já está na lista, o mesmo lugar mostra "Na lista de espera"
   e abre a edição.
 - **Página provisória `/lista-de-espera`** no menu principal, só até o painel ir para a agenda.
+- O painel mostra as 6 melhores sugestões de cada paciente em ordem de data.
+- O formulário do diálogo para a propagação do `submit`: ele mora dentro do `<form>` da ficha na
+  árvore do React (o portal não muda isso), e sem isso salvar a espera salvava a ficha junto.
 
 ## Próxima trilha
 
