@@ -1,8 +1,9 @@
 # Assinatura de termos pelo celular — design
 
-Data: 18/10/2026, revisto em 19/10/2026. Estado: aprovado; em implementação. Feitos: o responsável
-na ficha, o traço da assinatura (código comum e quadro no desktop) e a fase 1 (formato, páginas e
-link de teste). Falta o teste de campo da fase 1.
+Data: 18/10/2026, revisto em 19/10/2026. Estado: implementado. Feitos: o responsável na ficha, o
+traço da assinatura (código comum e quadro no desktop), a fase 1 (formato, páginas e link de teste)
+e as fases 2 e 3 (envio e recebimento no Auri, com a migração v6). Falta o teste de campo com
+aparelhos reais: links longos no WhatsApp e o `auri://` no Chrome, no Edge e no Safari.
 Protótipo interativo (dados fictícios): https://claude.ai/artifact/KLQ9VjRhNNeyoKhQLdtMds
 
 ### Mudanças de 19/10
@@ -22,6 +23,23 @@ Protótipo interativo (dados fictícios): https://claude.ai/artifact/KLQ9VjRhNNe
 - **Clínica no menu lateral principal**, ao lado de Agenda e Pacientes, e não em Configurações:
   dados da clínica e modelos de termo são conteúdo que a própria clínica mantém, não ajuste do
   app.
+
+### Na implementação (19/10)
+
+- **Link montado no main de forma síncrona.** As operações do banco são síncronas e o WebCrypto
+  não é. O main monta o link de ida e lê o de volta com o `crypto` e o `zlib` do Node
+  (`desktop/src/main/terms/link.ts`), no mesmo formato e usando as validações de `formato.ts`. Um
+  teste cruzado garante que a página lê o que o Auri monta e vice-versa.
+- **Modelos em duas tabelas:** `term_models` (o modelo e se está arquivado) e `term_versions` (uma
+  linha por versão, que não muda nem some).
+- **Campos do termo:** `{paciente}`, `{nascimento}`, `{clinica}`, `{profissional}`, `{registro}` e
+  `{data}`, inseridos por botões no editor.
+- **`auri://` só registrado pelo app instalado:** no Mac pelo `Info.plist`; no Windows pelo
+  `setAsDefaultProtocolClient` quando o app está empacotado. Em desenvolvimento e nos testes o
+  esquema não é registrado, para não tomar o do Auri instalado.
+- **O `/recebido` abre o Auri sozinho no computador** e, depois de 2 s, oferece "Abrir no Auri" e
+  "Copiar resposta". No celular, só copiar.
+- **Para paciente menor, o próprio paciente não aparece como quem assina** o termo.
 
 ## Objetivo
 
@@ -287,7 +305,7 @@ aceita pede uma versão nova, para um termo antigo continuar igual no PDF.
 - **Clínica** (item do menu lateral principal, depois de Agenda e Pacientes): dados da clínica
   (nome que o responsável vê, WhatsApp que recebe as respostas, profissional e registro) e os
   modelos de termo (título, texto no formato de "Conteúdo do termo"
-  com os campos `{paciente}`, `{nascimento}`, `{clinica}`, `{profissional}` e `{data}`, prévia como
+  com os campos `{paciente}`, `{nascimento}`, `{clinica}`, `{profissional}`, `{registro}` e `{data}`, prévia como
   a página mostra, versão atual, quanto do limite do link o texto usa, arquivar).
 
 ### Abrir o WhatsApp
@@ -322,26 +340,26 @@ minutos da hora do recebimento.
 
 ### Dados
 
-Migração nova, com três tabelas:
+Migração v6:
 
-- `term_templates`: modelos (título, texto, versão, criado em, arquivado). Cada versão é uma linha;
-  a atual é a maior.
+- `term_models` (arquivado ou não) e `term_versions` (título, texto, versão, criado em). Cada versão
+  é uma linha que não muda; a atual é a maior.
 - `term_requests`: envios (paciente, modelo e versão, texto exato e SHA-256, nome e número de
-  destino, chave, criado em, prazo, estado `aguardando`/`cancelado`/`assinado`/`vencido`).
+  destino, chave, criado em, prazo, estado `aguardando`/`cancelado`/`trocado`/`assinado`; vencido
+  é calculado pelo prazo). O conteúdo do envio não muda, e um envio concluído não volta a aguardar.
 - `signed_terms`: termos assinados (envio, paciente, nome, CPF, quem assinou e parentesco, traço,
   hora do celular e fuso, hora do recebimento, SHA-256 do documento). Sem o PDF: ele sai deste
   registro e do texto exato do envio, sempre que alguém abre. Só aceita `INSERT`: um trigger recusa
   `UPDATE` e `DELETE`. É uma exceção à regra do projeto de validar só no código, porque aqui a
   imutabilidade é parte do valor do documento.
 
-Operações novas no registro (`desktop/src/main/operations.ts`): `terms:templates`,
-`terms:saveTemplate`, `terms:list`, `terms:send` (devolve o link), `terms:cancel`, `terms:check`
-(confere e devolve o resultado), `terms:accept` (confere de novo e grava o registro) e
-`terms:record` (devolve o registro de um termo assinado), com o aviso ao vivo "termos mudou". As
-operações do banco são síncronas e gerar o PDF não é, então o PDF não passa por elas: abrir o
-WhatsApp e gerar e abrir o PDF são locais (IPC próprio), no computador onde se clicou, a partir
-do registro. O consultório que recebe um `auri://` repassa a resposta à
-recepção pela conexão; sem conexão, a conferência mostra o erro com "Tentar de novo".
+Operações novas no registro (`desktop/src/main/operations.ts`): `terms:models`,
+`terms:measureModel`, `terms:saveModel`, `terms:archiveModel`, `terms:listByPatient`, `terms:send`
+(devolve o link e a mensagem), `terms:link`, `terms:cancel`, `terms:check` (confere e devolve o
+resultado), `terms:accept` (confere de novo e grava o registro) e `terms:record` (devolve o registro
+de um termo assinado), com o aviso ao vivo "termos mudou". Abrir o WhatsApp e gerar e abrir o PDF
+são locais (IPC próprio), no computador onde se clicou, a partir do registro. O consultório que
+recebe um `auri://` confere e guarda pela conexão, como qualquer outra gravação.
 
 ### PDF
 
