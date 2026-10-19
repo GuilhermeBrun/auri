@@ -401,13 +401,27 @@ async function run() {
         console.log('registro do OneDrive: (sem contas)')
       }
       check('o OneDrive fica instalado (falta entrar na conta)', od === 'signed-out', od)
+      // O registro e o OneDrive.exe aparecem antes do fim da instalação, que às vezes leva quase
+      // um minuto: abrir antes disso não mostra nada (como quem clica com o instalador na tela).
+      const running = (image) =>
+        new RegExp(image.replace('.', '\\.'), 'i').test(
+          execFileSync('tasklist', ['/FI', `IMAGENAME eq ${image}`], { encoding: 'utf8' })
+        )
+      for (let i = 0; i < 40 && running('OneDriveSetup.exe'); i++) await sleep(3000)
       await page.eval(`window.backup.openProvider('onedrive')`)
-      await sleep(15000)
+      let odOpen = false
+      for (let i = 0; i < 20 && !odOpen; i++) {
+        await sleep(3000)
+        odOpen = running('OneDrive.exe')
+      }
       desktopShot('10-onedrive-aberto')
-      const odRunning = execFileSync('tasklist', ['/FI', 'IMAGENAME eq OneDrive.exe'], {
-        encoding: 'utf8'
-      })
-      check('"Abrir o OneDrive" abre o app', /OneDrive\.exe/i.test(odRunning))
+      if (!odOpen) {
+        const lines = execFileSync('tasklist', { encoding: 'utf8' })
+          .split('\n')
+          .filter((line) => /onedrive/i.test(line))
+        console.log(`processos do OneDrive:\n${lines.join('\n') || '(nenhum)'}`)
+      }
+      check('"Abrir o OneDrive" abre o app', odOpen)
       await shot(page, '11-cartoes-instalados')
     }
   }
