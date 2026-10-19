@@ -18,6 +18,7 @@ import {
 } from '@shared/schemas'
 import { Page } from '@renderer/components/Layout'
 import { PATIENT_COLUMN, PatientHeader } from '@renderer/components/PatientHeader'
+import { PrintButton } from '@renderer/components/PrintButton'
 import { Loading } from '@renderer/components/ui/loading'
 import { Button } from '@renderer/components/ui/button'
 import { Callout } from '@renderer/components/ui/callout'
@@ -331,6 +332,13 @@ function PatientFormPage({ patientId }: { patientId: number | null }): React.JSX
         ]}
         actions={
           <>
+            {!isNew && patient && (
+              <PrintButton
+                label="Imprimir ficha"
+                blocked={isDirty ? 'Salve as alterações para imprimir' : undefined}
+                print={() => window.api.documents.patientPdf(patient.id)}
+              />
+            )}
             {!isNew && patient && (
               <Button
                 variant="secondary"

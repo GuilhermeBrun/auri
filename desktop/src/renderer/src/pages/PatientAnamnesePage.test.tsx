@@ -78,6 +78,21 @@ describe('anamnese do paciente', () => {
     expect(await screen.findByText(/Salva em 14 de out/)).toBeTruthy()
   })
 
+  it('imprime a anamnese salva, nunca a que ainda não foi salva', async () => {
+    const anamnesePdf = vi.fn(async () => undefined)
+    Object.assign(window, { api: { ...api, documents: { anamnesePdf } } })
+    open()
+    const queixa = await topic('Queixa')
+    const imprimir = screen.getByRole('button', { name: 'Imprimir anamnese' }) as HTMLButtonElement
+    expect(imprimir.disabled).toBe(true)
+    expect(imprimir.title).toBe('Salve a anamnese para imprimir')
+    await userEvent.type(queixa, 'Troca letras.')
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar anamnese' }))
+    await waitFor(() => expect(imprimir.disabled).toBe(false))
+    await userEvent.click(imprimir)
+    await waitFor(() => expect(anamnesePdf).toHaveBeenCalledWith(7))
+  })
+
   it('falha ao salvar mantém o texto e explica num aviso na página', async () => {
     api.anamneses.save.mockRejectedValueOnce(new Error('Outro computador salvou antes.'))
     open()
