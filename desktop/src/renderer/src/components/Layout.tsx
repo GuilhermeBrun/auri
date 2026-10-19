@@ -26,6 +26,8 @@ import { UpdateCorner } from '@renderer/components/UpdateCorner'
 import { UpdateReady } from '@renderer/components/UpdateReady'
 import { WelcomeDialog } from '@renderer/components/WelcomeDialog'
 import { ReceiveTerm } from '@renderer/components/ReceiveTerm'
+import { ReceberConfirmacao } from '@renderer/components/confirmacao/ReceberConfirmacao'
+import { useIncomingConfirmacoes } from '@renderer/lib/confirmacoes'
 import { useIncomingTerms } from '@renderer/lib/terms'
 import { needsAttention, useBackup } from '@renderer/lib/backup'
 import { useConnection } from '@renderer/lib/connection'
@@ -217,6 +219,7 @@ export function Layout(): React.JSX.Element {
   const toggle = useCallback(() => setOpen((current) => !current), [])
   const navigate = useNavigate()
   useIncomingTerms()
+  useIncomingConfirmacoes()
 
   useEffect(() => {
     window.prefs.save({ sidebarOpen: open })
@@ -275,6 +278,7 @@ export function Layout(): React.JSX.Element {
         </div>
         <WelcomeDialog />
         <ReceiveTerm />
+        <ReceberConfirmacao />
         <BackupAttention />
         <UpdateReady />
       </ToastProvider>

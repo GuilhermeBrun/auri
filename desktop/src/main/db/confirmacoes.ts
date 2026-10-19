@@ -366,7 +366,7 @@ export function receberConfirmacao(
     const quem = shortName(row.patient_nome)
     const sessao = quando(confirmacao)
     const vaga: Vaga = { inicio: row.a_inicio, fim: row.a_fim }
-    const base = { request_id: row.id, appointment_id: row.appointment_id }
+    const base = { request_id: row.id, appointment_id: row.appointment_id, resposta: res }
     const registrar = (): void => {
       db.prepare(
         `UPDATE confirmation_requests
@@ -483,6 +483,7 @@ export function aplicarOutraResposta(db: Db, requestId: number): ConfirmacaoRece
     return {
       ok: true,
       tipo: outra,
+      resposta: outra,
       titulo: outra === 'desmarcada' ? 'Sessão desmarcada' : 'Sessão confirmada',
       detalhe:
         outra === 'desmarcada'

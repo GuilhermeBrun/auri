@@ -68,6 +68,7 @@ export type ConfirmacaoRecebida =
   | {
       ok: true
       tipo: 'confirmada' | 'desmarcada' | 'repetida' | 'outra' | 'no_prazo'
+      resposta: 'confirmada' | 'desmarcada'
       titulo: string
       detalhe: string
       request_id: number

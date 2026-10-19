@@ -16,7 +16,18 @@ import {
   isToday
 } from 'date-fns'
 import { ptBR } from 'date-fns/locale/pt-BR'
-import { Check, ChevronLeft, ChevronRight, Hourglass, PenLine, Plus, X } from 'lucide-react'
+import {
+  CalendarCheck,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  Clock,
+  Hourglass,
+  PenLine,
+  Plus,
+  TimerOff,
+  X
+} from 'lucide-react'
 import {
   memo,
   useCallback,
@@ -58,10 +69,13 @@ import {
 import { formatTime, parseIsoLocalDateTime, toIsoLocalDateTime } from '@shared/dates'
 import { shortName } from '@shared/names'
 import { COMMITMENT_LABELS, type Commitment } from '@shared/commitments'
+import { PEDIDO_LABELS, type Vaga } from '@shared/confirmacao'
 import { vagaEm, type Intervalo } from '@shared/encaixe'
 import type { Appointment } from '@shared/schemas'
 import type { WaitlistEntry } from '@shared/waitlist'
 import { AppointmentDialog, type AppointmentDraft } from '@renderer/components/AppointmentDialog'
+import { AvisosDaConfirmacao } from '@renderer/components/confirmacao/AvisosDaConfirmacao'
+import { ConfirmacoesDialog } from '@renderer/components/confirmacao/ConfirmacoesDialog'
 import { CommitmentDialog, type CommitmentDraft } from '@renderer/components/CommitmentDialog'
 import { SlotDialog, type SlotDraft } from '@renderer/components/SlotDialog'
 import { WaitlistPanel } from '@renderer/components/waitlist/WaitlistPanel'
@@ -78,6 +92,7 @@ import {
   etiquetasQuery
 } from '@renderer/lib/queries'
 import { DEFAULT_DURATION, nextSlot, PRESENCA_LABELS } from '@renderer/lib/session'
+import { aoPedirEncaixe, horaDe } from '@renderer/lib/confirmacoes'
 import { cn } from '@renderer/lib/utils'
 import { corVar } from '@renderer/lib/tipos'
 
@@ -261,8 +276,9 @@ function EventContent({ event }: EventProps<CalendarEvent>): React.JSX.Element {
   if (event.kind !== 'appointment') return <BlockContent event={event} />
   const short = differenceInMinutes(event.end, event.start) < 45
   const start = formatTime(event.start)
-  const { tipo_nome: tipoText, assinatura, etiquetas } = event.appointment
+  const { tipo_nome: tipoText, assinatura, etiquetas, pedido } = event.appointment
   const confirmado = !assinatura && confirmacao(event.appointment) === 'confirmado'
+  const aguardando = !confirmado && pedido?.estado === 'aguardando'
   return (
     <span className="flex min-w-0 flex-col">
       <span className="flex min-w-0 items-baseline gap-3">
@@ -282,6 +298,18 @@ function EventContent({ event }: EventProps<CalendarEvent>): React.JSX.Element {
             <Check
               aria-label={CONFIRMACAO_LABELS.confirmado}
               className="ml-1 inline size-3 -translate-y-px stroke-[2.5] opacity-75"
+            />
+          )}
+          {aguardando && (
+            <Clock
+              aria-label={`${PEDIDO_LABELS.aguardando} até ${horaDe(pedido.prazo)}`}
+              className="ml-1 inline size-3 -translate-y-px stroke-[2] opacity-75"
+            />
+          )}
+          {pedido?.estado === 'sem_resposta' && (
+            <TimerOff
+              aria-label={PEDIDO_LABELS.sem_resposta}
+              className="ml-1 inline size-3 -translate-y-px stroke-[2] opacity-75"
             />
           )}
           {etiquetas.length > 0 && (
@@ -448,11 +476,12 @@ function tooltip(event: CalendarEvent): string {
     return `${timeRange(event)} · ${nome}${observacao ? `\n${observacao}` : ''}`
   }
   const { tipo_nome, presenca, observacao, etiquetas } = event.appointment
-  const { assinatura } = event.appointment
+  const { assinatura, pedido } = event.appointment
   const tags = [
     tipo_nome,
     ...etiquetas.map((e) => e.nome),
     presenca ? PRESENCA_LABELS[presenca] : '',
+    pedido && pedido.estado !== 'confirmado' ? PEDIDO_LABELS[pedido.estado] : '',
     !presenca && !assinatura ? CONFIRMACAO_LABELS[confirmacao(event.appointment)] : '',
     assinatura ? `chegada assinada por ${assinatura.signer_nome}` : ''
   ].filter(Boolean)
@@ -676,6 +705,7 @@ export function AgendaPage(): React.JSX.Element {
   )
   const [panelOpen, setPanelOpen] = useState(readPanelOpen)
   const [vaga, setVaga] = useState<Intervalo | null>(null)
+  const [confirmacoes, setConfirmacoes] = useState(false)
   const arrivedRef = useRef<number | null>(null)
   const markArrived = useCallback((appointment: Appointment): void => {
     arrivedRef.current = appointment.id
@@ -789,6 +819,16 @@ export function AgendaPage(): React.JSX.Element {
     [withPanel, events, turnos]
   )
 
+  const encaixar = useCallback((livre: Vaga): void => {
+    setView((current) => (current === Views.MONTH ? Views.WEEK : current))
+    setDate(parseIsoLocalDateTime(livre.inicio))
+    setPanelOpen(true)
+    savePanelOpen(true)
+    setVaga(livre)
+  }, [])
+
+  useEffect(() => aoPedirEncaixe(encaixar), [encaixar])
+
   const togglePanel = (): void => {
     const next = !panelOpen
     setPanelOpen(next)
@@ -844,6 +884,15 @@ export function AgendaPage(): React.JSX.Element {
       }
       actions={
         <>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setConfirmacoes(true)}
+            aria-label="Confirmações"
+            title="Pedir a confirmação das sessões do próximo dia"
+          >
+            <CalendarCheck />
+          </Button>
           {view !== Views.MONTH && (
             <Button
               variant="ghost"
@@ -879,70 +928,74 @@ export function AgendaPage(): React.JSX.Element {
           Tente de novo. Se o problema continuar, feche e abra o Auri.
         </ErrorState>
       ) : (
-        <div className="flex min-h-[520px] flex-1">
-          <div className="min-w-0 flex-1">
-            <AgendaCalendar
-              events={events}
-              date={date}
-              view={view}
-              funcionamento={funcionamento}
-              shownDays={shownDays}
-              onNavigate={setDate}
-              onView={setView}
-              onDraft={setDraft}
-              onSlot={onSlot}
-              onCommitment={setCommitment}
-              vaga={withPanel ? vaga : null}
-              arrivedRef={arrivedRef}
-            />
-          </div>
-          {withPanel && (
-            <aside
-              aria-label="Encaixe"
-              className="flex w-72 shrink-0 animate-fade-in flex-col overflow-y-auto pt-3 pr-3 pb-20 pl-2"
-            >
-              <WaitlistPanel
-                vaga={vaga}
-                onPick={pickFromWaitlist}
-                vagaActions={
-                  vaga && (
-                    <>
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        aria-label="Marcar neste horário"
-                        title="Marcar neste horário"
-                        onClick={() =>
-                          setSlot({
-                            inicio: parseIsoLocalDateTime(vaga.inicio),
-                            duracao: DEFAULT_DURATION
-                          })
-                        }
-                      >
-                        <Plus />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        aria-label="Ver a lista toda"
-                        title="Ver a lista toda (Esc)"
-                        onClick={() => setVaga(null)}
-                      >
-                        <X />
-                      </Button>
-                    </>
-                  )
-                }
+        <>
+          <AvisosDaConfirmacao onEncaixar={encaixar} />
+          <div className="flex min-h-[520px] flex-1">
+            <div className="min-w-0 flex-1">
+              <AgendaCalendar
+                events={events}
+                date={date}
+                view={view}
+                funcionamento={funcionamento}
+                shownDays={shownDays}
+                onNavigate={setDate}
+                onView={setView}
+                onDraft={setDraft}
+                onSlot={onSlot}
+                onCommitment={setCommitment}
+                vaga={withPanel ? vaga : null}
+                arrivedRef={arrivedRef}
               />
-              {!vaga && (
-                <p className="mt-4 px-3 text-xs text-ink-faint">
-                  Clique num horário vago da agenda para ver quem cabe nele.
-                </p>
-              )}
-            </aside>
-          )}
-        </div>
+            </div>
+            {withPanel && (
+              <aside
+                aria-label="Encaixe"
+                className="flex w-72 shrink-0 animate-fade-in flex-col overflow-y-auto pt-3 pr-3 pb-20 pl-2"
+              >
+                <WaitlistPanel
+                  vaga={vaga}
+                  onPick={pickFromWaitlist}
+                  vagaActions={
+                    vaga && (
+                      <>
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          aria-label="Marcar neste horário"
+                          title="Marcar neste horário"
+                          onClick={() =>
+                            setSlot({
+                              inicio: parseIsoLocalDateTime(vaga.inicio),
+                              duracao: DEFAULT_DURATION
+                            })
+                          }
+                        >
+                          <Plus />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          aria-label="Ver a lista toda"
+                          title="Ver a lista toda (Esc)"
+                          onClick={() => setVaga(null)}
+                        >
+                          <X />
+                        </Button>
+                      </>
+                    )
+                  }
+                />
+                {!vaga && (
+                  <p className="mt-4 px-3 text-xs text-ink-faint">
+                    Clique num horário vago da agenda para ver quem cabe nele.
+                  </p>
+                )}
+              </aside>
+            )}
+          </div>
+        </>
       )}
+      <ConfirmacoesDialog open={confirmacoes} onClose={() => setConfirmacoes(false)} />
       <AppointmentDialog draft={draft} onClose={() => setDraft(null)} onSaved={markArrived} />
       <SlotDialog slot={slot} onClose={() => setSlot(null)} onSaved={markArrived} />
       <CommitmentDialog
