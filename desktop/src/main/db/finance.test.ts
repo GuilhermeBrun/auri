@@ -20,6 +20,7 @@ import {
   situacaoSessoes
 } from './finance'
 import { createPatient } from './patients'
+import { runOperation } from '../operations'
 
 let db: Db
 let patientId: number
@@ -446,5 +447,28 @@ describe('tela Financeiro', () => {
     expect(situacaoSessoes(db, [atendimento('2026-10-20')])).toEqual([
       { appointment_id: expect.any(Number), situacao: 'sem_lancamento' }
     ])
+  })
+})
+
+describe('operações', () => {
+  it('validam a entrada e avisam o tópico finance, também para o consultório', () => {
+    particular()
+    const topics: string[][] = []
+    const pay = (input: unknown) =>
+      runOperation(db, 'finance:pay', [patientId, input, 'Consultório'], (t) => topics.push(t))
+    expect(
+      pay({ valor_centavos: 0, data: HOJE, forma: 'pix', insurer_id: null, observacao: '' })
+    ).toEqual({ ok: false, error: 'Informe o valor' })
+    expect(
+      pay({ valor_centavos: 100, data: HOJE, forma: 'boleto', insurer_id: null, observacao: '' })
+    ).toMatchObject({ ok: false })
+    expect(
+      pay({ valor_centavos: 100, data: HOJE, forma: 'pix', insurer_id: null, observacao: '' })
+    ).toEqual({ ok: true, data: expect.any(Number) })
+    expect(topics).toEqual([['finance']])
+    expect(runOperation(db, 'finance:patient', [patientId])).toMatchObject({
+      ok: true,
+      data: { saldo_centavos: -100 }
+    })
   })
 })
