@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import postgres from 'postgres'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vite-plus/test'
-import handler, { receive, Rejected, saveTo, type Payload } from '../api/erros.ts'
+import handler, { connect, receive, Rejected, saveTo, type Payload } from '../api/erros.ts'
 import contract from '../contrato/relatorio-de-erro.json' with { type: 'json' }
 
 const payload: Payload = {
@@ -151,6 +151,17 @@ describe('/api/erros', () => {
 })
 
 const url = process.env.TEST_DATABASE_URL
+describe('conexão com o banco', () => {
+  it('aceita o endereço do Neon com channel_binding e sempre confere o certificado', async () => {
+    const sql = connect(
+      'postgres://dono:senha@ep-x-pooler.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require'
+    )
+    expect(sql.options.connection).not.toHaveProperty('channel_binding')
+    expect(sql.options.ssl).toBe('verify-full')
+    await sql.end()
+  })
+})
+
 describe.skipIf(!url)('tabela error_reports', () => {
   const admin = postgres(url ?? '', { max: 1, onnotice: () => {} })
   const target = new URL(url ?? 'postgres://localhost')
