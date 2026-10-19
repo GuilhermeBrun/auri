@@ -50,7 +50,6 @@ export const UFS = [
   'SE',
   'TO'
 ] as const
-export type Uf = (typeof UFS)[number]
 
 export const SERIE_TIPOS = ['ano', 'serie', 'grau'] as const
 export type SerieTipo = (typeof SERIE_TIPOS)[number]
@@ -60,8 +59,6 @@ export type SerieEtapa = (typeof SERIE_ETAPAS)[number]
 
 export const CONTATOS_PRINCIPAIS = ['mae', 'pai', 'responsavel', 'paciente'] as const
 export type ContatoPrincipal = (typeof CONTATOS_PRINCIPAIS)[number]
-
-export const DIAS_SEMANA = [0, 1, 2, 3, 4, 5, 6] as const
 
 const hhmm = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Horário inválido')
 
