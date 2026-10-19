@@ -293,12 +293,20 @@ const MIGRATIONS: string[] = [
   `
 ]
 
+export class DatabaseTooNewError extends Error {
+  override name = 'DatabaseTooNewError'
+
+  constructor(version: number) {
+    super(
+      `O banco de dados é de uma versão mais nova do Auri (v${version}). Atualize o aplicativo.`
+    )
+  }
+}
+
 export function migrate(db: Database.Database): void {
   const current = db.pragma('user_version', { simple: true }) as number
   if (current > MIGRATIONS.length) {
-    throw new Error(
-      `O banco de dados é de uma versão mais nova do Auri (v${current}). Atualize o aplicativo.`
-    )
+    throw new DatabaseTooNewError(current)
   }
   for (let version = current; version < MIGRATIONS.length; version++) {
     db.transaction(() => {

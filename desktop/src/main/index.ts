@@ -8,6 +8,7 @@ import type { Theme, UiPrefs } from '../shared/schemas'
 import { createBackupService, type BackupService } from './backup-service'
 import { detectProviders, systemProbe } from './backup/providers'
 import { createConnection, type Connection } from './connection'
+import { DatabaseTooNewError } from './db/migrations'
 import { createErrorReports, type ErrorReportService } from './error-reports'
 import { registerIpc } from './ipc'
 import { trustRenderer } from './ipc-security'
@@ -242,7 +243,22 @@ void app.whenReady().then(async () => {
     onWrite: () => backup?.dataWritten(),
     onFailure: (error) => reports?.captureUnexpected(error)
   })
-  await connection.start()
+  try {
+    await connection.start()
+  } catch (error) {
+    if (!(error instanceof DatabaseTooNewError)) throw error
+    reports?.capture('main', error)
+    dialog.showMessageBoxSync({
+      type: 'error',
+      buttons: ['Sair'],
+      message: 'Os dados vieram de uma versão mais nova do Auri.',
+      detail:
+        'Instale a versão mais nova do Auri para abrir os pacientes e a agenda. Nada foi apagado.'
+    })
+    quitConfirmed = true
+    app.quit()
+    return
+  }
   backup = createBackupService({
     userData: app.getPath('userData'),
     connection,
