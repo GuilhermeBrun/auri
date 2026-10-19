@@ -16,7 +16,21 @@ const RECEPCAO: SettingsSnapshot = {
     openAtLogin: true,
     remoteAccess: false
   },
-  backup: { kind: 'google', frequency: 'daily', dailyTime: '19:00' }
+  backup: { kind: 'google', frequency: 'daily', dailyTime: '19:00' },
+  clinic: {
+    nome: 'Clínica Elo',
+    documento: '12.345.678/0001-90',
+    endereco: 'Rua das Flores, 10',
+    telefone: '',
+    whatsapp: '(65) 99999-1234',
+    profissional: 'Ana Souza',
+    registro: 'CRFa 1234',
+    logo: 'iVBORw0KGgo='
+  },
+  termModels: [
+    { titulo: 'Contrato', texto: '# Contrato\n\nTexto.' },
+    { titulo: 'Uso de imagem', texto: '# Uso de imagem\n\nTexto.' }
+  ]
 }
 
 const NOVO: SettingsSnapshot = {
@@ -29,7 +43,18 @@ const NOVO: SettingsSnapshot = {
     openAtLogin: true,
     remoteAccess: true
   },
-  backup: { kind: null, frequency: 'daily', dailyTime: '19:00' }
+  backup: { kind: null, frequency: 'daily', dailyTime: '19:00' },
+  clinic: {
+    nome: '',
+    documento: '',
+    endereco: '',
+    telefone: '(65) 3333-4444',
+    whatsapp: '',
+    profissional: '',
+    registro: '',
+    logo: ''
+  },
+  termModels: [{ titulo: 'contrato', texto: 'Outro texto.' }]
 }
 
 describe('arquivo de configurações', () => {
@@ -39,6 +64,9 @@ describe('arquivo de configurações', () => {
     const file = parseSettingsFile(text)
     expect(file.connection).toEqual(RECEPCAO.connection)
     expect(file.backup).toEqual({ kind: 'google', frequency: 'daily', dailyTime: '19:00' })
+    expect(file.clinic).toEqual({ ...RECEPCAO.clinic, telefone: undefined })
+    expect(file.clinic).not.toHaveProperty('telefone')
+    expect(file.termModels).toEqual(RECEPCAO.termModels)
   })
 
   it('diz o que muda num computador novo, só o que é diferente', () => {
@@ -48,7 +76,15 @@ describe('arquivo de configurações', () => {
       { label: 'Nome deste computador', from: 'DESKTOP-4F2K', to: 'Recepção' },
       { label: 'Compartilhar com outros computadores', from: 'Desligado', to: 'Ligado' },
       { label: 'Acesso de fora da clínica', from: 'Ligado', to: 'Desligado' },
-      { label: 'Nuvem da cópia de segurança', from: 'Nenhuma', to: 'Google Drive' }
+      { label: 'Nuvem da cópia de segurança', from: 'Nenhuma', to: 'Google Drive' },
+      { label: 'Nome da clínica', from: 'Vazio', to: 'Clínica Elo' },
+      { label: 'CNPJ ou CPF da clínica', from: 'Vazio', to: '12.345.678/0001-90' },
+      { label: 'Endereço da clínica', from: 'Vazio', to: 'Rua das Flores, 10' },
+      { label: 'WhatsApp da clínica', from: 'Vazio', to: '(65) 99999-1234' },
+      { label: 'Profissional responsável', from: 'Vazio', to: 'Ana Souza' },
+      { label: 'Registro do profissional', from: 'Vazio', to: 'CRFa 1234' },
+      { label: 'Logo da clínica', from: 'Sem logo', to: 'O do arquivo' },
+      { label: 'Modelo de termo “Uso de imagem”', from: 'Não tem', to: 'Novo' }
     ])
     expect(describeChanges(RECEPCAO, file)).toEqual([])
   })
