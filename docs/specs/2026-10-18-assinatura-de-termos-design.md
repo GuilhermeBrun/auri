@@ -19,6 +19,9 @@ Protótipo interativo (dados fictícios): https://claude.ai/artifact/KLQ9VjRhNNe
   para o PDF.
 - **O PDF não fica guardado no banco.** O desktop gera na hora, a partir do registro imutável do
   termo assinado, porque as operações do banco são síncronas e gerar o PDF não é.
+- **Clínica no menu lateral principal**, ao lado de Agenda e Pacientes, e não em Configurações:
+  dados da clínica e modelos de termo são conteúdo que a própria clínica mantém, não ajuste do
+  app.
 
 ## Objetivo
 
@@ -98,7 +101,7 @@ Recepção (Auri)              Celular do responsável               Recepção 
   destaque o nome e o número antes do botão, e quem assina vê para onde vão os dados. Um link falso
   no nosso domínio continua possível (ver "Riscos e limites"); trocar o número da clínica não pede
   publicar o site.
-- **Modelos em Configurações, com versão.** Editar um modelo cria a versão seguinte; cada envio
+- **Modelos na tela Clínica, com versão.** Editar um modelo cria a versão seguinte; cada envio
   guarda o texto exato da versão usada.
 - **Na recepção, como os pacientes.** Envios, chaves e termos assinados ficam no banco da
   recepção. O consultório envia e recebe pelo registro de operações da Conexão, como qualquer
@@ -281,8 +284,9 @@ aceita pede uma versão nova, para um termo antigo continuar igual no PDF.
   (borrado até clicar, como os outros dados sensíveis) e parentesco; a assinatura; as conferências;
   "Enviado para (66) 99999-1234: confira se a resposta veio desse número". "Guardar termo
   assinado" (principal) ou "Recusar".
-- **Configurações / Termos:** dados da clínica (nome que o responsável vê, WhatsApp que recebe as
-  respostas, profissional e registro) e os modelos (título, texto no formato de "Conteúdo do termo"
+- **Clínica** (item do menu lateral principal, depois de Agenda e Pacientes): dados da clínica
+  (nome que o responsável vê, WhatsApp que recebe as respostas, profissional e registro) e os
+  modelos de termo (título, texto no formato de "Conteúdo do termo"
   com os campos `{paciente}`, `{nascimento}`, `{clinica}`, `{profissional}` e `{data}`, prévia como
   a página mostra, versão atual, quanto do limite do link o texto usa, arquivar).
 
@@ -483,7 +487,7 @@ real. O que o desenho cobre:
    reais (links longos no WhatsApp do iPhone, do Android, do Desktop e da Web; `wa.me` com texto
    longo), com dados fictícios. O `auri://` no Chrome, no Edge e no Safari fica para a fase 3, que
    cria o protocolo.
-2. **Envio no Auri:** Configurações / Termos (clínica e modelos), aba Termos, diálogo de envio,
+2. **Envio no Auri:** tela Clínica no menu principal (dados e modelos), aba Termos, diálogo de envio,
    WhatsApp e "Copiar link", operações pela conexão.
 3. **Recebimento:** protocolo `auri://` (Mac e Windows, com o teste nos navegadores), "Colar
    resposta", conferência, tabela imutável, PDF gerado na hora e cópia de segurança.
