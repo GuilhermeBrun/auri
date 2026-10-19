@@ -1,14 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Copy, Download, RotateCcw } from 'lucide-react'
+import { Copy, Download, FileUp, RotateCcw } from 'lucide-react'
 import { useId } from 'react'
 import { Page } from '@renderer/components/Layout'
+import { ImportButton, ImportPreview } from '@renderer/components/SettingsImport'
 import { Button } from '@renderer/components/ui/button'
-import { ErrorText } from '@renderer/components/ui/section'
+import { ErrorText, PageSection, SettingsGroup } from '@renderer/components/ui/section'
 import { Select } from '@renderer/components/ui/select'
 import { SwitchField } from '@renderer/components/ui/switch'
 import { formatWhen } from '@renderer/lib/backup'
 import { isMac } from '@renderer/lib/platform'
 import { SETTINGS_CRUMB } from '@renderer/lib/settings'
+import { useSettingsImport } from '@renderer/lib/settings-import'
 import { useToast } from '@renderer/lib/toast'
 import { setUpdateState, useUpdates } from '@renderer/lib/updates'
 import type { UpdateChannel, UpdateState } from '@shared/api'
@@ -79,9 +81,12 @@ function ErrorReports(): React.JSX.Element | null {
   if (!info.data) return null
   const { enabled, count } = info.data
   return (
-    <section className="mt-10">
-      <h2 className="text-[13px] font-medium">Relatórios de erro</h2>
-      <div className="mt-3 flex flex-col gap-6 rounded-card bg-fill p-5">
+    <PageSection
+      id="relatorios"
+      title="Relatórios de erro"
+      description="O que o Auri avisa à equipe quando algo dá errado."
+    >
+      <SettingsGroup className="flex flex-col gap-5">
         <SwitchField
           label="Enviar relatórios de erro"
           description={
@@ -99,15 +104,60 @@ function ErrorReports(): React.JSX.Element | null {
             description={`${count === 1 ? '1 falha guardada' : `${count} falhas guardadas`}. O texto copiado também não tem dados de pacientes.`}
           >
             <Button variant="secondary" loading={copy.isPending} onClick={() => copy.mutate()}>
-              {!copy.isPending && <Copy />} Copiar relatório
+              <Copy /> Copiar relatório
             </Button>
           </Row>
         )}
-      </div>
-      {(enable.error ?? copy.error) && (
-        <ErrorText>{(enable.error ?? copy.error)?.message}</ErrorText>
-      )}
-    </section>
+        {(enable.error ?? copy.error) && (
+          <ErrorText>{(enable.error ?? copy.error)?.message}</ErrorText>
+        )}
+      </SettingsGroup>
+    </PageSection>
+  )
+}
+
+function Transfer(): React.JSX.Element {
+  const toast = useToast()
+  const importing = useSettingsImport()
+  const exportFile = useMutation({
+    mutationFn: () => window.transfer.exportSettings(),
+    onSuccess: (file) => {
+      if (file) {
+        toast({ title: 'Configurações exportadas', description: file.split(/[\\/]/).pop() })
+      }
+    }
+  })
+  return (
+    <PageSection
+      id="levar"
+      title="Levar para outro computador"
+      description="As configurações deste computador num arquivo, para abrir no outro."
+    >
+      <SettingsGroup className="flex flex-col gap-5">
+        <Row
+          title="Exportar configurações"
+          description="Aparência, opções da conexão e escolhas da cópia de segurança. Não vão pacientes, senhas, chaves nem a lista de computadores conectados."
+        >
+          <Button
+            variant="secondary"
+            loading={exportFile.isPending}
+            onClick={() => exportFile.mutate()}
+          >
+            <FileUp /> Exportar…
+          </Button>
+        </Row>
+        <div>
+          <Row
+            title="Importar configurações"
+            description="De um arquivo exportado por outro Auri. Antes de aplicar, aparece o que vai mudar."
+          >
+            {!importing.preview && <ImportButton state={importing} label="Importar…" />}
+          </Row>
+          <ImportPreview state={importing} className="mt-4 bg-surface" />
+        </div>
+        {exportFile.error && <ErrorText>{exportFile.error.message}</ErrorText>}
+      </SettingsGroup>
+    </PageSection>
   )
 }
 
@@ -131,65 +181,77 @@ export function GeneralPage(): React.JSX.Element {
   return (
     <Page trail={[SETTINGS_CRUMB, { label: 'Geral' }]}>
       <div className="mx-auto max-w-[720px] px-8 pt-8 pb-16">
-        <h2 className="text-[13px] font-medium">Sobre</h2>
-        {state && (
-          <div className="mt-3 flex flex-col gap-6 rounded-card bg-fill p-5">
-            <Row
-              title={
-                <>
-                  Versão{' '}
-                  <span className="ml-1 font-mono text-xs text-ink-soft">{state.version}</span>
-                </>
-              }
-              description={describe(state)}
-            >
-              {state.status === 'ready' ? (
-                <Button loading={install.isPending} onClick={() => install.mutate()}>
-                  {!install.isPending && <RotateCcw />} Reiniciar e atualizar
-                </Button>
-              ) : (
-                state.status !== 'unavailable' && (
-                  <Button
-                    variant="secondary"
-                    loading={busy}
-                    disabled={state.status === 'downloading'}
-                    onClick={() => check.mutate()}
-                  >
-                    {!busy && <Download />} Procurar atualizações
-                  </Button>
-                )
-              )}
-            </Row>
-            {state.status !== 'unavailable' && (
-              <Row
-                title={<label htmlFor={channelId}>Canal de atualização</label>}
-                description={
-                  state.channel === 'alpha'
-                    ? 'Uma versão nova por dia, com as novidades antes. Pode ter erros: volte para Estável quando quiser.'
-                    : 'Só as versões estáveis, que já foram usadas no alpha.'
-                }
-              >
-                <div className="w-36">
-                  <Select
-                    id={channelId}
-                    value={state.channel}
-                    options={CHANNELS}
-                    disabled={
-                      channel.isPending ||
-                      state.status === 'downloading' ||
-                      state.status === 'ready'
+        <p className="text-[13px] text-ink-soft">
+          O que vale para o Auri todo: versão, configurações e relatórios de erro.
+        </p>
+        <div className="mt-8 flex flex-col gap-14">
+          <PageSection
+            id="atualizacoes"
+            title="Atualizações"
+            description="A versão instalada e como as novas chegam."
+          >
+            {state && (
+              <SettingsGroup className="flex flex-col gap-5">
+                <Row
+                  title={
+                    <>
+                      Versão{' '}
+                      <span className="ml-1 font-mono text-xs text-ink-soft">{state.version}</span>
+                    </>
+                  }
+                  description={describe(state)}
+                >
+                  {state.status === 'ready' ? (
+                    <Button loading={install.isPending} onClick={() => install.mutate()}>
+                      <RotateCcw /> Reiniciar e atualizar
+                    </Button>
+                  ) : (
+                    state.status !== 'unavailable' && (
+                      <Button
+                        variant="secondary"
+                        loading={busy}
+                        disabled={state.status === 'downloading'}
+                        onClick={() => check.mutate()}
+                      >
+                        <Download /> Procurar atualizações
+                      </Button>
+                    )
+                  )}
+                </Row>
+                {state.status !== 'unavailable' && (
+                  <Row
+                    title={<label htmlFor={channelId}>Canal de atualização</label>}
+                    description={
+                      state.channel === 'alpha'
+                        ? 'Uma versão nova por dia, com as novidades antes. Pode ter erros: volte para Estável quando quiser.'
+                        : 'Só as versões estáveis, que já foram usadas no alpha.'
                     }
-                    onValueChange={(next) => channel.mutate(next as UpdateChannel)}
-                  />
-                </div>
-              </Row>
+                  >
+                    <div className="w-36">
+                      <Select
+                        id={channelId}
+                        value={state.channel}
+                        options={CHANNELS}
+                        disabled={
+                          channel.isPending ||
+                          state.status === 'downloading' ||
+                          state.status === 'ready'
+                        }
+                        onValueChange={(next) => channel.mutate(next as UpdateChannel)}
+                        compact
+                      />
+                    </div>
+                  </Row>
+                )}
+                {(check.error ?? install.error ?? channel.error) && (
+                  <ErrorText>{(check.error ?? install.error ?? channel.error)?.message}</ErrorText>
+                )}
+              </SettingsGroup>
             )}
-          </div>
-        )}
-        {(check.error ?? install.error ?? channel.error) && (
-          <ErrorText>{(check.error ?? install.error ?? channel.error)?.message}</ErrorText>
-        )}
-        <ErrorReports />
+          </PageSection>
+          <Transfer />
+          <ErrorReports />
+        </div>
       </div>
     </Page>
   )

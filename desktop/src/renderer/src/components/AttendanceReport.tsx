@@ -58,7 +58,7 @@ export function MonthReportButton({
         })
       }
     >
-      {!report.isPending && <FileDown />}
+      <FileDown />
     </Button>
   )
 }
@@ -155,7 +155,7 @@ function ReportForm({
             Cancelar
           </Button>
           <Button type="submit" disabled={!valid} loading={report.isPending}>
-            {!report.isPending && <FileDown />} Gerar PDF
+            <FileDown /> Gerar PDF
           </Button>
         </div>
       </DialogFooter>

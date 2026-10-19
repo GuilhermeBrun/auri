@@ -1,9 +1,8 @@
 import {
   ArrowLeft,
-  ArrowLeftRight,
   Building2,
   CalendarDays,
-  DatabaseBackup,
+  Database,
   Network,
   PanelLeft,
   PanelLeftClose,
@@ -61,14 +60,13 @@ const NAV_ITEMS: NavItem[] = [
 ]
 
 const SETTINGS_PATH = '/configuracoes'
-const CONNECTION_PATH = `${SETTINGS_PATH}/conexao`
-const BACKUP_PATH = `${SETTINGS_PATH}/copia`
+const STORAGE_PATH = `${SETTINGS_PATH}/armazenamento`
+const CONNECTION_PATH = `${STORAGE_PATH}?secao=conexao`
+const BACKUP_PATH = `${STORAGE_PATH}?secao=copia`
 const SETTINGS_ITEMS: NavItem[] = [
   { to: `${SETTINGS_PATH}/geral`, label: 'Geral', icon: <SlidersHorizontal /> },
   { to: `${SETTINGS_PATH}/aparencia`, label: 'Aparência', icon: <SunMoon /> },
-  { to: CONNECTION_PATH, label: 'Conexão', icon: <Network /> },
-  { to: BACKUP_PATH, label: 'Cópia de segurança', icon: <DatabaseBackup /> },
-  { to: `${SETTINGS_PATH}/transferir`, label: 'Importar e exportar', icon: <ArrowLeftRight /> }
+  { to: STORAGE_PATH, label: 'Armazenamento', icon: <Database /> }
 ]
 
 function SidebarNav({
@@ -125,7 +123,7 @@ function SidebarBody(): React.JSX.Element {
       <div key="configuracoes" className="flex flex-1 animate-fade-in flex-col">
         <SidebarNav
           items={SETTINGS_ITEMS.map((item) =>
-            item.to === BACKUP_PATH ? { ...item, alert: attention } : item
+            item.to === STORAGE_PATH ? { ...item, alert: attention } : item
           )}
           label="Configurações"
           pathname={pathname}
@@ -173,12 +171,12 @@ function BackupAttention(): null {
     shown.current = true
     toast({
       title: 'A cópia de segurança parou',
-      description: message ?? 'Veja em Configurações › Cópia de segurança.',
+      description: message ?? 'Veja em Configurações › Armazenamento.',
       icon: <TriangleAlert className="text-warning" />,
       action: {
         label: 'Resolver',
-        altText: 'Abra Configurações › Cópia de segurança.',
-        onClick: () => void navigate('/configuracoes/copia')
+        altText: 'Abra Configurações › Armazenamento.',
+        onClick: () => void navigate(BACKUP_PATH)
       }
     })
   }, [attention, message, toast, navigate])
@@ -362,8 +360,8 @@ function ConnectionGate({
         </ErrorState>
       ) : status === 'revoked' ? (
         <ErrorState title={`Este computador foi desconectado de ${server}`}>
-          Para voltar a usar os dados, conecte de novo em Configurações / Conexão, com um código
-          gerado em {server}.<span className="mt-4 flex justify-center">{openSettings}</span>
+          Para voltar a usar os dados, conecte de novo em Configurações / Armazenamento, com um
+          código gerado em {server}.<span className="mt-4 flex justify-center">{openSettings}</span>
         </ErrorState>
       ) : (
         <ErrorState

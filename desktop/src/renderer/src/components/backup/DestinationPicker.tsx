@@ -113,12 +113,7 @@ export function ProviderAction({
           {ACTION[state].after(provider.name)}
         </p>
       )}
-      <Button
-        variant="secondary"
-        size="sm"
-        loading={action.isPending}
-        onClick={() => action.mutate()}
-      >
+      <Button variant="secondary" loading={action.isPending} onClick={() => action.mutate()}>
         {started && state === 'not-installed'
           ? 'Tentar de novo'
           : ACTION[state].label(provider.name)}
@@ -265,12 +260,11 @@ export function DestinationPicker({
       )}
       <Button
         variant="ghost"
-        size="sm"
-        className="mt-3 -ml-2.5"
+        className="mt-3 -ml-3.5"
         loading={choose.isPending}
         onClick={() => choose.mutate()}
       >
-        {!choose.isPending && <FolderOpen />} Outra pasta (pendrive, HD externo)…
+        <FolderOpen /> Outra pasta (pendrive, HD externo)…
       </Button>
       {(choose.error ?? providers.error) && (
         <ErrorText>{(choose.error ?? providers.error)!.message}</ErrorText>

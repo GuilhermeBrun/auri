@@ -337,7 +337,8 @@ export function createConnection(options: {
       if (client) return client.request(channel, args)
       return {
         ok: false,
-        error: 'Este computador ainda não está conectado a outro. Veja em Configurações / Conexão.'
+        error:
+          'Este computador ainda não está conectado a outro. Veja em Configurações / Armazenamento.'
       }
     },
 

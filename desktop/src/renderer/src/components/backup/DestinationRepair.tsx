@@ -61,7 +61,6 @@ export function DestinationRepair({
         {problem.state === 'ready' && problem.folder ? (
           <Button
             variant="secondary"
-            size="sm"
             loading={change.isPending}
             onClick={() => change.mutate({ kind, folder: problem.folder! })}
           >
@@ -76,12 +75,7 @@ export function DestinationRepair({
           />
         )}
         {!choosing && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="mt-2 -ml-2.5"
-            onClick={() => setChoosing(true)}
-          >
+          <Button variant="ghost" className="mt-2 -ml-3.5" onClick={() => setChoosing(true)}>
             Escolher outra nuvem
           </Button>
         )}
@@ -89,9 +83,11 @@ export function DestinationRepair({
       {choosing && (
         <div className="mt-4 animate-fade-in">
           <DestinationPicker onPick={(next) => change.mutate(next)} />
-          <Button variant="secondary" size="sm" className="mt-3" onClick={() => setChoosing(false)}>
-            Cancelar
-          </Button>
+          <div className="mt-3 flex justify-end">
+            <Button variant="secondary" onClick={() => setChoosing(false)}>
+              Cancelar
+            </Button>
+          </div>
         </div>
       )}
       {change.error && <ErrorText>{change.error.message}</ErrorText>}

@@ -184,9 +184,19 @@ async function run() {
   await sleep(2000)
   console.log(`plataforma: ${await page.eval('window.platform')}`)
 
-  const welcome = await page.eval(`document.body.textContent.includes('Já usa o Auri?')`)
-  check('primeira abertura mostra "Já usa o Auri?"', welcome)
+  const welcome = await page.eval(`document.body.textContent.includes('Boas-vindas ao Auri')`)
+  check('primeira abertura mostra a introdução', welcome)
   await shot(page, '01-boas-vindas')
+  for (let i = 0; i < 2; i++) {
+    await page.eval(
+      `[...document.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Continuar')?.click()`
+    )
+    await sleep(300)
+  }
+  check(
+    'a introdução termina em "Já usa o Auri?"',
+    await page.eval(`document.body.textContent.includes('Já usa o Auri?')`)
+  )
   await page.eval(
     `[...document.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Começar do zero')?.click()`
   )
@@ -214,7 +224,7 @@ async function run() {
   const providers = await page.eval(`window.backup.providers()`)
   console.log(`nuvens: ${providers.map((p) => `${p.id}=${p.state}`).join(', ')}`)
   check('detecta as nuvens do sistema', providers.length >= 2)
-  await page.eval(`location.hash = '#/configuracoes/copia'`)
+  await page.eval(`location.hash = '#/configuracoes/armazenamento?secao=copia'`)
   await sleep(3500)
   await shot(page, '02-assistente-nuvens')
 
@@ -291,10 +301,15 @@ async function run() {
   await page.eval(`window.transfer.applySettings(${JSON.stringify(preview?.token)})`)
   const applied = await page.eval(`window.connection.info().then((i) => i.name)`)
   check('aplica as configurações importadas', applied === 'Recepção')
-  await page.eval(`location.hash = '#/configuracoes/transferir'`)
-  await shot(page, '04-importar-exportar')
-  await page.eval(`location.hash = '#/configuracoes/copia'`)
-  await shot(page, '05-copia-de-seguranca')
+  await page.eval(`location.hash = '#/configuracoes/geral'`)
+  await sleep(500)
+  await shot(page, '04-geral-importar-exportar')
+  await page.eval(`location.hash = '#/configuracoes/armazenamento'`)
+  await sleep(1000)
+  await shot(page, '05-armazenamento')
+  await page.eval(`location.hash = '#/configuracoes/armazenamento?secao=copia'`)
+  await sleep(1000)
+  await shot(page, '06-armazenamento-copia')
 
   if (process.env.AURI_E2E_INSTALAR) {
     await page.eval(`window.backup.disable()`)

@@ -1,10 +1,10 @@
 import { cva, type VariantProps } from 'class-variance-authority'
-import type { ButtonHTMLAttributes } from 'react'
-import { AuriSymbol } from '@renderer/components/ui/brand'
+import { useEffect, useState, type ButtonHTMLAttributes } from 'react'
+import { AuriSymbolFill } from '@renderer/components/ui/brand'
 import { cn } from '@renderer/lib/utils'
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center gap-1.5 rounded-control font-medium whitespace-nowrap transition-[background-color,color,box-shadow,opacity,scale] duration-150 active:scale-[0.97] disabled:pointer-events-none disabled:opacity-40 data-[loading=true]:disabled:opacity-100 [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:stroke-[1.75]',
+  'relative inline-flex items-center justify-center gap-1.5 rounded-control font-medium whitespace-nowrap transition-[background-color,color,box-shadow,opacity,scale] duration-150 active:scale-[0.97] disabled:pointer-events-none disabled:opacity-40 data-[loading=true]:disabled:opacity-100 [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:stroke-[1.75]',
   {
     variants: {
       variant: {
@@ -32,16 +32,34 @@ type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> &
     loading?: boolean
   }
 
+type Phase = 'idle' | 'loading' | 'done'
+
+const DONE_MS = 360
+
+function useLoadingPhase(loading: boolean): Phase {
+  const [phase, setPhase] = useState<Phase>(loading ? 'loading' : 'idle')
+  if (loading && phase !== 'loading') setPhase('loading')
+  if (!loading && phase === 'loading') setPhase('done')
+  useEffect(() => {
+    if (phase !== 'done') return
+    const timer = setTimeout(() => setPhase('idle'), DONE_MS)
+    return () => clearTimeout(timer)
+  }, [phase])
+  return phase
+}
+
 export function Button({
   className,
   variant,
   size,
   type = 'button',
-  loading,
+  loading = false,
   disabled,
   children,
   ...props
 }: ButtonProps): React.JSX.Element {
+  const phase = useLoadingPhase(loading)
+  const busy = phase !== 'idle'
   return (
     <button
       type={type}
@@ -51,8 +69,25 @@ export function Button({
       aria-busy={loading || undefined}
       {...props}
     >
-      {loading && <AuriSymbol animated />}
-      {children}
+      <span
+        className={cn(
+          'inline-flex items-center justify-center gap-1.5',
+          phase === 'loading' && 'opacity-0',
+          phase === 'done' && 'transition-opacity delay-200 duration-150'
+        )}
+      >
+        {children}
+      </span>
+      {busy && (
+        <span
+          className={cn(
+            'absolute inset-0 flex animate-fade-in items-center justify-center',
+            phase === 'done' && 'opacity-0 transition-opacity delay-200 duration-150'
+          )}
+        >
+          <AuriSymbolFill done={phase === 'done'} />
+        </span>
+      )}
     </button>
   )
 }

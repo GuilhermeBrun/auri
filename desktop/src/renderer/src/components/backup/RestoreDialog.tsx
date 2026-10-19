@@ -151,7 +151,7 @@ function RestoreForm({
           loading={pick.isPending}
           onClick={() => pick.mutate()}
         >
-          {!pick.isPending && <FileUp />} Escolher arquivo…
+          <FileUp /> Escolher arquivo…
         </Button>
         {pick.error && <ErrorText>{pick.error.message}</ErrorText>}
 

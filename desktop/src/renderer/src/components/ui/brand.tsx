@@ -44,3 +44,20 @@ export function AuriLogo({ className }: { className?: string }): React.JSX.Eleme
     </svg>
   )
 }
+
+export function AuriSymbolFill({
+  done,
+  className
+}: {
+  done?: boolean
+  className?: string
+}): React.JSX.Element {
+  return (
+    <span aria-hidden="true" className={cn('relative inline-block size-4 shrink-0', className)}>
+      <AuriSymbol className="absolute inset-0 size-full opacity-25" />
+      <span className={cn('symbol-fill absolute inset-0', done && 'symbol-fill-done')}>
+        <AuriSymbol className="size-full" />
+      </span>
+    </span>
+  )
+}

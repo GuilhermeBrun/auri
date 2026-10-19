@@ -15,6 +15,7 @@ type SelectProps = {
   options: readonly { value: string; label: string }[]
   invalid?: boolean
   disabled?: boolean
+  compact?: boolean
 }
 
 export function Select({
@@ -23,7 +24,8 @@ export function Select({
   onValueChange,
   options,
   invalid,
-  disabled
+  disabled,
+  compact
 }: SelectProps): React.JSX.Element {
   return (
     <SelectPrimitive.Root value={value} onValueChange={onValueChange} disabled={disabled}>
@@ -32,7 +34,8 @@ export function Select({
         aria-invalid={invalid || undefined}
         className={cn(
           controlClass,
-          'flex h-9 items-center justify-between gap-2 pr-2.5 text-left pointer-coarse:h-11',
+          'flex items-center justify-between gap-2 pr-2.5 text-left pointer-coarse:h-11',
+          compact ? 'h-8' : 'h-9',
           'data-[state=open]:border-ink data-[state=open]:ring-[3px] data-[state=open]:ring-ink/10'
         )}
       >
