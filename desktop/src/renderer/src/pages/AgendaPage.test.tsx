@@ -4,8 +4,9 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { FUNCIONAMENTO_PADRAO, type Funcionamento } from '@shared/agenda'
 import type { Appointment, Clinic } from '@shared/schemas'
+import type { Etiqueta, TipoAtendimento } from '@shared/tipos'
 import { AppointmentDialog, type AppointmentDraft } from '@renderer/components/AppointmentDialog'
-import { fakeAppointment, fakePatient, renderRoute } from '@renderer/testing'
+import { fakeAppointment, fakePatient, renderRoute, AVALIACAO } from '@renderer/testing'
 
 vi.hoisted(() => {
   const bridge = (): unknown =>
@@ -33,6 +34,11 @@ vi.hoisted(() => {
   globalThis.requestIdleCallback ??= (() => 0) as unknown as typeof requestIdleCallback
   globalThis.cancelIdleCallback ??= () => {}
   Object.defineProperty(document, 'elementFromPoint', { value: () => null, configurable: true })
+  Object.assign(Element.prototype, {
+    hasPointerCapture: () => false,
+    releasePointerCapture: () => {},
+    scrollIntoView: () => {}
+  })
 })
 
 import { AgendaPage } from './AgendaPage'
@@ -63,7 +69,7 @@ const avaliacao = fakeAppointment({
   inicio: '2026-10-14T14:00',
   fim: '2026-10-14T15:00',
   patient_nome: 'Bruno Fictício Reis',
-  tipo: 'avaliacao'
+  ...AVALIACAO
 })
 const sabado = fakeAppointment({ inicio: '2026-10-17T11:00', patient_nome: 'Caio Fictício' })
 
@@ -72,7 +78,20 @@ let api: {
   appointments: Record<string, ReturnType<typeof vi.fn>>
   patients: Record<string, ReturnType<typeof vi.fn>>
   attendance: Record<string, ReturnType<typeof vi.fn>>
+  tipos: Record<string, ReturnType<typeof vi.fn>>
+  etiquetas: Record<string, ReturnType<typeof vi.fn>>
 }
+
+const TIPOS: TipoAtendimento[] = [
+  { id: 1, nome: 'Sessão', categoria: 'sessao', cor: 'grafite', duracao: 30, arquivado: false },
+  { id: 2, nome: 'Avaliação', categoria: 'avaliacao', cor: 'azul', duracao: 60, arquivado: false },
+  { id: 4, nome: 'Audiometria', categoria: 'exame', cor: 'violeta', duracao: 45, arquivado: false }
+]
+const CONVENIO = { id: 7, nome: 'Convênio', cor: 'rosa' } as const
+const ETIQUETAS: Etiqueta[] = [
+  { ...CONVENIO, arquivado: false },
+  { id: 8, nome: 'Primeira vez', cor: 'areia', arquivado: false }
+]
 
 function setup(appointments: Appointment[], funcionamento = FUNCIONAMENTO_PADRAO): void {
   api = {
@@ -83,7 +102,9 @@ function setup(appointments: Appointment[], funcionamento = FUNCIONAMENTO_PADRAO
       update: vi.fn(async (_id, input) => fakeAppointment(input))
     },
     patients: { list: vi.fn(async () => [fakePatient()]) },
-    attendance: { listByPatient: vi.fn(async () => []) }
+    attendance: { listByPatient: vi.fn(async () => []) },
+    tipos: { list: vi.fn(async () => TIPOS) },
+    etiquetas: { list: vi.fn(async () => ETIQUETAS) }
   }
   Object.assign(window, { api })
 }
@@ -172,6 +193,68 @@ const draftAt = (inicio: Date, duracao = 30): AppointmentDraft => ({
   inicio,
   duracao,
   patient: { id: 1, nome: 'Helena Fictícia Andrade' }
+})
+
+describe('tipos e etiquetas na agenda', () => {
+  const exame = fakeAppointment({
+    inicio: '2026-10-15T09:00',
+    patient_nome: 'Eva Fictícia',
+    tipo_id: 4,
+    tipo_nome: 'Audiometria',
+    tipo_cor: 'violeta',
+    categoria: 'exame',
+    etiquetas: [CONVENIO]
+  })
+  const comum = fakeAppointment({ inicio: '2026-10-16T09:00', patient_nome: 'Fábio Fictício' })
+
+  it('o cartão mostra o nome do tipo, a cor e as etiquetas', async () => {
+    setup([exame, comum])
+    renderRoute('/agenda', '/agenda', <AgendaPage />)
+    const card = await eventOf('Eva Fictícia')
+    expect(within(card).getByText(/Audiometria/)).toBeTruthy()
+    expect(within(card).getByRole('img', { name: 'Etiquetas: Convênio' })).toBeTruthy()
+    const wrapper = card.closest<HTMLElement>('.rbc-event') ?? card
+    expect(wrapper.style.getPropertyValue('--tipo-cor')).toBe('var(--color-tipo-violeta)')
+  })
+
+  it('filtra a agenda por etiqueta', async () => {
+    setup([exame, comum])
+    renderRoute('/agenda', '/agenda', <AgendaPage />)
+    await eventOf('Fábio Fictício')
+    await userEvent.click(screen.getByRole('combobox', { name: 'Filtrar por etiqueta' }))
+    await userEvent.click(await screen.findByRole('option', { name: 'Convênio' }))
+    await waitFor(() =>
+      expect(screen.queryByText('Fábio Fictício', { selector: '.name-full' })).toBeNull()
+    )
+    expect(await eventOf('Eva Fictícia')).toBeTruthy()
+  })
+
+  it('o diálogo usa a duração do tipo e grava tipo e etiquetas', async () => {
+    setup([])
+    renderRoute(
+      '/agenda',
+      '/agenda',
+      <AppointmentDialog draft={draftAt(new Date(2026, 9, 15, 9, 0))} onClose={() => {}} />
+    )
+    const tipo = await screen.findByRole('combobox', { name: 'Tipo' })
+    await waitFor(() => expect(tipo.textContent).toContain('Sessão'))
+    await userEvent.click(tipo)
+    await userEvent.click(await screen.findByRole('option', { name: 'Audiometria' }))
+    expect(screen.getByRole('combobox', { name: 'Duração' }).textContent).toContain('45 min')
+    await userEvent.click(screen.getByRole('button', { name: 'Primeira vez' }))
+    expect(screen.getByText(/Audiometria de 45 min/)).toBeTruthy()
+    await userEvent.click(screen.getByRole('button', { name: 'Agendar' }))
+    await waitFor(() =>
+      expect(api.appointments.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tipo_id: 4,
+          etiquetas: [8],
+          inicio: '2026-10-15T09:00',
+          fim: '2026-10-15T09:45'
+        })
+      )
+    )
+  })
 })
 
 describe('agendamento e funcionamento', () => {

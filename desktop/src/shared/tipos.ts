@@ -9,16 +9,16 @@ export const CATEGORIA_LABELS: Record<Categoria, string> = {
   exame: 'Exame'
 }
 
-export const CORES = ['grafite', 'azul', 'violeta', 'rosa', 'ambar', 'terracota'] as const
+export const CORES = ['grafite', 'ardosia', 'azul', 'violeta', 'rosa', 'areia'] as const
 export type Cor = (typeof CORES)[number]
 
 export const COR_LABELS: Record<Cor, string> = {
   grafite: 'Grafite',
+  ardosia: 'Ardósia',
   azul: 'Azul',
   violeta: 'Violeta',
   rosa: 'Rosa',
-  ambar: 'Âmbar',
-  terracota: 'Terracota'
+  areia: 'Areia'
 }
 
 export const DURACOES = [15, 30, 45, 60, 75, 90, 120] as const
@@ -54,6 +54,10 @@ export type Etiqueta = EtiquetaInput & { id: number; arquivado: boolean }
 export type EtiquetaResumo = Pick<Etiqueta, 'id' | 'nome' | 'cor'>
 
 export function consomePacote(categoria: Categoria): boolean {
+  return categoria === 'sessao'
+}
+
+export function contaNaFrequencia(categoria: Categoria): boolean {
   return categoria === 'sessao'
 }
 

@@ -10,7 +10,7 @@ import {
 const TIPOS_SEMENTE: SettingsSnapshot['tipos'] = [
   { nome: 'Sessão', categoria: 'sessao', cor: 'grafite', duracao: 30 },
   { nome: 'Avaliação', categoria: 'avaliacao', cor: 'azul', duracao: 60 },
-  { nome: 'Exame', categoria: 'exame', cor: 'ambar', duracao: 60 }
+  { nome: 'Exame', categoria: 'exame', cor: 'violeta', duracao: 60 }
 ]
 
 const { 6: _, ...SEM_SABADO } = FUNCIONAMENTO_PADRAO
@@ -43,7 +43,7 @@ const RECEPCAO: SettingsSnapshot = {
   ],
   tipos: [
     ...TIPOS_SEMENTE,
-    { nome: 'Audiometria', categoria: 'exame', cor: 'violeta', duracao: 45 }
+    { nome: 'Audiometria', categoria: 'exame', cor: 'ardosia', duracao: 45 }
   ],
   etiquetas: [{ nome: 'Convênio', cor: 'azul' }]
 }

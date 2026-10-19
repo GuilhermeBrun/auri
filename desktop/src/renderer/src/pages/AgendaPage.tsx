@@ -24,6 +24,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type CSSProperties,
   type HTMLAttributes,
   type RefObject
 } from 'react'
@@ -60,10 +61,13 @@ import { AppointmentDialog, type AppointmentDraft } from '@renderer/components/A
 import { Page } from '@renderer/components/Layout'
 import { Button } from '@renderer/components/ui/button'
 import { ErrorState } from '@renderer/components/ui/error'
+import { CorPonto } from '@renderer/components/ui/cor'
 import { Segmented } from '@renderer/components/ui/segmented'
-import { appointmentsQuery, clinicQuery } from '@renderer/lib/queries'
-import { DEFAULT_DURATION, nextSlot, PRESENCA_LABELS, tipoLabel } from '@renderer/lib/session'
+import { Select } from '@renderer/components/ui/select'
+import { appointmentsQuery, clinicQuery, etiquetasQuery } from '@renderer/lib/queries'
+import { DEFAULT_DURATION, nextSlot, PRESENCA_LABELS } from '@renderer/lib/session'
 import { cn } from '@renderer/lib/utils'
+import { corVar } from '@renderer/lib/tipos'
 
 const WEEK_OPTIONS = { weekStartsOn: 0 as const }
 
@@ -206,8 +210,7 @@ function visibleRange(date: Date, view: View): { de: string; ate: string } {
 function EventContent({ event }: EventProps<CalendarEvent>): React.JSX.Element {
   const short = differenceInMinutes(event.end, event.start) < 45
   const start = formatTime(event.start)
-  const { tipo, assinatura } = event.appointment
-  const tipoText = tipoLabel(tipo)
+  const { tipo_nome: tipoText, assinatura, etiquetas } = event.appointment
   const confirmado = !assinatura && confirmacao(event.appointment) === 'confirmado'
   return (
     <span className="flex min-w-0 flex-col">
@@ -229,6 +232,17 @@ function EventContent({ event }: EventProps<CalendarEvent>): React.JSX.Element {
               aria-label={CONFIRMACAO_LABELS.confirmado}
               className="ml-1 inline size-3 -translate-y-px stroke-[2.5] opacity-75"
             />
+          )}
+          {etiquetas.length > 0 && (
+            <span
+              role="img"
+              aria-label={`Etiquetas: ${etiquetas.map((e) => e.nome).join(', ')}`}
+              className="ml-1 inline-flex -translate-y-px gap-0.5 align-middle"
+            >
+              {etiquetas.map((e) => (
+                <CorPonto key={e.id} cor={e.cor} className="size-1.5" />
+              ))}
+            </span>
           )}
           <span
             className={cn('event-tipo text-xs font-normal opacity-75', !short && 'event-tipo-long')}
@@ -294,11 +308,39 @@ type AgendaControlsProps = {
   view: View
   onNavigate: (action: NavAction) => void
   onView: (view: View) => void
+  etiqueta: number | null
+  onEtiqueta: (etiqueta: number | null) => void
 }
 
-function AgendaControls({ view, onNavigate, onView }: AgendaControlsProps): React.JSX.Element {
+function AgendaControls({
+  view,
+  onNavigate,
+  onView,
+  etiqueta,
+  onEtiqueta
+}: AgendaControlsProps): React.JSX.Element {
+  const { data = [] } = useQuery(etiquetasQuery())
+  const opcoes = data.filter((e) => !e.arquivado || e.id === etiqueta)
   return (
     <>
+      {opcoes.length > 0 && (
+        <div className="w-40">
+          <Select
+            aria-label="Filtrar por etiqueta"
+            compact
+            value={etiqueta === null ? 'todas' : String(etiqueta)}
+            onValueChange={(v) => onEtiqueta(v === 'todas' ? null : Number(v))}
+            options={[
+              { value: 'todas', label: 'Todas as etiquetas' },
+              ...opcoes.map((e) => ({
+                value: String(e.id),
+                label: e.nome,
+                icon: <CorPonto cor={e.cor} />
+              }))
+            ]}
+          />
+        </div>
+      )}
       <div
         role="group"
         aria-label="Período"
@@ -348,10 +390,11 @@ const COMPONENTS: Components<CalendarEvent> = {
 const CALENDAR_STYLE = { height: '100%' }
 
 function tooltip(event: CalendarEvent): string {
-  const { tipo, presenca, observacao } = event.appointment
+  const { tipo_nome, presenca, observacao, etiquetas } = event.appointment
   const { assinatura } = event.appointment
   const tags = [
-    tipoLabel(tipo),
+    tipo_nome,
+    ...etiquetas.map((e) => e.nome),
     presenca ? PRESENCA_LABELS[presenca] : '',
     !presenca && !assinatura ? CONFIRMACAO_LABELS[confirmacao(event.appointment)] : '',
     assinatura ? `chegada assinada por ${assinatura.signer_nome}` : ''
@@ -465,14 +508,15 @@ const AgendaCalendar = memo(function AgendaCalendar({
   }, [events, arrivedRef])
 
   const eventPropGetter = useCallback(
-    (event: CalendarEvent): { className?: string } => {
+    (event: CalendarEvent): { className?: string; style: CSSProperties } => {
       const missed =
         event.appointment.presenca === 'falta' || event.appointment.presenca === 'desmarcou'
       const className = cn(
         event.id === arrivedRef.current && 'event-arrived',
         missed && 'event-missed'
       )
-      return className ? { className } : {}
+      const style = { '--tipo-cor': corVar(event.appointment.tipo_cor) } as CSSProperties
+      return className ? { className, style } : { style }
     },
     [arrivedRef]
   )
@@ -534,7 +578,8 @@ export function AgendaPage(): React.JSX.Element {
   })
   const failed = error !== null && data === undefined
 
-  const events = useMemo<CalendarEvent[]>(
+  const [etiqueta, setEtiqueta] = useState<number | null>(null)
+  const allEvents = useMemo<CalendarEvent[]>(
     () =>
       (data ?? []).map((a) => ({
         id: a.id,
@@ -545,10 +590,17 @@ export function AgendaPage(): React.JSX.Element {
       })),
     [data]
   )
+  const events = useMemo(
+    () =>
+      etiqueta === null
+        ? allEvents
+        : allEvents.filter((e) => e.appointment.etiquetas.some((x) => x.id === etiqueta)),
+    [allEvents, etiqueta]
+  )
 
   const shownDays = useMemo(
-    () => shownWeekDays(date, funcionamento, events),
-    [date, funcionamento, events]
+    () => shownWeekDays(date, funcionamento, allEvents),
+    [date, funcionamento, allEvents]
   )
 
   useEffect(() => {
@@ -604,7 +656,15 @@ export function AgendaPage(): React.JSX.Element {
           )
         }
       ]}
-      toolbar={<AgendaControls view={view} onNavigate={navigate} onView={setView} />}
+      toolbar={
+        <AgendaControls
+          view={view}
+          onNavigate={navigate}
+          onView={setView}
+          etiqueta={etiqueta}
+          onEtiqueta={setEtiqueta}
+        />
+      }
       actions={
         <Button
           variant="ghost"

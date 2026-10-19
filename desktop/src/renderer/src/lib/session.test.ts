@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vite-plus/test'
-import { nextSlot, PRESENCA_OPTIONS, TIPO_OPTIONS, tipoLabel } from './session'
+import { nextSlot, PRESENCA_OPTIONS } from './session'
 
 const at = (h: number, m: number): Date => new Date(2026, 9, 14, h, m)
 
@@ -24,13 +24,7 @@ describe('próximo horário para agendar', () => {
     expect(nextSlot(at(9, 10), { 3: { abre: '13:00', fecha: '18:00' } })).toEqual(at(13, 0))
   })
 
-  it('oferece os tipos e as presenças com os nomes da ficha', () => {
-    expect(TIPO_OPTIONS).toEqual([
-      ['sessao', 'Sessão'],
-      ['avaliacao', 'Avaliação']
-    ])
-    expect(tipoLabel('sessao')).toBe('Sessão')
-    expect(tipoLabel('avaliacao')).toBe('Avaliação')
+  it('oferece as presenças com os nomes da ficha', () => {
     expect(PRESENCA_OPTIONS.map(([, label]) => label)).toEqual(['Presente', 'Faltou', 'Desmarcou'])
   })
 })

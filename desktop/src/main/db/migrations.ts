@@ -509,7 +509,7 @@ ${onlyVoid('finance_payments', ['id', 'patient_id', 'data', 'valor_centavos', 'f
     id           INTEGER PRIMARY KEY,
     nome         TEXT NOT NULL CHECK (length(trim(nome)) > 0),
     categoria    TEXT NOT NULL CHECK (categoria IN ('sessao', 'avaliacao', 'exame')),
-    cor          TEXT NOT NULL CHECK (cor IN ('grafite', 'azul', 'violeta', 'rosa', 'ambar', 'terracota')),
+    cor          TEXT NOT NULL CHECK (cor IN ('grafite', 'ardosia', 'azul', 'violeta', 'rosa', 'areia')),
     duracao      INTEGER NOT NULL CHECK (duracao BETWEEN 15 AND 240 AND duracao % 15 = 0),
     arquivado_em TEXT,
     created_at   TEXT NOT NULL DEFAULT ${NOW}
@@ -518,7 +518,7 @@ ${onlyVoid('finance_payments', ['id', 'patient_id', 'data', 'valor_centavos', 'f
   INSERT INTO appointment_types (id, nome, categoria, cor, duracao) VALUES
     (1, 'Sessão', 'sessao', 'grafite', 30),
     (2, 'Avaliação', 'avaliacao', 'azul', 60),
-    (3, 'Exame', 'exame', 'ambar', 60);
+    (3, 'Exame', 'exame', 'violeta', 60);
 
   CREATE TRIGGER appointment_types_categoria_fixa
   BEFORE UPDATE OF categoria ON appointment_types
@@ -536,7 +536,7 @@ ${onlyVoid('finance_payments', ['id', 'patient_id', 'data', 'valor_centavos', 'f
   CREATE TABLE tags (
     id           INTEGER PRIMARY KEY,
     nome         TEXT NOT NULL CHECK (length(trim(nome)) > 0),
-    cor          TEXT NOT NULL CHECK (cor IN ('grafite', 'azul', 'violeta', 'rosa', 'ambar', 'terracota')),
+    cor          TEXT NOT NULL CHECK (cor IN ('grafite', 'ardosia', 'azul', 'violeta', 'rosa', 'areia')),
     arquivado_em TEXT,
     created_at   TEXT NOT NULL DEFAULT ${NOW}
   );

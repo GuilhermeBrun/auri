@@ -291,11 +291,9 @@ function EvolutionRow({
   onOpen: (appointment: Appointment) => void
 }): React.JSX.Element {
   const inicio = parseIsoLocalDateTime(a.inicio)
-  const meta = [
-    timeRange(a),
-    a.tipo === 'avaliacao' ? 'Avaliação' : 'Sessão',
-    a.presenca ? PRESENCA_LABELS[a.presenca] : ''
-  ].filter(Boolean)
+  const meta = [timeRange(a), a.tipo_nome, a.presenca ? PRESENCA_LABELS[a.presenca] : ''].filter(
+    Boolean
+  )
   return (
     <button
       type="button"

@@ -1,5 +1,6 @@
 import { Check, ChevronDown } from 'lucide-react'
 import { Select as SelectPrimitive } from 'radix-ui'
+import type { ReactNode } from 'react'
 import {
   controlClass,
   optionClass,
@@ -12,10 +13,11 @@ type SelectProps = {
   id?: string
   value: string
   onValueChange: (value: string) => void
-  options: readonly { value: string; label: string }[]
+  options: readonly { value: string; label: string; icon?: ReactNode }[]
   invalid?: boolean
   disabled?: boolean
   compact?: boolean
+  'aria-label'?: string
 }
 
 export function Select({
@@ -25,12 +27,14 @@ export function Select({
   options,
   invalid,
   disabled,
-  compact
+  compact,
+  'aria-label': ariaLabel
 }: SelectProps): React.JSX.Element {
   return (
     <SelectPrimitive.Root value={value} onValueChange={onValueChange} disabled={disabled}>
       <SelectPrimitive.Trigger
         id={id}
+        aria-label={ariaLabel}
         aria-invalid={invalid || undefined}
         className={cn(
           controlClass,
@@ -57,7 +61,16 @@ export function Select({
           <SelectPrimitive.Viewport>
             {options.map((option) => (
               <SelectPrimitive.Item key={option.value} value={option.value} className={optionClass}>
-                <SelectPrimitive.ItemText>{option.label}</SelectPrimitive.ItemText>
+                <SelectPrimitive.ItemText>
+                  {option.icon ? (
+                    <span className="flex items-center gap-2">
+                      {option.icon}
+                      {option.label}
+                    </span>
+                  ) : (
+                    option.label
+                  )}
+                </SelectPrimitive.ItemText>
                 <SelectPrimitive.ItemIndicator className="ml-auto">
                   <Check className={trailingIconClass} aria-hidden="true" />
                 </SelectPrimitive.ItemIndicator>

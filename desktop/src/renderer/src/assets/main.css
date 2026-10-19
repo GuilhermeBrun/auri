@@ -10,6 +10,12 @@
   --color-solid-active: #000000;
   --color-on-solid: #ffffff;
   --color-session: #e6e6ec;
+  --color-tipo-grafite: #6e6e7c;
+  --color-tipo-ardosia: #5c7184;
+  --color-tipo-azul: #4a6ea8;
+  --color-tipo-violeta: #7a62aa;
+  --color-tipo-rosa: #a65c86;
+  --color-tipo-areia: #94784f;
   --color-session-hover: #dcdce5;
 
   --color-ink: #1b1b22;
@@ -209,6 +215,12 @@
       --color-on-solid: #ececf1;
       --color-session: #2f2f38;
       --color-session-hover: #36363f;
+      --color-tipo-grafite: #9a9aa8;
+      --color-tipo-ardosia: #8aa0b3;
+      --color-tipo-azul: #7f9fd6;
+      --color-tipo-violeta: #a690d6;
+      --color-tipo-rosa: #d091b5;
+      --color-tipo-areia: #c4a77c;
 
       --color-ink: #ececf1;
       --color-ink-soft: #a9a9b7;
@@ -516,6 +528,23 @@
 .rbc-event {
   position: relative;
   transition: background-color 120ms;
+}
+
+.rbc-event::before {
+  content: '';
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 3px;
+  width: 2px;
+  border-radius: 1px;
+  background: var(--tipo-cor, transparent);
+  pointer-events: none;
+}
+
+.rbc-event.rbc-selected::before {
+  background: currentColor;
+  opacity: 0.6;
 }
 
 .rbc-event:hover {

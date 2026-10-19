@@ -133,7 +133,7 @@ function ArrivalForm({
           </DialogPrimitive.Title>
           <p className="mt-1 text-[15px] text-ink-soft tabular-nums">
             Hoje, {format(inicio, 'HH:mm')}–{format(fim, 'HH:mm')}
-            {appointment.tipo === 'avaliacao' ? ' · Avaliação' : ' · Sessão'}
+            {` · ${appointment.tipo_nome}`}
           </p>
         </div>
         <Button variant="ghost" size="icon" aria-label="Cancelar" onClick={onCancel}>

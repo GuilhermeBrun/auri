@@ -2,12 +2,7 @@ import { addDays, addMinutes, format, startOfDay } from 'date-fns'
 import { ptBR } from 'date-fns/locale/pt-BR'
 import { FUNCIONAMENTO_PADRAO, horarioDoDia, minutesOf, type Funcionamento } from '@shared/agenda'
 import { formatTime, parseIsoLocalDateTime } from '@shared/dates'
-import type { Appointment, AppointmentTipo, Presenca } from '@shared/schemas'
-
-export const TIPO_LABELS: Record<AppointmentTipo, string> = {
-  sessao: 'Sessão',
-  avaliacao: 'Avaliação'
-}
+import type { Appointment, Presenca } from '@shared/schemas'
 
 export const PRESENCA_LABELS: Record<Presenca, string> = {
   presente: 'Presente',
@@ -15,11 +10,6 @@ export const PRESENCA_LABELS: Record<Presenca, string> = {
   desmarcou: 'Desmarcou'
 }
 
-export function tipoLabel(tipo: AppointmentTipo): string {
-  return TIPO_LABELS[tipo]
-}
-
-export const TIPO_OPTIONS = Object.entries(TIPO_LABELS) as [AppointmentTipo, string][]
 export const PRESENCA_OPTIONS = Object.entries(PRESENCA_LABELS) as [Presenca, string][]
 
 export const DEFAULT_DURATION = 30

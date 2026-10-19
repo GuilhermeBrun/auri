@@ -127,8 +127,8 @@ const finance: PatientFinance = {
     }
   ],
   pendentes: [
-    { appointment_id: 60, inicio: '2026-10-09T14:00', tipo: 'sessao' },
-    { appointment_id: 61, inicio: '2026-10-13T14:00', tipo: 'sessao' }
+    { appointment_id: 60, inicio: '2026-10-09T14:00', tipo_nome: 'Sessão', categoria: 'sessao' },
+    { appointment_id: 61, inicio: '2026-10-13T14:00', tipo_nome: 'Sessão', categoria: 'sessao' }
   ]
 }
 

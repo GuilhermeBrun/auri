@@ -16,6 +16,7 @@ import {
 } from '@shared/finance'
 import { formatBRL } from '@shared/money'
 import type { Patient } from '@shared/schemas'
+import { consomePacote } from '@shared/tipos'
 import {
   BillingDialog,
   ChargeDialog,
@@ -298,7 +299,7 @@ function PackageCard({ pkg }: { pkg: PatientPackage }): React.JSX.Element {
 }
 
 function sessionText(s: PendingSession): string {
-  return `${s.tipo === 'avaliacao' ? 'Avaliação' : 'Sessão'} de ${formatShortDay(s.inicio.slice(0, 10))}`
+  return `${s.tipo_nome} de ${formatShortDay(s.inicio.slice(0, 10))}`
 }
 
 function Pending({
@@ -312,7 +313,7 @@ function Pending({
 }): React.JSX.Element {
   const toast = useToast()
   const computador = useComputador()
-  const sessoes = pendentes.filter((p) => p.tipo === 'sessao')
+  const sessoes = pendentes.filter((p) => consomePacote(p.categoria))
   const launch = useMutation({
     mutationFn: async (ids: number[]) => {
       for (const id of ids) await window.api.finance.launchSession(id, computador)
@@ -357,7 +358,7 @@ function Pending({
               size="sm"
               disabled={launch.isPending}
               onClick={() =>
-                s.tipo === 'avaliacao' ? onLaunch(s) : launch.mutate([s.appointment_id])
+                !consomePacote(s.categoria) ? onLaunch(s) : launch.mutate([s.appointment_id])
               }
             >
               Lançar

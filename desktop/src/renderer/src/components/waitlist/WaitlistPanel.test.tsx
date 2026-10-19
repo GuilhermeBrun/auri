@@ -24,7 +24,9 @@ function entry(over: Partial<WaitlistEntry>): WaitlistEntry {
     id: 1,
     patient_id: 1,
     patient_nome: 'Helena Fictícia Andrade',
-    tipo: 'sessao',
+    tipo_id: 1,
+    tipo_nome: 'Sessão',
+    categoria: 'sessao',
     duracao: 45,
     dias: [],
     periodos: [],
@@ -171,7 +173,7 @@ describe('painel da lista de espera', () => {
       expect(api.waitlist.update).toHaveBeenCalledWith(
         1,
         {
-          tipo: 'sessao',
+          tipo_id: 1,
           duracao: 45,
           dias: [3, 6],
           periodos: ['tarde'],
@@ -202,7 +204,6 @@ describe('botão da ficha', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Pôr na lista' }))
     await waitFor(() =>
       expect(api.waitlist.add).toHaveBeenCalledWith({
-        tipo: 'sessao',
         duracao: 30,
         dias: [],
         periodos: ['manha'],

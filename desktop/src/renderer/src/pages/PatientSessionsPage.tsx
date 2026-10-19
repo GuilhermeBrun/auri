@@ -7,6 +7,7 @@ import { useParams } from 'react-router'
 import { parseIsoLocalDateTime } from '@shared/dates'
 import type { Appointment, AttendanceRecord, Patient, Presenca } from '@shared/schemas'
 import { AttendanceChart } from '@renderer/components/AttendanceChart'
+import { EtiquetasMarca, TipoMarca } from '@renderer/components/TipoMarca'
 import { DateBlock } from '@renderer/components/DateBlock'
 import { AttendanceReportDialog, MonthReportButton } from '@renderer/components/AttendanceReport'
 import { AppointmentDialog, type AppointmentDraft } from '@renderer/components/AppointmentDialog'
@@ -228,8 +229,7 @@ function Upcoming({
                 <span className="flex min-w-0 flex-col">
                   <span className="text-[13px] font-medium tabular-nums">{timeRange(a)}</span>
                   <span className="truncate text-xs text-ink-soft">
-                    {a.tipo === 'avaliacao' ? 'Avaliação · ' : ''}
-                    {relativeDay(inicio, now)}
+                    {a.tipo_nome} · {relativeDay(inicio, now)}
                   </span>
                 </span>
               </button>
@@ -363,15 +363,12 @@ function SessionRow({
       <DateBlock date={inicio} muted={missed} />
 
       <span className="flex min-w-0 flex-col gap-0.5">
-        <span className="flex items-center gap-2">
+        <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
           <span className={cn('text-[13px] font-medium tabular-nums', missed && 'text-ink-soft')}>
             {timeRange(a)}
           </span>
-          {a.tipo === 'avaliacao' && (
-            <span className="rounded-chip bg-fill px-1.5 py-px text-xs font-medium text-ink">
-              Avaliação
-            </span>
-          )}
+          <TipoMarca nome={a.tipo_nome} cor={a.tipo_cor} />
+          <EtiquetasMarca etiquetas={a.etiquetas} />
         </span>
         {a.evolucao ? (
           <span className="line-clamp-2 text-[13px] text-ink-soft" title={a.evolucao}>
