@@ -68,7 +68,6 @@ import { Page } from '@renderer/components/Layout'
 import { Button } from '@renderer/components/ui/button'
 import { ErrorState } from '@renderer/components/ui/error'
 import { Segmented } from '@renderer/components/ui/segmented'
-import { duracaoTexto } from '@renderer/lib/commitments'
 import { appointmentsQuery, clinicQuery, commitmentsQuery } from '@renderer/lib/queries'
 import { DEFAULT_DURATION, nextSlot, PRESENCA_LABELS, tipoLabel } from '@renderer/lib/session'
 import { cn } from '@renderer/lib/utils'
@@ -782,7 +781,7 @@ export function AgendaPage(): React.JSX.Element {
               variant="ghost"
               size="icon"
               onClick={togglePanel}
-              aria-pressed={panelOpen}
+              aria-expanded={panelOpen}
               aria-label="Lista de espera"
               title={panelOpen ? 'Esconder a lista de espera' : 'Mostrar a lista de espera'}
             >
@@ -834,41 +833,39 @@ export function AgendaPage(): React.JSX.Element {
               aria-label="Encaixe"
               className="flex w-72 shrink-0 animate-fade-in flex-col overflow-y-auto pt-3 pr-3 pb-20 pl-2"
             >
-              {vaga && (
-                <div className="mb-4 flex animate-fade-in items-center gap-1 px-3">
-                  <span className="min-w-0 flex-1 text-xs text-ink-soft">
-                    Vaga de{' '}
-                    {duracaoTexto(
-                      differenceInMinutes(
-                        parseIsoLocalDateTime(vaga.fim),
-                        parseIsoLocalDateTime(vaga.inicio)
-                      )
-                    )}
-                  </span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() =>
-                      setSlot({
-                        inicio: parseIsoLocalDateTime(vaga.inicio),
-                        duracao: DEFAULT_DURATION
-                      })
-                    }
-                  >
-                    <Plus /> Marcar aqui
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    aria-label="Ver a lista toda"
-                    title="Ver a lista toda (Esc)"
-                    onClick={() => setVaga(null)}
-                  >
-                    <X />
-                  </Button>
-                </div>
-              )}
-              <WaitlistPanel vaga={vaga} onPick={pickFromWaitlist} />
+              <WaitlistPanel
+                vaga={vaga}
+                onPick={pickFromWaitlist}
+                vagaActions={
+                  vaga && (
+                    <>
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        aria-label="Marcar neste horário"
+                        title="Marcar neste horário"
+                        onClick={() =>
+                          setSlot({
+                            inicio: parseIsoLocalDateTime(vaga.inicio),
+                            duracao: DEFAULT_DURATION
+                          })
+                        }
+                      >
+                        <Plus />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        aria-label="Ver a lista toda"
+                        title="Ver a lista toda (Esc)"
+                        onClick={() => setVaga(null)}
+                      >
+                        <X />
+                      </Button>
+                    </>
+                  )
+                }
+              />
               {!vaga && (
                 <p className="mt-4 px-3 text-xs text-ink-faint">
                   Clique num horário vago da agenda para ver quem cabe nele.

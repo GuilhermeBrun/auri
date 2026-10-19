@@ -7,6 +7,11 @@ import type { Clinic } from '@shared/schemas'
 import { renderRoute } from '@renderer/testing'
 
 const { clinic } = vi.hoisted(() => {
+  Object.assign(Element.prototype, {
+    hasPointerCapture: () => false,
+    releasePointerCapture: () => {},
+    scrollIntoView: () => {}
+  })
   const bridge = (): unknown =>
     new Proxy({} as Record<string, unknown>, {
       get: (target, key: string) =>
@@ -136,6 +141,21 @@ describe('Clínica', () => {
       ...semSabado,
       0: { abre: '07:00', fecha: '12:00' }
     })
+  })
+
+  it('salva a margem de deslocamento junto do funcionamento', async () => {
+    clinic.get.mockResolvedValue(vazia)
+    clinic.save.mockImplementation((input) =>
+      Promise.resolve({ ...input, updated_at: '2026-10-19T12:01:00.000Z' })
+    )
+    renderRoute('/clinica', '/clinica', <ClinicPage />)
+    const margem = await screen.findByRole('combobox', { name: 'Margem de deslocamento' })
+    expect(margem.textContent).toContain('30 min')
+    await userEvent.click(margem)
+    await userEvent.click(await screen.findByRole('option', { name: '60 min' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
+    await waitFor(() => expect(clinic.save).toHaveBeenCalled())
+    expect(clinic.save.mock.calls[0][0].margem_deslocamento).toBe(60)
   })
 
   it('recusa um dia que fecha antes de abrir', async () => {

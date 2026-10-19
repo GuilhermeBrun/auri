@@ -36,7 +36,7 @@ export function SlotDialog({ slot, onClose, onSaved }: Props): React.JSX.Element
     >
       {current && (
         <>
-          <div className="px-5 pt-4">
+          <div className="flex px-5 pt-4">
             <Segmented
               label="O que marcar"
               value={kind}

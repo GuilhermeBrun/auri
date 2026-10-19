@@ -203,7 +203,7 @@ export function CommitmentForm({
       noValidate
     >
       <DialogBody className="flex flex-col gap-4">
-        <div className="flex flex-col gap-1">
+        <div className="flex flex-col items-start gap-1">
           <span aria-hidden="true" className="text-xs font-medium text-ink">
             Tipo
           </span>
@@ -259,6 +259,20 @@ export function CommitmentForm({
           />
         </Field>
 
+        {editing?.tipo === 'reserva' && onScheduleReserve && (
+          <div className="flex items-center justify-between gap-3 rounded-control bg-canvas px-3 py-2.5">
+            <span className="flex flex-col">
+              <span className="text-[13px] font-medium">Usar a reserva</span>
+              <span className="text-xs text-ink-soft">
+                Troca a reserva por um agendamento de paciente no mesmo horário.
+              </span>
+            </span>
+            <Button variant="secondary" onClick={() => onScheduleReserve(editing)}>
+              <CalendarPlus /> Agendar paciente
+            </Button>
+          </div>
+        )}
+
         {resumo && (
           <p className="flex items-start gap-2 rounded-control bg-canvas px-3 py-2 text-xs text-ink-soft">
             <CalendarCheck2
@@ -280,7 +294,7 @@ export function CommitmentForm({
       </DialogBody>
 
       <DialogFooter>
-        <div className="flex gap-1">
+        <div>
           {editing &&
             (confirmDelete ? (
               <Button
@@ -296,11 +310,6 @@ export function CommitmentForm({
                 <Trash2 /> Excluir
               </Button>
             ))}
-          {editing?.tipo === 'reserva' && onScheduleReserve && !confirmDelete && (
-            <Button variant="ghost" onClick={() => onScheduleReserve(editing)}>
-              <CalendarPlus /> Agendar paciente
-            </Button>
-          )}
         </div>
         <div className="flex gap-2">
           <Button variant="secondary" onClick={onClose}>
