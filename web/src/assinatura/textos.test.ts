@@ -141,8 +141,14 @@ describe('resposta', () => {
       rel: 'mae',
       ok: true,
       em: Math.floor(agora.getTime() / 1000),
-      tz: -agora.getTimezoneOffset()
+      tz: 0 - agora.getTimezoneOffset()
     })
+  })
+
+  test('fuso de Greenwich sai como 0, que volta igual pelo JSON', () => {
+    const agora = Object.assign(new Date(), { getTimezoneOffset: () => 0 })
+    const { tz } = resposta(termoFicticio(), 'a'.repeat(64), preenchido(), agora)
+    expect(Object.is(tz, 0)).toBe(true)
   })
 
   test('responsável de outro parentesco leva o parentesco', () => {

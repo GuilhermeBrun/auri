@@ -116,7 +116,7 @@ export function resposta(termo: Termo, h: string, preenchido: Preenchido, agora:
     ...(par ? { par } : {}),
     ok: true,
     em: Math.floor(agora.getTime() / 1000),
-    tz: -agora.getTimezoneOffset()
+    tz: 0 - agora.getTimezoneOffset()
   }
 }
 
