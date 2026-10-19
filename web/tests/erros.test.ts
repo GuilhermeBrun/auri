@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import postgres from 'postgres'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vite-plus/test'
-import { receive, saveTo, type Payload } from '../api/erros.ts'
+import handler, { receive, Rejected, saveTo, type Payload } from '../api/erros.ts'
 import contract from '../contrato/relatorio-de-erro.json' with { type: 'json' }
 
 const payload: Payload = {
@@ -98,6 +98,51 @@ describe('/api/erros', () => {
     expect((await send({ ...payload, platform: 'freebsd' })).status).toBe(400)
   })
 
+  it('tira o caractere nulo, que o Postgres não aceita em texto', async () => {
+    const save = vi.fn(() => Promise.resolve())
+    const report = payload.reports[0]!
+    const dirty = { ...payload, reports: [{ ...report, message: 'a\u0000b' }] }
+    expect((await receive(post(JSON.stringify(dirty)), save, NOW)).status).toBe(204)
+    expect(save).toHaveBeenCalledExactlyOnceWith(
+      { ...payload, reports: [{ ...report, message: 'ab' }] },
+      NOW
+    )
+  })
+
+  it('para de ler um corpo grande mesmo sem content-length', async () => {
+    const save = vi.fn(() => Promise.resolve())
+    const chunk = new TextEncoder().encode('x'.repeat(10_000))
+    let pulls = 0
+    const body = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        pulls += 1
+        if (pulls > 100) controller.close()
+        else controller.enqueue(chunk)
+      }
+    })
+    const request = new Request('https://erros.auri.dev.br/api/erros', {
+      method: 'POST',
+      body,
+      duplex: 'half'
+    })
+    expect((await receive(request, save)).status).toBe(413)
+    expect(pulls).toBeLessThan(10)
+    expect(save).not.toHaveBeenCalled()
+  })
+
+  it('recusado pelo banco por causa do dado, responde 400 para o app não repetir', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const save = vi.fn(() => Promise.reject(new Rejected('invalid byte sequence')))
+    expect((await receive(post(JSON.stringify(payload)), save, NOW)).status).toBe(400)
+  })
+
+  it('sem banco configurado, ou com endereço inválido, responde 503', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const body = JSON.stringify(payload)
+    expect((await handler.fetch(post(body), { DATABASE_URL: '' })).status).toBe(503)
+    expect((await handler.fetch(post(body), { DATABASE_URL: 'não é endereço' })).status).toBe(503)
+  })
+
   it('com o banco fora do ar responde 503, para o app tentar de novo', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {})
     const save = vi.fn(() => Promise.reject(new Error('connect ECONNREFUSED')))
@@ -132,15 +177,16 @@ describe.skipIf(!url)('tabela error_reports', () => {
   it('grava uma linha por falha e ignora o mesmo envio repetido', async () => {
     const save = saveTo(writer)
     const second = { ...payload.reports[0]!, id: '7a2e3b9f-4c6d-4f80-9bac-1d2e3f4a5b6c', count: 1 }
-    await save({ ...payload, reports: [payload.reports[0]!, second] }, NOW)
-    await save(payload, new Date('2026-10-19T14:00:00.000Z'))
+    const received = new Date()
+    await save({ ...payload, reports: [payload.reports[0]!, second] }, received)
+    await save(payload, new Date(received.getTime() + 60_000))
     const rows = await admin`SELECT * FROM error_reports ORDER BY count DESC`
     expect(rows).toHaveLength(2)
     expect(rows[0]).toMatchObject({
       id: payload.reports[0]!.id,
       install_id: payload.installId,
       happened_at: new Date(payload.reports[0]!.at),
-      received_at: NOW,
+      received_at: received,
       origin: 'renderer',
       name: 'TypeError',
       message: payload.reports[0]!.message,
@@ -148,6 +194,45 @@ describe.skipIf(!url)('tabela error_reports', () => {
       version: '1.2.3',
       os_version: '25.0.0'
     })
+  })
+
+  const fresh = () => ({ ...payload.reports[0]!, id: crypto.randomUUID() })
+
+  const oldRows = (count: number, age: string) => admin`
+    INSERT INTO error_reports
+      (id, install_id, happened_at, received_at, origin, name, count,
+       version, channel, platform, arch, os_version, electron)
+    SELECT gen_random_uuid(), gen_random_uuid(), now(), now() - ${age}::interval,
+      'main', 'TypeError', 1, '1.0.0', 'latest', 'darwin', 'arm64', '25.0.0', '44.0.0'
+    FROM generate_series(1, ${count})`
+
+  it('apaga sozinho o que chegou há mais de 90 dias', async () => {
+    await admin`DELETE FROM error_reports`
+    await oldRows(3, '100 days')
+    await oldRows(1, '80 days')
+    await saveTo(writer)({ ...payload, reports: [fresh()] }, new Date())
+    const [{ total }] = await admin`SELECT count(*)::int AS total FROM error_reports`
+    expect(total).toBe(2)
+  })
+
+  it('para de gravar depois de 1000 falhas no dia, e o app guarda para depois', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    await admin`DELETE FROM error_reports`
+    await oldRows(1000, '1 hour')
+    const save = saveTo(writer)
+    await expect(save({ ...payload, reports: [fresh()] }, new Date())).rejects.toMatchObject({
+      code: '53400'
+    })
+    const body = JSON.stringify({ ...payload, reports: [fresh()] })
+    expect((await receive(post(body), save)).status).toBe(503)
+  })
+
+  it('o que o banco recusa pelo conteúdo vira Rejected', async () => {
+    await admin`DELETE FROM error_reports`
+    const report = { ...fresh(), message: 'a\u0000b' }
+    await expect(
+      saveTo(writer)({ ...payload, reports: [report] }, new Date())
+    ).rejects.toBeInstanceOf(Rejected)
   })
 
   it('o usuário da função não lê, não muda, não apaga e não vê outras tabelas', async () => {

@@ -26,6 +26,7 @@ vi.mock('electron', () => ({
 const call = vi.fn(() => ({ ok: true, data: [] }))
 const save = vi.fn()
 const capture = vi.fn()
+const captureUnexpected = vi.fn()
 const exportSettings = vi.fn(() => 'arquivo fictício')
 const checkUpdates = vi.fn(() => ({ status: 'checking' }))
 const installUpdate = vi.fn(() => {
@@ -35,14 +36,14 @@ beforeEach(() => {
   vi.clearAllMocks()
   handlers.clear()
   listeners.clear()
-  registerIpc(
-    { call } as unknown as Connection,
-    { save } as unknown as PrefsStore,
-    {} as BackupService,
-    { exportSettings } as unknown as AuriTransfer,
-    { check: checkUpdates, install: installUpdate } as unknown as UpdateService,
-    { capture } as unknown as ErrorReportService
-  )
+  registerIpc({
+    connection: { call } as unknown as Connection,
+    prefs: { save } as unknown as PrefsStore,
+    backup: {} as BackupService,
+    transfer: { exportSettings } as unknown as AuriTransfer,
+    updates: { check: checkUpdates, install: installUpdate } as unknown as UpdateService,
+    reports: { capture, captureUnexpected } as unknown as ErrorReportService
+  })
 })
 
 describe('handlers IPC', () => {
@@ -85,6 +86,9 @@ describe('handlers IPC', () => {
       ok: false,
       error: 'Nenhuma versão nova pronta.'
     })
+    expect(captureUnexpected).toHaveBeenLastCalledWith(
+      expect.objectContaining({ message: 'Nenhuma versão nova pronta.' })
+    )
     listeners.get('prefs:save')!(event as unknown as IpcMainEvent, { theme: 'dark' })
     expect(save).toHaveBeenCalledExactlyOnceWith({ theme: 'dark' })
     const crash = {
@@ -95,7 +99,7 @@ describe('handlers IPC', () => {
     listeners.get('reports:error')!(event as unknown as IpcMainEvent, crash)
     expect(capture).toHaveBeenCalledExactlyOnceWith('renderer', crash)
     listeners.get('reports:error')!(event as unknown as IpcMainEvent, { stack: 'x'.repeat(30_000) })
-    expect(capture).toHaveBeenCalledOnce()
+    expect(capture).toHaveBeenLastCalledWith('renderer', { stack: 'x'.repeat(20_000) })
     vi.clearAllMocks()
     const subframe = { ...event, senderFrame: { url: mainFrame.url } } as IpcMainInvokeEvent
     expect(await handlers.get('patients:list')!(subframe)).toEqual({

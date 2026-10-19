@@ -4,6 +4,7 @@ directories:
   buildResources: build
 files:
   - out/**
+  - '!out/**/*.map'
   - resources/**
   - package.json
   - '!{docs,.quality,.vite-plus}/**'

@@ -1,5 +1,7 @@
 import { execFileSync } from 'node:child_process'
 import { appendFileSync, readFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { symbolicate } from './pilha.mjs'
 import { latestTags, nextAlpha, outsideApp, stableFromAlpha } from './versions.mjs'
 
 const run = (command, args) => execFileSync(command, args, { encoding: 'utf8' }).trim()
@@ -46,9 +48,23 @@ function resolve() {
   output({ skip: false, ref: head, version, tag: `v${version}`, prerelease: true })
 }
 
+function stack(folder) {
+  if (!folder)
+    throw new Error('Use: node scripts/release/cli.mjs pilha <pasta dos mapas> < pilha.txt')
+  const read = (file) => {
+    try {
+      return readFileSync(join(folder, file), 'utf8')
+    } catch {
+      return null
+    }
+  }
+  console.log(symbolicate(readFileSync(0, 'utf8'), read))
+}
+
 try {
-  const [command] = process.argv.slice(2)
+  const [command, argument] = process.argv.slice(2)
   if (command === 'resolve') resolve()
+  else if (command === 'pilha') stack(argument)
   else throw new Error(`Comando desconhecido: ${command}`)
 } catch (error) {
   console.error(error.message)

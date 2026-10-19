@@ -120,7 +120,8 @@ export function runOperation(
   db: Db,
   channel: string,
   args: unknown[],
-  onChange?: (topics: DataTopic[]) => void
+  onChange?: (topics: DataTopic[]) => void,
+  onFailure?: (error: unknown) => void
 ): IpcResult<unknown> {
   const operation = Object.hasOwn(OPERATIONS, channel) ? OPERATIONS[channel] : undefined
   if (!operation) return { ok: false, error: 'Operação desconhecida' }
@@ -131,6 +132,7 @@ export function runOperation(
   } catch (error) {
     const name = error instanceof Error ? error.name : typeof error
     console.error(`[operação] ${channel}: ${name === 'SqliteError' ? errorMessage(error) : name}`)
+    onFailure?.(error)
     return { ok: false, error: errorMessage(error) }
   }
 }

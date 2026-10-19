@@ -25,14 +25,17 @@ describe('falhas de armazenamento', () => {
     const patient = createPatient(db, { ...emptyPatientInput(), nome: 'João Preservado Fictício' })
     db.pragma('query_only = ON')
     const changed = vi.fn()
+    const failed = vi.fn()
     const result = runOperation(
       db,
       'patients:update',
       [patient.id, { ...emptyPatientInput(), nome: 'Não gravar' }],
-      changed
+      changed,
+      failed
     )
     expect(result).toEqual({ ok: false, error: expect.stringMatching(/readonly/i) })
     expect(changed).not.toHaveBeenCalled()
+    expect(failed).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ name: 'SqliteError' }))
     expect(getPatient(db, patient.id)).toEqual(patient)
     db.close()
     const reopened = openDatabase(join(directory, 'dados.db'))

@@ -7,6 +7,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { HashRouter } from 'react-router'
 import App from './App'
+import { ErrorBoundary } from './components/ErrorBoundary'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -51,7 +52,9 @@ createRoot(document.getElementById('root')!, {
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       <HashRouter>
-        <App />
+        <ErrorBoundary>
+          <App />
+        </ErrorBoundary>
       </HashRouter>
     </QueryClientProvider>
   </StrictMode>

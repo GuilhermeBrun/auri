@@ -12,6 +12,7 @@ import {
   MAX_REPORTS,
   RETRY_EVERY_MS,
   safeMessage,
+  SAVE_DELAY_MS,
   SEND_DELAY_MS
 } from './error-reports'
 
@@ -76,6 +77,21 @@ describe('limpeza das falhas', () => {
   it('tira textos entre aspas e números longos (CPF, telefone) da mensagem', () => {
     expect(safeMessage('TypeError', 'Cannot use "Ana Souza" with 12345678901')).toBe(
       'Cannot use "…" with #'
+    )
+  })
+
+  it('tira valores entre aspas simples e números com pontuação, mas deixa o nome da propriedade', () => {
+    expect(safeMessage('TypeError', "Cannot create property 'nome' on string 'Ana Souza'")).toBe(
+      "Cannot create property 'nome' on string '…'"
+    )
+    expect(
+      safeMessage('TypeError', "Cannot read properties of undefined (reading '123.456.789-00')")
+    ).toBe("Cannot read properties of undefined (reading '…')")
+    expect(safeMessage('RangeError', 'Invalid date 12/03/1990, phone (65) 99999-1234')).toBe(
+      'Invalid date #, phone (65) #'
+    )
+    expect(safeMessage('RangeError', 'digits argument must be between 0 and 100')).toBe(
+      'digits argument must be between 0 and 100'
     )
   })
 
@@ -165,6 +181,64 @@ describe('relatórios de erro', () => {
     expect((sent(1).reports as { count: number }[])[0]!.count).toBe(1)
   })
 
+  it('a falha que se repete não adia o envio e grava a contagem depois', () => {
+    const { service, scheduled, saved } = setup()
+    service.capture('main', crash())
+    for (let i = 0; i < 10; i++) service.capture('main', crash())
+    expect(scheduled.filter(({ ms }) => ms === SEND_DELAY_MS)).toHaveLength(1)
+    expect(saved().reports[0]!.count).toBe(1)
+    const later = scheduled.filter(({ ms }) => ms === SAVE_DELAY_MS)
+    expect(later).toHaveLength(1)
+    later[0]!.fn()
+    expect(saved().reports[0]!.count).toBe(11)
+  })
+
+  it('o que se repete durante um envio sai no envio seguinte', async () => {
+    let answer: (response: Response) => void = () => {}
+    let response = (): Promise<Response> =>
+      new Promise((resolve) => {
+        answer = resolve
+      })
+    const { service, sent, saved } = setup({ response: () => response() })
+    service.capture('main', crash())
+    const sending = service.flush()
+    service.capture('main', crash())
+    service.capture('main', crash())
+    answer(new Response(null, { status: 204 }))
+    await sending
+    expect(saved().reports).toMatchObject([
+      { count: 1, pending: false },
+      { count: 2, pending: true }
+    ])
+    response = () => Promise.resolve(new Response(null, { status: 204 }))
+    await service.flush()
+    const [first, second] = [sent(0), sent(1)].map(
+      (body) => (body.reports as { id: string; count: number }[])[0]!
+    )
+    expect(first!.count).toBe(1)
+    expect(second!.count).toBe(2)
+    expect(second!.id).not.toBe(first!.id)
+  })
+
+  it('das falhas tratadas, guarda só as que parecem defeito do código', () => {
+    const { service } = setup()
+    service.captureUnexpected(new Error('Paciente não encontrado'))
+    service.captureUnexpected(
+      Object.assign(new Error('Senha incorreta.'), { name: 'WrongSecretError' })
+    )
+    service.captureUnexpected(Object.assign(new Error('nome inválido'), { name: 'ZodError' }))
+    service.captureUnexpected(new TypeError('x is not a function'))
+    service.captureUnexpected(
+      Object.assign(new Error('database disk image is malformed'), {
+        name: 'SqliteError',
+        code: 'SQLITE_CORRUPT'
+      })
+    )
+    service.captureUnexpected(Object.assign(new Error('no space left'), { code: 'ENOSPC' }))
+    expect(service.text()).not.toContain('Paciente')
+    expect(service.info().count).toBe(3)
+  })
+
   it('sem internet ou com o servidor fora, fica na fila; recusado, não tenta de novo', async () => {
     let response = (): Promise<Response> => Promise.reject(new TypeError('fetch failed'))
     const { service, fetch, saved } = setup({ response: () => response() })
@@ -223,6 +297,15 @@ describe('relatórios de erro', () => {
     service.capture('main', crash('ReferenceError'))
     await service.flush()
     expect((sent().reports as { name: string }[]).map((r) => r.name)).toEqual(['ReferenceError'])
+  })
+
+  it('desligado, a mesma falha repetida não toma o lugar das outras', () => {
+    const { service, saved } = setup()
+    service.setEnabled(false)
+    service.capture('main', crash('RangeError'))
+    for (let i = 0; i < MAX_REPORTS + 5; i++) service.capture('main', crash())
+    service.close()
+    expect(saved().reports.map((report) => report.count)).toEqual([1, MAX_REPORTS + 5])
   })
 
   it('sem endereço (desenvolvimento) nada sai e nada é agendado', async () => {

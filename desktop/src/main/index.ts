@@ -79,22 +79,14 @@ function createWindow(prefs: UiPrefs): void {
     return { action: 'deny' }
   })
 
-  if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
-    const url = process.env['ELECTRON_RENDERER_URL']
-    trustRenderer(mainWindow.webContents, url)
-    mainWindow.webContents.on('will-navigate', (event, target) => {
-      if (target !== url) event.preventDefault()
-    })
-    void mainWindow.loadURL(url)
-  } else {
-    const file = join(__dirname, '../renderer/index.html')
-    const url = pathToFileURL(file).href
-    trustRenderer(mainWindow.webContents, url)
-    mainWindow.webContents.on('will-navigate', (event, target) => {
-      if (target !== url) event.preventDefault()
-    })
-    void mainWindow.loadFile(file)
-  }
+  const devUrl = (is.dev && process.env['ELECTRON_RENDERER_URL']) || null
+  const file = join(__dirname, '../renderer/index.html')
+  const url = devUrl ?? pathToFileURL(file).href
+  trustRenderer(mainWindow.webContents, url)
+  mainWindow.webContents.on('will-navigate', (event, target) => {
+    if (target !== url) event.preventDefault()
+  })
+  void (devUrl ? mainWindow.loadURL(devUrl) : mainWindow.loadFile(file))
 }
 
 function sendToWindows(channel: string, value: unknown): void {
@@ -123,6 +115,22 @@ function reportsEndpoint(): string | null {
   const custom = process.env['AURI_ERROS_URL']
   if (custom !== undefined) return custom || null
   return app.isPackaged ? 'https://erros.auri.dev.br/api/erros' : null
+}
+
+function startErrorReports(): ErrorReportService {
+  return createErrorReports({
+    file: join(app.getPath('userData'), 'relatorios-de-erro.json'),
+    endpoint: reportsEndpoint(),
+    home: app.getPath('home'),
+    context: () => ({
+      version: app.getVersion(),
+      channel: updates?.info().channel ?? 'latest',
+      platform: process.platform,
+      arch: process.arch,
+      osVersion: release(),
+      electron: process.versions.electron
+    })
+  })
 }
 
 function watchFailures(): void {
@@ -191,6 +199,7 @@ if (!isFirstInstance) {
   app.on('second-instance', () => {
     if (app.isReady()) showWindow()
   })
+  reports = startErrorReports()
   watchFailures()
 }
 
@@ -198,20 +207,6 @@ void app.whenReady().then(async () => {
   if (!isFirstInstance) return
 
   electronApp.setAppUserModelId('com.auri.app')
-
-  reports = createErrorReports({
-    file: join(app.getPath('userData'), 'relatorios-de-erro.json'),
-    endpoint: reportsEndpoint(),
-    home: app.getPath('home'),
-    context: () => ({
-      version: app.getVersion(),
-      channel: updates?.info().channel ?? 'latest',
-      platform: process.platform,
-      arch: process.arch,
-      osVersion: release(),
-      electron: process.versions.electron
-    })
-  })
 
   if (process.platform === 'darwin') app.dock?.setIcon(icon)
 
@@ -227,7 +222,8 @@ void app.whenReady().then(async () => {
       syncTray()
       backup?.refresh()
     },
-    onWrite: () => backup?.dataWritten()
+    onWrite: () => backup?.dataWritten(),
+    onFailure: (error) => reports?.captureUnexpected(error)
   })
   await connection.start()
   backup = createBackupService({
@@ -250,14 +246,14 @@ void app.whenReady().then(async () => {
     onChange: (state) => sendToWindows('updates:changed', state),
     onChannelChange: (next) => channel.save(next)
   })
-  registerIpc(
+  registerIpc({
     connection,
     prefs,
     backup,
-    createTransferService({ prefs, connection, backup }),
+    transfer: createTransferService({ prefs, connection, backup }),
     updates,
-    reports
-  )
+    reports: reports!
+  })
   applyTheme(prefs.get().theme)
   nativeTheme.on('updated', syncWindowBackgrounds)
 
