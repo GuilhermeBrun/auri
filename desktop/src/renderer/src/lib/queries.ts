@@ -1,4 +1,4 @@
-import type { Anamnese, Appointment, AttendanceRecord, Patient } from '@shared/schemas'
+import type { Anamnese, Appointment, AttendanceRecord, Clinic, Patient } from '@shared/schemas'
 
 type Query<T> = { queryKey: readonly unknown[]; queryFn: () => Promise<T> }
 
@@ -36,4 +36,8 @@ export function patientAttendanceQuery(patientId: number): Query<AttendanceRecor
     queryKey: ['attendance', patientId],
     queryFn: () => window.api.attendance.listByPatient(patientId)
   }
+}
+
+export function clinicQuery(): Query<Clinic> {
+  return { queryKey: ['clinic'], queryFn: () => window.api.clinic.get() }
 }

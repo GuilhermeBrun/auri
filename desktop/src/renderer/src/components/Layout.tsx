@@ -1,6 +1,7 @@
 import {
   ArrowLeft,
   ArrowLeftRight,
+  Building2,
   CalendarDays,
   DatabaseBackup,
   Network,
@@ -55,7 +56,8 @@ function AlertDot(): React.JSX.Element {
 
 const NAV_ITEMS: NavItem[] = [
   { to: '/agenda', label: 'Agenda', icon: <CalendarDays /> },
-  { to: '/pacientes', label: 'Pacientes', icon: <Users /> }
+  { to: '/pacientes', label: 'Pacientes', icon: <Users /> },
+  { to: '/clinica', label: 'Clínica', icon: <Building2 /> }
 ]
 
 const SETTINGS_PATH = '/configuracoes'

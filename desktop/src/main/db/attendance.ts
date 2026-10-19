@@ -4,12 +4,15 @@ import type {
   Appointment,
   ArrivalSignInput,
   AttendanceRecord,
+  AttendanceReport,
   SignerPapel
 } from '../../shared/schemas'
 import { deBase64url, paraBase64url } from '../../../../web/contrato/assinatura/base64url'
 import { assinaturaMinima, decodificar } from '../../../../web/contrato/assinatura/traco'
-import { getAppointment } from './appointments'
+import { getAppointment, listPatientAppointments } from './appointments'
+import { getClinic } from './clinic'
 import type { Db } from './connection'
+import { getPatient } from './patients'
 
 type RecordRow = Omit<AttendanceRecord, 'traco' | 'anulada'> & {
   traco: Buffer
@@ -154,4 +157,25 @@ export function listPatientAttendance(db: Db, patientId: number): AttendanceReco
     .prepare(`${SELECT_RECORDS} WHERE s.patient_id = ? ORDER BY a.inicio DESC, s.id DESC`)
     .all(patientId) as RecordRow[]
   return rows.map(fromRow)
+}
+
+export function attendanceReport(
+  db: Db,
+  patientId: number,
+  de: string,
+  ate: string
+): AttendanceReport {
+  const patient = getPatient(db, patientId)
+  const records = listPatientAttendance(db, patientId)
+  const sessions = listPatientAppointments(db, patientId)
+    .filter((a) => a.inicio.slice(0, 10) >= de && a.inicio.slice(0, 10) <= ate)
+    .reverse()
+    .map((a) => ({ ...a, records: records.filter((r) => r.appointment_id === a.id) }))
+  return {
+    clinic: getClinic(db),
+    patient: { id: patient.id, nome: patient.nome, data_nascimento: patient.data_nascimento },
+    de,
+    ate,
+    sessions
+  }
 }

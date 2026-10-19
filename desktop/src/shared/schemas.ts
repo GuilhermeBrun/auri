@@ -216,3 +216,38 @@ export type Theme = z.infer<typeof themeSchema>
 export const uiPrefsSchema = z.object({ sidebarOpen: z.boolean(), theme: themeSchema })
 
 export type UiPrefs = z.infer<typeof uiPrefsSchema>
+
+export const LOGO_MAX_BASE64 = 400_000
+
+export const clinicInputSchema = z.object({
+  nome: text(120),
+  documento: text(30),
+  endereco: text(200),
+  telefone: optionalPhone,
+  whatsapp: optionalPhone,
+  profissional: text(120),
+  registro: text(40),
+  logo: z
+    .string()
+    .max(LOGO_MAX_BASE64, 'Logo grande demais')
+    .regex(/^[A-Za-z0-9+/]*={0,2}$/, 'Logo inválido')
+})
+
+export type ClinicInput = z.input<typeof clinicInputSchema>
+
+export type Clinic = z.output<typeof clinicInputSchema> & { updated_at: string }
+
+export const reportRangeSchema = z
+  .object({
+    de: z.string().refine(isIsoDate, 'Data inválida'),
+    ate: z.string().refine(isIsoDate, 'Data inválida')
+  })
+  .refine((r) => r.ate >= r.de, 'Intervalo inválido')
+
+export type AttendanceReport = {
+  clinic: Clinic
+  patient: { id: number; nome: string; data_nascimento: string }
+  de: string
+  ate: string
+  sessions: (Appointment & { records: AttendanceRecord[] })[]
+}
