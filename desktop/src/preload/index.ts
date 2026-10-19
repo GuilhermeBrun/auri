@@ -46,6 +46,11 @@ const api: AuriApi = {
     listByPatient: (patientId) => invoke('attendance:listByPatient', patientId),
     reportPdf: (patientId, de, ate) => invoke('pdf:attendance', patientId, de, ate)
   },
+  documents: {
+    evolutionsPdf: (patientId, de, ate) => invoke('pdf:evolutions', patientId, de, ate),
+    patientPdf: (patientId) => invoke('pdf:patient', patientId),
+    anamnesePdf: (patientId) => invoke('pdf:anamnese', patientId)
+  },
   clinic: {
     get: () => invoke('clinic:get'),
     save: (input, expected) => invoke('clinic:save', input, expected),

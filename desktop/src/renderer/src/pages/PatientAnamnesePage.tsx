@@ -9,13 +9,16 @@ import { useParams } from 'react-router'
 import { toIsoDate } from '@shared/dates'
 import {
   ANAMNESE_FIELDS,
+  ANAMNESE_TEMAS,
   anamneseInputSchema,
   type Anamnese,
   type AnamneseInput,
+  type AnamneseTema,
   type Patient
 } from '@shared/schemas'
 import { Page } from '@renderer/components/Layout'
 import { PATIENT_COLUMN, PatientHeader } from '@renderer/components/PatientHeader'
+import { PrintButton } from '@renderer/components/PrintButton'
 import { Button } from '@renderer/components/ui/button'
 import { Callout } from '@renderer/components/ui/callout'
 import { DateField } from '@renderer/components/ui/date-field'
@@ -29,7 +32,7 @@ import { useToast } from '@renderer/lib/toast'
 import { cn } from '@renderer/lib/utils'
 
 type Topic = {
-  field: Exclude<keyof AnamneseInput, 'data'>
+  field: AnamneseTema
   title: string
   hint: string
   prompts: string[]
@@ -38,55 +41,55 @@ type Topic = {
 const TOPICS: Topic[] = [
   {
     field: 'queixa',
-    title: 'Queixa',
+    title: ANAMNESE_TEMAS.queixa,
     hint: 'Por que a família procurou a clínica, nas palavras dela.',
     prompts: ['Quem percebeu?', 'Desde quando?', 'O que mais preocupa?', 'Já procuraram ajuda?']
   },
   {
     field: 'gestacao',
-    title: 'Gestação e nascimento',
+    title: ANAMNESE_TEMAS.gestacao,
     hint: 'Semanas, peso, comprimento, tipo de parto, intercorrências.',
     prompts: ['Semanas:', 'Peso:', 'Comprimento:', 'Tipo de parto:', 'Intercorrências:']
   },
   {
     field: 'alimentacao',
-    title: 'Alimentação',
+    title: ANAMNESE_TEMAS.alimentacao,
     hint: 'Amamentação, pega, mamadeira, copinho, introdução alimentar.',
     prompts: ['Amamentação até:', 'Pega:', 'Mamadeira:', 'Copinho:', 'Introdução alimentar:']
   },
   {
     field: 'sono',
-    title: 'Sono',
+    title: ANAMNESE_TEMAS.sono,
     hint: 'Rotina, quantas horas dorme, quando acorda e o que faz.',
     prompts: ['Horário de dormir:', 'Horas de sono:', 'Acorda à noite?', 'Ronca?']
   },
   {
     field: 'desenvolvimento',
-    title: 'Desenvolvimento e fala',
+    title: ANAMNESE_TEMAS.desenvolvimento,
     hint: 'Quando começou a falar e a andar, vocabulário, compreensão.',
     prompts: ['Primeiras palavras:', 'Andou com:', 'Frases com:', 'Entende ordens simples?']
   },
   {
     field: 'saude',
-    title: 'Saúde',
+    title: ANAMNESE_TEMAS.saude,
     hint: 'Dores, cólicas, alergias, medicações, exames (ex.: teste da linguinha).',
     prompts: ['Otites:', 'Alergias:', 'Medicações:', 'Exames:', 'Teste da linguinha:']
   },
   {
     field: 'rotina',
-    title: 'Escola e rotina',
+    title: ANAMNESE_TEMAS.rotina,
     hint: 'Adaptação, repetências, socialização, atividades.',
     prompts: ['Escola e série:', 'Adaptação:', 'Repetências:', 'Com quem brinca?']
   },
   {
     field: 'terapias',
-    title: 'Terapias',
+    title: ANAMNESE_TEMAS.terapias,
     hint: 'Fono, ABA, psicologia e outras: onde, por quanto tempo, se continuam.',
     prompts: ['Fonoaudiologia:', 'ABA:', 'Psicologia:', 'Onde e por quanto tempo?']
   },
   {
     field: 'observacoes',
-    title: 'Observações',
+    title: ANAMNESE_TEMAS.observacoes,
     hint: 'O que não coube nos outros temas.',
     prompts: []
   }
@@ -235,9 +238,22 @@ function AnamneseForm({
       <Page
         trail={[PATIENTS_CRUMB, { label: patient.nome }]}
         actions={
-          <Button type="submit" loading={save.isPending} disabled={!isDirty}>
-            Salvar anamnese
-          </Button>
+          <>
+            <PrintButton
+              label="Imprimir anamnese"
+              blocked={
+                anamnese.updated_at === null
+                  ? 'Salve a anamnese para imprimir'
+                  : isDirty
+                    ? 'Salve as alterações para imprimir'
+                    : undefined
+              }
+              print={() => window.api.documents.anamnesePdf(patient.id)}
+            />
+            <Button type="submit" loading={save.isPending} disabled={!isDirty}>
+              Salvar anamnese
+            </Button>
+          </>
         }
       >
         <div className={PATIENT_COLUMN}>

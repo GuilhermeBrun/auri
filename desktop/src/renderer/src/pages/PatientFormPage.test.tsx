@@ -107,3 +107,21 @@ describe('responsável na ficha', () => {
     expect(screen.getAllByText('Celular')).toHaveLength(3)
   })
 })
+
+describe('imprimir a ficha', () => {
+  it('gera o PDF da ficha salva e pede para salvar antes quando há alterações', async () => {
+    const patientPdf = vi.fn(async () => undefined)
+    Object.assign(window, {
+      api: { patients: { get: vi.fn(async () => patient), setAtivo }, documents: { patientPdf } }
+    })
+    renderRoute('/pacientes/3', '/pacientes/:id', <PatientFormRoute />)
+    const imprimir = (await screen.findByRole('button', {
+      name: 'Imprimir ficha'
+    })) as HTMLButtonElement
+    await userEvent.click(imprimir)
+    await waitFor(() => expect(patientPdf).toHaveBeenCalledWith(3))
+    await userEvent.type(screen.getByLabelText('Professora'), 'Ana')
+    expect(imprimir.disabled).toBe(true)
+    expect(imprimir.title).toBe('Salve as alterações para imprimir')
+  })
+})

@@ -18,6 +18,7 @@ import {
 import { getAnamnese, saveAnamnese } from './db/anamneses'
 import { attendanceReport, listPatientAttendance, signArrival, voidArrival } from './db/attendance'
 import { getClinic, saveClinic } from './db/clinic'
+import { anamneseDocument, evolutionReport, patientDocument } from './db/documents'
 import {
   acceptResponse,
   cancelTerm,
@@ -140,6 +141,17 @@ const OPERATIONS: Record<string, Operation> = {
       const range = reportRangeSchema.parse({ de, ate })
       return attendanceReport(db, idSchema.parse(patientId), range.de, range.ate)
     }
+  },
+
+  'documents:evolutions': {
+    run: (db, [patientId, de, ate]) => {
+      const range = reportRangeSchema.parse({ de, ate })
+      return evolutionReport(db, idSchema.parse(patientId), range.de, range.ate)
+    }
+  },
+  'documents:patient': { run: (db, [patientId]) => patientDocument(db, idSchema.parse(patientId)) },
+  'documents:anamnese': {
+    run: (db, [patientId]) => anamneseDocument(db, idSchema.parse(patientId))
   },
 
   'clinic:get': { run: (db) => getClinic(db) },

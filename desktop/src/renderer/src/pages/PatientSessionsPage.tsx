@@ -4,9 +4,10 @@ import { ptBR } from 'date-fns/locale/pt-BR'
 import { CalendarClock, Check, CircleDashed, FileText, Plus, Undo2, X } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useParams } from 'react-router'
-import { formatTime, parseIsoLocalDateTime } from '@shared/dates'
+import { parseIsoLocalDateTime } from '@shared/dates'
 import type { Appointment, AttendanceRecord, Patient, Presenca } from '@shared/schemas'
 import { AttendanceChart } from '@renderer/components/AttendanceChart'
+import { DateBlock } from '@renderer/components/DateBlock'
 import { AttendanceReportDialog, MonthReportButton } from '@renderer/components/AttendanceReport'
 import { AppointmentDialog, type AppointmentDraft } from '@renderer/components/AppointmentDialog'
 import { Page } from '@renderer/components/Layout'
@@ -21,7 +22,14 @@ import {
   patientAttendanceQuery,
   patientQuery
 } from '@renderer/lib/queries'
-import { DEFAULT_DURATION, nextSlot, PATIENTS_CRUMB, PRESENCA_LABELS } from '@renderer/lib/session'
+import {
+  DEFAULT_DURATION,
+  nextSlot,
+  PATIENTS_CRUMB,
+  PRESENCA_LABELS,
+  spokenDate,
+  timeRange
+} from '@renderer/lib/session'
 import { cn } from '@renderer/lib/utils'
 
 export function PatientSessionsRoute(): React.JSX.Element {
@@ -119,18 +127,6 @@ function PatientSessionsPage({ patientId }: { patientId: number }): React.JSX.El
 
 function capitalize(text: string): string {
   return text.charAt(0).toUpperCase() + text.slice(1)
-}
-
-function weekdayShort(date: Date): string {
-  return format(date, 'EEE', { locale: ptBR }).replace('.', '').slice(0, 3)
-}
-
-function timeRange(a: Appointment): string {
-  return `${formatTime(parseIsoLocalDateTime(a.inicio))}–${formatTime(parseIsoLocalDateTime(a.fim))}`
-}
-
-function spokenDate(date: Date): string {
-  return format(date, "EEEE, d 'de' MMMM 'de' yyyy", { locale: ptBR })
 }
 
 function SessionList({
@@ -242,34 +238,6 @@ function Upcoming({
         })}
       </ul>
     </section>
-  )
-}
-
-function DateBlock({
-  date,
-  muted,
-  className
-}: {
-  date: Date
-  muted?: boolean
-  className?: string
-}): React.JSX.Element {
-  return (
-    <span
-      aria-hidden
-      className={cn(
-        'flex size-11 shrink-0 flex-col items-center justify-center rounded-control tabular-nums',
-        muted && 'text-ink-faint',
-        className
-      )}
-    >
-      <span className="text-[17px] leading-none font-semibold tracking-tight">
-        {format(date, 'd')}
-      </span>
-      <span className={cn('mt-1 text-xs leading-none', muted ? 'text-ink-faint' : 'text-ink-soft')}>
-        {weekdayShort(date)}
-      </span>
-    </span>
   )
 }
 

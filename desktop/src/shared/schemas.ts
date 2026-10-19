@@ -203,6 +203,20 @@ export type AnamneseInput = z.infer<typeof anamneseInputSchema>
 
 export const ANAMNESE_FIELDS = Object.keys(anamneseInputSchema.shape) as (keyof AnamneseInput)[]
 
+export type AnamneseTema = Exclude<keyof AnamneseInput, 'data'>
+
+export const ANAMNESE_TEMAS: Record<AnamneseTema, string> = {
+  queixa: 'Queixa',
+  gestacao: 'Gestação e nascimento',
+  alimentacao: 'Alimentação',
+  sono: 'Sono',
+  desenvolvimento: 'Desenvolvimento e fala',
+  saude: 'Saúde',
+  rotina: 'Escola e rotina',
+  terapias: 'Terapias',
+  observacoes: 'Observações'
+}
+
 export function emptyAnamneseInput(): AnamneseInput {
   return Object.fromEntries(ANAMNESE_FIELDS.map((f) => [f, ''])) as AnamneseInput
 }
@@ -251,6 +265,18 @@ export type AttendanceReport = {
   ate: string
   sessions: (Appointment & { records: AttendanceRecord[] })[]
 }
+
+export type EvolutionReport = {
+  clinic: Clinic
+  patient: { id: number; nome: string; data_nascimento: string }
+  de: string
+  ate: string
+  sessions: Appointment[]
+}
+
+export type PatientDocument = { clinic: Clinic; patient: Patient }
+
+export type AnamneseDocument = PatientDocument & { anamnese: Anamnese }
 
 export const TERM_TEXTO_MAX = 16_000
 

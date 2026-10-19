@@ -1,8 +1,17 @@
 import { app, clipboard, ipcMain, shell } from 'electron'
 import { z } from 'zod'
 import type { AuriTransfer, IpcResult } from '../shared/api'
-import type { AttendanceReport, SignedTermRecord } from '../shared/schemas'
+import type {
+  AnamneseDocument,
+  AttendanceReport,
+  EvolutionReport,
+  PatientDocument,
+  SignedTermRecord
+} from '../shared/schemas'
+import { anamneseHtml, anamneseName } from './anamnese-report'
 import { attendanceReportHtml, attendanceReportName } from './attendance-report'
+import { evolutionReportHtml, evolutionReportName } from './evolution-report'
+import { patientHtml, patientName } from './patient-report'
 import { termHtml, termPdfName } from './term-report'
 import type { Caixa } from './terms/protocol'
 import type { BackupService } from './backup-service'
@@ -119,6 +128,34 @@ export function registerIpc({
     const report = result.data as AttendanceReport
     const html = attendanceReportHtml(report, { font: await documentFont() })
     return savePdf(await htmlToPdf(html), attendanceReportName(report))
+  })
+
+  handle('pdf:evolutions', async (patientId: unknown, de: unknown, ate: unknown) => {
+    const result = await connection.call('documents:evolutions', [patientId, de, ate])
+    if (!result.ok) throw new Error(result.error)
+    const report = result.data as EvolutionReport
+    const html = evolutionReportHtml(report, { font: await documentFont() })
+    return savePdf(await htmlToPdf(html), evolutionReportName(report))
+  })
+
+  handle('pdf:patient', async (patientId: unknown) => {
+    const result = await connection.call('documents:patient', [patientId])
+    if (!result.ok) throw new Error(result.error)
+    const doc = result.data as PatientDocument
+    await openPdf(
+      await htmlToPdf(patientHtml(doc, { font: await documentFont() })),
+      patientName(doc)
+    )
+  })
+
+  handle('pdf:anamnese', async (patientId: unknown) => {
+    const result = await connection.call('documents:anamnese', [patientId])
+    if (!result.ok) throw new Error(result.error)
+    const doc = result.data as AnamneseDocument
+    await openPdf(
+      await htmlToPdf(anamneseHtml(doc, { font: await documentFont() })),
+      anamneseName(doc)
+    )
   })
 
   handle('pdf:term', async (signedId: unknown) => {
