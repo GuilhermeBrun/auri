@@ -32,6 +32,7 @@ export const BATCH = contract.reportsPerSend
 export const SEND_DELAY_MS = 5_000
 export const FIRST_SEND_MS = 30_000
 export const RETRY_EVERY_MS = 60 * 60 * 1000
+export const SAVE_DELAY_MS = 2_000
 
 const FRAMES = 15
 
@@ -39,12 +40,33 @@ const { lengths } = contract
 
 const SAFE_MESSAGES = new Set(['TypeError', 'ReferenceError', 'RangeError', 'SqliteError'])
 
+const BUGS = new Set([
+  'TypeError',
+  'ReferenceError',
+  'RangeError',
+  'SyntaxError',
+  'EvalError',
+  'URIError',
+  'SqliteError'
+])
+
+const PROPERTY = /^[a-z_$][\w$]*$/
+
 export function safeMessage(name: string, message: string | null | undefined): string | null {
   if (!message || !SAFE_MESSAGES.has(name)) return null
   return message
-    .replace(/"[^"]*"/g, '"…"')
-    .replace(/\d{4,}/g, '#')
+    .replace(/(["'`])(.*?)\1/g, (quoted, quote: string, inner: string) =>
+      quote === "'" && PROPERTY.test(inner) ? quoted : `${quote}…${quote}`
+    )
+    .replace(/\d[\d./ -]*\d/g, (digits) => (digits.replace(/\D/g, '').length >= 4 ? '#' : digits))
     .slice(0, lengths.message)
+}
+
+export function isUnexpected(error: unknown): boolean {
+  if (!(error instanceof Error)) return true
+  if (BUGS.has(error.name)) return true
+  const { code } = error as NodeJS.ErrnoException
+  return typeof code === 'string' && /^E[A-Z]+$/.test(code)
 }
 
 export function cleanStack(stack: string | null | undefined, home: string): string | null {
@@ -103,6 +125,7 @@ const realTimers: Timers = {
 export type ErrorReportService = {
   record(origin: ErrorOrigin, error: CleanError): void
   capture(origin: ErrorOrigin, error: unknown): void
+  captureUnexpected(error: unknown): void
   info(): ErrorReportsInfo
   setEnabled(on: boolean): ErrorReportsInfo
   text(): string
@@ -136,7 +159,12 @@ export function createErrorReports(options: {
 
   let sending = false
   let delayed: unknown = null
+  let dueAt = Infinity
+  let unsaved: unknown = null
+
   const save = (): void => {
+    if (unsaved) timers.clear(unsaved)
+    unsaved = null
     try {
       writeAtomicJson(file, state)
     } catch (error) {
@@ -144,11 +172,25 @@ export function createErrorReports(options: {
     }
   }
 
+  const saveSoon = (): void => {
+    unsaved ??= timers.setTimeout(save, SAVE_DELAY_MS)
+  }
+
+  const cancel = (): void => {
+    if (delayed) timers.clear(delayed)
+    delayed = null
+    dueAt = Infinity
+  }
+
   const schedule = (ms: number): void => {
     if (!endpoint || !state.enabled) return
-    if (delayed) timers.clear(delayed)
+    const due = now().getTime() + ms
+    if (delayed && dueAt <= due) return
+    cancel()
+    dueAt = due
     delayed = timers.setTimeout(() => {
       delayed = null
+      dueAt = Infinity
       void service.flush()
     }, ms)
   }
@@ -164,11 +206,12 @@ export function createErrorReports(options: {
         stack: raw.stack?.slice(0, lengths.stack) ?? null
       }
       const key = signature(origin, error)
-      const same = state.reports.find(
-        (report) => report.pending && signature(report.origin, report) === key
+      const same = state.reports.findLast(
+        (report) => (report.pending || !state.enabled) && signature(report.origin, report) === key
       )
       if (same) {
         same.count = Math.min(same.count + 1, contract.maxCount)
+        saveSoon()
       } else {
         state.reports = [
           ...state.reports,
@@ -181,12 +224,16 @@ export function createErrorReports(options: {
             pending: state.enabled
           }
         ].slice(-MAX_REPORTS)
+        save()
       }
-      save()
       schedule(SEND_DELAY_MS)
     },
 
     capture: (origin, error) => service.record(origin, cleanError(error, home)),
+
+    captureUnexpected(error) {
+      if (isUnexpected(error)) service.capture('main', error)
+    },
 
     info: () => ({ enabled: state.enabled, count: state.reports.length }),
 
@@ -195,10 +242,7 @@ export function createErrorReports(options: {
       if (!on) for (const report of state.reports) report.pending = false
       save()
       if (on) schedule(SEND_DELAY_MS)
-      else if (delayed) {
-        timers.clear(delayed)
-        delayed = null
-      }
+      else cancel()
       return service.info()
     },
 
@@ -240,6 +284,7 @@ export function createErrorReports(options: {
         save()
         return
       }
+      const counts = new Map(batch.map((report) => [report.id, report.count]))
       sending = true
       try {
         const response = await send(endpoint, {
@@ -252,8 +297,22 @@ export function createErrorReports(options: {
         const done = response.ok || (response.status < 500 && response.status !== 429)
         if (!response.ok) console.error(`[erros] envio recusado: ${response.status}`)
         if (done) {
-          const sent = new Set(batch.map((report) => report.id))
-          for (const report of state.reports) if (sent.has(report.id)) report.pending = false
+          const rest: ErrorReport[] = []
+          for (const report of state.reports) {
+            const sent = counts.get(report.id)
+            if (sent === undefined) continue
+            report.pending = false
+            if (report.count <= sent) continue
+            rest.push({
+              ...report,
+              id: randomUUID(),
+              at: now().toISOString(),
+              count: report.count - sent,
+              pending: state.enabled
+            })
+            report.count = sent
+          }
+          state.reports = [...state.reports, ...rest].slice(-MAX_REPORTS)
           save()
           if (state.reports.some((report) => report.pending)) schedule(SEND_DELAY_MS)
         }
@@ -265,9 +324,9 @@ export function createErrorReports(options: {
     },
 
     close() {
-      if (delayed) timers.clear(delayed)
+      if (unsaved) save()
+      cancel()
       if (interval) timers.clear(interval)
-      delayed = null
     }
   }
   return service

@@ -4,18 +4,20 @@ import type { UserConfig as ElectronConfig } from 'electron-vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
+const alias = {
+  '@renderer': resolve('src/renderer/src'),
+  '@shared': resolve('src/shared')
+}
+
+const maps = { build: { sourcemap: 'hidden' as const } }
+
 const electron: ElectronConfig = {
-  main: {},
-  preload: {},
+  main: maps,
+  preload: maps,
   renderer: {
-    resolve: {
-      alias: {
-        '@renderer': resolve('src/renderer/src'),
-        '@shared': resolve('src/shared')
-      }
-    },
+    resolve: { alias },
     plugins: [react(), tailwindcss()],
-    build: { minify: true }
+    build: { ...maps.build, minify: true }
   }
 }
 
@@ -23,12 +25,7 @@ const generated = ['**/node_modules/**', '**/out/**', '**/dist/**', '.quality/**
 
 export default defineConfig({
   ...electron,
-  resolve: {
-    alias: {
-      '@renderer': resolve('src/renderer/src'),
-      '@shared': resolve('src/shared')
-    }
-  },
+  resolve: { alias },
   fmt: {
     singleQuote: true,
     semi: false,

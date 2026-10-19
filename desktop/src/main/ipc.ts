@@ -9,17 +9,22 @@ import type { PrefsStore } from './prefs'
 import type { UpdateService } from './updates'
 import { assertTrustedSender } from './ipc-security'
 
-function handle<A extends unknown[], T>(channel: string, fn: (...args: A) => T | Promise<T>): void {
-  ipcMain.handle(channel, async (event, ...args): Promise<IpcResult<T>> => {
-    try {
-      assertTrustedSender(event)
-      return { ok: true, data: await fn(...(args as A)) }
-    } catch (error) {
-      console.error(`[ipc] ${channel}: ${errorMessage(error)}`)
-      return { ok: false, error: errorMessage(error) }
-    }
-  })
+export type IpcServices = {
+  connection: Connection
+  prefs: PrefsStore
+  backup: BackupService
+  transfer: AuriTransfer
+  updates: UpdateService
+  reports: ErrorReportService
 }
+
+const cut = (max: number) =>
+  z
+    .string()
+    .transform((value) => value.slice(0, max))
+    .optional()
+
+const rendererError = z.object({ name: cut(200), message: cut(2000), stack: cut(20_000) })
 
 const destinationSchema = z.object({
   kind: z.enum(['google', 'onedrive', 'icloud', 'folder']),
@@ -31,14 +36,30 @@ const secretSchema = z.union([
   z.object({ recoveryCode: z.string().max(100) })
 ])
 
-export function registerIpc(
-  connection: Connection,
-  prefs: PrefsStore,
-  backup: BackupService,
-  transfer: AuriTransfer,
-  updates: UpdateService,
-  reports: ErrorReportService
-): void {
+export function registerIpc({
+  connection,
+  prefs,
+  backup,
+  transfer,
+  updates,
+  reports
+}: IpcServices): void {
+  function handle<A extends unknown[], T>(
+    channel: string,
+    fn: (...args: A) => T | Promise<T>
+  ): void {
+    ipcMain.handle(channel, async (event, ...args): Promise<IpcResult<T>> => {
+      try {
+        assertTrustedSender(event)
+        return { ok: true, data: await fn(...(args as A)) }
+      } catch (error) {
+        console.error(`[ipc] ${channel}: ${errorMessage(error)}`)
+        reports.captureUnexpected(error)
+        return { ok: false, error: errorMessage(error) }
+      }
+    })
+  }
+
   for (const channel of DATA_CHANNELS) {
     ipcMain.handle(channel, (event, ...args) => {
       try {
@@ -144,11 +165,6 @@ export function registerIpc(
   handle('reports:info', () => reports.info())
   handle('reports:setEnabled', (on: unknown) => reports.setEnabled(bool.parse(on)))
   handle('reports:copy', () => clipboard.writeText(reports.text()))
-  const rendererError = z.object({
-    name: z.string().max(200).optional(),
-    message: z.string().max(2000).optional(),
-    stack: z.string().max(20_000).optional()
-  })
   ipcMain.on('reports:error', (event, value: unknown) => {
     try {
       assertTrustedSender(event)

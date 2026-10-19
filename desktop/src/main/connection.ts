@@ -73,6 +73,7 @@ export function createConnection(options: {
   onDataChanged: (topics: DataTopic[]) => void
   onInfoChanged: (info: ConnectionInfo) => void
   onWrite?: () => void
+  onFailure?: (error: unknown) => void
 }): Connection {
   const store = createConnectionStore(join(options.userData, 'conexao.json'))
   const dbFile = join(options.userData, 'auri.db')
@@ -221,7 +222,7 @@ export function createConnection(options: {
       },
       handle: (channel, args) =>
         db
-          ? runOperation(db, channel, args, dataChanged)
+          ? runOperation(db, channel, args, dataChanged, options.onFailure)
           : { ok: false, error: 'Os dados estão sendo restaurados. Tente de novo em instantes.' }
     })
     try {
@@ -332,7 +333,7 @@ export function createConnection(options: {
     start,
 
     async call(channel: string, args: unknown[]): Promise<IpcResult<unknown>> {
-      if (db) return runOperation(db, channel, args, dataChanged)
+      if (db) return runOperation(db, channel, args, dataChanged, options.onFailure)
       if (client) return client.request(channel, args)
       return {
         ok: false,

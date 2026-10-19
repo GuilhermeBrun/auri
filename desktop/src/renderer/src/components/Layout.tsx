@@ -18,6 +18,7 @@ import { Link, matchPath, NavLink, Outlet, useLocation, useNavigate } from 'reac
 import { Button } from '@renderer/components/ui/button'
 import { AuriLogo } from '@renderer/components/ui/brand'
 import { EmptyState } from '@renderer/components/ui/empty'
+import { ErrorBoundary } from '@renderer/components/ErrorBoundary'
 import { ErrorState } from '@renderer/components/ui/error'
 import { ToastProvider } from '@renderer/components/ui/toast'
 import { UpdateCorner } from '@renderer/components/UpdateCorner'
@@ -279,11 +280,13 @@ function RouteFade(): React.JSX.Element {
   const { pathname } = useLocation()
   return (
     <div key={pathname} className="h-full animate-page-in">
-      <ConnectionGate
-        inSettings={matchPath({ path: SETTINGS_PATH, end: false }, pathname) !== null}
-      >
-        <Outlet />
-      </ConnectionGate>
+      <ErrorBoundary>
+        <ConnectionGate
+          inSettings={matchPath({ path: SETTINGS_PATH, end: false }, pathname) !== null}
+        >
+          <Outlet />
+        </ConnectionGate>
+      </ErrorBoundary>
     </div>
   )
 }
