@@ -15,6 +15,7 @@ const FIELDS = [
 
 type ClinicRow = { [K in (typeof FIELDS)[number]]: string | null } & {
   logo: Buffer | null
+  margem_deslocamento: number
   updated_at: string
 }
 
@@ -43,7 +44,8 @@ export function getClinic(db: Db): Clinic {
   const clinic = {
     updated_at: row.updated_at,
     logo: row.logo ? row.logo.toString('base64') : '',
-    funcionamento: getFuncionamento(db)
+    funcionamento: getFuncionamento(db),
+    margem_deslocamento: row.margem_deslocamento
   }
   for (const field of FIELDS) Object.assign(clinic, { [field]: row[field] ?? '' })
   return clinic as Clinic
@@ -53,12 +55,18 @@ export function saveClinic(db: Db, input: ClinicFields, expected?: string): Clin
   return db.transaction(() => {
     assertUnchanged(getClinic(db).updated_at, expected)
     if (input.funcionamento) saveFuncionamento(db, input.funcionamento)
+    if (input.margem_deslocamento !== undefined) {
+      db.prepare('UPDATE clinic SET margem_deslocamento = ? WHERE id = 1').run(
+        input.margem_deslocamento
+      )
+    }
     return saveFields(db, input)
   })()
 }
 
-type ClinicFields = Omit<Required<ClinicInput>, 'funcionamento'> & {
+type ClinicFields = Omit<Required<ClinicInput>, 'funcionamento' | 'margem_deslocamento'> & {
   funcionamento?: Funcionamento
+  margem_deslocamento?: number
 }
 
 function saveFields(db: Db, input: ClinicFields): Clinic {

@@ -503,6 +503,25 @@ ${onlyVoid('finance_packages', ['id', 'patient_id', 'plan_id', 'nome', 'sessoes'
 ${onlyVoid('finance_charges', ['id', 'patient_id', 'data', 'descricao', 'valor_centavos', 'motivo', 'appointment_id', 'package_id', 'insurer_id', 'computador', 'created_at'])}
 ${onlyVoid('finance_package_uses', ['id', 'package_id', 'appointment_id', 'computador', 'created_at'])}
 ${onlyVoid('finance_payments', ['id', 'patient_id', 'data', 'valor_centavos', 'forma', 'insurer_id', 'observacao', 'computador', 'created_at'])}
+  `,
+  `
+  CREATE TABLE commitments (
+    id         INTEGER PRIMARY KEY,
+    tipo       TEXT NOT NULL
+      CHECK (tipo IN ('palestra', 'curso', 'hospital', 'reuniao', 'reserva')),
+    titulo     TEXT,
+    inicio     TEXT NOT NULL,
+    fim        TEXT NOT NULL,
+    observacao TEXT,
+    created_at TEXT NOT NULL DEFAULT ${NOW},
+    updated_at TEXT NOT NULL DEFAULT ${NOW},
+    CHECK (fim > inicio)
+  );
+
+  CREATE INDEX commitments_inicio ON commitments (inicio);
+
+  ALTER TABLE clinic ADD COLUMN margem_deslocamento INTEGER NOT NULL DEFAULT 30
+    CHECK (margem_deslocamento BETWEEN 0 AND 120);
   `
 ]
 

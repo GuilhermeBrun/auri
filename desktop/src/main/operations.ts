@@ -15,12 +15,14 @@ import {
   reportRangeSchema,
   voidMotivoSchema
 } from '../shared/schemas'
-import type {
-  SugestaoPedido,
-  Vaga,
-  WaitlistAdd,
-  WaitlistClose,
-  WaitlistInput
+import type { CommitmentInput } from '../shared/commitments'
+import {
+  vagaSchema,
+  type SugestaoPedido,
+  type Vaga,
+  type WaitlistAdd,
+  type WaitlistClose,
+  type WaitlistInput
 } from '../shared/waitlist'
 import {
   billingInputSchema,
@@ -35,6 +37,13 @@ import {
   serviceInputSchema
 } from '../shared/finance'
 import { getAnamnese, saveAnamnese } from './db/anamneses'
+import {
+  createCommitment,
+  listCommitments,
+  removeCommitment,
+  scheduleOnReserve,
+  updateCommitment
+} from './db/commitments'
 import { suggestSlots, whoFits } from './db/encaixe'
 import {
   addToWaitlist,
@@ -61,6 +70,7 @@ import {
 } from './db/terms'
 import {
   createAppointment,
+  moveAppointment,
   listAppointments,
   listPatientAppointments,
   removeAppointment,
@@ -107,6 +117,11 @@ const expectedSchema = z
   .nullish()
   .transform((v) => v ?? undefined)
 
+function pickSlot(value: unknown): { inicio: string; fim: string } {
+  const { inicio, fim } = vagaSchema.parse(value)
+  return { inicio, fim }
+}
+
 const OPERATIONS: Record<string, Operation> = {
   'patients:list': {
     run: (db, [filter]) => listPatients(db, patientFilterSchema.parse(filter ?? {}))
@@ -142,7 +157,42 @@ const OPERATIONS: Record<string, Operation> = {
   },
   'appointments:create': {
     run: (db, [input]) => createAppointment(db, appointmentInputSchema.parse(input)),
+    changes: ['appointments', 'waitlist']
+  },
+  'appointments:move': {
+    run: (db, [id, slot, expected]) =>
+      moveAppointment(db, idSchema.parse(id), pickSlot(slot), expectedSchema.parse(expected)),
     changes: ['appointments']
+  },
+  'appointments:scheduleOnReserve': {
+    run: (db, [reserveId, input]) =>
+      scheduleOnReserve(db, idSchema.parse(reserveId), appointmentInputSchema.parse(input)),
+    changes: ['appointments', 'commitments', 'waitlist']
+  },
+
+  'commitments:listRange': {
+    run: (db, [de, ate]) => {
+      const range = appointmentRangeSchema.parse({ de, ate })
+      return listCommitments(db, range.de, range.ate)
+    }
+  },
+  'commitments:create': {
+    run: (db, [input]) => createCommitment(db, input as CommitmentInput),
+    changes: ['commitments']
+  },
+  'commitments:update': {
+    run: (db, [id, input, expected]) =>
+      updateCommitment(
+        db,
+        idSchema.parse(id),
+        input as CommitmentInput,
+        expectedSchema.parse(expected)
+      ),
+    changes: ['commitments']
+  },
+  'commitments:remove': {
+    run: (db, [id]) => removeCommitment(db, idSchema.parse(id)),
+    changes: ['commitments']
   },
   'appointments:update': {
     run: (db, [id, input, expected]) =>

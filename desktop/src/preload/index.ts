@@ -36,7 +36,16 @@ const api: AuriApi = {
     listByPatient: (patientId) => invoke('appointments:listByPatient', patientId),
     create: (input) => invoke('appointments:create', input),
     update: (id, input, expected) => invoke('appointments:update', id, input, expected),
-    remove: (id) => invoke('appointments:remove', id)
+    remove: (id) => invoke('appointments:remove', id),
+    move: (id, slot, expected) => invoke('appointments:move', id, slot, expected),
+    scheduleOnReserve: (reserveId, input) =>
+      invoke('appointments:scheduleOnReserve', reserveId, input)
+  },
+  commitments: {
+    listRange: (de, ate) => invoke('commitments:listRange', de, ate),
+    create: (input) => invoke('commitments:create', input),
+    update: (id, input, expected) => invoke('commitments:update', id, input, expected),
+    remove: (id) => invoke('commitments:remove', id)
   },
   attendance: {
     sign: (appointmentId, input, computador) =>

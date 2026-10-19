@@ -24,6 +24,7 @@ const clinic: AttendanceReport['clinic'] = {
   profissional: 'Lara Fictícia',
   registro: 'CRFa 0-0000',
   logo: '',
+  margem_deslocamento: 30,
   funcionamento: {},
   updated_at: '2026-10-01T00:00:00.000Z'
 }

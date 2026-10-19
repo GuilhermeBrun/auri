@@ -45,6 +45,7 @@ const vazia: Clinic = {
   profissional: '',
   registro: '',
   logo: '',
+  margem_deslocamento: 30,
   funcionamento: FUNCIONAMENTO_PADRAO,
   updated_at: '2026-10-19T12:00:00.000Z'
 }

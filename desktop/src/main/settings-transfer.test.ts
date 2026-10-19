@@ -29,6 +29,7 @@ const RECEPCAO: SettingsSnapshot = {
     profissional: 'Ana Souza',
     registro: 'CRFa 1234',
     logo: 'iVBORw0KGgo=',
+    margem_deslocamento: 30,
     funcionamento: FUNCIONAMENTO_PADRAO
   },
   termModels: [
@@ -57,6 +58,7 @@ const NOVO: SettingsSnapshot = {
     profissional: '',
     registro: '',
     logo: '',
+    margem_deslocamento: 30,
     funcionamento: SEM_SABADO
   },
   termModels: [{ titulo: 'contrato', texto: 'Outro texto.' }]

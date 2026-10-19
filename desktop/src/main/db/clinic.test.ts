@@ -17,6 +17,7 @@ const dados: Required<ClinicInput> = {
   profissional: 'Lara Fictícia',
   registro: 'CRFa 0-0000',
   logo: LOGO,
+  margem_deslocamento: 30,
   funcionamento: { 1: { abre: '08:00', fecha: '18:00' }, 6: { abre: '08:00', fecha: '12:00' } }
 }
 

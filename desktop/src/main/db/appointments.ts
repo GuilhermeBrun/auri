@@ -1,11 +1,12 @@
 import { foraDoFuncionamentoIso } from '../../shared/agenda'
-import { formatTime, parseIsoLocalDateTime } from '../../shared/dates'
+import { toIsoLocalDateTime } from '../../shared/dates'
 import {
   appointmentInputSchema,
   type Appointment,
   type AppointmentInput
 } from '../../shared/schemas'
 import { getFuncionamento } from './clinic'
+import { assertAgendaFree } from './busy'
 import { assertUnchanged } from './concurrency'
 import type { Db } from './connection'
 
@@ -77,34 +78,18 @@ function assertPatientExists(db: Db, patientId: number): void {
   if (!row) throw new Error('Paciente não encontrado')
 }
 
-function assertWithinHours(db: Db, input: Pick<AppointmentInput, 'inicio' | 'fim'>): void {
+export function assertWithinHours(db: Db, input: Pick<AppointmentInput, 'inicio' | 'fim'>): void {
   const problem = foraDoFuncionamentoIso(getFuncionamento(db), input.inicio, input.fim)
   if (problem) throw new Error(problem)
 }
 
 function assertSlotFree(
   db: Db,
-  input: Pick<AppointmentInput, 'inicio' | 'fim'>,
+  input: Pick<AppointmentInput, 'inicio' | 'fim' | 'presenca'>,
   ignoreId: number | null
 ): void {
-  const busy = db
-    .prepare(
-      `${SELECT}
-       WHERE a.inicio < @fim AND a.fim > @inicio AND a.id IS NOT @ignoreId
-       ORDER BY a.inicio, a.id`
-    )
-    .all({ inicio: input.inicio, fim: input.fim, ignoreId }) as AppointmentRow[]
-  if (busy.length === 0) return
-
-  const [first, ...others] = busy
-  const time = (value: string): string => formatTime(parseIsoLocalDateTime(value))
-  const more =
-    others.length === 0
-      ? ''
-      : ` e mais ${others.length} ${others.length === 1 ? 'sessão' : 'sessões'}`
-  throw new Error(
-    `Esse horário já está ocupado: ${first.patient_nome}, das ${time(first.inicio)} às ${time(first.fim)}${more}.`
-  )
+  if (input.presenca === 'desmarcou') return
+  assertAgendaFree(db, input, { appointment: ignoreId })
 }
 
 export function getAppointment(db: Db, id: number): Appointment {
@@ -129,20 +114,35 @@ export function listAppointments(db: Db, de: string, ate: string): Appointment[]
 
 export const PRESENCA_SO_ASSINADA = 'A presença é marcada pela assinatura da chegada.'
 
-export function createAppointment(db: Db, input: AppointmentInput): Appointment {
+export function createAppointment(
+  db: Db,
+  input: AppointmentInput,
+  agora: Date = new Date()
+): Appointment {
   if (input.presenca === 'presente') throw new Error(PRESENCA_SO_ASSINADA)
   assertPatientExists(db, input.patient_id)
   assertWithinHours(db, input)
   assertSlotFree(db, input, null)
-  const result = db
-    .prepare(
-      `INSERT INTO appointments
-         (patient_id, inicio, fim, observacao, tipo, presenca, evolucao, confirmado_em)
-       VALUES (@patient_id, @inicio, @fim, @observacao, @tipo, @presenca, @evolucao,
-         CASE WHEN @confirmado = 1 THEN ${NOW} END)`
-    )
-    .run(toParams(input))
-  return getAppointment(db, Number(result.lastInsertRowid))
+  return db.transaction(() => {
+    const result = db
+      .prepare(
+        `INSERT INTO appointments
+           (patient_id, inicio, fim, observacao, tipo, presenca, evolucao, confirmado_em)
+         VALUES (@patient_id, @inicio, @fim, @observacao, @tipo, @presenca, @evolucao,
+           CASE WHEN @confirmado = 1 THEN ${NOW} END)`
+      )
+      .run(toParams(input))
+    const id = Number(result.lastInsertRowid)
+    if (input.inicio >= toIsoLocalDateTime(agora)) {
+      db.prepare(
+        `UPDATE waitlist_entries
+         SET encerrado_em = ${NOW}, encerrado_motivo = 'agendado', appointment_id = @id,
+             updated_at = ${NOW}
+         WHERE patient_id = @patient_id AND encerrado_em IS NULL`
+      ).run({ id, patient_id: input.patient_id })
+    }
+    return getAppointment(db, id)
+  })()
 }
 
 export function updateAppointment(
@@ -173,6 +173,27 @@ export function updateAppointment(
     )
     .run({ ...toParams(input), id })
   if (result.changes === 0) throw new Error('Agendamento não encontrado')
+  return getAppointment(db, id)
+}
+
+export function moveAppointment(
+  db: Db,
+  id: number,
+  slot: { inicio: string; fim: string },
+  expected?: string
+): Appointment {
+  const current = getAppointment(db, id)
+  assertUnchanged(current.updated_at, expected)
+  if (current.assinatura) {
+    throw new Error('A chegada desta sessão foi assinada: o horário não muda mais.')
+  }
+  assertWithinHours(db, slot)
+  assertAgendaFree(db, slot, { appointment: id })
+  db.prepare(
+    `UPDATE appointments
+     SET inicio = @inicio, fim = @fim, presenca = NULL, confirmado_em = NULL, updated_at = ${NOW}
+     WHERE id = @id`
+  ).run({ ...slot, id })
   return getAppointment(db, id)
 }
 
