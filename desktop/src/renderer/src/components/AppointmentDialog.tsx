@@ -37,6 +37,7 @@ import { TimeField } from '@renderer/components/ui/time-field'
 import { useConnection } from '@renderer/lib/connection'
 import { MOD_KEY } from '@renderer/lib/platform'
 import { clinicQuery, patientAttendanceQuery } from '@renderer/lib/queries'
+import { ConfirmacaoDaSessao } from '@renderer/components/confirmacao/ConfirmacaoDaSessao'
 import { PRESENCA_OPTIONS } from '@renderer/lib/session'
 import { useToast } from '@renderer/lib/toast'
 import { useTipos } from '@renderer/lib/tipos'
@@ -503,6 +504,7 @@ export function AppointmentForm({
             )}
           />
         )}
+        {editing && !signed && !started && <ConfirmacaoDaSessao appointment={editing} />}
         {!signed && started && !canSign && editing?.presenca !== 'presente' && (
           <p className="-mt-2 text-xs text-ink-soft">
             Presente só com a assinatura de quem trouxe o paciente, no dia da sessão.

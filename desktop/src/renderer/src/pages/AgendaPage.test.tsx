@@ -176,6 +176,29 @@ describe('agenda da semana', () => {
     expect(within(bruno).queryByLabelText('Confirmado')).toBeNull()
   })
 
+  it('marca quem aguarda resposta da confirmação e quem ficou sem resposta', async () => {
+    const prazo = new Date(2026, 9, 14, 12, 0).toISOString()
+    const aguarda = fakeAppointment({
+      inicio: '2026-10-15T09:00',
+      patient_nome: 'Gabi Fictícia',
+      pedido: { estado: 'aguardando', prazo }
+    })
+    const livre = fakeAppointment({
+      inicio: '2026-10-15T11:00',
+      patient_nome: 'Hugo Fictício',
+      presenca: 'desmarcou',
+      pedido: { estado: 'sem_resposta', prazo }
+    })
+    setup([aguarda, livre])
+    renderRoute('/agenda', '/agenda', <AgendaPage />)
+    expect(
+      within(await eventOf('Gabi Fictícia')).getByLabelText('Aguardando resposta até 12:00')
+    ).toBeTruthy()
+    expect(
+      within(await eventOf('Hugo Fictício')).getByLabelText('Sem resposta, horário liberado')
+    ).toBeTruthy()
+  })
+
   it('na visão Dia, as setas pulam o domingo', async () => {
     vi.setSystemTime(new Date(2026, 9, 17, 10, 0))
     setup([])

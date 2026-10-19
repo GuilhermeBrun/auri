@@ -81,6 +81,16 @@ const api: AuriApi = {
     takeIncoming: () => invoke('terms:takeIncoming'),
     onIncoming: (listener) => subscribe<void>('terms:incoming', listener)
   },
+  confirmacoes: {
+    lista: () => invoke('confirmacoes:lista'),
+    enviar: (appointmentId, computador) => invoke('confirmacoes:enviar', appointmentId, computador),
+    receber: (texto, computador) => invoke('confirmacoes:receber', texto, computador),
+    aplicarOutra: (requestId) => invoke('confirmacoes:aplicarOutra', requestId),
+    avisos: () => invoke('confirmacoes:avisos'),
+    dispensar: (requestId, tipo) => invoke('confirmacoes:dispensar', requestId, tipo),
+    takeIncoming: () => invoke('confirmacoes:takeIncoming'),
+    onIncoming: (listener) => subscribe<void>('confirmacoes:incoming', listener)
+  },
   anamneses: {
     get: (patientId) => invoke('anamneses:get', patientId),
     save: (patientId, input, expected) => invoke('anamneses:save', patientId, input, expected)

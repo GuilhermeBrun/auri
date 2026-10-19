@@ -20,6 +20,12 @@ import type {
   UiPrefs
 } from './schemas'
 import type { Commitment, CommitmentInput } from './commitments'
+import type {
+  AvisosDaConfirmacao,
+  ConfirmacaoEnvio,
+  ConfirmacaoLista,
+  ConfirmacaoRecebida
+} from './confirmacao'
 import type { Intervalo, Sugestao } from './encaixe'
 import type {
   EncaixeNaVaga,
@@ -102,6 +108,16 @@ export interface AuriApi {
     accept(texto: string, computador: string): Promise<TermRequest>
     openWhatsApp(numero: string, texto: string): Promise<void>
     openPdf(signedId: number): Promise<void>
+    takeIncoming(): Promise<string[]>
+    onIncoming(listener: () => void): () => void
+  }
+  confirmacoes: {
+    lista(): Promise<ConfirmacaoLista>
+    enviar(appointmentId: number, computador: string): Promise<ConfirmacaoEnvio>
+    receber(texto: string, computador: string): Promise<ConfirmacaoRecebida>
+    aplicarOutra(requestId: number): Promise<ConfirmacaoRecebida>
+    avisos(): Promise<AvisosDaConfirmacao>
+    dispensar(requestId: number, tipo: 'liberado' | 'outra'): Promise<void>
     takeIncoming(): Promise<string[]>
     onIncoming(listener: () => void): () => void
   }

@@ -50,6 +50,7 @@ function session(
     presenca,
     evolucao: '',
     confirmado_em: null,
+    pedido: null,
     assinatura: null,
     created_at: '',
     updated_at: '',

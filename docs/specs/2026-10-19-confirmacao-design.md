@@ -1,8 +1,36 @@
 # Confirmação de sessão pelo celular — design
 
-Data: 19/10/2026. Estado: formato do link, páginas do site e leitor do desktop prontos (trilha H1);
-a parte do app (envio, prazo, estados, cobrança e encaixe) é uma trilha posterior, que depende do
-financeiro (F1), do encaixe (G0) e dos ajustes da agenda (B).
+Data: 19/10/2026. Estado: implementado. Formato do link, páginas do site e leitor do desktop na
+trilha H1; envio, prazo, estados, cobrança e encaixe no app na trilha H2 (sobre o financeiro F1, o
+encaixe G0 e os ajustes da agenda B). Falta o teste de campo com a clínica: mensagens reais no
+WhatsApp e o `auri://` no app instalado. As decisões em aberto seguem as propostas do fim.
+
+### Na implementação (H2, 19/10)
+
+- **Uma migração**, no fim de `MIGRATIONS`: a tabela `confirmation_requests` (um pedido por envio,
+  com o conteúdo travado por trigger). O estado no agendamento não é uma coluna: o `Appointment`
+  ganha `pedido` (`aguardando`, `confirmado`, `desmarcado` ou `sem_resposta`, com o prazo),
+  calculado do último pedido não cancelado e do `confirmado_em`.
+- **O `confirmado_em` continua o mesmo campo.** Confirmar pelo link preenche o `confirmado_em`;
+  confirmar à mão com um pedido aguardando conclui o pedido como confirmado. Desmarcar pelo link ou
+  sem resposta marca `presenca = 'desmarcou'`, que já não bloqueia o horário; o motivo fica no
+  pedido (`respondido` com `desmarcada`, ou `vencido`).
+- **Regras em `desktop/src/main/db/confirmacoes.ts`**: janela de envio, lista do próximo dia de
+  atendimento, envio (ou reenvio do mesmo link), verificador do prazo, resposta e avisos. O
+  verificador roda no main da recepção (quem tem o banco) ao abrir e a cada minuto; o consultório
+  não roda. Cancela o pedido de sessão remarcada ou desmarcada, conclui o confirmado à mão e vence o
+  resto: libera o horário, chama `cobrarFalta` e, se a cobrança não puder ser lançada (paciente sem
+  forma de cobrança), guarda o motivo no aviso. A chave fica até a sessão passar, para ler resposta
+  atrasada e repetida.
+- **Telas:** botão "Confirmações" no cabeçalho da agenda (lista do próximo dia com contato
+  principal e celular, "Enviar a próxima", copiar ou abrir no WhatsApp, "Colar resposta"); bloco
+  "Confirmação pelo celular" no registro da sessão; marcas no cartão (relógio = aguardando, `✓` =
+  confirmado, cronômetro cortado = sem resposta); faixa de avisos acima da agenda para os horários
+  liberados ("Encaixar" abre o painel de encaixe com quem cabe) e para a segunda resposta diferente
+  ("Desmarcar"/"Confirmar"). A resposta que chega por `auri://confirmacao` ou "Colar resposta" é
+  aplicada na hora e mostrada num aviso com "Encaixar" quando libera o horário.
+- **Cobra ou não (`cob`):** o link avisa a cobrança quando o paciente tem forma de cobrança com
+  valor de sessão, que é quando `cobrarFalta` consegue lançar.
 
 ## Pedido da clínica
 
@@ -46,7 +74,8 @@ O app confere os prazos: o que venceu sem resposta libera o horário, sugere enc
 3. A resposta chega no WhatsApp da recepção como texto legível ("Sessão confirmada: Ana ·
    quarta-feira, 22/10, às 14:00") seguido do link. A secretária clica no link; a página
    `/resposta` repassa para `auri://confirmacao#…` e o Auri aplica a resposta sem diálogo de
-   conferência, com um aviso ("Ana confirmou a sessão de quarta-feira, 22/10, às 14:00").
+   conferência e mostra o que aplicou ("Ana Beatriz confirmou · Sessão de quarta-feira, 22/10, às
+   14:00").
 4. Venceu o prazo sem resposta: o Auri marca "Sem resposta — liberado", abre o horário na agenda,
    sugere encaixes da lista de espera e lança a cobrança `falta_cobrada`.
 
@@ -130,8 +159,8 @@ Ao vencer, na ordem e numa transação só:
 
 Os envios ficam numa tabela própria (`confirmation_requests`: sessão, id, chave, número de destino,
 enviado em, prazo, estado `aguardando`/`respondido`/`cancelado`/`vencido`, resposta e hora do
-celular), como `term_requests`. A chave é apagada quando o envio sai de `aguardando` e o prazo de
-tolerância passa.
+celular), como `term_requests`. A chave é apagada quando o pedido é cancelado ou quando a sessão
+passa.
 
 ## Avisos de política para o paciente
 
@@ -218,13 +247,15 @@ não 15:00.
 - `npm run confirmacao:teste` (em `web/`) monta uma confirmação fictícia, imprime o link e lê a
   resposta colada.
 
-## Desktop (nesta trilha)
+## Desktop
 
 - `desktop/src/main/confirmacao/link.ts`: monta a ida e lê a volta de forma síncrona (`crypto` e
   `zlib` do Node), com teste cruzado contra o código da página.
 - `auri://confirmacao#<resposta>` (e `?r=` ou `/`, como o `receber`) entra na caixa de entrada do
-  main numa fila própria (`retirarConfirmacoes`). A fila dos termos não muda. Quem retira e aplica
-  é a trilha do app.
+  main numa fila própria (`retirarConfirmacoes`), avisa a janela (`confirmacoes:incoming`) e a tela
+  aplica pela operação `confirmacoes:receber`.
+- Operações: `confirmacoes:lista`, `:enviar`, `:receber`, `:aplicarOutra`, `:avisos`,
+  `:dispensar` e `:prazos` (o verificador; só avisa as telas quando algo mudou).
 
 ## Riscos e limites
 

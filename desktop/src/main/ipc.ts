@@ -181,6 +181,7 @@ export function registerIpc({
     )
   })
   handle('terms:takeIncoming', () => inbox.retirar())
+  handle('confirmacoes:takeIncoming', () => inbox.retirarConfirmacoes())
 
   handle('backup:info', () => backup.info())
   handle('backup:providers', () => backup.providers())

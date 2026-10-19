@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import type { Funcionamento } from './agenda'
+import type { PedidoNaSessao } from './confirmacao'
 import type { Categoria, Cor, EtiquetaResumo } from './tipos'
 import { isValidCpf } from './cpf'
 import { isIsoDate, isIsoLocalDateTime } from './dates'
@@ -231,6 +232,7 @@ export type Appointment = Omit<
   categoria: Categoria
   etiquetas: EtiquetaResumo[]
   confirmado_em: string | null
+  pedido: PedidoNaSessao | null
   patient_nome: string
   assinatura: ArrivalSignature | null
   created_at: string

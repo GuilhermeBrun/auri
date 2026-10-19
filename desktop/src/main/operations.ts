@@ -39,6 +39,15 @@ import {
 } from '../shared/finance'
 import { getAnamnese, saveAnamnese } from './db/anamneses'
 import {
+  aplicarOutraResposta,
+  avisosDaConfirmacao,
+  dispensarAviso,
+  enviarConfirmacao,
+  listarParaConfirmar,
+  processarPrazos,
+  receberConfirmacao
+} from './db/confirmacoes'
+import {
   createCommitment,
   listCommitments,
   removeCommitment,
@@ -116,6 +125,7 @@ import {
 type Operation = {
   run: (db: Db, args: unknown[]) => unknown
   changes?: DataTopic[]
+  changesOf?: (result: unknown) => DataTopic[]
 }
 
 const responseText = z.string().max(20_000)
@@ -328,6 +338,32 @@ const OPERATIONS: Record<string, Operation> = {
   },
   'terms:record': { run: (db, [signedId]) => signedTermRecord(db, idSchema.parse(signedId)) },
 
+  'confirmacoes:lista': { run: (db) => listarParaConfirmar(db, new Date()) },
+  'confirmacoes:enviar': {
+    run: (db, [appointmentId, computador]) =>
+      enviarConfirmacao(db, idSchema.parse(appointmentId), computadorSchema.parse(computador)),
+    changes: ['appointments']
+  },
+  'confirmacoes:receber': {
+    run: (db, [texto, computador]) =>
+      receberConfirmacao(db, responseText.parse(texto), computadorSchema.parse(computador)),
+    changes: ['appointments', 'finance']
+  },
+  'confirmacoes:aplicarOutra': {
+    run: (db, [requestId]) => aplicarOutraResposta(db, idSchema.parse(requestId)),
+    changes: ['appointments']
+  },
+  'confirmacoes:avisos': { run: (db) => avisosDaConfirmacao(db) },
+  'confirmacoes:dispensar': {
+    run: (db, [requestId, tipo]) =>
+      dispensarAviso(db, idSchema.parse(requestId), z.enum(['liberado', 'outra']).parse(tipo)),
+    changes: ['appointments']
+  },
+  'confirmacoes:prazos': {
+    run: (db, [computador]) => processarPrazos(db, computadorSchema.parse(computador)),
+    changesOf: (mudou) => (mudou === 0 ? [] : ['appointments', 'finance'])
+  },
+
   'anamneses:get': { run: (db, [patientId]) => getAnamnese(db, idSchema.parse(patientId)) },
   'anamneses:save': {
     run: (db, [patientId, input, expected]) =>
@@ -502,7 +538,8 @@ export function runOperation(
   if (!operation) return { ok: false, error: 'Operação desconhecida' }
   try {
     const data = operation.run(db, args)
-    if (operation.changes) onChange?.(operation.changes)
+    const topics = operation.changesOf?.(data) ?? operation.changes
+    if (topics && topics.length > 0) onChange?.(topics)
     return { ok: true, data }
   } catch (error) {
     const name = error instanceof Error ? error.name : typeof error
