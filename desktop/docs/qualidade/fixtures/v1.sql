@@ -1,5 +1,3 @@
--- Schema v1 congelado na adoção do CI. Somente dados fictícios.
-
   CREATE TABLE patients (
     id              INTEGER PRIMARY KEY,
     nome            TEXT NOT NULL,

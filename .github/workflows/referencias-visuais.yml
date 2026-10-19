@@ -1,9 +1,5 @@
 name: Referências visuais
 
-# Gera as capturas do Windows para a branch escolhida, sem aprovar nada: o resultado vira artefato
-# e `npm run visual:aceitar`, rodado no Mac, traz as imagens para desktop/docs/qualidade/visual junto com
-# as do Mac, geradas na hora pela própria máquina (o minuto do Mac no Actions custa 10x o do
-# Linux). Depois de conferir o diff das imagens, o commit passa pelo CI normal.
 on:
   workflow_dispatch:
 
@@ -30,7 +26,6 @@ jobs:
         with:
           node-version: 24.15.0
           package-manager-cache: false
-      # Chave sem o campo version do app: um PR que só sobe a versão mantém o cache.
       - id: lockfile
         shell: bash
         run: >-
@@ -41,7 +36,6 @@ jobs:
         with:
           path: desktop/node_modules
           key: modules-desktop-${{ runner.os }}-${{ runner.arch }}-node24.15.0-${{ steps.lockfile.outputs.hash }}
-      # Uma nova tentativa: o download do Electron às vezes cai no meio.
       - if: steps.modules.outputs.cache-hit != 'true'
         shell: bash
         run: npm ci || npm ci
@@ -54,5 +48,4 @@ jobs:
           name: referencias-win32
           path: desktop/.quality/ui/reference/win32/
           if-no-files-found: error
-          # O `npm run visual:aceitar` baixa logo depois; o artefato ocupa armazenamento pago.
           retention-days: 1

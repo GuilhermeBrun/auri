@@ -16,33 +16,22 @@ import { toIsoDate } from '@shared/dates'
 import { Button } from '@renderer/components/ui/button'
 import { cn } from '@renderer/lib/utils'
 
-// A semana começa no domingo, como na agenda
 const WEEK = { weekStartsOn: 0 as const }
 
 type CalendarProps = {
-  /** Data escolhida, se houver. */
   value: Date | null
   onSelect: (date: Date) => void
 }
 
-/** "dom", "seg"...: três letras, como na agenda (o 'EEE' do pt-BR mistura "sexta" e "seg."). */
 function weekday(date: Date): string {
   return format(date, 'EEE', { locale: ptBR }).replace('.', '').slice(0, 3)
 }
 
-/**
- * Calendário de um mês (6 semanas, para a altura não mudar de um mês para o outro). Teclado, como
- * no padrão de seletor de data da WAI-ARIA: setas andam de dia em dia e de semana em semana,
- * Home/End vão ao começo e ao fim da semana, PageUp/PageDown trocam de mês (com Shift, de ano) e
- * Enter ou Espaço escolhem. Só o dia ativo está na ordem do Tab (`[tabindex="0"]`): quem abre o
- * calendário põe o foco nele, depois que o diálogo em volta liberar o foco para fora dele.
- */
 export function Calendar({ value, onSelect }: CalendarProps): React.JSX.Element {
   const [today] = useState(() => new Date())
   const [active, setActive] = useState(value ?? today)
   const [month, setMonth] = useState(startOfMonth(active))
   const gridRef = useRef<HTMLDivElement>(null)
-  // o foco acompanha o dia ativo quando ele muda pelo teclado, não ao clicar em ‹ ›
   const followFocus = useRef(false)
 
   useEffect(() => {

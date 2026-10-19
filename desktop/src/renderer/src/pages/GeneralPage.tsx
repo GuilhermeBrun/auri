@@ -12,7 +12,6 @@ import { useToast } from '@renderer/lib/toast'
 import { setUpdateState, useUpdates } from '@renderer/lib/updates'
 import type { UpdateChannel, UpdateState } from '@shared/api'
 
-/** A frase do estado, embaixo da versão instalada. */
 function describe(state: UpdateState): string {
   switch (state.status) {
     case 'unavailable':
@@ -39,7 +38,6 @@ const CHANNELS = [
   { value: 'alpha', label: 'Alpha' }
 ] as const
 
-/** Linha do quadro "Sobre": nome e explicação à esquerda, a ação à direita. */
 function Row({
   title,
   description,
@@ -60,11 +58,6 @@ function Row({
   )
 }
 
-/**
- * Configurações → Geral. Por ora, o "Sobre": a versão instalada com o botão de procurar a nova
- * (ou reiniciar com ela, quando já baixou) e o canal, estável ou alpha. O Auri procura e baixa
- * sozinho; aqui dá para procurar na hora. O mesmo botão fica no canto do rodapé das Configurações.
- */
 export function GeneralPage(): React.JSX.Element {
   const state = useUpdates()
   const toast = useToast()
@@ -114,7 +107,6 @@ export function GeneralPage(): React.JSX.Element {
                 )
               )}
             </Row>
-            {/* Sem atualização automática (Mac), não há canal a escolher. */}
             {state.status !== 'unavailable' && (
               <Row
                 title={<label htmlFor={channelId}>Canal de atualização</label>}

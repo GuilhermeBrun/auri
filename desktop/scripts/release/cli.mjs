@@ -1,5 +1,3 @@
-// Usado pelo workflow Release:
-//   node scripts/release/cli.mjs resolve → saídas skip, ref, version, tag, prerelease
 import { execFileSync } from 'node:child_process'
 import { appendFileSync, readFileSync } from 'node:fs'
 import { latestTags, nextAlpha, outsideApp, stableFromAlpha } from './versions.mjs'

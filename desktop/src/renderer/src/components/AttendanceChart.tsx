@@ -6,15 +6,10 @@ import type { Appointment, Presenca } from '@shared/schemas'
 import { PRESENCA_LABELS } from '@renderer/lib/session'
 import { cn } from '@renderer/lib/utils'
 
-/** Sessões que cabem no gráfico sem ficarem finas demais; as mais antigas saem (não da contagem). */
 const MAX_BARS = 40
 
 type Kind = Presenca | 'pendente'
 
-/**
- * Cada presença tem um preenchimento próprio, sem depender de cor: presença cheia em grafite, falta
- * cheia em cinza, desmarcada em listras, sem registro só com o contorno tracejado.
- */
 const KINDS: Record<Kind, { one: string; many: string; fill: string }> = {
   presente: { one: 'presença', many: 'presenças', fill: 'bg-ink' },
   falta: { one: 'falta', many: 'faltas', fill: 'bg-line-strong' },
@@ -33,16 +28,10 @@ const kindOf = (a: Appointment): Kind => a.presenca || 'pendente'
 const statusLabel = (kind: Kind): string =>
   kind === 'pendente' ? 'Sem registro' : PRESENCA_LABELS[kind]
 
-/**
- * A folha de presença da Elo numa linha segmentada: um trecho por sessão, da mais antiga à mais nova. Passar o
- * mouse (ou as setas, com o foco no gráfico) mostra a sessão na linha de baixo; clicar abre o
- * registro. A legenda acende as marcas de um tipo.
- */
 export function AttendanceChart({
   sessions,
   onOpen
 }: {
-  /** Sessões que já começaram, da mais nova para a mais antiga (a ordem da lista). */
   sessions: Appointment[]
   onOpen: (appointment: Appointment) => void
 }): React.JSX.Element {

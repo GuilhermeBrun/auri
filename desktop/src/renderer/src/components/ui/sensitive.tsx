@@ -3,25 +3,12 @@ import { Tooltip } from 'radix-ui'
 import { cn } from '@renderer/lib/utils'
 
 type SensitiveProps = {
-  /** O que é, para o leitor de tela enquanto está oculto ("Endereço deste computador"). */
   label: string
-  /** Como a dica chama o dado, com artigo ("o endereço"): vira "Clique para mostrar o endereço". */
   what: string
   children: ReactNode
   className?: string
 }
 
-/**
- * Informação que não deve aparecer por acaso (endereço na rede, código de pareamento): fica
- * borrada até um clique, como dados de conta em apps de tecnologia, e um novo clique esconde de
- * novo. Protege de quem olha a tela por cima do ombro, de capturas e de compartilhamento de tela.
- * Oculta, ganha um fundo um tom mais escuro que escurece mais sob o ponteiro, e uma dica em
- * pílula acima diz o que o clique faz. O borrão acompanha o tamanho do texto (em `em`), então
- * esconde do código grande ao endereço pequeno. Oculto, o leitor de tela ouve só o rótulo e o
- * texto não pode ser selecionado. A dica vai num portal, então não é cortada por `truncate`.
- * O texto corta com reticências quando não cabe (a pasta do Backup); por isso o botão se alinha pelo
- * topo, porque o corte tira a linha de base e o deixaria uns pixels acima do texto ao redor.
- */
 export function Sensitive({ label, what, children, className }: SensitiveProps): React.JSX.Element {
   const [shown, setShown] = useState(false)
   return (
@@ -39,8 +26,6 @@ export function Sensitive({ label, what, children, className }: SensitiveProps):
               className
             )}
           >
-            {/* o borrão espalha além do texto: o recorte (do tamanho do fundo, com o px-1) o
-                mantém dentro do fundo */}
             <span
               aria-hidden={!shown}
               style={shown ? undefined : { clipPath: 'inset(0 -0.25rem round var(--radius-chip))' }}

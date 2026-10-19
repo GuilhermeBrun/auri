@@ -36,9 +36,7 @@ import { isBackupDue, isStale } from './backup/scheduler'
 import { createBackupStore, type BackupStore } from './backup/store'
 import type { Connection } from './connection'
 
-/** De quanto em quanto tempo confere se está na hora de uma cópia automática. */
 const TICK_MS = 60_000
-/** Primeira conferência depois de abrir: deixa a janela abrir antes. */
 const FIRST_TICK_MS = 10_000
 
 const DESTINATION_LABEL: Record<BackupDestination['kind'], string> = {
@@ -50,9 +48,7 @@ const DESTINATION_LABEL: Record<BackupDestination['kind'], string> = {
 
 export type BackupService = {
   info(): BackupInfo
-  /** Avisa as telas de novo (ex.: o papel do computador mudou). */
   refresh(): void
-  /** Uma gravação deu certo nos dados deste computador. */
   dataWritten(): void
   setup(destination: BackupDestination, password: string): Promise<{ recoveryCode: string }>
   setDestination(destination: BackupDestination): Promise<BackupInfo>
@@ -71,43 +67,28 @@ export type BackupService = {
   undoRestore(): Promise<BackupInfo>
   dismissWelcome(): Promise<BackupInfo>
   providers(): Promise<CloudProvider[]>
-  /** Confere agora se a nuvem escolhida continua pronta (a aba chama enquanto há problema). */
   check(): Promise<BackupInfo>
   install(id: CloudProviderId): Promise<void>
   openProvider(id: CloudProviderId): Promise<void>
-  /** Pasta das cópias ou da nuvem escolhida, para abrir a janela de salvar configurações nela. */
   preferredFolder(): string | null
-  /** Nuvem sugerida no assistente (vinda de configurações importadas). */
   suggest(kind: BackupDestination['kind'] | null): void
   close(): void
 }
 
-/**
- * Cópia de segurança dos dados (ver docs/specs/2026-10-13-copia-de-seguranca-design.md).
- * Só no papel servidor, que é quem tem o banco. A chave das cópias fica no cofre do sistema, então
- * as cópias automáticas não pedem senha; a senha e o código de recuperação só servem para abrir
- * as cópias em outro computador e para trocar a própria senha.
- */
 export function createBackupService(options: {
   userData: string
   connection: Connection
   onInfoChanged: (info: BackupInfo) => void
-  /** Nuvens deste computador (para listar cópias nelas e reconhecer a pasta de uma cópia). */
   providers?: () => Promise<CloudProvider[]>
-  /** Andamento de "Instalar" (baixando, abrindo o instalador…). */
   onInstallProgress?: (progress: InstallProgress) => void
 }): BackupService {
   const store = createBackupStore(join(options.userData, 'copias.json'))
   const tmpDir = join(app.getPath('temp'), 'auri-copias')
   const undoFile = join(options.userData, 'Restauração', 'antes-de-restaurar.db')
-  /** Arquivos que as telas podem pedir para restaurar: só os que o main listou ou o usuário escolheu. */
   const known = new Set<string>()
   let running = 0
-  /** A nuvem escolhida deixou de funcionar (desinstalada, fechada, saiu da conta…); null se ok. */
   let problem: DestinationProblem | null = null
   let queue: Promise<unknown> = Promise.resolve()
-
-  // Chave -------------------------------------------------------------------------------------
 
   function keyring(): Keyring | null {
     const saved = store.get().keyring
@@ -137,12 +118,9 @@ export function createBackupService(options: {
     })
   }
 
-  // Estado ------------------------------------------------------------------------------------
-
   const available = (): boolean => options.connection.info().role === 'server'
   const configured = (s: BackupStore = store.get()): boolean => !!(s.destination && s.keyring)
 
-  /** Banco sem nenhum paciente nem sessão: o Auri acabou de ser instalado. */
   function emptyDatabase(): boolean {
     const db = options.connection.database()
     if (!db) return false
@@ -175,7 +153,6 @@ export function createBackupService(options: {
 
   const changed = (): void => options.onInfoChanged(info())
 
-  /** Uma operação pesada por vez (cópia, troca de senha, restauração), na ordem em que chegam. */
   function exclusive<T>(task: () => Promise<T>): Promise<T> {
     const run = queue.then(async () => {
       running++
@@ -207,9 +184,6 @@ export function createBackupService(options: {
     if (password.length < 8) throw new Error('A senha precisa ter pelo menos 8 caracteres.')
   }
 
-  // Cópia -------------------------------------------------------------------------------------
-
-  /** O que dizer quando a nuvem escolhida não está pronta. */
   function problemMessage(kind: CloudProviderId, state: CloudState): string {
     const name = DESTINATION_LABEL[kind]
     switch (state) {
@@ -228,10 +202,6 @@ export function createBackupService(options: {
     }
   }
 
-  /**
-   * Confere se a nuvem escolhida continua pronta e na mesma pasta (a de uma conta). Avisa as telas
-   * quando muda; quando volta a funcionar, já faz a cópia que ficou parada.
-   */
   async function checkDestination(): Promise<void> {
     const destination = store.get().destination
     let next: DestinationProblem | null = null
@@ -256,7 +226,6 @@ export function createBackupService(options: {
     if (recovered) void backup()
   }
 
-  /** Mensagem para a tela quando a cópia falha. */
   function failureMessage(error: unknown, destination: BackupDestination): string {
     if (problem) return `${problem.message} As cópias estão paradas.`
     if (!existsSync(destination.folder)) {
@@ -269,7 +238,6 @@ export function createBackupService(options: {
       return 'Sem permissão para gravar na pasta da cópia.'
     }
     if (code === 'ENOSPC') return 'Sem espaço na pasta da cópia.'
-    // a pasta da nuvem existe, mas o app dela está fechado ou travado
     if (code === 'ETIMEDOUT' && destination.kind !== 'folder') {
       return `O ${DESTINATION_LABEL[destination.kind]} não respondeu. Confira se ele está aberto.`
     }
@@ -309,7 +277,6 @@ export function createBackupService(options: {
     const s = store.get()
     if (!available() || !configured(s) || running > 0) return
     await checkDestination()
-    // com a nuvem fora do ar, tentar só repetiria a falha: a aba já mostra o que resolver
     if (problem) return
     const due = isBackupDue(
       {
@@ -331,8 +298,6 @@ export function createBackupService(options: {
   const firstTick = setTimeout(safeTick, FIRST_TICK_MS)
   const interval = setInterval(safeTick, TICK_MS)
 
-  // Restauração -------------------------------------------------------------------------------
-
   async function toEntry(file: FileEntry, location: string): Promise<BackupEntry> {
     known.add(file.file)
     return {
@@ -347,10 +312,6 @@ export function createBackupService(options: {
 
   const sameName = (a: string, b: string): boolean => a.normalize('NFC') === b.normalize('NFC')
 
-  /**
-   * Restaurou num computador sem cópia ligada, de uma cópia que estava na pasta de cópias de uma
-   * nuvem: continua copiando para lá, com a mesma senha, sem pedir nada.
-   */
   async function adopt(file: string, key: Buffer): Promise<void> {
     if (configured()) return
     const header = await readHeaderFromFile(file)
@@ -372,7 +333,6 @@ export function createBackupService(options: {
     if (destination) store.update({ destination, lastSuccessAt: header.createdAt })
   }
 
-  /** Troca o banco por `source`, guardando antes o atual para "Desfazer restauração". */
   async function swapDatabase(source: string, keepUndo: boolean): Promise<void> {
     const db = options.connection.database()
     if (!db) throw new Error('As cópias são feitas no computador que guarda os dados.')
@@ -383,9 +343,6 @@ export function createBackupService(options: {
     options.connection.replaceDatabase(source)
   }
 
-  // Senha -------------------------------------------------------------------------------------
-
-  /** Grava o novo `keyring` e regrava as cópias da pasta com ele. */
   async function rekey(previous: Keyring, next: Keyring): Promise<void> {
     const destination = store.get().destination
     if (destination && existsSync(destination.folder)) {
@@ -399,10 +356,6 @@ export function createBackupService(options: {
     if (!key.equals(current.key)) throw new WrongSecretError('Senha atual incorreta.')
   }
 
-  /**
-   * Onde as janelas de escolher abrem: na pasta das cópias, se já houver. Sem `defaultPath` o
-   * Electron (desde o 43) abre sempre em Downloads.
-   */
   function startFolder(): string {
     const destination = store.get().destination
     if (!destination || !existsSync(destination.folder)) return app.getPath('home')
@@ -415,7 +368,6 @@ export function createBackupService(options: {
     refresh: changed,
 
     dataWritten(): void {
-      // só a frequência "a cada alteração" precisa saber; evita gravar o JSON a cada clique
       if (store.get().frequency !== 'change') return
       store.update({ lastChangeAt: new Date().toISOString() })
     },
@@ -434,7 +386,6 @@ export function createBackupService(options: {
         welcomeDone: true,
         suggested: null
       })
-      // a primeira cópia sai enquanto o código aparece na tela
       void backup()
       return { recoveryCode }
     },
@@ -444,7 +395,6 @@ export function createBackupService(options: {
       store.update({ destination, lastError: null })
       problem = null
       changed()
-      // pasta nova começa vazia: a primeira cópia vai já
       if (configured()) void backup()
       return info()
     },
@@ -460,7 +410,6 @@ export function createBackupService(options: {
       requireKeyring()
       await backup()
       const error = store.get().lastError
-      // a falha aparece na aba; aqui ela volta para o botão também
       if (error && error.at > (store.get().lastSuccessAt ?? '')) throw new Error(error.message)
       return info()
     },
@@ -495,7 +444,6 @@ export function createBackupService(options: {
         const previous = requireKeyring()
         validatePassword(next)
         await checkPassword(previous, current)
-        // a chave continua; muda só o envelope da senha (o do código segue valendo)
         await rekey(previous, { ...previous, password: await seal(previous.key, next) })
         return info()
       })
@@ -522,7 +470,6 @@ export function createBackupService(options: {
       return exclusive(async () => {
         const previous = requireKeyring()
         await checkPassword(previous, password)
-        // chave nova: quem tinha o código antigo não abre mais nenhuma cópia da pasta
         const recoveryCode = newRecoveryCode()
         await rekey(previous, await createKeyring(password, recoveryCode))
         return { recoveryCode }

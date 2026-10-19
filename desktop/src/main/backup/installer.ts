@@ -9,7 +9,6 @@ import type { CloudProviderId, InstallProgress } from '../../shared/api'
 
 type Installer = { url: string; file: string }
 
-/** Instaladores oficiais (conferidos em 13/10/2026). O OneDrive passa por um redirecionamento. */
 const INSTALLERS: Record<'google' | 'onedrive', Partial<Record<NodeJS.Platform, Installer>>> = {
   google: {
     darwin: {
@@ -27,10 +26,8 @@ const INSTALLERS: Record<'google' | 'onedrive', Partial<Record<NodeJS.Platform, 
   }
 }
 
-/** Só baixa destes endereços (depois dos redirecionamentos). */
 const ALLOWED_HOSTS = ['dl.google.com', 'go.microsoft.com', 'oneclient.sfx.ms']
 
-/** Quem tem de ter assinado o instalador. */
 const PUBLISHER: Record<'google' | 'onedrive', string> = {
   google: 'Google LLC',
   onedrive: 'Microsoft Corporation'
@@ -49,7 +46,6 @@ function run(
   )
 }
 
-/** Pasta montada de um `hdiutil attach` (a última coluna da linha com /Volumes/). */
 export function parseMountPoint(output: string): string | null {
   for (const line of output.split('\n')) {
     const at = line.indexOf('/Volumes/')
@@ -58,7 +54,6 @@ export function parseMountPoint(output: string): string | null {
   return null
 }
 
-/** `pkgutil --check-signature`: assinado com certificado da Apple e pelo fabricante esperado. */
 export function pkgSignedBy(output: string, publisher: string): boolean {
   return (
     /Status: signed by a developer certificate issued by Apple/i.test(output) &&
@@ -66,7 +61,6 @@ export function pkgSignedBy(output: string, publisher: string): boolean {
   )
 }
 
-/** Saída de `Get-AuthenticodeSignature` no formato "Status|Assunto do certificado". */
 export function exeSignedBy(output: string, publisher: string): boolean {
   const [status, subject = ''] = output.trim().split('|')
   return status === 'Valid' && subject.includes(`O=${publisher}`)
@@ -77,22 +71,14 @@ export async function verifyPkg(pkg: string, id: 'google' | 'onedrive'): Promise
   if (!pkgSignedBy(output, PUBLISHER[id])) throw new Error('unsigned')
 }
 
-/** "Status|Assunto do certificado" de `Get-AuthenticodeSignature` (ou "erro: …"). */
-/**
- * Ambiente para o PowerShell do Windows (5.1): sem o `PSModulePath` herdado. Aberto a partir de um
- * PowerShell 7, o Auri herda os módulos dele, que o 5.1 não carrega (o CI pegou isso:
- * "Get-AuthenticodeSignature … the module could not be loaded").
- */
 function windowsPowerShellEnv(): NodeJS.ProcessEnv {
   return Object.fromEntries(
     Object.entries(process.env).filter(([key]) => key.toLowerCase() !== 'psmodulepath')
   )
 }
 
-/** "Status|Assunto do certificado" de `Get-AuthenticodeSignature` (ou "erro: …"). */
 export function authenticode(exe: string): Promise<string> {
   const script = `$s = Get-AuthenticodeSignature -LiteralPath '${exe.replace(/'/g, "''")}'; $s.Status.ToString() + '|' + $s.SignerCertificate.Subject`
-  // pelo caminho do sistema, e não pelo PATH, que poderia apontar para outro executável
   const powershell = win32.join(
     process.env.SystemRoot ?? 'C:\\Windows',
     'System32',
@@ -113,11 +99,6 @@ export async function verifyExe(exe: string, id: 'google' | 'onedrive'): Promise
   if (!exeSignedBy(output, PUBLISHER[id])) throw new Error(`unsigned: ${output.trim()}`)
 }
 
-/**
- * Pede o instalador, conferindo o domínio do endereço inicial e de cada redirecionamento (o
- * OneDrive passa por um). O `net.fetch` não serve: devolve a resposta final sem dizer de onde ela
- * veio. O `net.request` usa o proxy do sistema, como o resto do Electron.
- */
 function request(url: string): Promise<IncomingMessage> {
   return new Promise((resolve, reject) => {
     if (!ALLOWED_HOSTS.includes(new URL(url).hostname)) {
@@ -139,7 +120,6 @@ function request(url: string): Promise<IncomingMessage> {
   })
 }
 
-/** Baixa avisando o andamento (0 a 1) a cada ponto percentual. */
 async function download(
   installer: Installer,
   target: string,
@@ -160,14 +140,9 @@ async function download(
       onProgress(received / total)
     }
   })
-  // o IncomingMessage do Electron é um Readable, mas os tipos dele não dizem
   await pipeline(response as unknown as NodeJS.ReadableStream, createWriteStream(target))
 }
 
-/**
- * Mac: monta o .dmg sem abrir o Finder, copia o .pkg de dentro para `folder` e desmonta (para não
- * deixar o volume montado depois da instalação).
- */
 async function pkgFromDmg(dmg: string, folder: string): Promise<string> {
   const mount = parseMountPoint(
     await run('hdiutil', ['attach', '-nobrowse', '-noautoopen', '-noverify', dmg])
@@ -185,11 +160,6 @@ async function pkgFromDmg(dmg: string, folder: string): Promise<string> {
   }
 }
 
-/**
- * Baixa o instalador oficial da nuvem, confere a assinatura (Google ou Microsoft) e o abre: no Mac
- * o Instalador do macOS, no Windows o instalador com o pedido de permissão do sistema. Daí em
- * diante é com o usuário; a tela percebe sozinha quando a pasta da nuvem aparece.
- */
 export async function installProvider(
   id: CloudProviderId,
   onProgress: (progress: InstallProgress) => void
@@ -210,7 +180,6 @@ export async function installProvider(
     onProgress({ id, stage: 'opening', progress: null })
     if (process.platform === 'darwin') {
       const pkg = target.endsWith('.dmg') ? await pkgFromDmg(target, folder) : target
-      // o .dmg já deu o que tinha: o pacote copiado basta
       if (pkg !== target) await rm(target, { force: true })
       await verifyPkg(pkg, id)
       const error = await shell.openPath(pkg)
@@ -229,13 +198,8 @@ export async function installProvider(
   }
 }
 
-/** macOS 13 em diante trocou as Preferências pelos Ajustes do Sistema (outro endereço). */
 const modernMac = (): boolean => Number(release().split('.')[0]) >= 22
 
-/**
- * Abre o que falta para a nuvem ficar pronta: o app (para entrar na conta), os Ajustes do iCloud
- * ou a permissão de Arquivos e Pastas do macOS.
- */
 export async function openProvider(id: CloudProviderId, denied: boolean): Promise<void> {
   if (process.platform === 'darwin') {
     if (denied) {

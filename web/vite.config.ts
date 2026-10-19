@@ -3,8 +3,6 @@ import { defineConfig, lazyPlugins } from 'vite-plus'
 
 const generated = ['**/node_modules/**', '**/dist/**', '**/dist-ssr/**', '.vite-plus/**']
 
-// Configuração única do site: build (Vite), testes, lint e formatação com Vite+, no mesmo padrão
-// do desktop/vite.config.ts.
 export default defineConfig({
   plugins: lazyPlugins(() => [react()]),
   fmt: {

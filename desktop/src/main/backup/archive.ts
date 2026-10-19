@@ -17,16 +17,9 @@ import {
   WrongSecretError
 } from './crypto'
 
-/**
- * Arquivo `.auribackup` (ver docs/specs/2026-10-13-copia-de-seguranca-design.md):
- * "AURIBAK1" | tamanho do cabeçalho (uint32) | cabeçalho JSON | dados cifrados | etiqueta GCM.
- * O cabeçalho é legível sem senha (data e contagens para a lista) e vai como dado adicional do
- * GCM, então qualquer mudança nele invalida o arquivo.
- */
 const MAGIC = Buffer.from('AURIBAK1')
 const PREFIX = MAGIC.length + 4
 const TAG_LENGTH = 16
-/** Cabeçalho de verdade tem ~1 KB; isso barra arquivos estranhos antes de ler megabytes. */
 const MAX_HEADER = 64 * 1024
 
 export const BACKUP_EXTENSION = '.auribackup'
@@ -45,7 +38,6 @@ export const headerSchema = z.object({
 })
 export type BackupHeader = z.infer<typeof headerSchema>
 
-/** Chave da cópia e os dois envelopes dela: o que basta para gravar sem pedir a senha. */
 export type Keyring = {
   key: Buffer
   keyId: string
@@ -53,10 +45,6 @@ export type Keyring = {
   recovery: BackupHeader['keys']['recovery']
 }
 
-/**
- * Chave nova presa à senha e ao código de recuperação. `key` permite manter a mesma chave (só
- * para testes e para adotar a chave de uma cópia restaurada); o normal é sortear uma nova.
- */
 export async function createKeyring(
   password: string,
   recoveryCode: string,
@@ -70,19 +58,16 @@ export async function createKeyring(
   return { key, keyId: keyIdOf(key), password: sealedPassword, recovery: sealedRecovery }
 }
 
-/** Como abrir uma cópia de outro computador. */
 export type Secret = { password: string } | { recoveryCode: string }
 
 const notBackup = (): BackupFileError =>
   new BackupFileError('Este arquivo não é uma cópia de segurança do Auri.')
 
-/** Monta o arquivo: os dados vão comprimidos e cifrados com a chave do `keyring`. */
 export function packBackup(
   keyring: Keyring,
   meta: Pick<BackupHeader, 'createdAt' | 'schemaVersion' | 'counts'>,
   database: Buffer
 ): Buffer {
-  // o iv entra no cabeçalho antes de cifrar, para o cabeçalho inteiro ser o dado adicional
   const iv = newIv()
   const header: BackupHeader = {
     format: 1,
@@ -113,7 +98,6 @@ function headerLength(prefix: Buffer): number {
   return length
 }
 
-/** Só o cabeçalho, lendo o começo do arquivo (para listar cópias sem abrir os dados). */
 export async function readHeaderFromFile(file: string): Promise<BackupHeader> {
   const handle = await open(file, 'r')
   try {
@@ -134,7 +118,6 @@ export function readHeader(file: Buffer): BackupHeader {
   return parseHeader(file.subarray(PREFIX, PREFIX + length))
 }
 
-/** Decifra e descomprime: devolve o arquivo SQLite. Arquivo alterado: `BackupFileError`. */
 export function unpackBackup(
   file: Buffer,
   key: Buffer
@@ -158,7 +141,6 @@ export function unpackBackup(
   }
 }
 
-/** A chave de uma cópia a partir da senha ou do código de recuperação. */
 export async function keyFromSecret(header: BackupHeader, secret: Secret): Promise<Buffer> {
   if ('password' in secret) return unseal(header.keys.password, secret.password)
   try {

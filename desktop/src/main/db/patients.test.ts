@@ -4,7 +4,6 @@ import { openDatabase, type Db } from './connection'
 import { SCHEMA_VERSION } from './migrations'
 import { createPatient, getPatient, listPatients, setPatientAtivo, updatePatient } from './patients'
 
-// Somente dados fictícios.
 function patient(overrides: Partial<PatientInput>): PatientInput {
   return { ...emptyPatientInput(), ...overrides }
 }

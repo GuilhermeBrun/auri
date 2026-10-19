@@ -1,2 +1,1 @@
-# CI local antes de cada push (desktop/scripts/ci-local.mjs). Pular: git push --no-verify ou VP_GIT_HOOKS=0
 cd desktop && npm run ci:local

@@ -1,5 +1,3 @@
-// Tema: igual ao sistema (padrão), claro ou escuro. A escolha fica neste navegador; o script no
-// <head> do index.html a aplica antes da primeira pintura.
 export const THEMES = ['system', 'light', 'dark'] as const
 export type Theme = (typeof THEMES)[number]
 
@@ -22,9 +20,7 @@ export function setTheme(theme: Theme) {
   try {
     if (theme === 'system') localStorage.removeItem('auri-theme')
     else localStorage.setItem('auri-theme', theme)
-  } catch {
-    // sem armazenamento (janela anônima): o tema vale só até fechar a página
-  }
+  } catch {}
   for (const listener of listeners) listener()
 }
 

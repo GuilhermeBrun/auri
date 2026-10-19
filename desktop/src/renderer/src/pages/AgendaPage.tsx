@@ -43,7 +43,7 @@ import { appointmentsQuery } from '@renderer/lib/queries'
 import { DEFAULT_DURATION, nextSlot, PRESENCA_LABELS, TIPO_LABELS } from '@renderer/lib/session'
 import { cn } from '@renderer/lib/utils'
 
-const WEEK_OPTIONS = { weekStartsOn: 0 as const } // semana começa no domingo
+const WEEK_OPTIONS = { weekStartsOn: 0 as const }
 
 const localizer = dateFnsLocalizer({
   format,
@@ -53,22 +53,15 @@ const localizer = dateFnsLocalizer({
   locales: { 'pt-BR': ptBR }
 })
 
-/** O dia como um número que cresce com a data, para comparar dias sem criar objetos Date. */
 const dayNumber = (d: Date): number => d.getFullYear() * 512 + d.getMonth() * 32 + d.getDate()
 
-// A grade compara cada sessão com cada dia visível (`inRange` por dia) a cada redesenho, e a versão
-// padrão cria várias datas por comparação: milhares por semana, e coleta de lixo. Esta compara
-// números; as outras unidades seguem com a original. O react-big-calendar prevê trocar essas
-// funções do localizer.
 const defaultInRange = localizer.inRange
 localizer.inRange = (day, min, max, unit = 'day') =>
   unit !== 'day'
     ? defaultInRange(day, min, max, unit)
     : (!min || dayNumber(day) >= dayNumber(min)) && (!max || dayNumber(day) <= dayNumber(max))
 
-/** Faixa do rodapé da janela onde o aviso aparece (altura + margem): a sessão nova não pode ficar embaixo dele. */
 const TOAST_CLEARANCE = 72
-/** Por quanto tempo a sessão recém-salva fica marcada; o destaque dura menos que isso. */
 const ARRIVED_MS = 3000
 
 const messages: Messages<CalendarEvent> = {
@@ -89,7 +82,6 @@ const messages: Messages<CalendarEvent> = {
 const timeRange = ({ start, end }: { start: Date; end: Date }): string =>
   `${formatTime(start)} – ${formatTime(end)}`
 
-// Horários com `formatTime`: a grade formata centenas deles a cada redesenho
 const formats: Formats = {
   timeGutterFormat: formatTime,
   dateFormat: 'd',
@@ -99,7 +91,6 @@ const formats: Formats = {
   weekdayFormat: (date) => format(date, 'EEE', { locale: ptBR })
 }
 
-/** Período visível ("4 a 10 de outubro 2026"), mostrado na barra de ferramentas da página. */
 function periodLabel(date: Date, view: View): string {
   if (view === Views.MONTH) return format(date, 'MMMM yyyy', { locale: ptBR })
   if (view === Views.DAY) return format(date, "EEEE, d 'de' MMMM", { locale: ptBR })
@@ -112,7 +103,6 @@ function periodLabel(date: Date, view: View): string {
 
 type NavAction = 'PREV' | 'NEXT' | 'TODAY'
 
-/** Nova data ao navegar, no passo da visão atual (mês, semana ou dia). */
 function navigateDate(date: Date, view: View, action: NavAction): Date {
   if (action === 'TODAY') return new Date()
   const step = action === 'NEXT' ? 1 : -1
@@ -123,7 +113,6 @@ function navigateDate(date: Date, view: View, action: NavAction): Date {
 
 type CalendarEvent = { id: number; title: string; start: Date; end: Date; appointment: Appointment }
 
-/** Intervalo visível na tela, para buscar só os agendamentos necessários. */
 function visibleRange(date: Date, view: View): { de: string; ate: string } {
   let start: Date
   let end: Date
@@ -140,18 +129,9 @@ function visibleRange(date: Date, view: View): { de: string; ate: string } {
   return { de: toIsoLocalDateTime(startOfDay(start)), ate: toIsoLocalDateTime(startOfDay(end)) }
 }
 
-/**
- * Conteúdo da sessão. Semana e Mês têm colunas estreitas: mostram o nome curto ("Maria Eduarda"),
- * que cabe inteiro; o nome completo aparece no balão e na visão Dia (ver .name-short, .name-full e
- * .agenda-day no CSS). Sessões curtas (menos de 45 min) ficam em uma linha, sem horário, porque ele
- * já está na grade; na visão Dia, que tem espaço de sobra, o horário vem à direita. Sessões longas:
- * nome em cima e intervalo embaixo. No Mês não há grade, então o horário vem antes do nome e a
- * segunda linha some (.event-start e .event-detail).
- */
 function EventContent({ event }: EventProps<CalendarEvent>): React.JSX.Element {
   const short = differenceInMinutes(event.end, event.start) < 45
   const start = formatTime(event.start)
-  // avaliação: a segunda linha diz o tipo antes do horário
   const range =
     event.appointment.tipo === 'avaliacao' ? `Avaliação · ${timeRange(event)}` : timeRange(event)
   return (
@@ -185,12 +165,10 @@ const VIEW_LABELS: [View, string][] = [
   [Views.MONTH, 'Mês']
 ]
 
-/** Três letras do dia da semana ("seg"): o 'EEE' do pt-BR no date-fns devolve o nome por extenso. */
 function weekdayShort(date: Date): string {
   return format(date, 'EEE', { locale: ptBR }).replace('.', '').slice(0, 3)
 }
 
-/** Cabeçalho de cada dia na semana: dia pequeno em cima, número grande embaixo; hoje vira um quadrado grafite. */
 function DayHeader({ date }: HeaderProps): React.JSX.Element {
   const today = isToday(date)
   return (
@@ -225,11 +203,6 @@ type AgendaControlsProps = {
   onView: (view: View) => void
 }
 
-/**
- * Ferramentas da agenda, na barra da página, com 32px de altura. Dois grupos no mesmo trilho de
- * preenchimento neutro das outras ferramentas: "quando" (‹ Hoje ›) e "como ver" (Dia, Semana, Mês,
- * com a opção ativa elevada).
- */
 function AgendaControls({ view, onNavigate, onView }: AgendaControlsProps): React.JSX.Element {
   return (
     <>
@@ -270,7 +243,6 @@ function AgendaControls({ view, onNavigate, onView }: AgendaControlsProps): Reac
   )
 }
 
-/** Fim de semana com fundo levemente diferente, como no Amie. */
 function dayPropGetter(date: Date): { className?: string } {
   const weekday = getDay(date)
   return weekday === 0 || weekday === 6 ? { className: 'rbc-weekend' } : {}
@@ -304,15 +276,9 @@ type AgendaCalendarProps = {
   onNavigate: (date: Date) => void
   onView: (view: View) => void
   onDraft: (draft: AppointmentDraft) => void
-  /** Sessão recém-salva, que entra com destaque (ver `.event-arrived`). Um ref, para a grade não redesenhar ao marcar. */
   arrivedRef: RefObject<number | null>
 }
 
-/**
- * A grade da agenda, num componente à parte e com `memo`. O react-big-calendar refaz tudo a cada
- * render (e mede o layout no fim), então a grade só deve redesenhar quando a data, a visão ou as
- * sessões mudam: abrir e fechar o diálogo de agendamento não toca nela.
- */
 const AgendaCalendar = memo(function AgendaCalendar({
   events,
   date,
@@ -327,8 +293,6 @@ const AgendaCalendar = memo(function AgendaCalendar({
     return {
       min: setHours(base, DAY_START_HOUR),
       max: setHours(base, DAY_END_HOUR),
-      // começa no início do expediente: na escala atual o dia inteiro quase cabe, e rolar até as 8h
-      // cortava o rótulo da primeira hora
       scrollToTime: setHours(base, DAY_START_HOUR)
     }
   }, [date])
@@ -336,7 +300,6 @@ const AgendaCalendar = memo(function AgendaCalendar({
   const onSelectSlot = useCallback(
     (slot: SlotInfo): void => {
       if (view === Views.MONTH) {
-        // no mês o clique é no dia inteiro: sugere 8h
         onDraft({
           mode: 'create',
           inicio: setHours(startOfDay(slot.start), 8),
@@ -360,8 +323,6 @@ const AgendaCalendar = memo(function AgendaCalendar({
     [onDraft]
   )
 
-  // Sessão recém-salva fora da área visível da grade (ex.: 19:30 numa janela baixa) ou sob o aviso:
-  // rola até ela, deixando-a no meio, para o destaque ser visto. Só nas visões com grade de horas.
   const rootRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
     if (arrivedRef.current === null) return
@@ -374,8 +335,6 @@ const AgendaCalendar = memo(function AgendaCalendar({
     scroller.scrollTop += box.top + box.height / 2 - (view.top + view.height / 2)
   }, [events, arrivedRef])
 
-  // Lido na hora de desenhar a sessão: a que acabou de ser salva ganha a classe de destaque; a
-  // que o paciente faltou ou desmarcou fica apagada
   const eventPropGetter = useCallback(
     (event: CalendarEvent): { className?: string } => {
       const missed =
@@ -427,8 +386,6 @@ export function AgendaPage(): React.JSX.Element {
   const [date, setDate] = useState(() => new Date())
   const [view, setView] = useState<View>(Views.WEEK)
   const [draft, setDraft] = useState<AppointmentDraft | null>(null)
-  // Sessão recém-salva: destacada quando a grade a desenha, e esquecida em seguida para que voltar a
-  // esta semana mais tarde não repita o destaque
   const arrivedRef = useRef<number | null>(null)
   const markArrived = useCallback((appointment: Appointment): void => {
     arrivedRef.current = appointment.id
@@ -442,7 +399,6 @@ export function AgendaPage(): React.JSX.Element {
     ...appointmentsQuery(visibleRange(date, view)),
     placeholderData: (previous) => previous
   })
-  // Falha só quando não há nada para mostrar: se uma atualização falhar, os dados anteriores ficam
   const failed = error !== null && data === undefined
 
   const events = useMemo<CalendarEvent[]>(
@@ -457,9 +413,6 @@ export function AgendaPage(): React.JSX.Element {
     [data]
   )
 
-  // Deixa no cache o período anterior, o seguinte e as outras visões da mesma data: navegar vira um
-  // único redesenho, já com as sessões, em vez de a grade aparecer vazia e as sessões surgirem
-  // depois. Busca quando o app está ocioso, para não disputar o quadro com a navegação.
   useEffect(() => {
     const ranges = [
       visibleRange(navigateDate(date, view, 'PREV'), view),
@@ -481,7 +434,6 @@ export function AgendaPage(): React.JSX.Element {
     setDraft({ mode: 'create', inicio: nextSlot(new Date()), duracao: DEFAULT_DURATION })
   }, [])
 
-  // Atalho N: novo agendamento (fora de campos de texto e com nenhum diálogo aberto)
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent): void {
       const target = e.target as HTMLElement
@@ -499,7 +451,6 @@ export function AgendaPage(): React.JSX.Element {
 
   return (
     <Page
-      // key: o período novo entra com um fade, para a mudança de data ser notada além da grade
       trail={[
         { label: 'Agenda' },
         {

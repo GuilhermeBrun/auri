@@ -30,11 +30,9 @@ import { SidebarContext, useSidebar } from '@renderer/lib/sidebar'
 import { useToast } from '@renderer/lib/toast'
 import { cn } from '@renderer/lib/utils'
 
-/** Altura de cada item do menu e o vão entre eles (`h-[34px]` e `gap-1.5`): o indicador anda de 40 em 40px. */
 const NAV_ITEM_HEIGHT = 34
 const NAV_GAP = 6
 
-/** Item do menu: texto apagado, que escurece no hover; o ativo fica com o texto principal. */
 const navItemClass =
   'relative flex h-[34px] items-center gap-2.5 rounded-control px-3 text-[13px] font-medium text-ink-soft transition-colors hover:bg-fill hover:text-ink [&_svg]:size-4 [&_svg]:stroke-[1.75]'
 
@@ -42,11 +40,9 @@ type NavItem = {
   to: string
   label: string
   icon: ReactNode
-  /** Marca de atenção (ex.: a cópia de segurança parou). */
   alert?: boolean
 }
 
-/** Marca de atenção num item do menu: ponto vermelho, com o motivo para o leitor de tela. */
 function AlertDot(): React.JSX.Element {
   return (
     <>
@@ -61,7 +57,6 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/pacientes', label: 'Pacientes', icon: <Users /> }
 ]
 
-/** Seções de Configurações, que tomam o lugar do menu principal enquanto se está nelas. */
 const SETTINGS_PATH = '/configuracoes'
 const CONNECTION_PATH = `${SETTINGS_PATH}/conexao`
 const BACKUP_PATH = `${SETTINGS_PATH}/copia`
@@ -73,11 +68,6 @@ const SETTINGS_ITEMS: NavItem[] = [
   { to: `${SETTINGS_PATH}/transferir`, label: 'Importar e exportar', icon: <ArrowLeftRight /> }
 ]
 
-/**
- * Um menu da barra lateral. O fundo do item ativo é um bloco só, que desliza de um item ao outro
- * (só `transform`); o item guarda apenas o texto e o ícone. A rota ativa é a que casa com o
- * começo do caminho, então a ficha de um paciente mantém "Pacientes" marcado.
- */
 function SidebarNav({
   items,
   label,
@@ -105,11 +95,7 @@ function SidebarNav({
           key={to}
           to={to}
           className={({ isActive }) =>
-            cn(
-              navItemClass,
-              // ativo: texto principal (e aria-current, que o NavLink põe); o fundo é o indicador
-              isActive && 'text-ink hover:bg-transparent'
-            )
+            cn(navItemClass, isActive && 'text-ink hover:bg-transparent')
           }
         >
           {icon}
@@ -121,20 +107,11 @@ function SidebarNav({
   )
 }
 
-/** Largura da barra lateral (alargada em 09/10 para os itens não ficarem apertados). */
-/**
- * O que a barra lateral mostra abaixo da marca, conforme a tela: o menu principal, com
- * Configurações no rodapé; ou, dentro de Configurações, as seções dela e "Voltar" no
- * rodapé, que leva à última tela fora das Configurações. Fica num componente
- * próprio para só ele redesenhar a cada troca de rota, e não o `Layout` inteiro.
- */
 function SidebarBody(): React.JSX.Element {
   const { pathname } = useLocation()
   const navigate = useNavigate()
   const inSettings = matchPath({ path: SETTINGS_PATH, end: false }, pathname) !== null
-  // a cópia parou: marca no menu e "Configurações" leva direto a ela
   const attention = needsAttention(useBackup())
-  // última tela fora das Configurações (a de abertura é a agenda)
   const backTo = useRef('/agenda')
   useEffect(() => {
     if (!inSettings) backTo.current = pathname
@@ -150,7 +127,6 @@ function SidebarBody(): React.JSX.Element {
           label="Configurações"
           pathname={pathname}
         />
-        {/* rodapé: "Voltar" e, no canto direito, o botão de procurar atualização */}
         <div className="mt-auto flex items-center gap-1">
           <button
             type="button"
@@ -169,7 +145,6 @@ function SidebarBody(): React.JSX.Element {
   return (
     <div key="principal" className="flex flex-1 animate-fade-in flex-col">
       <SidebarNav items={NAV_ITEMS} label="Principal" pathname={pathname} />
-      {/* rodapé: Configurações, com o nome, no mesmo estilo dos itens do menu (e do "Voltar") */}
       <Link
         to={attention ? BACKUP_PATH : SETTINGS_PATH}
         title={`Configurações (${SETTINGS_SHORTCUT})`}
@@ -183,10 +158,6 @@ function SidebarBody(): React.JSX.Element {
   )
 }
 
-/**
- * Ao abrir o Auri com a cópia de segurança parada, um aviso uma vez só, que leva à aba onde se
- * resolve. Depois disso fica a marca em Configurações.
- */
 function BackupAttention(): null {
   const info = useBackup()
   const toast = useToast()
@@ -213,19 +184,10 @@ function BackupAttention(): null {
 
 const SIDEBAR_WIDTH = 216
 
-/** Onde fica o botão de recolher: logo depois dos botões da janela (Mac) ou no canto (Windows e web). */
 const TOGGLE_LEFT = isMac ? 84 : 12
-/** Lado do botão de recolher (`size-8`), em px. */
 const TOGGLE_SIZE = 32
-/** Espaço que o cabeçalho reserva à esquerda quando a barra está recolhida: botão da janela + botão. */
 const HEADER_PAD_COLLAPSED = isMac ? 'pl-[136px]' : 'pl-[64px]'
 
-/**
- * Botão de mostrar/ocultar a barra lateral. Fica sempre no mesmo lugar, ao lado dos botões da
- * janela, aberta ou recolhida a barra. Só o ícone, sem caixa nem contorno (o fundo aparece no
- * hover). O ícone diz o que o clique faz: aberta, o painel com a seta "‹" (fechar); recolhida, o
- * painel simples (abrir).
- */
 function SidebarToggle(): React.JSX.Element {
   const { open, toggle } = useSidebar()
   const label = open ? 'Ocultar barra lateral' : 'Mostrar barra lateral'
@@ -245,15 +207,7 @@ function SidebarToggle(): React.JSX.Element {
   )
 }
 
-/**
- * Estrutura do app: uma barra lateral sólida à esquerda, um tom abaixo do conteúdo (cinza-claro no
- * tema claro, quase preto no escuro), separada dele só pelo fundo; sem vidro, sem cartões e sem
- * sombras, para ficar igual no Mac, no Windows e na web. A barra pode ser recolhida (botão ou
- * atalho); a escolha fica salva.
- */
 export function Layout(): React.JSX.Element {
-  // A escolha fica com o main (window.prefs), não no localStorage: ler o localStorage fazia a
-  // primeira tela esperar o disco
   const [open, setOpen] = useState(() => window.prefs.initial.sidebarOpen)
   const toggle = useCallback(() => setOpen((current) => !current), [])
   const navigate = useNavigate()
@@ -262,7 +216,6 @@ export function Layout(): React.JSX.Element {
     window.prefs.save({ sidebarOpen: open })
   }, [open])
 
-  // configurações importadas também trazem a barra aberta ou recolhida
   useEffect(() => window.prefs.onChange((prefs) => setOpen(prefs.sidebarOpen)), [])
 
   useEffect(() => {
@@ -295,15 +248,10 @@ export function Layout(): React.JSX.Element {
               !open && '-translate-x-full'
             )}
           >
-            {/*
-              faixa do título da janela: botões da janela, botão de recolher (que fica por cima, ver
-              abaixo) e a marca logo depois dele, como o título de um app do Mac
-            */}
             <div
               className="drag flex h-12 shrink-0 items-center"
               style={{ paddingLeft: TOGGLE_LEFT + TOGGLE_SIZE + 8 - 12 }}
             >
-              {/* O centro visual das letras acompanha o ícone do botão ao lado. */}
               <AuriLogo className="w-12 -translate-y-0.5" />
             </div>
             <div className="h-3 shrink-0" />
@@ -327,11 +275,6 @@ export function Layout(): React.JSX.Element {
   )
 }
 
-/**
- * A tela da rota atual, que entra com um fade curto e uma subida de 6px a cada troca de tela. A
- * `key` recria o contêiner só quando o caminho muda (navegar dentro da agenda não repete a
- * entrada). Vive aqui, e não no `Layout`, para só ele redesenhar a cada mudança de rota.
- */
 function RouteFade(): React.JSX.Element {
   const { pathname } = useLocation()
   return (
@@ -345,13 +288,6 @@ function RouteFade(): React.JSX.Element {
   )
 }
 
-/**
- * Computador que usa os dados de outro (Configurações / Conexão): o que mostrar quando não há
- * conexão. Conectado, ou guardando os próprios dados, nada aparece. Nunca conectou desde que o app
- * abriu: a tela inteira avisa, porque não há dado nenhum para mostrar. Caiu depois de conectar: os
- * dados carregados ficam (só para consulta; salvar dá erro) e um aviso fixo diz que está tentando
- * de novo. As Configurações sempre abrem, para dar para resolver por lá.
- */
 function ConnectionGate({
   inSettings,
   children
@@ -365,7 +301,6 @@ function ConnectionGate({
   const status = info?.status
   const server = info?.server?.name ?? 'o outro computador'
 
-  // voltou depois de cair: avisa uma vez (os dados se recarregam sozinhos, ver main.tsx)
   const previous = useRef(status)
   useEffect(() => {
     if (previous.current === 'offline' && status === 'connected') {
@@ -438,31 +373,19 @@ function ConnectionGate({
   )
 }
 
-/** Um passo da trilha do cabeçalho. Com `to`, vira link para aquela tela. */
 export type Crumb = {
   label: ReactNode
   to?: string
 }
 
 type PageProps = {
-  /**
-   * Caminho até a tela atual, do mais geral ao mais específico (ex.: Pacientes / Maria Souza). O
-   * último passo é o título da página; os anteriores com `to` levam de volta àquela tela.
-   */
   trail: Crumb[]
-  /** Ação principal, no fim da linha */
   actions?: ReactNode
-  /** Ferramentas da página (busca, filtros, navegação), antes da ação principal */
   toolbar?: ReactNode
   children: ReactNode
   bodyClassName?: string
 }
 
-/**
- * Trilha do cabeçalho, como o caminho de um app de produtividade: passos anteriores apagados e
- * clicáveis, separados por "/", e o atual em destaque (é o `h1` da página). Os passos anteriores não
- * encolhem; quem corta, se faltar espaço, é o atual.
- */
 function Breadcrumbs({ trail }: { trail: Crumb[] }): React.JSX.Element {
   return (
     <nav aria-label="Caminho" className="min-w-0">
@@ -503,14 +426,6 @@ function Breadcrumbs({ trail }: { trail: Crumb[] }): React.JSX.Element {
   )
 }
 
-/**
- * Página: uma barra de uma linha só (trilha à esquerda; ferramentas e ação principal à direita) e,
- * abaixo, o conteúdo, que rola sozinho. Sem filete entre as duas partes, em nenhuma tela: a
- * separação vem do espaço. As ferramentas e a ação principal usam a mesma altura (32px).
- * A barra é um contêiner (`@container`), então os itens podem se encolher conforme a largura
- * (ex.: `@min-[860px]:`); elementos `sticky top-0` do conteúdo (cabeçalho de tabela) param no topo
- * da área de rolagem, logo abaixo da barra.
- */
 export function Page({
   trail,
   actions,
@@ -524,16 +439,9 @@ export function Page({
       <header
         className={cn(
           '@container drag relative flex h-12 shrink-0 items-center gap-3 px-6 transition-[padding] duration-200 ease-out',
-          // barra lateral recolhida: dar lugar aos botões da janela e ao botão de recolher
           !open && HEADER_PAD_COLLAPSED
         )}
       >
-        {/*
-          Com a barra lateral recolhida o botão de recolher fica sobre este cabeçalho, que é uma
-          área de arrastar a janela. O Electron junta as áreas na ordem da árvore e o botão (que é
-          irmão de <main>, mais acima) perde para o cabeçalho: o clique virava "arrastar a janela" e
-          o menu não reabria. A exceção `no-drag` tem de ficar DENTRO do cabeçalho, no lugar do botão.
-        */}
         {!open && (
           <div
             aria-hidden="true"

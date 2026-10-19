@@ -38,7 +38,6 @@ const FREQUENCY_SHORT: Record<BackupFrequency, string> = {
   manual: 'Só quando você pedir'
 }
 
-/** Horários da cópia diária: de hora em hora, das 6h às 23h. */
 const TIME_OPTIONS = Array.from({ length: 18 }, (_, i) => {
   const value = `${String(i + 6).padStart(2, '0')}:00`
   return { value, label: value }
@@ -55,12 +54,10 @@ function frequencyText(frequency: BackupFrequency, time: string): string {
   }
 }
 
-/** Passo do assistente, em cinza acima do título. */
 function Step({ n }: { n: number }): React.JSX.Element {
   return <p className="mb-1 text-xs text-ink-faint">Passo {n} de 3</p>
 }
 
-/** Pasta escolhida: nome da nuvem e o caminho (borrado: no Google Drive ele traz o e-mail). */
 function DestinationLine({ destination }: { destination: BackupDestination }): React.JSX.Element {
   return (
     <div className="min-w-0 flex-1">
@@ -74,10 +71,6 @@ function DestinationLine({ destination }: { destination: BackupDestination }): R
   )
 }
 
-/**
- * Liga a cópia: onde guardar e a senha. O código de recuperação aparece depois, na página (ver
- * `RecoveryStep`), porque a cópia já fica ligada quando ele é gerado.
- */
 function Setup({
   suggested,
   onCode
@@ -149,7 +142,6 @@ function Setup({
   )
 }
 
-/** Último passo: o código de recuperação, que só aparece esta vez. */
 function RecoveryStep({ code, onDone }: { code: string; onDone: () => void }): React.JSX.Element {
   const [saved, setSaved] = useState(false)
   return (
@@ -178,7 +170,6 @@ function RecoveryStep({ code, onDone }: { code: string; onDone: () => void }): R
   )
 }
 
-/** Última cópia, falha ou aviso, com "Fazer cópia agora" e "Abrir pasta". */
 function Status({ info }: { info: BackupInfo }): React.JSX.Element {
   const toast = useToast()
   const run = useMutation({
@@ -193,7 +184,6 @@ function Status({ info }: { info: BackupInfo }): React.JSX.Element {
   const failed =
     info.lastError !== null && (!info.lastSuccessAt || info.lastError.at > info.lastSuccessAt)
 
-  // a nuvem voltou a funcionar: avisa (o main já faz a cópia que ficou parada)
   const label = DESTINATION_LABEL[info.destination!.kind]
   const hadProblem = useRef(problem !== null)
   useEffect(() => {
@@ -253,7 +243,6 @@ function Status({ info }: { info: BackupInfo }): React.JSX.Element {
   )
 }
 
-/** Onde ficam as cópias, com a opção de trocar de pasta. */
 function Destination({ info }: { info: BackupInfo }): React.JSX.Element {
   const toast = useToast()
   const [changing, setChanging] = useState(false)
@@ -301,7 +290,6 @@ function Destination({ info }: { info: BackupInfo }): React.JSX.Element {
   )
 }
 
-/** Todo dia (com o horário), a cada alteração ou só quando pedir. Vale na hora. */
 function Frequency({ info }: { info: BackupInfo }): React.JSX.Element {
   const change = useMutation({
     mutationFn: ({ frequency, time }: { frequency: BackupFrequency; time: string }) =>
@@ -337,7 +325,6 @@ function Frequency({ info }: { info: BackupInfo }): React.JSX.Element {
   )
 }
 
-/** Alterar senha, esqueci a senha, novo código. */
 function Password(): React.JSX.Element {
   const [request, setRequest] = useState<{ mode: PasswordMode; id: number } | null>(null)
   const open = (mode: PasswordMode): void => setRequest({ mode, id: Date.now() })
@@ -362,7 +349,6 @@ function Password(): React.JSX.Element {
   )
 }
 
-/** Restaurar de uma cópia e, logo depois de restaurar, desfazer. */
 function Restore({ info }: { info: BackupInfo }): React.JSX.Element {
   const toast = useToast()
   const [request, setRequest] = useState<{ id: number } | null>(null)
@@ -418,7 +404,6 @@ function Restore({ info }: { info: BackupInfo }): React.JSX.Element {
   )
 }
 
-/** Desligar as cópias (as que já existem ficam na pasta). */
 function Disable(): React.JSX.Element {
   const [confirming, setConfirming] = useState(false)
   const disable = useMutation({
@@ -462,14 +447,8 @@ function Disable(): React.JSX.Element {
   )
 }
 
-/**
- * Configurações → Cópia de segurança (ver
- * docs/specs/2026-10-13-copia-de-seguranca-design.md). Sem cópia ligada, o assistente
- * (onde, senha, código); ligada, o estado e os ajustes. Só no computador que guarda os dados.
- */
 export function BackupPage(): React.JSX.Element {
   const info = useBackup()
-  // o código fica na tela até "Concluir", mesmo com a cópia já ligada
   const [code, setCode] = useState<string | null>(null)
 
   return (

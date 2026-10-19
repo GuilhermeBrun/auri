@@ -1,16 +1,7 @@
 import { createHmac, randomInt, timingSafeEqual } from 'node:crypto'
 
-/**
- * Base32 de Crockford: sem I, L, O e U, que se confundem com 1, 0 e V ao ler e digitar. Ao digitar,
- * `normalizeCode` aceita minúsculas, espaços, hífens e as letras confundíveis.
- */
 const ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXYZ'
 
-/**
- * 12 caracteres = 60 bits. Quem interceptar uma tentativa de pareamento pode testar códigos à
- * vontade contra a prova (fora da rede, sem limite de tentativas); com 6 dígitos isso levaria
- * milissegundos, com 60 bits é inviável nos 5 minutos de validade.
- */
 export const CODE_LENGTH = 12
 export const CODE_TTL_MS = 5 * 60_000
 export const MAX_ATTEMPTS = 5
@@ -21,7 +12,6 @@ export function generateCode(): string {
   return code
 }
 
-/** "K7Q29XMP3HTA" → "K7Q2 9XMP 3HTA", para ler em voz alta e conferir. */
 export function formatCode(code: string): string {
   return code.replace(/(.{4})(?=.)/g, '$1 ')
 }
@@ -35,11 +25,6 @@ export function normalizeCode(input: string): string {
     .replace(/U/g, 'V')
 }
 
-/**
- * Prova de que um lado conhece o código, amarrada a esta conexão: o hash do handshake é o mesmo dos
- * dois lados e depende das duas chaves. Um intermediário fala com cada lado usando chaves dele,
- * então os hashes diferem e a prova não confere. O código nunca viaja.
- */
 export function pairingProof(
   code: string,
   side: 'client' | 'server',
@@ -59,10 +44,6 @@ export type PairingCheck =
   | { ok: true; code: string }
   | { ok: false; reason: 'none' | 'expired' | 'wrong' }
 
-/**
- * O código de pareamento em uso no servidor: um por vez, vale `CODE_TTL_MS`, uma vez só, e é
- * descartado depois de `MAX_ATTEMPTS` provas erradas.
- */
 export function createPairingCodes(now: () => number = Date.now): {
   issue(): { code: string; expiresAt: number }
   cancel(): void

@@ -16,32 +16,19 @@ export type KeyPair = { publicKey: Buffer; secretKey: Buffer }
 
 export type ServerHooks = {
   keyPair: KeyPair
-  /** Nome deste computador, como os outros o veem. */
   name: () => string
   schemaVersion: number
   isPaired: (publicKey: string) => boolean
   codes: ReturnType<typeof createPairingCodes>
-  /** Um computador acertou o código (ou repareou, talvez com outro nome). */
   onPaired: (device: { publicKey: string; name: string }) => void
-  /** Um computador pareado ficou online (primeira conexão) ou offline (última fechou). */
   onPresence: (publicKey: string, online: boolean) => void
-  /** Executa uma operação do registro (ver main/operations.ts). */
   handle: (channel: string, args: unknown[]) => IpcResult<unknown>
 }
 
-/** Tempo para o cliente se apresentar depois do handshake. */
 const HELLO_TIMEOUT_MS = 10_000
-/** O cliente manda `ping` a cada 10 s; sem nada por este tempo, a conexão está morta. */
 const IDLE_TIMEOUT_MS = 45_000
 
-/**
- * Servidor do papel "guarda os dados". Cada conexão é um fluxo cifrado (Noise, padrão XX: os dois
- * lados trocam as chaves públicas); a chave do cliente é a identidade dele. Só chaves pareadas
- * passam do `hello`, e nada além do `hello` é aceito antes disso. `attach` recebe qualquer fluxo
- * cifrado, para outros transportes além do TCP.
- */
 export function createSyncServer(hooks: ServerHooks): {
-  /** Devolve a porta em uso. Padrão: todas as interfaces, na porta preferida. */
   listen(options?: { host?: string; port?: number }): Promise<number>
   attach(this: void, stream: SecretStream): void
   broadcast(topics: DataTopic[]): void
@@ -49,7 +36,6 @@ export function createSyncServer(hooks: ServerHooks): {
   online(): Set<string>
   close(): Promise<void>
 } {
-  /** Fluxo → chave do cliente, depois que o `hello` foi aceito (null antes). */
   const sessions = new Map<SecretStream, string | null>()
   let server: net.Server | null = null
 
@@ -148,7 +134,6 @@ export function createSyncServer(hooks: ServerHooks): {
       const tryPort = (port: number): Promise<number> =>
         new Promise((resolve, reject) => {
           const onError = (error: NodeJS.ErrnoException): void => {
-            // a porta preferida está em uso: deixa o sistema escolher outra
             if (error.code === 'EADDRINUSE' && port !== 0) resolve(tryPort(0))
             else reject(error)
           }

@@ -14,17 +14,14 @@ import {
 } from './archive'
 import { BackupFileError } from './crypto'
 
-/** Quantas cópias ficam na pasta; as mais antigas saem a cada cópia nova. */
 export const KEEP_BACKUPS = 30
 
-/** Onde as cópias ficam dentro da pasta escolhida (a raiz do Drive, por exemplo). */
 export function backupFolder(root: string): string {
   return join(root, 'Auri', 'Cópias')
 }
 
 const pad = (n: number): string => String(n).padStart(2, '0')
 
-/** "Auri 2026-10-13 19h00.auribackup": ordena por data e se lê bem na pasta da nuvem. */
 export function backupFileName(date: Date): string {
   const day = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
   return `Auri ${day} ${pad(date.getHours())}h${pad(date.getMinutes())}${BACKUP_EXTENSION}`
@@ -40,16 +37,11 @@ export type BackupEntry = {
   size: number
 }
 
-/** Grava num temporário ao lado e renomeia: quem sincroniza nunca vê o arquivo pela metade. */
 async function writeAtomic(file: string, data: Buffer): Promise<void> {
   await writeFile(`${file}.tmp`, data)
   await rename(`${file}.tmp`, file)
 }
 
-/**
- * Caminho para a cópia nova. Uma cópia deste mesmo computador no mesmo minuto é trocada pela nova;
- * a de outro computador (outra chave) na mesma pasta nunca: a nova ganha " (2)" no nome.
- */
 async function freeName(folder: string, name: string, keyId: string): Promise<string> {
   const stem = name.slice(0, -BACKUP_EXTENSION.length)
   for (let n = 1; ; n++) {
@@ -60,7 +52,6 @@ async function freeName(folder: string, name: string, keyId: string): Promise<st
   }
 }
 
-/** Contagens e versão de um arquivo SQLite (aberto só para leitura). */
 function describeDatabase(file: string): Pick<BackupHeader, 'schemaVersion' | 'counts'> {
   const db = new Database(file, { readonly: true, fileMustExist: true })
   try {
@@ -75,10 +66,6 @@ function describeDatabase(file: string): Pick<BackupHeader, 'schemaVersion' | 'c
   }
 }
 
-/**
- * Faz uma cópia do banco em uso (a API de backup do SQLite copia um retrato consistente mesmo com
- * gravações no meio), cifra e grava na pasta. Depois apaga as que passaram de `KEEP_BACKUPS`.
- */
 export async function createBackup(options: {
   db: Db
   folder: string
@@ -109,7 +96,6 @@ export async function createBackup(options: {
   }
 }
 
-/** Uma cópia pelo cabeçalho; null se o arquivo não for uma cópia válida. */
 export async function describeBackup(file: string): Promise<BackupEntry | null> {
   try {
     const [header, info] = await Promise.all([readHeaderFromFile(file), stat(file)])
@@ -127,7 +113,6 @@ export async function describeBackup(file: string): Promise<BackupEntry | null> 
   }
 }
 
-/** Cópias da pasta, da mais nova para a mais antiga. Pasta que não existe: nenhuma. */
 export async function listBackups(folder: string): Promise<BackupEntry[]> {
   let names: string[]
   try {
@@ -150,7 +135,6 @@ export async function pruneBackups(folder: string, keep: number): Promise<void> 
   await Promise.all(entries.slice(keep).map((entry) => rm(entry.file, { force: true })))
 }
 
-/** Confere o banco de uma cópia antes de ele tomar o lugar do atual. */
 function validateDatabase(file: string): void {
   let db: Database.Database
   try {
@@ -181,10 +165,6 @@ function validateDatabase(file: string): void {
   }
 }
 
-/**
- * Decifra uma cópia num arquivo SQLite temporário e confere se ele está inteiro e é de uma versão
- * que este Auri sabe abrir. Quem chama troca o banco por ele (`Connection.replaceDatabase`).
- */
 export async function extractBackup(file: string, key: Buffer, out: string): Promise<BackupHeader> {
   const { header, database } = unpackBackup(await readFile(file), key)
   await writeFile(out, database)
@@ -197,10 +177,6 @@ export async function extractBackup(file: string, key: Buffer, out: string): Pro
   return header
 }
 
-/**
- * Cifra de novo, com o `next`, as cópias da pasta feitas com a chave `previous` (troca de senha
- * ou de código). As de outra chave ficam como estão. Devolve quantas mudaram.
- */
 export async function reencryptBackups(
   folder: string,
   previous: Pick<Keyring, 'key' | 'keyId'>,

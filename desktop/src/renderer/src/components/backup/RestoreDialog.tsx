@@ -17,17 +17,11 @@ function summary(entry: BackupEntry): string {
   return `${count(entry.counts.patients, 'paciente', 'pacientes')} · ${count(entry.counts.appointments, 'sessão', 'sessões')}`
 }
 
-/**
- * Restaurar os dados de uma cópia. Lista as cópias da pasta escolhida e das nuvens deste
- * computador (ou deixa escolher um arquivo), pede a senha só para cópias de outro computador e diz
- * o que vai acontecer antes de trocar. As configurações nunca mudam por aqui.
- */
 export function RestoreDialog({
   request,
   onClose,
   onRestored
 }: {
-  /** `id` muda a cada abertura, para recomeçar do zero. */
   request: { id: number } | null
   onClose: () => void
   onRestored?: () => void

@@ -61,7 +61,6 @@ async function launch() {
     .toEqual({ width: 1024, height: 640 })
   page.on('pageerror', (error) => errors.push(error.message))
   await page.clock.setFixedTime(new Date('2026-10-14T12:00:00Z'))
-  // Recria o React já com a data fixa, inclusive estados inicializados na primeira renderização.
   await page.reload()
   await page.evaluate(() => document.fonts.ready)
   await expect(page.locator('main')).toBeVisible()
@@ -73,7 +72,6 @@ async function launch() {
 
 async function accessibility(name) {
   await expect(page.locator('iframe')).toHaveCount(0)
-  // O Electron não implementa Target.createTarget; o app não usa iframes.
   const result = await new AxeBuilder({ page })
     .setLegacyMode()
     .withTags(['wcag2a', 'wcag2aa', 'wcag21aa'])
@@ -199,7 +197,6 @@ try {
   await check('UI: erro de gravação preserva ficha e mostra mensagem', async () => {
     await page.getByRole('link', { name: 'João Interface Fictício', exact: true }).click()
     await page.getByRole('textbox', { name: 'Escola', exact: true }).fill('Alteração recusada')
-    // Falha real do processo principal; o preload e a interface continuam sem mocks.
     const failWrite = (mode) => {
       const result = spawnSync(
         electronPath,

@@ -1,4 +1,3 @@
-// Tipos mínimos do que o Auri usa de hyperdht (a biblioteca não traz os seus).
 declare module 'hyperdht' {
   import type { EventEmitter } from 'events'
   import type SecretStream from '@hyperswarm/secret-stream'
@@ -11,16 +10,10 @@ declare module 'hyperdht' {
     close(): Promise<void>
   }
 
-  /**
-   * Nó da rede distribuída do Hyperswarm. Encontra outro nó pela chave pública e abre uma conexão
-   * UDP direta entre os dois (furando o NAT), já cifrada (Noise).
-   */
   class DHT extends EventEmitter {
     constructor(options?: { bootstrap?: Bootstrap; keyPair?: KeyPair; host?: string })
     static keyPair(seed?: Buffer): KeyPair
-    /** O roteador deste computador bloqueia conexões que chegam de fora. */
     readonly firewalled: boolean
-    /** O roteador troca a porta a cada destino (NAT "simétrico"): furar fica difícil. */
     readonly randomized: boolean
     ready(): Promise<void>
     fullyBootstrapped(): Promise<void>

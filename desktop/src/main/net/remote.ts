@@ -5,7 +5,6 @@ import type { KeyPair } from './server'
 
 export type Bootstrap = { host: string; port: number }[]
 
-/** Sem resposta da rede neste tempo, conta como sem internet e tenta de novo mais tarde. */
 const LISTEN_TIMEOUT_MS = 20_000
 const RETRY_MS = 60_000
 
@@ -14,20 +13,11 @@ function reachOf(dht: DHT): RemoteReach {
   return dht.randomized ? 'restricted' : 'likely'
 }
 
-/**
- * Acesso de fora da clínica, do lado de quem guarda os dados: escuta na rede distribuída do
- * Hyperswarm com a mesma chave da rede local. Quem conhece a chave (só computadores pareados) acha
- * este computador pela rede e as duas pontas furam o NAT dos roteadores, sem porta aberta e sem
- * servidor no meio; a conexão chega cifrada e segue o mesmo caminho das da rede local (`attach`).
- * Chaves não pareadas são recusadas antes da conexão (`firewall`). O pareamento continua só na
- * rede local: quem ainda não pareou não tem como saber a chave.
- */
 export function createRemoteListener(options: {
   keyPair: KeyPair
   isPaired: (publicKey: string) => boolean
   attach: (stream: SecretStream) => void
   onReach: (reach: RemoteReach) => void
-  /** Só nos testes: rede local em vez dos nós públicos. */
   bootstrap?: Bootstrap
 }): { reach(): RemoteReach; close(): Promise<void> } {
   let reach: RemoteReach = 'starting'
@@ -45,7 +35,6 @@ export function createRemoteListener(options: {
     const node = new DHT({ bootstrap: options.bootstrap })
     dht = node
     const server = node.createServer(
-      // true recusa: só computadores pareados
       { firewall: (remote) => !options.isPaired(remote.toString('hex')) },
       (socket) => options.attach(socket)
     )
@@ -59,7 +48,6 @@ export function createRemoteListener(options: {
       ]).finally(() => clearTimeout(timer))
       if (closed) return
       setReach(reachOf(node))
-      // o roteador pode mudar (outra rede, outro IP): o hyperdht se reanuncia sozinho
       node.on('nat-update', () => setReach(reachOf(node)))
     } catch (error) {
       console.error(`[acesso de fora] ${(error as Error).message}`)
@@ -84,10 +72,6 @@ export function createRemoteListener(options: {
   }
 }
 
-/**
- * Lado de quem usa os dados: um nó da rede distribuída para chegar ao outro computador pela
- * internet. Criado só quando preciso e reaproveitado entre tentativas.
- */
 export function createRemoteDialer(options: { keyPair: KeyPair; bootstrap?: Bootstrap }): {
   dial(serverKey: string): SecretStream
   close(): Promise<void>

@@ -18,17 +18,14 @@ export const PRESENCA_OPTIONS = Object.entries(PRESENCA_LABELS) as [Presenca, st
 
 export const DEFAULT_DURATION = 30
 
-/** Próximo horário cheio ou meia hora a partir de agora, dentro do expediente (à noite, o início de amanhã). */
 export function nextSlot(now: Date): Date {
   const minutes = now.getMinutes() < 30 ? 30 : 60
   const slot = setMinutes(setHours(startOfDay(now), now.getHours()), minutes)
   if (slot.getHours() < DAY_START_HOUR) return setHours(startOfDay(now), DAY_START_HOUR)
-  // sem lugar para uma sessão padrão antes das 20:00: a grade não tem esse horário
   if (differenceInMinutes(setHours(startOfDay(now), DAY_END_HOUR), slot) < DEFAULT_DURATION) {
     return setHours(startOfDay(addDays(now, 1)), DAY_START_HOUR)
   }
   return slot
 }
 
-/** Volta à lista de pacientes; o resto da trilha é o paciente aberto. */
 export const PATIENTS_CRUMB = { label: 'Pacientes', to: '/pacientes' }

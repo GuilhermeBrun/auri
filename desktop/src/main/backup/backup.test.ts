@@ -16,7 +16,6 @@ import {
 } from './backup'
 import { BackupFileError, newRecoveryCode, normalizeRecoveryCode, WrongSecretError } from './crypto'
 
-// Custo baixo do scrypt só nos testes (o padrão leva ~300 ms por tentativa). Dados fictícios.
 const FAST = { N: 1024, r: 8, p: 1 }
 const CODE = 'ABCD-EFGH-JKLM-NPQR-STUV-WXYZ'
 
@@ -60,7 +59,6 @@ describe('cópia de segurança', () => {
     expect(entry.counts).toEqual({ patients: 2, appointments: 0 })
 
     const file = readFileSync(entry.file)
-    // nada do paciente aparece em claro no arquivo
     expect(file.includes(Buffer.from('Ana Teste'))).toBe(false)
 
     const header = readHeader(file)
@@ -115,7 +113,6 @@ describe('cópia de segurança', () => {
       backupFileName(new Date(2026, 9, 4, 19)),
       backupFileName(new Date(2026, 9, 3, 19))
     ])
-    // sem temporários esquecidos na pasta da nuvem
     expect(readdirSync(folder).every((name) => name.endsWith('.auribackup'))).toBe(true)
   })
 

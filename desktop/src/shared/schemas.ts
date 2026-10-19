@@ -3,7 +3,6 @@ import { isValidCpf } from './cpf'
 import { isIsoDate, isIsoLocalDateTime } from './dates'
 import { isValidPhone } from './masks'
 
-// Campos opcionais chegam como '' quando vazios (é o que os inputs produzem).
 const text = (max = 200): z.ZodString =>
   z.string().trim().max(max, `Use no máximo ${max} caracteres`)
 
@@ -70,14 +69,9 @@ export const idSchema = z.number().int().positive()
 
 const localDateTime = z.string().refine(isIsoLocalDateTime, 'Data/hora inválida')
 
-/** Primeira consulta (avaliação) ou atendimento do tratamento (sessão). */
 export const APPOINTMENT_TIPOS = ['sessao', 'avaliacao'] as const
 export type AppointmentTipo = (typeof APPOINTMENT_TIPOS)[number]
 
-/**
- * Se o paciente veio, como a coluna PRESENÇA da folha de papel. `desmarcou`: avisou antes. ''
- * enquanto não foi registrada (toda sessão futura, e as passadas que ninguém marcou).
- */
 export const PRESENCAS = ['presente', 'falta', 'desmarcou'] as const
 export type Presenca = (typeof PRESENCAS)[number]
 
@@ -89,7 +83,6 @@ export const appointmentInputSchema = z
     observacao: text(1000),
     tipo: z.enum(APPOINTMENT_TIPOS).default('sessao'),
     presenca: z.enum([...PRESENCAS, '']).default(''),
-    /** O que foi feito na sessão e como o paciente respondeu. */
     evolucao: text(10000).default('')
   })
   .refine((a) => a.fim > a.inicio, {
@@ -97,7 +90,6 @@ export const appointmentInputSchema = z
     path: ['fim']
   })
 
-/** O registro (tipo, presença e evolução) pode faltar: agendar não exige nada disso. */
 export type AppointmentInput = z.input<typeof appointmentInputSchema>
 
 export type Appointment = z.output<typeof appointmentInputSchema> & {
@@ -111,10 +103,6 @@ export const appointmentRangeSchema = z
   .object({ de: localDateTime, ate: localDateTime })
   .refine((r) => r.ate > r.de, 'Intervalo inválido')
 
-/**
- * Anamnese: a entrevista de entrada com a família, um texto por tema (como as anotações à mão na
- * ficha de papel). Uma por paciente.
- */
 export const anamneseInputSchema = z.object({
   data: optionalDate,
   queixa: text(10000),
@@ -136,15 +124,12 @@ export function emptyAnamneseInput(): AnamneseInput {
   return Object.fromEntries(ANAMNESE_FIELDS.map((f) => [f, ''])) as AnamneseInput
 }
 
-/** `updated_at` null: a anamnese ainda não foi escrita (os campos vêm vazios). */
 export type Anamnese = AnamneseInput & { patient_id: number; updated_at: string | null }
 
-/** Tema: o do sistema (muda junto com ele) ou um fixo. */
 export const themeSchema = z.enum(['system', 'light', 'dark'])
 
 export type Theme = z.infer<typeof themeSchema>
 
-/** Preferências da interface (não são dados da clínica). */
 export const uiPrefsSchema = z.object({ sidebarOpen: z.boolean(), theme: themeSchema })
 
 export type UiPrefs = z.infer<typeof uiPrefsSchema>

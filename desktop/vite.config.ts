@@ -4,7 +4,6 @@ import type { UserConfig as ElectronConfig } from 'electron-vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
-// O adaptador electron.vite.config.ts repassa estes três alvos ao electron-vite.
 const electron: ElectronConfig = {
   main: {},
   preload: {},

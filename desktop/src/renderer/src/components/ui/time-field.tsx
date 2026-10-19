@@ -6,22 +6,13 @@ import { Input } from '@renderer/components/ui/input'
 import { cn } from '@renderer/lib/utils'
 
 type TimeFieldProps = {
-  /** Mesmo `id` do `htmlFor` do `Field`. */
   id?: string
-  /** HH:mm, ou o texto ainda incompleto ("09:3"), que o formulário recusa. */
   value: string
   onChange: (value: string) => void
-  /** Horários sugeridos na lista, em HH:mm e em ordem. Qualquer outro horário pode ser digitado. */
   slots: readonly string[]
   invalid?: boolean
 }
 
-/**
- * Hora digitada (HH:mm, com máscara: "9" vira "09", "930" vira "09:30") ou escolhida numa lista de
- * sugestões. No lugar do <input type="time">, que abre as colunas de hora e minuto do sistema.
- * É um combobox como o de paciente: o foco fica no campo, setas percorrem a lista, Enter escolhe
- * o destacado (sem setas, Enter só confirma o que foi digitado) e Esc fecha só a lista.
- */
 export function TimeField({
   id,
   value,
@@ -37,14 +28,11 @@ export function TimeField({
   const [open, setOpen] = useState(false)
   const [highlight, setHighlight] = useState<number | null>(null)
 
-  // o formulário trocou o valor por fora: o texto acompanha
   if (value !== seen) {
     setSeen(value)
     if (text !== value) setText(value)
   }
 
-  // Onde a lista abre: no horário escolhido ou, se o texto é outro, no primeiro que o continua
-  // ("1" → 10:00) ou, na falta, no primeiro que vem depois dele.
   const exact = slots.indexOf(text)
   const typed = normalizeTime(text)
   const byPrefix = text === '' ? -1 : slots.findIndex((s) => s.startsWith(text))
@@ -52,7 +40,6 @@ export function TimeField({
   const anchor =
     [exact, byPrefix, byTime].find((i) => i >= 0) ?? (text === '' ? 0 : slots.length - 1)
 
-  // Leva a lista até a âncora (ao abrir e a cada tecla) e, nas setas, mantém o destacado à vista.
   useLayoutEffect(() => {
     const list = listRef.current
     const item = list?.children[highlight ?? anchor] as HTMLElement | undefined
@@ -77,7 +64,6 @@ export function TimeField({
     close()
   }
 
-  /** Confirma o digitado, completando o que falta ("9" → "09:00"). */
   const commit = (): void => {
     const full = normalizeTime(text)
     if (full) {
@@ -118,7 +104,6 @@ export function TimeField({
           selectOnMouseUp.current = true
           setOpen(true)
         }}
-        // clicar para focar seleciona tudo (digitar troca a hora); o mouseup do clique desfaria a seleção
         onMouseUp={(e) => {
           if (!selectOnMouseUp.current) return
           selectOnMouseUp.current = false
@@ -138,7 +123,6 @@ export function TimeField({
               e.preventDefault()
               choose(slots[highlight])
             } else {
-              // o Enter também envia o formulário: o horário completo tem que chegar antes
               commit()
             }
           } else if (e.key === 'Escape' && open) {
@@ -153,15 +137,12 @@ export function TimeField({
         )}
         aria-hidden="true"
       />
-      {/* Sempre montada, só escondida: tirar a lista do DOM durante o blur (Tab) faz o diálogo, que
-          vigia remoções, puxar o foco para ele em vez de deixá-lo seguir para o campo seguinte. */}
       <ul
         hidden={!open}
         ref={listRef}
         id={listId}
         role="listbox"
         aria-label="Horários"
-        // uma lista que rola é parada do Tab no Chromium: o foco fica sempre no campo
         tabIndex={-1}
         onMouseDown={(e) => e.preventDefault()}
         className={cn(
@@ -176,7 +157,6 @@ export function TimeField({
             role="option"
             aria-selected={slot === value}
             data-highlighted={i === highlight || undefined}
-            // mousedown para escolher antes do blur fechar a lista
             onMouseDown={(e) => {
               e.preventDefault()
               choose(slot)

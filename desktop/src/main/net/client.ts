@@ -14,10 +14,8 @@ import type { KeyPair } from './server'
 
 export type Address = { host: string; port: number }
 
-/** Por onde uma conexão chegou ao servidor. */
 export type Route = { via: 'local'; address: Address } | { via: 'internet' }
 
-/** Fluxo cifrado (iniciador) sobre TCP, para a rede local. */
 export function tcpStream(keyPair: KeyPair, address: Address): SecretStream {
   const socket = net.connect(address.port, address.host)
   socket.on('error', () => {})
@@ -29,46 +27,30 @@ export type ClientStatus = 'connecting' | 'connected' | 'offline' | 'version' | 
 
 export type ClientHooks = {
   keyPair: KeyPair
-  /** Nome deste computador, como o servidor o vê. */
   name: () => string
   schemaVersion: number
-  /** Chave pública (hex) do servidor com que este computador pareou: só ela é aceita. */
   serverKey: string
-  /** Nome do servidor, para as mensagens ("Sem conexão com Recepção"). */
   serverName: string
-  /** Onde tentar na rede local, em ordem (ex.: o último endereço que funcionou, depois a busca). */
   addresses: () => Promise<Address[]>
-  /** Abre uma conexão pela internet (rede distribuída). Sem isso, só a rede local. */
   dialRemote?: () => SecretStream
   onStatus: (status: ClientStatus) => void
   onEvent: (topics: DataTopic[]) => void
-  /** Conectou por este caminho (o endereço local é tentado primeiro da próxima vez). */
   onConnected?: (route: Route) => void
 }
 
 const LOCAL_TIMEOUT_MS = 5_000
-/** Pela internet: achar o outro na rede distribuída e furar os dois NATs leva alguns segundos. */
 const REMOTE_TIMEOUT_MS = 20_000
-/**
- * A rede local tem a vantagem: a internet só entra na disputa se em 1,5 s ela não respondeu (na
- * clínica a local vence quase sempre; em casa, a internet começa logo).
- */
 const REMOTE_DELAY_MS = 1_500
 const REQUEST_TIMEOUT_MS = 15_000
 const PING_MS = 10_000
-/** Sem nenhuma mensagem do servidor por este tempo (nem `pong`), a conexão está morta. */
 const DEAD_MS = 25_000
-/** Espera entre tentativas, crescendo até o último valor. */
 const BACKOFF_MS = [1_000, 2_000, 4_000, 8_000, 15_000]
-/** Logo ao abrir, um pedido espera a primeira conexão por até este tempo antes de falhar. */
 const FIRST_CONNECT_WAIT_MS = 6_000
 
 type Outcome = 'ok' | 'fail' | 'version' | 'revoked'
 
-/** Uma rodada de tentativas: a primeira que entra ganha, e as outras são canceladas. */
 type Race = { won: boolean; aborts: Set<() => void> }
 
-/** O primeiro resultado que decide algo (conectou, versão, removido); 'fail' se todos falharem. */
 function firstDecisive(attempts: Promise<Outcome>[]): Promise<Outcome> {
   return new Promise((resolve) => {
     let left = attempts.length
@@ -83,23 +65,15 @@ function firstDecisive(attempts: Promise<Outcome>[]): Promise<Outcome> {
 
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
 
-/** JSON troca `undefined` por `null` em listas: argumentos opcionais do fim simplesmente não vão. */
 function trimArgs(args: unknown[]): unknown[] {
   let end = args.length
   while (end > 0 && args[end - 1] === undefined) end--
   return args.slice(0, end)
 }
 
-/**
- * Cliente do papel "usa os dados de outro computador": mantém uma conexão com o servidor, se
- * reconecta sozinho (com espera crescente) e repassa os pedidos das telas. Pedidos nunca são
- * repetidos automaticamente: se a resposta se perde, repetir uma gravação poderia criar uma sessão
- * em dobro, então o pedido falha e a tela recarrega os dados quando a conexão volta.
- */
 export function createSyncClient(hooks: ClientHooks): {
   request(channel: string, args: unknown[]): Promise<IpcResult<unknown>>
   status(): ClientStatus
-  /** Por onde está conectado agora (null quando não está). */
   via(): LinkVia | null
   retry(): void
   close(): void
@@ -207,7 +181,6 @@ export function createSyncClient(hooks: ClientHooks): {
 
       secret.on('error', () => {})
       secret.on('connect', () => {
-        // outro computador neste endereço (ex.: o roteador deu o IP a outra máquina)
         if (secret.remotePublicKey?.toString('hex') !== hooks.serverKey) return finish('fail')
         const hello: ClientMessage = {
           t: 'hello',
@@ -223,7 +196,6 @@ export function createSyncClient(hooks: ClientHooks): {
         lastHeard = Date.now()
         if (settled) return onMessage(message)
         if (message.t === 'welcome') {
-          // outra tentativa desta rodada já entrou
           if (closed || race.won || stream) return finish('fail')
           race.won = true
           adopt(secret, through)
@@ -239,7 +211,6 @@ export function createSyncClient(hooks: ClientHooks): {
     })
   }
 
-  /** Rede local, endereço por endereço. */
   async function tryLocal(race: Race): Promise<Outcome> {
     const addresses = await hooks.addresses().catch(() => [])
     for (const address of addresses) {
@@ -354,12 +325,6 @@ const PAIR_ERRORS: Record<Extract<ServerMessage, { t: 'reject' }>['reason'], str
   'code-wrong': 'Código incorreto. Confira e digite de novo.'
 }
 
-/**
- * Pareia com um servidor usando o código mostrado na tela dele. Os dois lados provam que conhecem o
- * código sem mandá-lo (ver `pairingProof`), e a prova amarra as chaves desta conexão: se alguém
- * estiver no meio, não confere. Devolve a chave e o nome do servidor; a conexão de uso é aberta
- * depois, por `createSyncClient`.
- */
 export function pairWithServer(options: {
   keyPair: KeyPair
   name: string
@@ -413,10 +378,6 @@ export function pairWithServer(options: {
 
 const PROBE_TIMEOUT_MS = 25_000
 
-/**
- * "Testar acesso pela internet": abre uma conexão só pelo caminho dado, se apresenta como faria de
- * verdade e fecha. Não mexe na conexão em uso.
- */
 export function probeServer(options: {
   open: () => SecretStream
   serverKey: string

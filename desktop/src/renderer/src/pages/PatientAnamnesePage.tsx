@@ -32,11 +32,9 @@ type Topic = {
   field: Exclude<keyof AnamneseInput, 'data'>
   title: string
   hint: string
-  /** Perguntas para guiar a conversa; clicar põe a pergunta no texto, como começo de linha. */
   prompts: string[]
 }
 
-/** Os temas que aparecem nas anotações à mão das fichas de entrada, na ordem da conversa. */
 const TOPICS: Topic[] = [
   {
     field: 'queixa',
@@ -94,10 +92,6 @@ const TOPICS: Topic[] = [
   }
 ]
 
-/**
- * O tema aberto por último em cada paciente, enquanto o Auri estiver aberto: quem sai para olhar a
- * ficha no meio da conversa volta para o mesmo tema.
- */
 const lastTopic = new Map<number, number>()
 
 function toInput(anamnese: Anamnese): AnamneseInput {
@@ -131,7 +125,6 @@ function PatientAnamnesePage({ patientId }: { patientId: number }): React.JSX.El
     )
     return (
       <Page trail={[PATIENTS_CRUMB, { label: patient.data?.nome ?? 'Anamnese' }]}>
-        {/* com o paciente já em mãos, nome e abas ficam no lugar enquanto a anamnese chega */}
         {patient.data ? (
           <div className={PATIENT_COLUMN}>
             <PatientHeader
@@ -163,7 +156,6 @@ function AnamneseForm({
   const toast = useToast()
   const ids = useId()
 
-  // Ainda não escrita: a data sugerida é a da entrada na clínica (ou hoje), como na folha
   const [today] = useState(() => toIsoDate(new Date()))
   const initial = (a: Anamnese): AnamneseInput =>
     a.updated_at === null ? { ...toInput(a), data: patient.data_entrada || today } : toInput(a)
@@ -181,7 +173,6 @@ function AnamneseForm({
     defaultValues: initial(anamnese)
   })
 
-  // '' (e não null) quando ainda não existe: o rascunho vale enquanto ninguém criar a anamnese
   const draft = useDraft<AnamneseInput>(
     `anamnese:${patient.id}`,
     anamnese.updated_at ?? '',
@@ -196,7 +187,6 @@ function AnamneseForm({
 
   const save = useMutation({
     mutationFn: (input: AnamneseInput) =>
-      // recusa se a anamnese foi salva em outro computador depois de aberta aqui
       window.api.anamneses.save(patient.id, input, anamnese.updated_at ?? ''),
     onSuccess: (saved) => {
       draft.discard()
@@ -214,15 +204,12 @@ function AnamneseForm({
   const topic = TOPICS[current]
   const fieldId = `${ids}-${topic.field}`
 
-  // o que já foi escrito em cada tema, para a marca da lista
   const texts = useWatch({ control, name: TOPICS.map((t) => t.field) })
   const written = texts.map((text) => Boolean(text?.trim()))
   const writtenCount = written.filter(Boolean).length
 
-  /** A pergunta entra no fim do texto, numa linha nova, com o cursor logo depois dela. */
   const ask = (prompt: string): void => {
     const text = getValues(topic.field).trimEnd()
-    // o campo é não controlado: o setValue já escreve no elemento, então dá para focar na hora
     setValue(topic.field, `${text ? `${text}\n` : ''}${prompt} `, { shouldDirty: true })
     const textarea = document.getElementById(fieldId) as HTMLTextAreaElement | null
     if (!textarea) return
@@ -230,7 +217,6 @@ function AnamneseForm({
     textarea.setSelectionRange(textarea.value.length, textarea.value.length)
   }
 
-  // erro num tema que não está na tela: abre o primeiro tema com erro
   const showFirstError = (invalid: FieldErrors<AnamneseInput>): void => {
     const index = TOPICS.findIndex((t) => invalid[t.field])
     if (index >= 0) goTo(index)
@@ -270,7 +256,6 @@ function AnamneseForm({
             </Callout>
           )}
 
-          {/* roteiro da conversa: a lista dos temas ao lado e um tema por vez */}
           <div className="grid grid-cols-[200px_minmax(0,1fr)] gap-x-10">
             <div className="flex flex-col gap-6">
               <Field label="Data da anamnese" htmlFor={`${ids}-data`} error={errors.data?.message}>
@@ -300,7 +285,6 @@ function AnamneseForm({
                       i === current && 'bg-fill-hover font-medium text-ink hover:bg-fill-hover'
                     )}
                   >
-                    {/* escrito = quadrado cheio, vazio = só o contorno: a forma diz, não a cor */}
                     <span
                       aria-hidden="true"
                       className={cn(
@@ -327,7 +311,6 @@ function AnamneseForm({
               </p>
             </div>
 
-            {/* key: o tema novo entra com um fade curto (em "Reduzir movimento" também é fade) */}
             <section
               key={topic.field}
               aria-labelledby={`${fieldId}-title`}
@@ -367,7 +350,6 @@ function AnamneseForm({
                 aria-describedby={errors[topic.field] ? `${fieldId}-error` : undefined}
                 placeholder="Anote do jeito que a família contar."
                 rows={6}
-                // cresce com o texto, como uma folha: sem rolagem dentro do campo
                 className="mt-4 field-sizing-content min-h-40 resize-none leading-relaxed"
               />
               {errors[topic.field] && (
@@ -376,7 +358,6 @@ function AnamneseForm({
                 </span>
               )}
 
-              {/* -mx: o texto dos botões alinha com as bordas do campo */}
               <div className="-mx-3.5 mt-5 flex justify-between gap-3">
                 {current > 0 ? (
                   <Button variant="ghost" onClick={() => goTo(current - 1)}>

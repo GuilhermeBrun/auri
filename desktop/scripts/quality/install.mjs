@@ -1,4 +1,3 @@
-// Usa somente uma pasta temporária. O NSIS é instalado apenas no runner descartável do GitHub.
 import { spawnSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import {
@@ -72,7 +71,6 @@ try {
     name: 'Instalador: aplicativo distribuído passa gravação, reabertura e banco histórico',
     status: 'passed'
   })
-  // Mantém o relatório do pacote separado da execução normal de qualidade.
   copyFileSync('.quality/package/results.json', '.quality/installer/package-results.json')
 } catch (error) {
   console.error(error.message)

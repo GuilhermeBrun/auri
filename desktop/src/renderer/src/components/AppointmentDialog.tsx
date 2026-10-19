@@ -35,10 +35,6 @@ import { MOD_KEY } from '@renderer/lib/platform'
 import { PRESENCA_OPTIONS, TIPO_OPTIONS } from '@renderer/lib/session'
 import { useToast } from '@renderer/lib/toast'
 
-/**
- * O que abriu o diálogo: um horário livre na agenda ou um agendamento existente. `patient`: já
- * escolhido (agendar a partir da ficha).
- */
 export type AppointmentDraft =
   | { mode: 'create'; inicio: Date; duracao: number; patient?: { id: number; nome: string } }
   | { mode: 'edit'; appointment: Appointment }
@@ -64,7 +60,6 @@ const formSchema = z
     presenca: z.enum([...PRESENCAS, '']),
     evolucao: z.string().trim().max(10000, 'Use no máximo 10000 caracteres')
   })
-  // a sessão também tem que caber na grade: 19:30 por 45 min terminaria às 20:15, fora dela
   .refine(
     (v) => !TIME.test(v.hora) || !startsWithinAgenda(v.hora) || endsWithinAgenda(v.hora, v.duracao),
     {
@@ -103,10 +98,6 @@ function initialValues(draft: AppointmentDraft): FormValues {
   }
 }
 
-/**
- * A sessão já começou (ou a data é de antes): dá para registrar presença e evolução. Também vale
- * ao lançar sessões antigas, das fichas de papel. Data ou hora incompletas contam como futuras.
- */
 function hasStarted(data: string | undefined, hora: string | undefined, now: Date): boolean {
   if (!isIsoDate(data ?? '') || !TIME.test(hora ?? '')) return false
   return parseIsoLocalDateTime(`${data}T${hora}`) <= now
@@ -120,22 +111,18 @@ function toInput(values: ValidValues, now: Date): AppointmentInput {
     fim: toIsoLocalDateTime(addMinutes(parseIsoLocalDateTime(inicio), values.duracao)),
     observacao: values.observacao,
     tipo: values.tipo,
-    // remarcada para o futuro: a presença deixa de valer (a evolução escrita fica)
     presenca: hasStarted(values.data, values.hora, now) ? values.presenca : '',
     evolucao: values.evolucao
   }
 }
 
-/** "qui, 9 de out às 14:00": o dia e a hora da sessão, curto o bastante para a segunda linha de um aviso. */
 function when(inicio: string): string {
   const date = parseIsoLocalDateTime(inicio)
-  // três letras no dia da semana, como na agenda: o 'EEE' do pt-BR devolve "sexta", "seg." e "ter." misturados
   const weekday = format(date, 'EEE', { locale: ptBR }).replace('.', '').slice(0, 3)
   const day = format(date, "d 'de' MMM", { locale: ptBR }).replace('.', '')
   return `${weekday}, ${day} às ${format(date, 'HH:mm')}`
 }
 
-/** Frase que confirma o que vai ser agendado, ou null se data/hora ainda não são válidas. */
 function summary(values: FormValues): string | null {
   if (!isIsoDate(values.data ?? '') || !/^\d{2}:\d{2}$/.test(values.hora ?? '')) return null
   const inicio = parseIsoLocalDateTime(`${values.data}T${values.hora}`)
@@ -145,7 +132,6 @@ function summary(values: FormValues): string | null {
   return `Sessão de ${values.duracao} min${quem} na ${dia}, das ${format(inicio, 'HH:mm')} às ${format(fim, 'HH:mm')}.`
 }
 
-/** Sessão que já aconteceu abre para o registro; as outras, para (re)agendar. */
 function title(draft: AppointmentDraft | null): string {
   if (draft?.mode !== 'edit') return 'Novo agendamento'
   return parseIsoLocalDateTime(draft.appointment.inicio) <= new Date()
@@ -156,14 +142,10 @@ function title(draft: AppointmentDraft | null): string {
 type Props = {
   draft: AppointmentDraft | null
   onClose: () => void
-  /** Chamado com a sessão gravada (criada ou editada), antes de o diálogo fechar. */
   onSaved?: (appointment: Appointment) => void
 }
 
 export function AppointmentDialog({ draft, onClose, onSaved }: Props): React.JSX.Element {
-  // Ao fechar, `draft` vira null mas o diálogo ainda anima a saída: ele continua mostrando o último
-  // rascunho (e não uma folha vazia) até sumir. `opening` conta as aberturas: cada uma é um
-  // formulário novo, mesmo que reabra o mesmo horário durante a saída.
   const [shown, setShown] = useState({ draft, opening: 0 })
   if (draft && draft !== shown.draft) setShown({ draft, opening: shown.opening + 1 })
   const current = shown.draft
@@ -180,7 +162,6 @@ export function AppointmentDialog({ draft, onClose, onSaved }: Props): React.JSX
   )
 }
 
-/** Rótulo em cima de um seletor de opções (que já se apresenta ao leitor de tela pelo `label`). */
 function SegmentedField({
   label,
   children
@@ -212,7 +193,6 @@ function AppointmentForm({
   const ids = useId()
   const editing = draft.mode === 'edit' ? draft.appointment : null
   const [confirmDelete, setConfirmDelete] = useState(false)
-  // "agora" fixo enquanto o diálogo está aberto: a seção de registro não pisca ao virar o minuto
   const [now] = useState(() => new Date())
 
   const {
@@ -262,7 +242,6 @@ function AppointmentForm({
           label: 'Desfazer',
           icon: <Undo2 />,
           altText: 'Para desfazer, agende a sessão de novo.',
-          // agenda de novo com os mesmos dados, inclusive o registro (vira outro agendamento)
           onClick: () => {
             void window.api.appointments
               .create({
@@ -293,14 +272,12 @@ function AppointmentForm({
   const error = save.error ?? remove.error
   const values = useWatch({ control }) as FormValues
   const started = hasStarted(values.data, values.hora, now)
-  // o resumo confirma o que vai ser agendado; numa sessão que já aconteceu, o foco é o registro
   const resumo = started ? null : summary(values)
 
   return (
     <form
       onSubmit={handleSubmit((valid) => save.mutate(toInput(valid, now)))}
       onKeyDown={(e) => {
-        // ⌘/Ctrl + Enter confirma de qualquer campo
         if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
           e.preventDefault()
           e.currentTarget.requestSubmit()
@@ -394,7 +371,6 @@ function AppointmentForm({
                     label="Presença"
                     value={field.value}
                     options={PRESENCA_OPTIONS}
-                    // clicar de novo na opção marcada desfaz (volta a "não registrada")
                     onChange={(v) => field.onChange(v === field.value ? '' : v)}
                   />
                 )}

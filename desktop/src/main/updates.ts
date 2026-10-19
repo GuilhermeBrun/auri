@@ -2,19 +2,13 @@ import { readFileSync } from 'node:fs'
 import type { UpdateChannel, UpdateState } from '../shared/api'
 import { writeAtomicJson } from './atomic-file'
 
-/**
- * Saída de `codesign -dv` (vem no stderr) de um app assinado com um Developer ID: só ele tem Team
- * ID. Na assinatura ad-hoc vem `TeamIdentifier=not set`, e o macOS não aceita trocar o app.
- */
 export function hasTeamIdentifier(codesignOutput: string): boolean {
   return /^TeamIdentifier=(?!not set$)\S+$/m.test(codesignOutput)
 }
 
-/** O que o serviço usa do `autoUpdater` do electron-updater (os testes passam um falso). */
 export interface Updater {
   autoDownload: boolean
   autoInstallOnAppQuit: boolean
-  /** Arquivo procurado no site de atualização: `latest.yml` ou `alpha.yml`. */
   channel: string | null
   allowPrerelease: boolean
   allowDowngrade: boolean
@@ -36,10 +30,6 @@ export interface UpdateService {
   close(): void
 }
 
-/**
- * O canal escolhido fica em `atualizacoes.json`, ao lado das preferências. Sem arquivo (ou
- * inválido), vale o da versão instalada.
- */
 export function channelFile(file: string): {
   read(): UpdateChannel | undefined
   save(channel: UpdateChannel): void
@@ -48,7 +38,6 @@ export function channelFile(file: string): {
     read() {
       try {
         const { channel } = JSON.parse(readFileSync(file, 'utf8')) as { channel?: unknown }
-        // `beta` era o nome do canal alpha até a 0.0.1.
         if (channel === 'beta') return 'alpha'
         return channel === 'alpha' || channel === 'latest' ? channel : undefined
       } catch {
@@ -59,26 +48,17 @@ export function channelFile(file: string): {
   }
 }
 
-/**
- * Uma versão alpha instalada (`1.2.3-alpha.20261016.1`) começa no canal alpha, como as que saíram
- * com o nome antigo (`0.0.1-beta.20261017.1`).
- */
 export const defaultChannel = (version: string): UpdateChannel =>
   /-(alpha|beta)\./.test(version) ? 'alpha' : 'latest'
 
-/** Procura de novo a cada 4 horas: a clínica deixa o Auri aberto o dia todo. */
 export const CHECK_EVERY_MS = 4 * 60 * 60 * 1000
-/** Primeira procura um pouco depois de abrir, para não disputar com a abertura da janela. */
 export const FIRST_CHECK_MS = 30_000
 
 type Options = {
   version: string
-  /** null: este computador não se atualiza sozinho (ver `UpdateStatus`). */
   updater: Updater | null
-  /** O canal escolhido antes; sem escolha, o da versão instalada. */
   channel?: UpdateChannel
   onChange: (state: UpdateState) => void
-  /** Grava a escolha do canal (o main guarda num arquivo ao lado das preferências). */
   onChannelChange?: (channel: UpdateChannel) => void
   now?: () => Date
   timers?: {
@@ -94,10 +74,6 @@ const defaultTimers = {
   clear: (handle: unknown) => clearTimeout(handle as NodeJS.Timeout)
 }
 
-/**
- * Atualização automática: procura, baixa sozinha e instala ao sair (ou na hora,
- * em Configurações › Geral). Os dados ficam na pasta do usuário, fora da instalação.
- */
 export function createUpdateService({
   version,
   updater,
@@ -122,8 +98,6 @@ export function createUpdateService({
   }
   const handles: unknown[] = []
 
-  // No alpha também valem as prereleases. Voltando para a estável com um alpha instalado, a estável
-  // pode ser "mais velha" que ele (1.2.0 < 1.2.1-alpha): aceita descer para não ficar preso no alpha.
   function applyChannel(): void {
     if (!updater) return
     updater.channel = state.channel
@@ -154,7 +128,6 @@ export function createUpdateService({
       set({ status: 'ready', next: info.version, progress: null })
     )
     updater.on('error', () => {
-      // uma procura que falha depois do download não desfaz a versão pronta
       if (state.status === 'ready') return
       set({
         status: 'error',
@@ -168,7 +141,6 @@ export function createUpdateService({
 
   function check(): UpdateState {
     if (!updater || ['checking', 'downloading', 'ready'].includes(state.status)) return state
-    // a falha também chega pelo evento 'error', que mostra a mensagem
     updater.checkForUpdates().catch(() => {})
     return state
   }
@@ -178,7 +150,6 @@ export function createUpdateService({
     check,
     install() {
       if (!updater || state.status !== 'ready') throw new Error('Nenhuma versão nova pronta.')
-      // silencioso (sem as telas do instalador) e abrindo o Auri de novo no fim
       updater.quitAndInstall(true, true)
     },
     setChannel(next) {

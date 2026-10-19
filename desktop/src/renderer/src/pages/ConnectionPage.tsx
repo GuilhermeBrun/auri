@@ -24,7 +24,6 @@ import type {
 } from '@shared/api'
 import { SETTINGS_CRUMB } from '@renderer/lib/settings'
 
-/** Hora atual que se atualiza a cada segundo enquanto `active` (para contagens regressivas). */
 function useNow(active: boolean): number {
   const [now, setNow] = useState(Date.now)
   useEffect(() => {
@@ -66,10 +65,6 @@ const ROLE_OPTIONS: {
   }
 ]
 
-/**
- * Papel deste computador, em cartões como os do tema. São botões de rádio de verdade (escondidos):
- * as setas trocam a opção. A troca vale na hora; os dados locais nunca são apagados.
- */
 function RolePicker({ role }: { role: ConnectionRole }): React.JSX.Element {
   const change = useMutation({
     mutationFn: (next: ConnectionRole) => window.connection.setRole(next)
@@ -116,13 +111,7 @@ function RolePicker({ role }: { role: ConnectionRole }): React.JSX.Element {
   )
 }
 
-/**
- * "Conectar computador": mostra o código que o outro computador digita. Vale 5 minutos e uma vez
- * só; some sozinho quando o outro computador acerta (aparece um computador novo na lista), quando
- * vence ou ao sair da página (o código é cancelado no main).
- */
 function PairingPanel({ devices }: { devices: PairedDevice[] }): React.JSX.Element {
-  // o código e quem já estava pareado quando ele foi gerado (quem aparecer depois usou o código)
   const [shown, setShown] = useState<{ code: PairingCode; known: string[] } | null>(null)
   const toast = useToast()
   const now = useNow(shown !== null)
@@ -146,14 +135,12 @@ function PairingPanel({ devices }: { devices: PairedDevice[] }): React.JSX.Eleme
     if (addedName) toast({ title: 'Computador conectado', description: addedName })
   }, [addedName, toast])
 
-  // venceu: some (e o relógio da contagem para)
   useEffect(() => {
     if (!shown) return
     const timer = setTimeout(() => setShown(null), shown.code.expiresAt - Date.now())
     return () => clearTimeout(timer)
   }, [shown])
 
-  // sair da página com o código na tela: ele deixa de valer (sem código, não faz nada)
   useEffect(
     () => () => {
       void window.connection.cancelCode()
@@ -199,7 +186,6 @@ function PairingPanel({ devices }: { devices: PairedDevice[] }): React.JSX.Eleme
   )
 }
 
-/** Computadores que podem usar os dados deste, com a opção de cortar o acesso. */
 function DeviceList({ devices }: { devices: PairedDevice[] }): React.JSX.Element {
   const [confirming, setConfirming] = useState<string | null>(null)
   const remove = useMutation({
@@ -246,7 +232,6 @@ function DeviceList({ devices }: { devices: PairedDevice[] }): React.JSX.Element
   )
 }
 
-/** Papel "guarda os dados": compartilhar, conectar computadores e manter o Auri aberto. */
 function ServerSection({ info }: { info: ConnectionInfo }): React.JSX.Element {
   const sharing = useMutation({ mutationFn: (on: boolean) => window.connection.setSharing(on) })
   const keepRunning = useMutation({
@@ -339,7 +324,6 @@ const REACH_TEXT: Record<RemoteReach, string> = {
   offline: 'Sem internet agora. Dentro da clínica continua funcionando.'
 }
 
-/** Como está o acesso de fora, logo abaixo do liga/desliga. */
 function RemoteReachText({ reach }: { reach: RemoteReach }): React.JSX.Element {
   const good = reach === 'open' || reach === 'likely'
   return (
@@ -350,10 +334,6 @@ function RemoteReachText({ reach }: { reach: RemoteReach }): React.JSX.Element {
   )
 }
 
-/**
- * "Testar acesso pela internet": conecta ao outro computador só pela rede distribuída, como faria
- * de fora da clínica, e diz se deu certo e em quanto tempo.
- */
 function RemoteTest({ server }: { server: string }): React.JSX.Element {
   const test = useMutation({ mutationFn: () => window.connection.testRemote() })
   const result = test.data
@@ -395,7 +375,6 @@ const STATUS_TEXT: Record<LinkStatus, string> = {
   revoked: 'Este computador foi removido lá. Desconecte e conecte de novo com um código novo.'
 }
 
-/** Papel "usa os dados de outro", já conectado a um computador. */
 function LinkedServer({
   info,
   server
@@ -474,10 +453,6 @@ function LinkedServer({
   )
 }
 
-/**
- * Papel "usa os dados de outro", ainda sem computador: lista os que compartilham na rede (ou deixa
- * digitar o endereço) e pede o código mostrado lá.
- */
 function FindServer(): React.JSX.Element {
   const toast = useToast()
   const [found, setFound] = useState<FoundServer[] | null>(null)
@@ -490,7 +465,6 @@ function FindServer(): React.JSX.Element {
     mutationFn: () => window.connection.discover(),
     onSuccess: (servers) => {
       setFound(servers)
-      // um só na rede: já vem escolhido
       if (servers.length === 1 && !manual) setTarget(`${servers[0].host}:${servers[0].port}`)
     }
   })
@@ -611,9 +585,7 @@ function FindServer(): React.JSX.Element {
   )
 }
 
-/** Nome com que os outros computadores veem este. Grava ao sair do campo (ou Enter). */
 function NameField({ name }: { name: string }): React.JSX.Element {
-  // o nome salvo muda a `key` (ver ConnectionPage), então o campo recomeça com ele
   const [value, setValue] = useState(name)
   const save = useMutation({ mutationFn: (next: string) => window.connection.setName(next) })
   const commit = (): void => {
@@ -642,11 +614,6 @@ function NameField({ name }: { name: string }): React.JSX.Element {
   )
 }
 
-/**
- * Configurações → Conexão: se este computador guarda os dados ou usa os de outro, e tudo o que
- * cada papel precisa (ver docs/specs/2026-10-13-conexao-entre-computadores-design.md).
- * Uma coluna, como Aparência; grupos separados só por espaço.
- */
 export function ConnectionPage(): React.JSX.Element {
   const { info } = useConnection()
   return (

@@ -3,10 +3,6 @@ import { useEffect, useRef } from 'react'
 import { useToast } from '@renderer/lib/toast'
 import { useUpdates } from '@renderer/lib/updates'
 
-/**
- * A versão nova terminou de baixar: avisa uma vez, com o atalho para reiniciar já. Sem clicar,
- * ela entra na próxima vez que o Auri for fechado.
- */
 export function UpdateReady(): null {
   const state = useUpdates()
   const toast = useToast()

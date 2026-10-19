@@ -1,6 +1,5 @@
 import { AuriSymbol } from '@renderer/components/ui/brand'
 
-/** Só aparece depois de 400ms, para a resposta quase instantânea do banco local não piscar. */
 export function Loading({ label = 'Carregando…' }: { label?: string }): React.JSX.Element {
   return (
     <div

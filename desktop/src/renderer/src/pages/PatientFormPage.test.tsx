@@ -5,7 +5,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import type { ToastInput } from '@renderer/lib/toast'
 import { fakePatient, renderRoute } from '@renderer/testing'
 
-// pontes do Electron que alguns módulos leem ao carregar
 vi.hoisted(() => {
   const bridge = (): unknown =>
     new Proxy({} as Record<string, unknown>, {

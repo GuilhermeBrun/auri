@@ -7,10 +7,6 @@ import { ErrorText, SectionTitle } from '@renderer/components/ui/section'
 import { SETTINGS_CRUMB } from '@renderer/lib/settings'
 import { useToast } from '@renderer/lib/toast'
 
-/**
- * Configurações → Importar e exportar: as configurações deste computador num arquivo próprio
- * (`.auriconfig`), sem senha e sem dados. Os pacientes e a agenda ficam na Cópia de segurança.
- */
 export function TransferPage(): React.JSX.Element {
   const toast = useToast()
   const exportFile = useMutation({

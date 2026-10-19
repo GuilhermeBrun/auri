@@ -14,12 +14,6 @@ import type {
   DestinationProblem
 } from '@shared/api'
 
-/**
- * A nuvem escolhida deixou de funcionar (desinstalada, fechada, fora da conta…): diz o que houve e
- * leva de volta ao caminho de antes, com o mesmo botão do assistente (Instalar, Abrir o app,
- * Abrir Ajustes), ou deixa escolher outra nuvem. Enquanto aparece, confere a cada 4 segundos;
- * quando a nuvem volta, o main já faz a cópia parada e este aviso some.
- */
 export function DestinationRepair({
   info,
   problem
@@ -41,7 +35,6 @@ export function DestinationRepair({
       return next.destinationProblem?.state ?? 'ok'
     },
     refetchInterval: 4000,
-    // o usuário está no instalador ou no app da nuvem, com o Auri atrás
     refetchIntervalInBackground: true
   })
 

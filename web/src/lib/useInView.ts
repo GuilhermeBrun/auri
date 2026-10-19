@@ -1,13 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 
-/** `true` depois que o elemento entra na tela (uma vez só), para as entradas conforme a rolagem. */
 export function useInView<T extends Element>() {
   const ref = useRef<T>(null)
   const [inView, setInView] = useState(false)
   useEffect(() => {
     const element = ref.current
     if (!element) return
-    // Navegador sem IntersectionObserver: mostra tudo de uma vez
     if (!('IntersectionObserver' in window)) {
       queueMicrotask(() => setInView(true))
       return

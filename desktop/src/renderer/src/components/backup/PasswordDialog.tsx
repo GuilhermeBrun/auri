@@ -26,19 +26,13 @@ const TITLES: Record<PasswordMode, { title: string; description: string }> = {
   }
 }
 
-/**
- * Alterar senha, "esqueci a senha" e novo código de recuperação. Os três regravam as cópias da
- * pasta (pode levar alguns segundos). O conteúdo continua montado enquanto o diálogo sai.
- */
 export function PasswordDialog({
   request,
   onClose
 }: {
-  /** O que abrir; `id` muda a cada abertura, para o formulário começar vazio. */
   request: { mode: PasswordMode; id: number } | null
   onClose: () => void
 }): React.JSX.Element {
-  // o último pedido fica na tela enquanto o diálogo sai
   const [last, setLast] = useState(request)
   if (request && request !== last) setLast(request)
   const mode = last?.mode ?? 'change'

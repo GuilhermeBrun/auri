@@ -16,19 +16,13 @@ import {
   type SettingsSnapshot
 } from './settings-transfer'
 
-/** Arquivo de configurações maior que isso não é nosso (o de verdade tem ~1 KB). */
 const MAX_SIZE = 256 * 1024
 
-/**
- * Exportar e importar as configurações (Configurações / Importar e exportar), sem tocar nos
- * dados. Importar é em dois passos: ler (mostra o que muda) e aplicar (depois de confirmar).
- */
 export function createTransferService(options: {
   prefs: PrefsStore
   connection: Connection
   backup: BackupService
 }): AuriTransfer {
-  /** Arquivos lidos e ainda não aplicados, pela ficha devolvida à tela. */
   const pending = new Map<string, SettingsFile>()
 
   function snapshot(): SettingsSnapshot {
@@ -56,7 +50,6 @@ export function createTransferService(options: {
 
   return {
     async exportSettings() {
-      // na pasta "Auri" da nuvem da cópia, se houver; senão em Documentos
       const preferred = options.backup.preferredFolder()
       if (preferred) mkdirSync(preferred, { recursive: true })
       const dialogOptions = {
@@ -78,7 +71,6 @@ export function createTransferService(options: {
     },
 
     async pickSettings() {
-      // onde a exportação salva; sem `defaultPath` o Electron abre sempre em Downloads
       const preferred = options.backup.preferredFolder()
       const dialogOptions = {
         title: 'Importar configurações',
@@ -114,7 +106,6 @@ export function createTransferService(options: {
       pending.delete(token)
       const { appearance, connection: c, backup: b } = settings
       if (Object.keys(appearance).length > 0) options.prefs.save(appearance)
-      // o papel primeiro: trocar de papel fecha e abre o banco ou a conexão
       if (c.role) await options.connection.setRole(c.role)
       if (c.name) await options.connection.setName(c.name)
       if (c.sharing !== undefined) await options.connection.setSharing(c.sharing)
@@ -128,7 +119,6 @@ export function createTransferService(options: {
           b.dailyTime ?? current.dailyTime
         )
       }
-      // a nuvem vira sugestão: a pasta e a senha são deste computador, escolhidas no assistente
       if (b.kind && !current.configured) options.backup.suggest(b.kind)
     }
   }

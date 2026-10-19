@@ -11,9 +11,6 @@ import { createPairingCodes } from './pairing'
 import { createRemoteDialer, createRemoteListener, type Bootstrap } from './remote'
 import { createSyncServer } from './server'
 
-// Acesso de fora da clínica numa rede distribuída de teste (nós em 127.0.0.1, sem internet).
-// Somente dados fictícios.
-
 function until(condition: () => boolean, ms = 15_000): Promise<void> {
   const start = Date.now()
   return new Promise((resolve, reject) => {

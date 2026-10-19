@@ -2,19 +2,12 @@ import { useLayoutEffect, useRef, useState } from 'react'
 import { cn } from '@renderer/lib/utils'
 
 type SegmentedProps<T extends string> = {
-  /** Nome do grupo para leitor de tela ("Visualização"). */
   label: string
   value: T
   options: readonly (readonly [T, string])[]
   onChange: (value: T) => void
 }
 
-/**
- * Seletor de uma opção entre poucas: trilho cinza e, sobre a opção ativa, um bloco branco que
- * desliza até a nova opção. O bloco é medido na opção ativa (as larguras seguem o texto), e só
- * aparece depois da primeira medida, então não há deslize na abertura. Em "Reduzir movimento" a
- * transição fica instantânea (ver main.css).
- */
 export function Segmented<T extends string>({
   label,
   value,
@@ -29,13 +22,11 @@ export function Segmented<T extends string>({
     if (!track) return
     const measure = (): void => {
       const active = track.querySelector<HTMLElement>('[aria-pressed="true"]')
-      // nenhuma opção escolhida (ex.: presença ainda não registrada): sem bloco
       if (!active) return setThumb(null)
       const next = { x: active.offsetLeft, width: active.offsetWidth }
       setThumb((prev) => (prev?.x === next.x && prev.width === next.width ? prev : next))
     }
     measure()
-    // a fonte terminando de carregar ou a janela mudando de tamanho alteram as larguras
     const observer = new ResizeObserver(measure)
     observer.observe(track)
     return () => observer.disconnect()

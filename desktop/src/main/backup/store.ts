@@ -6,7 +6,6 @@ const iso = z.string().nullable().default(null)
 
 export const destinationSchema = z.object({
   kind: z.enum(['google', 'onedrive', 'icloud', 'folder']),
-  /** Pasta escolhida (a raiz do Drive, por exemplo); as cópias ficam em `Auri/Cópias` dentro dela. */
   folder: z.string().min(1)
 })
 
@@ -20,7 +19,6 @@ const storeSchema = z.object({
   keyring: z
     .object({
       keyId: z.string(),
-      /** Chave da cópia em base64, cifrada pelo cofre do sistema quando `encrypted`. */
       key: z.string(),
       encrypted: z.boolean(),
       password: envelopeSchema,
@@ -32,21 +30,13 @@ const storeSchema = z.object({
   lastFile: iso,
   lastChangeAt: iso,
   lastError: z.object({ at: z.string(), message: z.string() }).nullable().default(null),
-  /** Banco de antes da última restauração, para desfazer. */
   undo: z.object({ file: z.string(), at: z.string() }).nullable().default(null),
-  /** Já passou (ou dispensou) a tela "Já usa o Auri?". */
   welcomeDone: z.boolean().default(false),
-  /** Nuvem trazida por configurações importadas, sugerida no assistente. */
   suggested: z.enum(['google', 'onedrive', 'icloud', 'folder']).nullable().default(null)
 })
 
 export type BackupStore = z.infer<typeof storeSchema>
 
-/**
- * Estado da cópia de segurança num JSON ao lado do banco (`copias.json`). Arquivo ausente ou
- * inválido vale como padrão (cópia desligada). Gravação atômica, como `conexao.json`: perder este
- * arquivo pela metade faria o computador esquecer a chave das cópias.
- */
 export function createBackupStore(file: string): {
   get(): BackupStore
   update(change: Partial<BackupStore>): BackupStore

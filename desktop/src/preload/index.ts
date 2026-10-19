@@ -44,7 +44,6 @@ const api: AuriApi = {
   onChanged: (listener) => subscribe<DataTopic[]>('data:changed', listener)
 }
 
-/** Avisos do main para a janela. Devolve a função que cancela. */
 function subscribe<T>(channel: string, listener: (value: T) => void): () => void {
   const wrapped = (_event: unknown, value: T): void => listener(value)
   ipcRenderer.on(channel, wrapped)
@@ -96,7 +95,6 @@ const backup: AuriBackup = {
   openProvider: (id) => invoke('backup:openProvider', id)
 }
 
-// Chegam como argumento da janela (ver main/prefs.ts)
 const prefsArg = process.argv.find((arg) => arg.startsWith(PREFS_ARG))
 const prefs: AuriPrefs = {
   initial: prefsArg ? JSON.parse(prefsArg.slice(PREFS_ARG.length)) : DEFAULT_UI_PREFS,
@@ -124,5 +122,4 @@ contextBridge.exposeInMainWorld('connection', connection)
 contextBridge.exposeInMainWorld('backup', backup)
 contextBridge.exposeInMainWorld('transfer', transfer)
 contextBridge.exposeInMainWorld('updates', updates)
-// A interface ajusta espaços e atalhos ao sistema (ex.: botões da janela no Mac, ⌘ x Ctrl)
 contextBridge.exposeInMainWorld('platform', process.platform)

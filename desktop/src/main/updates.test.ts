@@ -13,7 +13,6 @@ import {
   type Updater
 } from './updates'
 
-/** `autoUpdater` falso: os eventos são disparados pelo teste. */
 function fakeUpdater(): Updater & EventEmitter & { check: Mock<() => Promise<unknown>> } {
   const check = vi.fn<() => Promise<unknown>>(() => Promise.resolve(null))
   return Object.assign(new EventEmitter(), {
@@ -98,7 +97,6 @@ describe('atualização automática', () => {
     expect(updater.check).toHaveBeenCalledOnce()
     updater.emit('checking-for-update')
     expect(service.info().status).toBe('checking')
-    // já procurando: não procura de novo
     service.check()
     expect(updater.check).toHaveBeenCalledOnce()
     updater.emit('update-available', { version: '1.1.0' })
@@ -113,7 +111,6 @@ describe('atualização automática', () => {
     expect(() => service.install()).toThrow('Nenhuma versão nova pronta.')
     updater.emit('update-downloaded', { version: '1.1.0' })
     expect(service.info()).toMatchObject({ status: 'ready', next: '1.1.0', progress: null })
-    // uma procura que falha depois não esconde a versão pronta
     updater.emit('error', new Error('rede'))
     expect(service.info().status).toBe('ready')
     service.install()
@@ -171,7 +168,6 @@ describe('atualização automática', () => {
     expect(service.info().channel).toBe('alpha')
     expect(alpha).toMatchObject({ channel: 'alpha', allowPrerelease: true })
 
-    // voltar para a estável com um alpha instalado aceita descer de versão
     expect(service.setChannel('latest').channel).toBe('latest')
     expect(alpha).toMatchObject({ channel: 'latest', allowPrerelease: false, allowDowngrade: true })
     expect(saved).toHaveBeenCalledExactlyOnceWith('latest')

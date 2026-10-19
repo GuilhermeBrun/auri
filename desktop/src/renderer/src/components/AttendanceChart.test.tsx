@@ -7,7 +7,6 @@ import { AttendanceChart } from './AttendanceChart'
 
 afterEach(cleanup)
 
-// da mais nova para a mais antiga, como a lista da aba Sessões
 const sessions = [
   fakeAppointment({
     inicio: '2026-10-10T14:00',

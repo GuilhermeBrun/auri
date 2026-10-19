@@ -2,11 +2,6 @@ import { z } from 'zod'
 import type { SettingsChange } from '../shared/api'
 import { themeSchema, type UiPrefs } from '../shared/schemas'
 
-/**
- * Arquivo de configurações (`.auriconfig`), separado da cópia dos dados: JSON legível, sem senha,
- * sem dado de paciente e sem segredo (nada de chaves, computadores pareados ou senha da cópia).
- * Ver docs/specs/2026-10-13-copia-de-seguranca-design.md.
- */
 export const SETTINGS_EXTENSION = 'auriconfig'
 
 const kindSchema = z.enum(['google', 'onedrive', 'icloud', 'folder'])
@@ -40,7 +35,6 @@ const settingsFileSchema = z.object({
 
 export type SettingsFile = z.infer<typeof settingsFileSchema>
 
-/** As configurações deste computador, no formato do arquivo (todos os campos presentes). */
 export type SettingsSnapshot = {
   appearance: UiPrefs
   connection: Required<SettingsFile['connection']>
@@ -66,7 +60,6 @@ export function buildSettingsFile(snapshot: SettingsSnapshot, now: Date = new Da
   return JSON.stringify(file, null, 2)
 }
 
-/** Lê o arquivo; qualquer coisa que não seja configuração do Auri vira mensagem clara. */
 export function parseSettingsFile(text: string): SettingsFile {
   let json: unknown
   try {
@@ -101,7 +94,6 @@ const FREQUENCY = {
 } as const
 const yesNo = (on: boolean): string => (on ? 'Ligado' : 'Desligado')
 
-/** O que muda se o arquivo for aplicado, em palavras, para confirmar antes. */
 export function describeChanges(current: SettingsSnapshot, file: SettingsFile): SettingsChange[] {
   const changes: SettingsChange[] = []
   const add = <T>(label: string, from: T, to: T | undefined, show: (v: T) => string): void => {

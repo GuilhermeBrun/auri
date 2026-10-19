@@ -46,7 +46,6 @@ describe('anamnese', () => {
   })
 
   it('recusa gravar por cima de quem salvou depois de aberta', () => {
-    // dois computadores abriram a anamnese ainda vazia; o primeiro salva
     saveAnamnese(db, patientId, { ...emptyAnamneseInput(), queixa: 'Primeiro' }, '')
     expect(() =>
       saveAnamnese(db, patientId, { ...emptyAnamneseInput(), queixa: 'Segundo' }, '')

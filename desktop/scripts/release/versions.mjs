@@ -1,13 +1,4 @@
-// Decide o que cada execução do Release publica, a partir das tags `v*` do repositório.
-//
-// Alpha: o commit atual de main, como `X.Y.(Z+1)-alpha.AAAAMMDD.N` (acima da última estável no
-// semver, para quem está no canal alpha recebê-lo). Pula se main não mudou desde o último alpha.
-// Estável: promove o commit do último alpha, que já foi usado, como `X.Y.Z` (a base do alpha ou a
-// versão pedida). Um main que só mudou documentação não gera alpha. Funções puras: quem lê o git
-// e escreve as saídas é o cli.mjs.
-
 const STABLE = /^v(\d+)\.(\d+)\.(\d+)$/
-// `beta` era o nome do alpha até a 0.0.1: as tags antigas contam como alpha.
 const ALPHA = /^v(\d+)\.(\d+)\.(\d+)-(?:alpha|beta)\.(\d{8})\.(\d+)$/
 
 function parse(tag) {
@@ -28,7 +19,6 @@ function compare(a, b) {
 const newest = (tags) =>
   tags.reduce((best, tag) => (!best || compare(tag, best) > 0 ? tag : best), null)
 
-/** A estável e o alpha mais recentes entre as tags (`null` quando não há). */
 export function latestTags(tagNames) {
   const tags = tagNames.map(parse).filter(Boolean)
   const stable = newest(tags.filter((tag) => tag.parts[3] === Infinity))
@@ -36,7 +26,6 @@ export function latestTags(tagNames) {
   return { stable: stable?.tag ?? null, alpha: alpha?.tag ?? null }
 }
 
-/** `true` quando a versão `a` é mais nova que `b` (ambas sem o `v`). */
 export function isNewer(a, b) {
   const [left, right] = [parse(`v${a}`), parse(`v${b}`)]
   if (!left || !right) throw new Error(`Versão inválida: ${!left ? a : b}`)
@@ -45,11 +34,6 @@ export function isNewer(a, b) {
 
 const day = (date) => date.toISOString().slice(0, 10).replaceAll('-', '')
 
-/**
- * Próximo alpha. `tagNames`: todas as tags; `firstVersion`: a versão do package.json, a primeira
- * estável a sair. Enquanto não existe nenhuma estável, os alphas são dela (`0.0.1-alpha...`);
- * depois, da seguinte à última estável.
- */
 export function nextAlpha({ tagNames, firstVersion, date }) {
   const { stable } = latestTags(tagNames)
   const [major, minor, patch] = stable ? parse(stable).parts : parse(`v${firstVersion}`).parts
@@ -61,12 +45,9 @@ export function nextAlpha({ tagNames, firstVersion, date }) {
   return `${base}-alpha.${day(date)}.${Math.max(0, ...today) + 1}`
 }
 
-// Chega ao Auri o que está em desktop/ (menos documentação) e os workflows que o montam. O site
-// (web/) e a documentação não geram alpha.
 const APP = [/^desktop\//, /^\.github\//]
 const DOCS = [/^desktop\/docs\//, /\.md$/i]
 
-/** `true` quando nenhum dos arquivos mudados chega ao Auri. */
 export function outsideApp(changedFiles) {
   return changedFiles.every(
     (file) =>
@@ -74,7 +55,6 @@ export function outsideApp(changedFiles) {
   )
 }
 
-/** Versão estável que promove `alphaTag`: a pedida ou a base do alpha. */
 export function stableFromAlpha({ tagNames, alphaTag, requested }) {
   if (!alphaTag) throw new Error('Nenhum alpha publicado para promover.')
   const version = requested?.trim().replace(/^v/, '') || ALPHA.exec(alphaTag).slice(1, 4).join('.')

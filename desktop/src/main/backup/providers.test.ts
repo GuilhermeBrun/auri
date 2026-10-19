@@ -1,10 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test'
 import { detectProviders, parseRegistry, systemProbe, type Probe } from './providers'
 
-/**
- * Sistema de arquivos de mentira: cada caminho listado existe (as pastas-pai também). `blocked`
- * simula a pasta que o macOS não deixa abrir sem permissão.
- */
 function fakeProbe(options: {
   platform: NodeJS.Platform
   home: string
@@ -192,7 +188,6 @@ describe('nuvens no Windows', () => {
   })
 })
 
-// No sistema de verdade: só roda no Windows (no CI, em windows-latest).
 describe.runIf(process.platform === 'win32')('Windows de verdade', () => {
   it('lê uma pasta do registro com reg.exe', async () => {
     const output = await systemProbe().registry(

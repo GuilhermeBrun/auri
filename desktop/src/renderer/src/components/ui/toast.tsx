@@ -6,21 +6,12 @@ import { ToastContext, type ToastInput } from '@renderer/lib/toast'
 
 type ToastItem = ToastInput & { id: number }
 
-/** Quantos avisos ficam na tela ao mesmo tempo; o mais antigo sai quando chega outro. */
 const MAX_VISIBLE = 3
-/** Aviso com botão ("Desfazer") fica mais tempo, para dar tempo de alcançar o botão. */
 const ACTION_DURATION = 6000
-/** Folga para a animação de saída terminar antes de o aviso sair da lista. */
 const EXIT_MS = 400
 
 let nextId = 0
 
-/**
- * Avisos de confirmação: aparecem embaixo, no centro, flutuando com a sombra dos menus, somem
- * sozinhos em 4s, ficam parados enquanto o mouse ou o foco estão em cima e podem ser dispensados
- * (botão, Esc ou deslizando para baixo). O Radix cuida do `aria-live`: o leitor de tela anuncia o
- * aviso sem mudar o foco. F8 leva o foco à área dos avisos.
- */
 export function ToastProvider({ children }: { children: ReactNode }): React.JSX.Element {
   const [items, setItems] = useState<ToastItem[]>([])
 
@@ -44,7 +35,6 @@ export function ToastProvider({ children }: { children: ReactNode }): React.JSX.
             onOpenChange={(open) => {
               if (!open) setTimeout(() => remove(item.id), EXIT_MS)
             }}
-            // `swipe=end` tem animação própria, que continua de onde o dedo largou
             className="pointer-events-auto flex items-center gap-3 rounded-card bg-raised py-2.5 pr-2 pl-3 text-ink shadow-pop data-[state=closed]:not-data-[swipe=end]:animate-toast-out data-[state=open]:animate-toast-in data-[swipe=cancel]:translate-y-0 data-[swipe=cancel]:transition-transform data-[swipe=end]:animate-toast-swipe-out data-[swipe=move]:translate-y-(--radix-toast-swipe-move-y)"
           >
             <span

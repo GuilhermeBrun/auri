@@ -1,6 +1,3 @@
-// Traz para docs/qualidade/visual as capturas do commit atual: as do Windows, geradas pelo workflow
-// "Referências visuais", e as do Mac, geradas aqui (roda no Mac). Não faz commit: confira o diff
-// das imagens antes de versionar.
 import { execFileSync } from 'node:child_process'
 import { cpSync, mkdtempSync, readdirSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -52,7 +49,6 @@ try {
   run('gh', ['run', 'download', String(latest.databaseId), '-n', 'referencias-win32', '-D', target])
   accept('win32', target)
 
-  // Sem sobras de uma geração anterior (uma tela que saiu não volta para docs/).
   rmSync('.quality/ui/reference/darwin', { recursive: true, force: true })
   execFileSync('npm', ['run', 'build'], { stdio: 'inherit' })
   execFileSync('npm', ['run', 'test:ui'], {

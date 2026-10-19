@@ -3,7 +3,6 @@ import { megabytes, SYSTEMS, type Installer, type Os } from '../releases'
 import { Download } from './icons'
 import { moveThumb, noSubscription, useBrowserLayoutEffect } from '../lib/dom'
 
-/** Sistema de quem visita: Windows ou Mac no computador; nada no celular ou num sistema desconhecido. */
 function detectSystem(): Os | null {
   const ua = navigator.userAgent
   const mobile =
@@ -14,13 +13,7 @@ function detectSystem(): Os | null {
   return /mac/i.test(platform) ? 'mac' : /win/i.test(platform) ? 'win' : null
 }
 
-/**
- * Bloco de download. Sem script (HTML pré-renderizado) aparecem os dois botões, Windows primeiro.
- * No navegador fica só o do sistema de quem visita, com um link para o outro; no celular ou num
- * sistema desconhecido, um seletor Windows/Mac e um botão só.
- */
 export function DownloadButtons({ options }: { options: Installer[] }) {
-  // `undefined` na pré-renderização e na hidratação: os dois botões, como no HTML sem script
   const system = useSyncExternalStore(noSubscription, detectSystem, () => undefined)
   const [picked, setPicked] = useState<Os | null>(null)
   const switcher = useRef<HTMLDivElement>(null)
@@ -33,8 +26,6 @@ export function DownloadButtons({ options }: { options: Installer[] }) {
         ? { kind: 'system' as const, os: detected }
         : { kind: 'switch' as const, os: picked ?? first.os }
 
-  // O bloco do seletor desliza até o sistema escolhido; na primeira vez, e quando a fonte chega,
-  // sem animação.
   const animate = useRef(false)
   const switchOs = layout?.kind === 'switch' ? layout.os : null
   useBrowserLayoutEffect(() => {

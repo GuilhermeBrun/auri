@@ -7,10 +7,6 @@ import { formatWhen } from '@renderer/lib/backup'
 import { useToast } from '@renderer/lib/toast'
 import type { SettingsPreview } from '@shared/api'
 
-/**
- * "Importar configurações": escolhe o arquivo, mostra o que muda ("Tema: Sistema → Escuro") e só
- * aplica depois de confirmar. Nunca mexe nos pacientes nem na agenda.
- */
 export function SettingsImport({ onApplied }: { onApplied?: () => void }): React.JSX.Element {
   const toast = useToast()
   const [preview, setPreview] = useState<SettingsPreview | null>(null)

@@ -4,17 +4,11 @@ import { Button } from '@renderer/components/ui/button'
 
 type ErrorStateProps = {
   title: string
-  /** Texto técnico do erro (ex.: "database is locked"): fica em cinza, para quem der suporte. */
   detail?: string
   children?: ReactNode
-  /** Quando existe, mostra o botão "Tentar de novo". */
   onRetry?: () => void
 }
 
-/**
- * Falha ao carregar uma tela inteira. Ocupa o lugar do conteúdo (uma grade vazia pareceria "sem
- * agendamentos") e sempre oferece uma saída. Mesma forma do `EmptyState`, com o ícone em vermelho.
- */
 export function ErrorState({
   title,
   detail,

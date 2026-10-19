@@ -1,28 +1,14 @@
 @import 'tailwindcss';
 
-/* Tokens da identidade visual. Documentação: docs/identidade-visual.md */
 @theme {
-  /* Família única; o eixo óptico (opsz) deixa os títulos mais expressivos e o texto miúdo mais firme */
   --font-sans: 'Bricolage Grotesque Variable', ui-sans-serif, system-ui, sans-serif;
 
-  /*
-   * Cores do tema claro. O escuro troca os mesmos nomes em `prefers-color-scheme: dark` (camada base,
-   * abaixo); quem decide o tema é o main (`nativeTheme.themeSource`, escolhido em Configurações), e o
-   * navegador segue. Componentes usam só estes nomes, nunca uma cor fixa.
-   */
-
-  /* Destaque único (grafite): anel de foco e contornos de seleção. Para trocar a cor do app, mude estes e os do tema escuro. */
   --color-accent: #1b1b22;
   --color-accent-soft: #eeeef3;
-  /*
-   * Blocos cheios: botão principal, "hoje", sessão selecionada. No claro é o próprio destaque; no
-   * escuro é um grafite médio (um bloco quase branco ofuscava a tela).
-   */
   --color-solid: #1b1b22;
   --color-solid-hover: #34343f;
   --color-solid-active: #000000;
   --color-on-solid: #ffffff;
-  /* Sessões da agenda: um passo mais escuro que o avatar, para se destacarem da grade */
   --color-session: #e6e6ec;
   --color-session-hover: #dcdce5;
 
@@ -32,65 +18,40 @@
 
   --color-canvas: #f4f4f7;
   --color-surface: #ffffff;
-  /* O que flutua (diálogos, listas, avisos): no claro é o branco; no escuro, um tom acima do conteúdo */
   --color-raised: #ffffff;
-  /* Opção ligada ou escolhida sobre o preenchimento neutro (seletor de visão, botão ligado) */
   --color-selected: #ffffff;
   --color-subtle: #f8f8fa;
-  /* Barra lateral: um tom abaixo do conteúdo, separada só pelo fundo */
   --color-sidebar: #f4f4f7;
   --color-line: #e6e6ec;
   --color-line-strong: #c9c9d4;
-  /* Contorno dos campos: 3:1 contra o branco (WCAG 1.4.11) */
   --color-control: #8e8e9c;
 
-  /*
-   * Estados (design system v2). Sempre com ícone ou palavra junto, nunca só a cor. Não há verde nem
-   * cor de sucesso: o que deu certo é dito em texto ou num aviso.
-   */
   --color-danger: #c4271b;
   --color-danger-soft: #fdeeec;
   --color-danger-soft-hover: #f9d5d1;
-  /* Atenção que não é erro (cópia de segurança parada, conexão instável) */
   --color-warning: #8a5300;
   --color-warning-soft: #fdf3dc;
-  /* Ponto de "precisa de atenção" ao lado de um item do menu */
   --color-attention: #e5484d;
   --color-now: #e5484d;
 
-  /* Gráficos: tudo em grafite; os tipos se distinguem pela forma (cheio, vazado, tracejado) */
   --color-chart-strong: #1b1b22;
   --color-chart: #8e8e9c;
   --color-chart-faint: #dcdce5;
 
-  /* Preenchimento de cápsulas e chips neutros */
   --color-fill: rgba(27, 27, 34, 0.055);
   --color-fill-hover: rgba(27, 27, 34, 0.09);
-  /* Fundo que escurece a janela atrás de um diálogo */
   --color-scrim: rgba(27, 27, 34, 0.45);
 
-  /* Tudo é retângulo de cantos arredondados; não há pílulas. Quatro raios, do menor ao maior: */
-  --radius-mark: 4px; /* caixa de seleção, segmentos de progresso */
-  --radius-chip: 6px; /* chips, selos, sessões, opção ativa do seletor */
-  --radius-control: 8px; /* botões, campos, itens do menu, seletor de visão */
-  --radius-card: 12px; /* alertas, menus, linhas da tabela, avatar grande */
-  --radius-sheet: 16px; /* diálogos */
+  --radius-mark: 4px;
+  --radius-chip: 6px;
+  --radius-control: 8px;
+  --radius-card: 12px;
+  --radius-sheet: 16px;
 
-  /* Só o que flutua (diálogos, menus) tem sombra; o resto é plano */
   --shadow-pop: var(--elevation-pop);
   --shadow-lift: var(--elevation-lift);
 
-  /*
-   * Movimento: só em resposta a uma ação (abrir, salvar, trocar de tela) ou para dizer "carregando".
-   * Entrar é rápido e assenta (desaceleração); sair é mais curto e acelera. Todo deslocamento é
-   * multiplicado por --shift, que vira 0 em "Reduzir movimento": sobra o fade.
-   */
-  --ease-slide: cubic-bezier(
-    0.32,
-    0.72,
-    0,
-    1
-  ); /* mudar de posição: indicador do menu, seletor de visão */
+  --ease-slide: cubic-bezier(0.32, 0.72, 0, 1);
   --animate-pop-in: pop-in 140ms cubic-bezier(0.2, 0.8, 0.2, 1);
   --animate-pop-out: pop-out 110ms cubic-bezier(0.4, 0, 1, 1) forwards;
   --animate-fade-in: fade-in 140ms ease-out;
@@ -169,7 +130,6 @@
     }
   }
 
-  /* Campo recusado: um tremor curto, uma vez só */
   @keyframes nudge {
     20% {
       transform: translateX(calc(-3px * var(--shift)));
@@ -185,7 +145,6 @@
     }
   }
 
-  /* Linha recém-salva: começa no tom das sessões e se apaga devagar */
   @keyframes row-flash {
     from {
       background-color: var(--color-session);
@@ -195,7 +154,6 @@
     }
   }
 
-  /* Barras do gráfico de presença: sobem do chão, uma depois da outra */
   @keyframes bar-grow {
     from {
       opacity: 0;
@@ -221,14 +179,6 @@
     height: 100%;
   }
 
-  /*
-   * Ao abrir um diálogo, o Radix põe `pointer-events: none` e a variável abaixo no <body>, e tira ao
-   * fechar. Mudar algo herdado no <body> faz o navegador recalcular o estilo de cada elemento da
-   * página (na agenda, quase 2.000) ao abrir e ao fechar, e a animação travava. Então o <body> já
-   * tem o valor que o Radix põe (0px: a página não rola, não há barra a compensar) e o #root tem
-   * `pointer-events` próprio, onde a mudança para. Os cliques fora do diálogo continuam bloqueados:
-   * o fundo escuro do diálogo cobre a janela inteira e é ele que os recebe.
-   */
   body {
     --removed-body-scroll-bar-size: 0px;
   }
@@ -237,10 +187,6 @@
     pointer-events: auto;
   }
 
-  /*
-   * Valores que mudam com o tema e que o Tailwind não trata como cor: sombras, a cor do texto
-   * selecionado, das barras de rolagem e dos traços finos da agenda.
-   */
   :root {
     --elevation-pop:
       0 0 0 1px rgba(27, 27, 34, 0.08), 0 20px 44px -14px rgba(27, 27, 34, 0.34),
@@ -253,13 +199,6 @@
     --slot-selection: rgba(27, 27, 34, 0.08);
   }
 
-  /*
-   * Tema escuro: não é o claro invertido. O conteúdo é um grafite quase preto, a barra lateral fica
-   * um tom abaixo dele e o que flutua, um tom acima (no escuro a sombra quase não aparece, então a
-   * profundidade vem do tom e de um contorno claro de 1px). O destaque (foco, contornos) vira o
-   * claro, mas os blocos cheios ficam num grafite médio, para não ofuscar. Contrastes no
-   * docs/identidade-visual.md.
-   */
   @media (prefers-color-scheme: dark) {
     :root {
       --color-accent: #ececf1;
@@ -314,9 +253,7 @@
   }
 
   html {
-    /* controles nativos (barras de rolagem, autopreenchimento) acompanham o tema */
     color-scheme: light dark;
-    /* barras de rolagem finas e iguais no Mac, no Windows e na web */
     scrollbar-width: thin;
     scrollbar-color: var(--scrollbar) transparent;
   }
@@ -343,7 +280,6 @@
     background: var(--selection);
   }
 
-  /* Aumentar contraste: cada cor de texto e divisória ganha uma variante mais forte */
   @media (prefers-contrast: more) {
     :root {
       --color-ink-soft: #3f3f4a;
@@ -368,11 +304,6 @@
     }
   }
 
-  /*
-   * Reduzir movimento: some todo deslocamento, escala e transição (--shift vira 0 e as transições
-   * ficam instantâneas), mas os fades continuam, para a mudança seguir visível. O que se repete
-   * (o pulso do símbolo ao carregar) fica parado, com a opacidade natural da marca.
-   */
   :root {
     --shift: 1;
   }
@@ -396,7 +327,6 @@
 }
 
 @layer components {
-  /* Áreas que arrastam a janela no Mac (barra de título integrada) */
   .drag {
     -webkit-app-region: drag;
     app-region: drag;
@@ -407,11 +337,6 @@
     app-region: no-drag;
   }
 
-  /*
-   * O check do aviso se desenha logo depois de o aviso entrar. O caminho do ícone mede ~23: o traço
-   * começa 1 unidade dentro do vão (25 de 24 a 54), porque no limite exato a ponta redonda deixava
-   * um pontinho.
-   */
   .draw-check path {
     stroke-dasharray: 24 30;
     stroke-dashoffset: 25;
@@ -432,10 +357,6 @@
   }
 }
 
-/*
- * Agenda (react-big-calendar). Fica fora de @layer de propósito: o CSS da biblioteca
- * não tem camada e venceria qualquer regra dentro de uma.
- */
 .rbc-calendar {
   font-family: var(--font-sans);
   color: var(--color-ink);
@@ -447,7 +368,6 @@
   background: var(--color-surface);
 }
 
-/* Cabeçalho dos dias: o conteúdo vem dos componentes DayHeader/MonthHeader */
 .rbc-header {
   padding: 6px 4px 8px;
   font-weight: 400;
@@ -479,7 +399,6 @@
   border-top: 1px solid var(--color-line);
 }
 
-/* Uma hora = 56px. A linha da meia hora é tracejada e bem fraca, só para alinhar o olho */
 .rbc-timeslot-group {
   min-height: 56px;
 }
@@ -511,7 +430,6 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* Fim de semana levemente sombreado; "hoje" aparece só no selo do número */
 .rbc-weekend {
   background: var(--color-subtle);
 }
@@ -520,7 +438,6 @@
   background: transparent;
 }
 
-/* Na visão Dia só há uma coluna: destacar "hoje" pintaria a agenda inteira */
 .agenda-day .rbc-today {
   background: var(--color-surface);
 }
@@ -540,7 +457,6 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* O número do dia leva à visão Dia: alvo de pelo menos 24px (WCAG 2.5.8), com retorno ao passar o mouse */
 .rbc-date-cell > button {
   display: inline-grid;
   place-items: center;
@@ -562,10 +478,6 @@
   font-weight: 600;
 }
 
-/*
- * Sessões: bloco cinza claro com um contorno fino, para se destacar também sobre o fim de semana
- * sombreado. Sessão selecionada: grafite com texto branco.
- */
 .rbc-event,
 .rbc-day-slot .rbc-event {
   background: var(--color-session);
@@ -580,11 +492,6 @@
 }
 
 .rbc-event {
-  /*
-   * Base para o contorno ::after. Só aqui, sem o `.rbc-day-slot`: na grade de horários o
-   * react-big-calendar posiciona a sessão com `position: absolute` (mais específico), e um
-   * `relative` ali empurrava cada sessão para baixo pela altura das anteriores do mesmo dia.
-   */
   position: relative;
   transition: background-color 120ms;
 }
@@ -593,11 +500,6 @@
   background: var(--color-session-hover);
 }
 
-/*
- * Sessão recém-agendada ou editada: entra com um leve crescimento e um contorno que se apaga. O
- * contorno é um ::after (só opacity), então não mexe no layout da grade. Fica por dentro da
- * sessão: o `overflow: hidden` do react-big-calendar cortaria um contorno por fora.
- */
 .rbc-event.event-arrived {
   animation: event-arrive 320ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
@@ -628,7 +530,6 @@
   }
 }
 
-/* Paciente faltou ou desmarcou: a sessão continua no lugar, mas apagada e riscada. */
 .rbc-event.event-missed {
   color: var(--color-ink-soft);
   font-weight: 500;
@@ -652,7 +553,6 @@
   outline-offset: 1px;
 }
 
-/* O horário já aparece no conteúdo do evento (EventContent) */
 .rbc-event-label {
   display: none;
 }
@@ -666,7 +566,6 @@
   margin-right: 4px;
 }
 
-/* Janela estreita (colunas de ~100px): 12px para o nome curto caber sem reticências */
 .rbc-time-view {
   container-type: inline-size;
 }
@@ -677,10 +576,6 @@
   }
 }
 
-/*
- * Nome curto (dois primeiros nomes) em Semana e Mês, onde as colunas são estreitas; a visão Dia
- * tem espaço e mostra o nome completo, com o horário à direita nas sessões curtas.
- */
 .rbc-event .name-full {
   display: none;
 }
@@ -697,7 +592,6 @@
   display: inline;
 }
 
-/* Na visão Mês cada evento ocupa uma linha: horário antes do nome, sem o intervalo */
 .rbc-month-view .event-detail {
   display: none;
 }
@@ -707,7 +601,6 @@
   font-size: 12px;
 }
 
-/* Cada linha do mês é estreita: menos respiro nas laterais para o nome curto caber ao lado do horário */
 .rbc-month-view .rbc-event {
   padding: 2px 6px;
 }
@@ -723,7 +616,6 @@
   font-size: 12px;
 }
 
-/* Linha do horário atual, com um ponto no início */
 .rbc-current-time-indicator {
   background: var(--color-now);
   height: 1.5px;
@@ -776,7 +668,6 @@
   display: none;
 }
 
-/* Listras finas: "desmarcou" no gráfico de presença (diferente de falta sem depender de cor) */
 @utility bg-hatch {
   background-image: repeating-linear-gradient(
     135deg,

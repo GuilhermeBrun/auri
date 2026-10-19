@@ -20,12 +20,8 @@ import {
   type Store
 } from './model'
 
-// Conteúdo abaixo do cabeçalho da prévia: agenda (Dia, Semana ou Mês) ou a lista de pacientes.
-// Mesmo HTML e classes do CSS da página (style.css).
-
 const vars = (values: Record<string, number>) => values as CSSProperties
 
-/** Horário livre sob o ponteiro: a seleção do app ("10:00 – 10:45"), que o clique agenda. */
 export type Slot = { day: number; start: number }
 
 type GridProps = { state: State; store: Store; enter: Enter; ghost: Slot | null }

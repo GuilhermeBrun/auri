@@ -26,18 +26,13 @@ import { createRemoteDialer, createRemoteListener } from './net/remote'
 import { createSyncServer, type KeyPair } from './net/server'
 import { runOperation } from './operations'
 
-/** Quanto tempo a busca na rede espera respostas (na aba Conexão e ao reconectar). */
 const FIND_MS = 2_000
 
 export type Connection = {
-  /** Abre o banco ou a conexão conforme o papel salvo. */
   start(): Promise<void>
-  /** Um pedido das telas: no banco local ou no outro computador, conforme o papel. */
   call(channel: string, args: unknown[]): Promise<IpcResult<unknown>>
   info(): ConnectionInfo
-  /** Fechar a janela mantém o Auri rodando (bandeja / barra de menus). */
   keepsRunning(): boolean
-  /** Computadores usando os dados deste agora (para confirmar antes de sair). */
   onlineDevices(): string[]
   setRole(role: ConnectionRole): Promise<ConnectionInfo>
   setName(name: string): Promise<ConnectionInfo>
@@ -53,13 +48,8 @@ export type Connection = {
   pair(address: string, code: string): Promise<ConnectionInfo>
   forget(): Promise<ConnectionInfo>
   retry(): Promise<void>
-  /** O banco aberto (papel servidor), para a cópia de segurança. null no papel cliente. */
   database(): Db | null
-  /**
-   * Valida e prepara a cópia antes de trocar o banco; avisa as telas só após a abertura bem-sucedida.
-   */
   replaceDatabase(source: string): void
-  /** Ao sair do app: síncrono, para o banco fechar antes de o processo terminar. */
   close(): void
 }
 
@@ -71,7 +61,6 @@ function systemName(): string {
   )
 }
 
-/** "192.168.0.12" ou "192.168.0.12:47390". */
 export function parseAddress(value: string): Address | null {
   const match = /^\s*([\w.-]+)(?::(\d{1,5}))?\s*$/.exec(value)
   if (!match) return null
@@ -79,24 +68,10 @@ export function parseAddress(value: string): Address | null {
   return port > 0 && port < 65536 ? { host: match[1], port } : null
 }
 
-/**
- * Onde ficam os dados deste computador e como ele conversa com o outro (ver
- * docs/specs/2026-10-13-conexao-entre-computadores-design.md).
- *
- * - Papel `server` (recepção): abre o SQLite; com o compartilhamento ligado, aceita computadores
- *   pareados pela rede local (TCP, anunciado por mDNS) e, com o acesso de fora ligado, também pela
- *   internet (rede distribuída do Hyperswarm, com a mesma chave).
- * - Papel `client` (consultório): não abre o banco local; repassa cada pedido ao servidor, pela
- *   rede local quando dá, senão pela internet.
- *
- * Trocar de papel não reinicia o app: fecha um lado, abre o outro e avisa as telas
- * (`onDataChanged` com tudo) para recarregarem.
- */
 export function createConnection(options: {
   userData: string
   onDataChanged: (topics: DataTopic[]) => void
   onInfoChanged: (info: ConnectionInfo) => void
-  /** Uma gravação deu certo no banco deste computador (para a cópia "a cada alteração"). */
   onWrite?: () => void
 }): Connection {
   const store = createConnectionStore(join(options.userData, 'conexao.json'))
@@ -117,12 +92,6 @@ export function createConnection(options: {
 
   const name = (): string => store.get().name || systemName()
 
-  // Chaves -------------------------------------------------------------------------------------
-
-  /**
-   * O par de chaves é a identidade deste computador. A chave secreta fica cifrada pelo cofre do
-   * sistema (Chaveiro no Mac, DPAPI no Windows) quando ele está disponível.
-   */
   function keyPair(): KeyPair {
     const saved = store.get().keys
     if (saved) {
@@ -149,8 +118,6 @@ export function createConnection(options: {
 
   let keys: KeyPair | null = null
   const getKeys = (): KeyPair => (keys ??= keyPair())
-
-  // Estado para as telas -----------------------------------------------------------------------
 
   function info(): ConnectionInfo {
     const s = store.get()
@@ -191,7 +158,6 @@ export function createConnection(options: {
     })
   }
 
-  /** Enquanto houver um computador conectado, este não entra em suspensão. */
   function syncPowerBlocker(): void {
     const busy = (server?.online().size ?? 0) > 0
     if (busy && blocker === null) blocker = powerSaveBlocker.start('prevent-app-suspension')
@@ -201,14 +167,11 @@ export function createConnection(options: {
     }
   }
 
-  /** Abre ao ligar o computador: só no app instalado (em desenvolvimento registraria o Electron). */
   function syncLoginItem(): void {
     if (!app.isPackaged) return
     const s = store.get()
     app.setLoginItemSettings({ openAtLogin: s.role === 'server' && s.sharing && s.openAtLogin })
   }
-
-  // Papel servidor -----------------------------------------------------------------------------
 
   function dataChanged(topics: DataTopic[]): void {
     server?.broadcast(topics)
@@ -216,7 +179,6 @@ export function createConnection(options: {
     options.onWrite?.()
   }
 
-  /** Acesso de fora: escuta também pela rede distribuída, entregando as conexões ao mesmo servidor. */
   function startRemote(): void {
     if (remote || !server || !store.get().remoteAccess) return
     remoteReach = 'starting'
@@ -257,7 +219,6 @@ export function createConnection(options: {
         changed()
         if (online) console.log('[conexão] computador conectado')
       },
-      // o banco do momento: restaurar uma cópia troca o banco sem derrubar o compartilhamento
       handle: (channel, args) =>
         db
           ? runOperation(db, channel, args, dataChanged)
@@ -298,9 +259,6 @@ export function createConnection(options: {
     db = null
   }
 
-  // Papel cliente ------------------------------------------------------------------------------
-
-  /** Último endereço que funcionou primeiro; depois o que a busca na rede achar com a mesma chave. */
   async function serverAddresses(serverKey: string): Promise<Address[]> {
     const addresses: Address[] = []
     const saved = store.get().server?.address
@@ -334,13 +292,11 @@ export function createConnection(options: {
       dialRemote: () => remoteDialer.dial(target.publicKey),
       onStatus: (status) => {
         clientStatus = status
-        // voltou: o que mudou enquanto estava fora não chegou como aviso
         if (status === 'connected') options.onDataChanged([...DATA_TOPICS])
         changed()
       },
       onEvent: options.onDataChanged,
       onConnected: (route) => {
-        // pela internet não há endereço a guardar: a chave basta para achar o outro
         if (route.via !== 'local') return
         const current = store.get().server
         const value = `${route.address.host}:${route.address.port}`
@@ -357,8 +313,6 @@ export function createConnection(options: {
     void dialer?.close()
     dialer = null
   }
-
-  // Ciclo de vida ------------------------------------------------------------------------------
 
   async function start(): Promise<void> {
     if (store.get().role === 'server') await startServerRole()
@@ -533,8 +487,6 @@ export function createConnection(options: {
         db = restoreDatabase(db, dbFile, source)
       } catch (error) {
         db = current.open ? current : null
-        // Se também falhou o rollback, não continue atendendo sobre a base substituída.
-        // O erro informa o arquivo anterior preservado para recuperação manual.
         if (!db && !(error instanceof AggregateError)) db = openDatabase(dbFile)
         throw error
       }

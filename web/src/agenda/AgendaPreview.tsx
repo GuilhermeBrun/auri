@@ -50,10 +50,6 @@ import {
   type View
 } from './model'
 
-// Prévia da agenda: agendar num horário livre (ou no +), abrir uma sessão e excluí-la, navegar,
-// trocar entre Dia, Semana e Mês e abrir a lista de pacientes. Tudo fictício e só nesta página.
-// Sem script, o HTML pré-renderizado mostra a semana parada.
-
 type Toast = { icon: 'check' | 'trash'; title: string; text: string; seq: number }
 
 const INTRO: Omit<Toast, 'seq'> = {
@@ -81,7 +77,6 @@ const MODES: [Mode, string][] = [
   ['month', 'Mês']
 ]
 
-/** Ferramentas do cabeçalho, como as do app em cada tela. */
 function Tools({ state }: { state: State }) {
   if (state.view === 'patients') {
     return (
@@ -146,7 +141,6 @@ function NavButton({
 export function AgendaPreview() {
   const [shotRef, inView] = useInView<HTMLDivElement>()
   const [store] = useState(createStore)
-  // `key` muda a cada redesenho completo: a grade é montada de novo e as entradas do CSS rodam
   const [view, setView] = useState<{ state: State; enter: Enter; key: number }>(() => ({
     state: initialState(),
     enter: undefined,
@@ -176,8 +170,6 @@ export function AgendaPreview() {
   const showToast = (icon: Toast['icon'], title: string, text: string) =>
     setToast((current) => ({ icon, title, text, seq: current.seq + 1 }))
 
-  // Começa quando a prévia aparece na tela: na coluna estreita (celular) fica na visão Dia, que
-  // cabe com o texto legível; o aviso de "Sessão agendada" entra depois das sessões.
   useEffect(() => {
     if (!inView) return
     if ((shotRef.current?.clientWidth ?? 0) <= 720) {
@@ -201,7 +193,6 @@ export function AgendaPreview() {
     }
   }, [inView, shotRef])
 
-  // O bloco de Dia/Semana/Mês fica no modo escolhido (sem deslizar: o cabeçalho é redesenhado)
   useBrowserLayoutEffect(() => {
     const modes = toolsRef.current?.querySelector('[data-modes]')
     moveThumb(modes, modes?.querySelector('[aria-pressed="true"]'), false)
@@ -213,7 +204,6 @@ export function AgendaPreview() {
     })
   }, [])
 
-  // Aviso: entra de novo a cada mensagem e sai sozinho depois de 4 s
   useBrowserLayoutEffect(() => {
     const element = toastRef.current
     if (!element || toast.seq === 0) return
@@ -224,7 +214,6 @@ export function AgendaPreview() {
     return () => clearTimeout(timer)
   }, [toast.seq])
 
-  // Cartão da sessão ao lado dela, dentro da janela
   useBrowserLayoutEffect(() => {
     const card = popRef.current
     const main = mainRef.current
@@ -236,7 +225,6 @@ export function AgendaPreview() {
     if (left + card.offsetWidth > box.width - gap) {
       left = target.left - box.left - card.offsetWidth - gap
     }
-    // Sessão larga (visão Dia): sem espaço dos lados, o cartão fica por cima, no canto direito dela
     if (left < gap) left = target.right - box.left - card.offsetWidth - gap
     const top = Math.min(target.top - box.top, box.height - card.offsetHeight - gap)
     card.style.left = `${Math.max(gap, left)}px`
@@ -244,7 +232,6 @@ export function AgendaPreview() {
     card.querySelector<HTMLElement>('[data-close]')?.focus({ preventScroll: true })
   }, [pop])
 
-  /** Fecha o cartão da sessão e tira o destaque dela. */
   function closePop() {
     setPop(null)
     setView((current) => ({ ...current, state: { ...current.state, selected: null } }))
@@ -274,7 +261,6 @@ export function AgendaPreview() {
     const column = target.closest('.col')
     if (!column || target.closest('.ev')) return null
     const box = column.getBoundingClientRect()
-    // a coluna mostra 8 horas: cada meia hora é 1/16 da altura
     const half = box.height / 16
     const start = Math.min(
       FIRST + Math.floor((event.clientY - box.top) / half) * 0.5,
@@ -330,8 +316,6 @@ export function AgendaPreview() {
     const nav = target.closest<HTMLElement>('[data-view]')
     if (target.closest('[data-today]')) return render({ ...state, focus: TODAY }, 'all')
     if (target.closest('[data-new]')) {
-      // como o "+" do app: o próximo horário livre de hoje, depois de agora, dentro das horas que
-      // a prévia mostra (ela não rola como a agenda do app)
       const sessions = store.day(TODAY)
       for (let start = 10.5; start <= FIRST + VISIBLE - LENGTH; start += 0.5) {
         if (!sessions.some((session) => overlaps(session, start, LENGTH))) {
@@ -384,7 +368,7 @@ export function AgendaPreview() {
   return (
     <div ref={shotRef} className={shotClasses} data-reveal="" data-agenda="">
       <div className="shot-glow" aria-hidden="true" />
-      {/* oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- os cliques chegam aos botões de dentro */}
+      {/* oxlint-disable-next-line jsx-a11y/no-static-element-interactions */}
       <div
         className="win"
         role="group"

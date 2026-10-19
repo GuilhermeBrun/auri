@@ -4,10 +4,6 @@ import { prefersReducedMotion } from '../lib/dom'
 const GRID = 22
 const RADIUS = 110
 
-/**
- * Rastro do mouse no topo, como no Codex: os pontos da grade do fundo (22px) acendem perto do
- * cursor e se apagam sozinhos. Só com mouse e sem "Reduzir movimento".
- */
 export function PointerTrail() {
   const ref = useRef<HTMLCanvasElement>(null)
 
@@ -39,7 +35,6 @@ export function PointerTrail() {
         glow.set(key, next)
         const column = key & 0xffff
         const row = key >>> 16
-        // o mesmo ponto do fundo (1px de raio), mais forte e um pouco maior perto do cursor
         context.globalAlpha = Math.min(next, 1)
         context.beginPath()
         context.arc(column * GRID + GRID / 2, row * GRID + GRID / 2, 1 + next * 0.9, 0, Math.PI * 2)

@@ -16,9 +16,6 @@ import {
 } from './pairing'
 import { createSyncServer } from './server'
 
-// Somente dados fictícios. Servidor e cliente no mesmo processo, por TCP local, com a mesma
-// criptografia de produção.
-
 function until(condition: () => boolean, ms = 5_000): Promise<void> {
   const start = Date.now()
   return new Promise((resolve, reject) => {
@@ -168,7 +165,6 @@ describe('servidor e cliente', () => {
     expect(list).toMatchObject({ ok: true, data: [{ nome: 'Paciente Fictício' }] })
     await until(() => events.length > 0)
     expect(events[0]).toEqual(['patients'])
-    // a conexão do pareamento entra e sai; a de uso fica
     expect(presence.at(-1)).toBe('+Consultório')
   })
 

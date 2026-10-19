@@ -5,12 +5,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { fakeAppointment, fakePatient, renderRoute } from '@renderer/testing'
 import type { ToastInput } from '@renderer/lib/toast'
 
-// pontes do Electron que alguns módulos leem ao carregar
 vi.hoisted(() => {
   const bridge = (): unknown =>
     new Proxy({} as Record<string, unknown>, {
       get: (target, key: string) =>
-        // as respostas nunca chegam: a tela testada não depende delas
         (target[key] ??= () => (key === 'onChange' ? () => {} : new Promise(() => {})))
     })
   Object.assign(window, {
@@ -144,7 +142,6 @@ describe('aba Sessões do paciente', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Nova sessão' }))
     expect(await screen.findByRole('dialog')).toBeTruthy()
     await userEvent.keyboard('{Escape}')
-    // as abas são links embaixo do nome; a atual é marcada para leitor de tela
     const partes = screen.getByRole('navigation', { name: 'Partes do paciente' })
     expect(within(partes).getByRole('link', { name: 'Sessões' }).getAttribute('aria-current')).toBe(
       'page'

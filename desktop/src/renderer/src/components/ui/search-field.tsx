@@ -5,20 +5,13 @@ import { cn } from '@renderer/lib/utils'
 type SearchFieldProps = {
   value: string
   onChange: (value: string) => void
-  /** O que dá para buscar, curto ("Nome, mãe ou CPF"). */
   placeholder: string
-  /** Nome para leitor de tela, mais completo que o placeholder. */
   label: string
   autoFocus?: boolean
   className?: string
   ref?: Ref<HTMLInputElement>
 }
 
-/**
- * Busca do cabeçalho e de listas: preenchimento `fill` sem contorno, lupa à esquerda e botão
- * próprio de limpar (o "x" nativo é azul e muda em cada sistema). No foco ganha o fundo e o
- * contorno de campo. Esc com texto limpa; sem texto, segue para quem estiver ouvindo.
- */
 export function SearchField({
   value,
   onChange,

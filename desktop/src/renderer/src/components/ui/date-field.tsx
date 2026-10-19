@@ -15,29 +15,17 @@ import { Input } from '@renderer/components/ui/input'
 import { cn } from '@renderer/lib/utils'
 
 type DateFieldProps = {
-  /** Mesmo `id` do `htmlFor` do `Field`. */
   id?: string
-  /**
-   * AAAA-MM-DD, ou '' se vazio. Enquanto o texto digitado não é uma data completa e existente, o
-   * valor é o próprio texto ("12/05"): assim o formulário recusa em vez de gravar um campo vazio.
-   */
   value: string
   onChange: (value: string) => void
   invalid?: boolean
   autoFocus?: boolean
 }
 
-/** O que o campo mostra para um valor: dd/mm/aaaa, ou o texto cru de uma data ainda incompleta. */
 const show = (value: string): string => (isIsoDate(value) ? isoToBrDate(value) : value)
 
-/** O valor que um texto representa: a data em ISO se estiver completa e existir, senão o texto. */
 const read = (text: string): string => brDateToIso(text) || text
 
-/**
- * Data digitada (dd/mm/aaaa, com máscara) ou escolhida no calendário. No lugar do
- * <input type="date">, que abre o calendário do sistema (em inglês, com o azul do navegador) e
- * obriga a clicar mês a mês, o que não serve para uma data de nascimento.
- */
 export function DateField({
   id,
   value,
@@ -50,10 +38,8 @@ export function DateField({
   const [open, setOpen] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const contentRef = useRef<HTMLDivElement>(null)
-  // fechou escolhendo um dia (ou com Esc): o foco volta para o campo, onde a digitação continua
   const refocus = useRef(false)
 
-  // o formulário trocou o valor por fora (carregou a ficha, limpou): o texto acompanha
   if (value !== seen) {
     setSeen(value)
     if (read(text) !== value) setText(show(value))
@@ -111,8 +97,6 @@ export function DateField({
           sideOffset={6}
           collisionPadding={12}
           aria-label="Escolher data"
-          // o foco vai para o dia ativo, não para o primeiro botão (‹). Tem que ser aqui: antes disto
-          // o diálogo em volta ainda prende o foco e o devolveria ao botão do calendário.
           onOpenAutoFocus={(e) => {
             e.preventDefault()
             contentRef.current

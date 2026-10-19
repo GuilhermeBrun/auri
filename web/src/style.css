@@ -1,8 +1,3 @@
-/*
- * Página de download (GitHub Pages). Mesma identidade do app (src/renderer/src/assets/main.css e
- * docs/identidade-visual.md): grafite, sem verde, espaço como divisor, retângulos arredondados.
- * Movimento só com transform e opacity; em "Reduzir movimento" sobra o fade.
- */
 @font-face {
   font-family: 'Bricolage Grotesque Variable';
   font-style: normal;
@@ -53,7 +48,6 @@
   --media-from: #cdcdd8;
   --media-to: #ececf1;
   --media-glow: rgba(255, 255, 255, 0.7);
-  /* Janela de exemplo: os tokens do app (src/renderer/src/assets/main.css), no mesmo tema */
   --app-surface: #ffffff;
   --app-sidebar: #f4f4f7;
   --app-solid: #1b1b22;
@@ -79,7 +73,6 @@
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* Tema: o do sistema, ou o escolhido no botão do topo (data-theme no <html>) */
 :root[data-theme='light'] {
   color-scheme: light;
 }
@@ -93,10 +86,6 @@
     --ink-faint: #8a8a98;
     --fill: rgba(236, 236, 245, 0.06);
     --fill-hover: rgba(236, 236, 245, 0.1);
-    /*
-     * Grafite médio, como no app (um bloco quase branco ofuscava a tela), um passo acima do
-     * `solid` do app: aqui ele precisa se destacar do botão secundário ao lado.
-     */
     --solid: #4b4b57;
     --solid-hover: #55555f;
     --solid-active: #60606b;
@@ -149,10 +138,6 @@
   --ink-faint: #8a8a98;
   --fill: rgba(236, 236, 245, 0.06);
   --fill-hover: rgba(236, 236, 245, 0.1);
-  /*
-   * Grafite médio, como no app (um bloco quase branco ofuscava a tela), um passo acima do
-   * `solid` do app: aqui ele precisa se destacar do botão secundário ao lado.
-   */
   --solid: #4b4b57;
   --solid-hover: #55555f;
   --solid-active: #60606b;
@@ -252,7 +237,6 @@ a {
   border-radius: 4px;
 }
 
-/* Fundo do topo: pontos que somem em direção às bordas e uma luz suave atrás do título */
 .backdrop {
   position: absolute;
   inset: 0 0 auto;
@@ -275,7 +259,6 @@ a {
   background: radial-gradient(closest-side, var(--glow), transparent);
 }
 
-/* Rastro do mouse no topo (page.js): os pontos da grade do fundo acendem perto do cursor */
 .pointer-trail {
   position: absolute;
   inset: 0 0 auto;
@@ -343,7 +326,6 @@ a {
   display: grid;
 }
 
-/* Sem script o botão não funciona: fica escondido */
 html:not(.js) .theme-toggle {
   visibility: hidden;
 }
@@ -354,7 +336,6 @@ main {
   padding: 0 1rem;
 }
 
-/* Topo */
 .hero {
   display: flex;
   flex-direction: column;
@@ -378,7 +359,6 @@ main {
   height: 100%;
 }
 
-/* Ícone claro no tema claro e o grafite no escuro */
 .mark .mark-dark {
   display: none;
 }
@@ -401,16 +381,11 @@ main {
   }
 }
 
-/*
- * Títulos como os do Design System: peso 600, -0.025em e o corte de texto da fonte (opsz 28, o do
- * maior título do app). Sem isso, o tamanho óptico automático usa o corte de cartaz nos títulos grandes.
- */
 h1,
 h2 {
   font-variation-settings: 'opsz' 28;
 }
 
-/* Numa linha só no computador; no celular quebra em duas, equilibradas. */
 h1 {
   font-size: clamp(2.25rem, 1.25rem + 3.6vw, 4rem);
   font-weight: 600;
@@ -521,7 +496,6 @@ h1 {
   background: var(--solid-active);
 }
 
-/* Brilho que atravessa o botão principal ao passar o mouse */
 .btn-primary::after {
   content: '';
   position: absolute;
@@ -570,7 +544,6 @@ h1 {
   font-weight: 580;
 }
 
-/* Seletor de sistema (celular ou sistema desconhecido) e link para o outro sistema */
 .download {
   display: flex;
   flex-direction: column;
@@ -644,11 +617,6 @@ h1 {
   color: var(--ink);
 }
 
-/*
- * Prévia do app: a janela do Auri com as medidas do app em px (Layout.tsx, AgendaPage.tsx,
- * main.css), multiplicadas por --u. A janela tem 1280 de largura no app; aqui --u encolhe tudo
- * junto para caber na coluna, como uma captura, mas nítido e clicável.
- */
 .shot {
   position: relative;
   margin-top: clamp(3rem, 6vw, 4.5rem);
@@ -727,7 +695,6 @@ h1 {
   height: calc(16 * var(--u));
 }
 
-/* Barra lateral (216px): faixa da janela, menu e Configurações no rodapé */
 .win-side {
   display: flex;
   flex-direction: column;
@@ -743,7 +710,6 @@ h1 {
   padding-left: calc(112 * var(--u));
 }
 
-/* Botões da janela do Mac (aqui no tom da janela inativa) e o botão de recolher */
 .lights {
   position: absolute;
   top: calc(18 * var(--u));
@@ -832,7 +798,6 @@ h1 {
   margin-top: auto;
 }
 
-/* Página: cabeçalho de 48px (trilha e ferramentas) e o conteúdo */
 .win-main {
   position: relative;
   display: grid;
@@ -951,7 +916,6 @@ h1 {
     width 250ms cubic-bezier(0.32, 0.72, 0, 1);
 }
 
-/* Sem script, a opção ligada usa o próprio fundo; com ele, o bloco desliza */
 .seg [aria-pressed='true'] {
   background: var(--selected);
 }
@@ -1000,7 +964,6 @@ h1 {
   overflow: hidden;
 }
 
-/* Semana e Dia: a grade do react-big-calendar */
 .cal-week {
   --cols: 7;
 }
@@ -1070,7 +1033,6 @@ h1 {
   grid-template-columns: subgrid;
 }
 
-/* Linhas da hora (contínua) e da meia hora (tracejada e fraca), como no app */
 .col {
   position: relative;
   height: calc(var(--row) * 8);
@@ -1104,7 +1066,6 @@ h1 {
   background-color: var(--app-subtle);
 }
 
-/* Sessão: bloco cinza com contorno fino; nome curto e horário embaixo */
 .win .ev {
   position: absolute;
   top: calc(var(--top) * var(--row));
@@ -1150,7 +1111,6 @@ h1 {
   color: var(--on-solid);
 }
 
-/* Recém-agendada: contorno por dentro que se apaga (o .event-arrived do app) */
 .ev::after {
   content: '';
   position: absolute;
@@ -1161,7 +1121,6 @@ h1 {
   pointer-events: none;
 }
 
-/* Seleção de horário (o .rbc-slot-selection do app), que o clique agenda */
 .ghost {
   position: absolute;
   top: calc(var(--top) * var(--row));
@@ -1200,7 +1159,6 @@ h1 {
   background: var(--now);
 }
 
-/* Mês */
 .cal-month {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
@@ -1319,7 +1277,6 @@ h1 {
   background: var(--fill);
 }
 
-/* Pacientes: a tabela do app */
 .pt {
   padding: 0 calc(16 * var(--u));
 }
@@ -1403,7 +1360,6 @@ h1 {
   font-variant-numeric: tabular-nums;
 }
 
-/* Detalhes da sessão: um cartão que flutua, como os menus do app */
 .pop {
   position: absolute;
   z-index: 4;
@@ -1463,7 +1419,6 @@ h1 {
   background: var(--danger-soft-hover);
 }
 
-/* Aviso do app (ui/toast.tsx): embaixo no centro */
 .toast {
   position: absolute;
   bottom: calc(16 * var(--u));
@@ -1522,10 +1477,6 @@ h1 {
   color: var(--ink-soft);
 }
 
-/*
- * Coluna estreita (celular): a janela com a barra lateral recolhida e a visão Dia, num passo
- * maior para o texto continuar legível.
- */
 @container shot (max-width: 720px) {
   .win {
     --u: calc(100cqi / 440);
@@ -1559,7 +1510,6 @@ h1 {
   }
 }
 
-/* Seções */
 .hero {
   scroll-margin-top: 1rem;
 }
@@ -1591,10 +1541,6 @@ h2 {
   margin-top: clamp(3rem, 6vw, 4.5rem);
 }
 
-/*
- * Cada recurso: uma tela do app sobre um fundo em degradê, cortada na borda, e o texto no canto
- * oposto, alinhado embaixo. As linhas alternam o lado da imagem. Sem cartões.
- */
 .feature {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
@@ -1639,10 +1585,6 @@ h2 {
     linear-gradient(160deg, var(--media-from), var(--media-to));
 }
 
-/*
- * A janela entra pelo canto e sai pela borda, como uma captura recortada. Cada imagem diz o zoom
- * (--zoom, largura em relação ao quadro) e a parte da tela que começa no canto (--focus, fração).
- */
 .feature-media img {
   --zoom: 150;
   --focus: 0;
@@ -1721,7 +1663,6 @@ h2 {
   gap: 0.5rem;
 }
 
-/* Entradas conforme a rolagem. Só com script (classe `js` no <html>): sem ele, tudo já aparece. */
 .js [data-reveal] {
   opacity: 0;
   transform: translateY(1.5rem);
@@ -1736,7 +1677,6 @@ h2 {
   transition-delay: calc(var(--i, 0) * 90ms);
 }
 
-/* A prévia entra inclinada e se endireita; as sessões vão aparecendo e, por último, a escolhida */
 .js .shot[data-reveal] {
   opacity: 1;
   transform: none;
@@ -1772,7 +1712,6 @@ h2 {
   animation: ring-out 1400ms ease-out 2000ms both;
 }
 
-/* Depois da entrada, cada mudança anima só o que mudou */
 .js .shot.ready .ev.enter {
   animation: session-in 320ms var(--ease-out) both;
   animation-delay: calc(var(--d, 0) * 18ms);
@@ -1887,7 +1826,6 @@ h2 {
   }
 }
 
-/* Reduzir movimento: nada se desloca nem fica pulsando; as entradas viram só fade */
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
