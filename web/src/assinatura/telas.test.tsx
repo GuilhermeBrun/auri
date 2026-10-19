@@ -71,14 +71,28 @@ describe('página recebido', () => {
     renderToString(
       <PaginaRecebido
         pagina={{ endereco: `https://auri.dev.br/recebido${fragmento}`, fragmento }}
+        computador={false}
       />
     )
 
-  test('resposta no formato certo: só oferece copiar', () => {
+  test('no celular, resposta no formato certo: só oferece copiar', () => {
     const html = recebido(`#1.AAECAwQFBgcICQoLDA0ODw.${'A'.repeat(60)}`)
     expect(html).toContain('Resposta do termo assinado')
     expect(html).toContain('Copiar resposta')
     expect(html).not.toContain('auri://')
+  })
+
+  test('no computador, abre o Auri e só depois oferece copiar', () => {
+    const fragmento = `#1.AAECAwQFBgcICQoLDA0ODw.${'A'.repeat(60)}`
+    const html = renderToString(
+      <PaginaRecebido
+        pagina={{ endereco: `https://auri.dev.br/recebido${fragmento}`, fragmento }}
+        computador
+        abrir={() => {}}
+      />
+    )
+    expect(html).toContain('Abrindo o Auri…')
+    expect(html).not.toContain('Copiar resposta')
   })
 
   test('resposta incompleta ou de versão desconhecida', () => {
