@@ -118,8 +118,8 @@ ORDER BY vezes DESC;
 
 - A função mora no projeto `auri` da Vercel, junto com o site (`web/`), no Node 24.x. O domínio
   `erros.auri.dev.br` aponta para esse projeto; a raiz dele redireciona para o site.
-- O banco é um Neon do Marketplace da Vercel, Postgres 17, na região AWS us-east-1: a função roda
-  em `iad1` (Washington).
+- O banco é um Neon do Marketplace da Vercel, Postgres 17, na região AWS sa-east-1 (São Paulo). A
+  função roda ao lado dele, em `gru1` (`regions` no `web/vercel.json`).
 - Sem `DATABASE_URL`, ou com o banco fora do ar, a função responde `503` e os apps guardam as
   falhas para depois.
 
