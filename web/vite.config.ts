@@ -4,11 +4,12 @@ import { defineConfig, lazyPlugins, type Connect, type Plugin } from 'vite-plus'
 
 const pagina = (caminho: string) => fileURLToPath(new URL(caminho, import.meta.url))
 
+const PAGINAS = ['/assinar', '/recebido', '/confirmar', '/resposta']
+
 const semBarra: Connect.NextHandleFunction = (pedido, _resposta, seguir) => {
   const url = pedido.url ?? ''
   const caminho = url.split(/[?#]/)[0]
-  if (caminho === '/assinar' || caminho === '/recebido')
-    pedido.url = `${caminho}/${url.slice(caminho.length)}`
+  if (PAGINAS.includes(caminho)) pedido.url = `${caminho}/${url.slice(caminho.length)}`
   seguir()
 }
 
@@ -27,7 +28,9 @@ export default defineConfig({
       input: {
         principal: pagina('./index.html'),
         assinar: pagina('./assinar/index.html'),
-        recebido: pagina('./recebido/index.html')
+        recebido: pagina('./recebido/index.html'),
+        confirmar: pagina('./confirmar/index.html'),
+        resposta: pagina('./resposta/index.html')
       }
     }
   },

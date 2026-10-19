@@ -16,5 +16,5 @@
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["scripts/link-de-teste.ts"]
+  "include": ["scripts/link-de-teste.ts", "scripts/confirmacao-de-teste.ts"]
 }
