@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test'
 import { openDatabase, type Db } from './connection'
-import { SCHEMA_VERSION, migrate } from './migrations'
+import { DatabaseTooNewError, SCHEMA_VERSION, migrate } from './migrations'
 
 let dir: string
 const opened: Db[] = []
@@ -62,6 +62,7 @@ describe('compatibilidade do banco', () => {
     db.exec("CREATE TABLE sentinel (valor TEXT); INSERT INTO sentinel VALUES ('preservado');")
     db.pragma(`user_version = ${SCHEMA_VERSION + 1}`)
     const before = readFileSync(file)
+    expect(() => migrate(db)).toThrow(DatabaseTooNewError)
     expect(() => migrate(db)).toThrow('O banco de dados é de uma versão mais nova do Auri')
     expect(readFileSync(file)).toEqual(before)
     expect(db.prepare('SELECT valor FROM sentinel').get()).toEqual({ valor: 'preservado' })

@@ -38,7 +38,13 @@ const FRAMES = 15
 
 const { lengths } = contract
 
-const SAFE_MESSAGES = new Set(['TypeError', 'ReferenceError', 'RangeError', 'SqliteError'])
+const SAFE_MESSAGES = new Set([
+  'TypeError',
+  'ReferenceError',
+  'RangeError',
+  'SqliteError',
+  'DatabaseTooNewError'
+])
 
 const BUGS = new Set([
   'TypeError',

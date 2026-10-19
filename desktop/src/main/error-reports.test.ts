@@ -69,6 +69,12 @@ describe('limpeza das falhas', () => {
       "Cannot read properties of undefined (reading 'nome')"
     )
     expect(safeMessage('SqliteError', 'database is locked')).toBe('database is locked')
+    expect(
+      safeMessage(
+        'DatabaseTooNewError',
+        'O banco de dados é de uma versão mais nova do Auri (v6). Atualize o aplicativo.'
+      )
+    ).toBe('O banco de dados é de uma versão mais nova do Auri (v6). Atualize o aplicativo.')
     expect(safeMessage('Error', 'Esse horário já está ocupado: Ana Souza')).toBeNull()
     expect(safeMessage('SyntaxError', 'Unexpected token "Ana Souza"')).toBeNull()
     expect(safeMessage('ZodError', 'nome inválido')).toBeNull()
