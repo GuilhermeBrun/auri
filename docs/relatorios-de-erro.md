@@ -160,7 +160,7 @@ O que alguém consegue tentando atacar ou interceptar o serviço:
 | Ler os relatórios com o endereço do banco, se vazar da Vercel | O usuário da função só grava: `SELECT`, `UPDATE`, `DELETE`, outras tabelas e criar tabelas dão "permission denied" (testado em `web/tests/erros.test.ts`). |
 | Se passar pelo banco entre a função e o Neon | A conexão confere o certificado do banco (`verify-full`). O `sslmode=require` do endereço do Neon cifraria sem conferir; o código ignora esse modo. |
 | Injetar SQL pelos campos | Todo valor vai como parâmetro (`sql(rows)` do driver `postgres`), nunca colado no texto do SQL; os campos ainda passam pelo `payloadSchema` (tipos e tamanhos). |
-| Encher o banco de lixo | Dá para gravar relatórios falsos (o app é público, não há senha a esconder), mas não ler nada. Limites: 64 KB e 20 falhas por envio, 1000 falhas por dia e 90 dias guardados, no próprio banco. Quem mandar lixo de propósito consegue ocupar a cota do dia: um limite por IP na frente da função (Firewall da Vercel, ou o proxy da hospedagem nova) resolve isso. |
+| Encher o banco de lixo | Dá para gravar relatórios falsos (o app é público, não há senha a esconder), mas não ler nada. Limites: 64 KB e 20 falhas por envio, 1000 falhas por dia e 90 dias guardados, no próprio banco. Na frente da função, o Firewall da Vercel aceita no máximo 60 envios por minuto por IP em `/api/erros` e responde `429` ao que passar, que o app guarda para depois. Ao trocar de hospedagem, o mesmo limite vai para o proxy da nova. |
 
 O que não sai do computador de jeito nenhum: dados de pacientes, o que foi digitado, o nome de quem
 usa e o nome do computador. O IP de quem manda não é guardado.
