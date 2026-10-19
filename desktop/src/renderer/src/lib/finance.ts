@@ -55,7 +55,6 @@ export function sessionPay(finance: PatientFinance, appointmentId: number): Sess
 export function sessionPayLabel(pay: SessionPay): string | null {
   if (pay.kind === 'pacote') return `${pay.numero}/${pay.sessoes} do pacote`
   if (pay.kind === 'nenhum') return null
-  const falta = pay.motivo === 'falta_cobrada' ? 'Falta cobrada · ' : ''
-  if (pay.convenio) return `${falta}${pay.situacao === 'pago' ? 'Pago pelo convênio' : 'Convênio'}`
-  return `${falta}${SITUACAO_LABELS[pay.situacao]}`
+  if (pay.convenio) return pay.situacao === 'pago' ? 'Pago pelo convênio' : 'Convênio'
+  return SITUACAO_LABELS[pay.situacao]
 }

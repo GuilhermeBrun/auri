@@ -170,7 +170,7 @@ caso).
   convênio"). Ações: **Abrir financeiro** (fecha o diálogo e vai para a aba), **Registrar
   pagamento** (cobrança da família ainda não paga) e **Cobrar sessão** (falta sem cobrança).
 - **Aba Sessões:** cada sessão anterior ganha uma linha discreta embaixo da presença: "3/8 do
-  pacote", "Pago", "Em aberto", "Parcial", "Convênio", "Falta cobrada · Em aberto".
+  pacote", "Pago", "Em aberto", "Parcial", "Convênio" (numa falta cobrada, a linha já diz "Faltou").
 - **Agenda: nenhuma marca.** Avaliado e deixado de fora: o cartão já é estreito (nome curto na
   semana e no mês) e qualquer marca disputa espaço com o nome; o saldo é uma conta corrente do
   paciente, então "em aberto" numa sessão é a distribuição dos pagamentos, não uma dívida daquela
