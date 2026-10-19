@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Archive, Undo2 } from 'lucide-react'
-import { useEffect, useId, useState, type ReactNode } from 'react'
+import { useEffect, useId, useState } from 'react'
 import { Controller, useForm, useWatch, type Control, type UseFormRegister } from 'react-hook-form'
 import { useNavigate, useParams } from 'react-router'
 import { formatAge, toIsoDate } from '@shared/dates'
@@ -24,6 +24,7 @@ import { Callout } from '@renderer/components/ui/callout'
 import { ErrorState } from '@renderer/components/ui/error'
 import { DateField } from '@renderer/components/ui/date-field'
 import { Field, Input, Textarea } from '@renderer/components/ui/input'
+import { FormSection } from '@renderer/components/ui/section'
 import { Segmented } from '@renderer/components/ui/segmented'
 import { Select } from '@renderer/components/ui/select'
 import { useDraft } from '@renderer/lib/drafts'
@@ -33,32 +34,6 @@ import { useToast } from '@renderer/lib/toast'
 
 function toInput(patient: Patient): PatientInput {
   return Object.fromEntries(PATIENT_FIELDS.map((f) => [f, patient[f]])) as PatientInput
-}
-
-function Section({
-  id,
-  title,
-  description,
-  children
-}: {
-  id: string
-  title: string
-  description?: string
-  children: ReactNode
-}): React.JSX.Element {
-  return (
-    <section aria-labelledby={id} className="grid grid-cols-[200px_1fr] gap-x-8 py-7 first:pt-0">
-      <div>
-        <div className="sticky top-4">
-          <h2 id={id} className="text-[15px] font-semibold tracking-tight">
-            {title}
-          </h2>
-          {description && <p className="mt-1 text-xs text-ink-soft">{description}</p>}
-        </div>
-      </div>
-      <div className="grid grid-cols-6 gap-x-3 gap-y-4">{children}</div>
-    </section>
-  )
 }
 
 function MaskedInput({
@@ -399,7 +374,7 @@ function PatientFormPage({ patientId }: { patientId: number | null }): React.JSX
           )}
 
           <div className="flex flex-col">
-            <Section id="secao-paciente" title="Paciente" description="Dados de identificação.">
+            <FormSection id="secao-paciente" title="Paciente" description="Dados de identificação.">
               <Field label="Nome completo" error={err('nome')} className="col-span-6">
                 <Input {...register('nome')} aria-invalid={invalid('nome')} autoFocus={isNew} />
               </Field>
@@ -446,9 +421,9 @@ function PatientFormPage({ patientId }: { patientId: number | null }): React.JSX
                   </Field>
                 </>
               )}
-            </Section>
+            </FormSection>
 
-            <Section id="secao-escola" title="Escola" description="Onde estuda e com quem.">
+            <FormSection id="secao-escola" title="Escola" description="Onde estuda e com quem.">
               <Field label="Escola" error={err('escola')} className="col-span-3">
                 <Input {...register('escola')} />
               </Field>
@@ -458,9 +433,9 @@ function PatientFormPage({ patientId }: { patientId: number | null }): React.JSX
               <Field label="Professora" error={err('professora')} className="col-span-2">
                 <Input {...register('professora')} />
               </Field>
-            </Section>
+            </FormSection>
 
-            <Section id="secao-mae" title="Mãe" description="Contato principal da família.">
+            <FormSection id="secao-mae" title="Mãe" description="Contato principal da família.">
               <Field label="Nome da mãe" error={err('mae_nome')} className="col-span-6">
                 <Input {...register('mae_nome')} />
               </Field>
@@ -493,9 +468,9 @@ function PatientFormPage({ patientId }: { patientId: number | null }): React.JSX
               <Field label="Profissão" error={err('mae_profissao')} className="col-span-2">
                 <Input {...register('mae_profissao')} />
               </Field>
-            </Section>
+            </FormSection>
 
-            <Section id="secao-pai" title="Pai">
+            <FormSection id="secao-pai" title="Pai">
               <Field label="Nome do pai" error={err('pai_nome')} className="col-span-6">
                 <Input {...register('pai_nome')} aria-invalid={invalid('pai_nome')} />
               </Field>
@@ -528,9 +503,9 @@ function PatientFormPage({ patientId }: { patientId: number | null }): React.JSX
               <Field label="Profissão" error={err('pai_profissao')} className="col-span-2">
                 <Input {...register('pai_profissao')} />
               </Field>
-            </Section>
+            </FormSection>
 
-            <Section
+            <FormSection
               id="secao-responsavel"
               title="Responsável"
               description="Quem assina os termos e a presença nas sessões."
@@ -542,9 +517,9 @@ function PatientFormPage({ patientId }: { patientId: number | null }): React.JSX
                 invalid={invalid}
                 adulto={adulto}
               />
-            </Section>
+            </FormSection>
 
-            <Section id="secao-endereco" title="Endereço">
+            <FormSection id="secao-endereco" title="Endereço">
               <Field label="Rua e número" error={err('endereco')} className="col-span-6">
                 <Input {...register('endereco')} />
               </Field>
@@ -554,9 +529,9 @@ function PatientFormPage({ patientId }: { patientId: number | null }): React.JSX
               <Field label="Cidade" error={err('cidade')} className="col-span-3">
                 <Input {...register('cidade')} placeholder="Sinop-MT" />
               </Field>
-            </Section>
+            </FormSection>
 
-            <Section
+            <FormSection
               id="secao-outros"
               title="Outros"
               description="Como chegou à clínica e observações gerais."
@@ -589,7 +564,7 @@ function PatientFormPage({ patientId }: { patientId: number | null }): React.JSX
               <Field label="Observações" error={err('observacoes')} className="col-span-6">
                 <Textarea {...register('observacoes')} rows={4} />
               </Field>
-            </Section>
+            </FormSection>
           </div>
         </div>
       </Page>

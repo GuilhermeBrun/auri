@@ -81,3 +81,31 @@ export function SettingsGroup({
 export function GroupText({ children }: { children: ReactNode }): React.JSX.Element {
   return <p className="text-xs text-ink-soft">{children}</p>
 }
+
+export function FormSection({
+  id,
+  title,
+  description,
+  className,
+  children
+}: {
+  id: string
+  title: string
+  description?: string
+  className?: string
+  children: ReactNode
+}): React.JSX.Element {
+  return (
+    <section aria-labelledby={id} className="grid grid-cols-[200px_1fr] gap-x-8 py-7 first:pt-0">
+      <div>
+        <div className="sticky top-4">
+          <h2 id={id} className="text-[15px] font-semibold tracking-tight">
+            {title}
+          </h2>
+          {description && <p className="mt-1 text-xs text-ink-soft">{description}</p>}
+        </div>
+      </div>
+      <div className={cn('grid grid-cols-6 gap-x-3 gap-y-4', className)}>{children}</div>
+    </section>
+  )
+}

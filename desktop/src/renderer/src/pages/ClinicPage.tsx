@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ImagePlus } from 'lucide-react'
-import { useEffect, type ReactNode } from 'react'
+import { useEffect } from 'react'
 import { Controller, useForm, type Control } from 'react-hook-form'
 import { logoDataUrl } from '@shared/clinic'
 import { formatPhone } from '@shared/masks'
@@ -12,7 +12,7 @@ import { Callout } from '@renderer/components/ui/callout'
 import { ErrorState } from '@renderer/components/ui/error'
 import { Field, Input } from '@renderer/components/ui/input'
 import { Loading } from '@renderer/components/ui/loading'
-import { PageSection, SettingsGroup } from '@renderer/components/ui/section'
+import { FormSection } from '@renderer/components/ui/section'
 import { clinicQuery } from '@renderer/lib/queries'
 import { useToast } from '@renderer/lib/toast'
 
@@ -20,24 +20,6 @@ const TRAIL = [{ label: 'Clínica' }]
 
 function toInput({ updated_at: _, ...input }: Clinic): Required<ClinicInput> {
   return input
-}
-
-function Group({
-  id,
-  title,
-  description,
-  children
-}: {
-  id: string
-  title: string
-  description: string
-  children: ReactNode
-}): React.JSX.Element {
-  return (
-    <PageSection id={id} title={title} description={description}>
-      <SettingsGroup className="grid grid-cols-2 gap-x-3 gap-y-4">{children}</SettingsGroup>
-    </PageSection>
-  )
 }
 
 function PhoneInput({
@@ -81,7 +63,7 @@ function LogoField({
     <div className="col-span-2 flex flex-col gap-1">
       <span className="text-xs font-medium">Logo</span>
       <div className="flex items-center gap-4">
-        <div className="flex h-16 w-44 shrink-0 items-center justify-center rounded-control bg-surface p-2">
+        <div className="flex h-16 w-44 shrink-0 items-center justify-center rounded-control bg-fill p-2">
           {value ? (
             <img
               src={logoDataUrl(value)}
@@ -153,7 +135,7 @@ function ClinicForm({ clinic }: { clinic: Clinic }): React.JSX.Element {
           </Button>
         }
       >
-        <div className="mx-auto max-w-[720px] px-8 pt-8 pb-16">
+        <div className="mx-auto max-w-[840px] px-8 pt-6 pb-16">
           {save.error && (
             <Callout tone="danger" title="Não foi possível salvar" className="mb-6">
               {save.error.message}
@@ -163,11 +145,12 @@ function ClinicForm({ clinic }: { clinic: Clinic }): React.JSX.Element {
           <p className="text-[13px] text-ink-soft">
             Como a clínica aparece nos documentos que o Auri gera.
           </p>
-          <div className="mt-8 flex flex-col gap-14">
-            <Group
+          <div className="mt-8 flex flex-col">
+            <FormSection
               id="documentos"
               title="Nos documentos"
               description="O logo e o nome vão no cabeçalho do relatório de presença e dos termos."
+              className="grid-cols-2"
             >
               <Controller
                 control={control}
@@ -186,12 +169,13 @@ function ClinicForm({ clinic }: { clinic: Clinic }): React.JSX.Element {
               <Field label="Endereço" error={err('endereco')} className="col-span-2">
                 <Input {...register('endereco')} aria-invalid={invalid('endereco')} />
               </Field>
-            </Group>
+            </FormSection>
 
-            <Group
+            <FormSection
               id="profissional"
               title="Profissional responsável"
               description="Aparece nos relatórios, ao lado dos dados do paciente."
+              className="grid-cols-2"
             >
               <Field label="Nome" error={err('profissional')}>
                 <Input {...register('profissional')} aria-invalid={invalid('profissional')} />
@@ -199,17 +183,18 @@ function ClinicForm({ clinic }: { clinic: Clinic }): React.JSX.Element {
               <Field label="Registro" hint="CRFa, CRP…" error={err('registro')}>
                 <Input {...register('registro')} aria-invalid={invalid('registro')} />
               </Field>
-            </Group>
+            </FormSection>
 
-            <Group
+            <FormSection
               id="termos"
               title="Termos assinados pelo celular"
               description="O responsável envia o termo assinado para este WhatsApp."
+              className="grid-cols-2"
             >
               <Field label="WhatsApp da clínica" error={err('whatsapp')}>
                 <PhoneInput control={control} name="whatsapp" />
               </Field>
-            </Group>
+            </FormSection>
           </div>
         </div>
       </Page>
