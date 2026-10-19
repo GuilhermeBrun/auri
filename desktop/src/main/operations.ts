@@ -15,7 +15,22 @@ import {
   reportRangeSchema,
   voidMotivoSchema
 } from '../shared/schemas'
+import type {
+  SugestaoPedido,
+  Vaga,
+  WaitlistAdd,
+  WaitlistClose,
+  WaitlistInput
+} from '../shared/waitlist'
 import { getAnamnese, saveAnamnese } from './db/anamneses'
+import { suggestSlots, whoFits } from './db/encaixe'
+import {
+  addToWaitlist,
+  closeWaitlist,
+  getPatientWaitlist,
+  listWaitlist,
+  updateWaitlist
+} from './db/waitlist'
 import { attendanceReport, listPatientAttendance, signArrival, voidArrival } from './db/attendance'
 import { getClinic, saveClinic } from './db/clinic'
 import {
@@ -199,7 +214,34 @@ const OPERATIONS: Record<string, Operation> = {
         expectedSchema.parse(expected)
       ),
     changes: ['anamneses']
-  }
+  },
+
+  'waitlist:list': { run: (db) => listWaitlist(db) },
+  'waitlist:getByPatient': {
+    run: (db, [patientId]) => getPatientWaitlist(db, idSchema.parse(patientId))
+  },
+  'waitlist:add': {
+    run: (db, [input]) => addToWaitlist(db, input as WaitlistAdd),
+    changes: ['waitlist']
+  },
+  'waitlist:update': {
+    run: (db, [id, input, expected]) =>
+      updateWaitlist(
+        db,
+        idSchema.parse(id),
+        input as WaitlistInput,
+        expectedSchema.parse(expected)
+      ),
+    changes: ['waitlist']
+  },
+  'waitlist:close': {
+    run: (db, [id, close]) => closeWaitlist(db, idSchema.parse(id), close as WaitlistClose),
+    changes: ['waitlist']
+  },
+  'encaixe:sugerir': {
+    run: (db, [input]) => suggestSlots(db, input as SugestaoPedido, new Date())
+  },
+  'encaixe:quemCabe': { run: (db, [vaga]) => whoFits(db, vaga as Vaga) }
 }
 
 export const DATA_CHANNELS = Object.keys(OPERATIONS)

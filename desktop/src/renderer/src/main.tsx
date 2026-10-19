@@ -33,6 +33,10 @@ window.api.onChanged((topics) => {
   if (topics.includes('clinic')) {
     void queryClient.invalidateQueries({ queryKey: ['clinic'] })
   }
+  if (topics.some((t) => t === 'waitlist' || t === 'appointments' || t === 'patients')) {
+    void queryClient.invalidateQueries({ queryKey: ['waitlist'] })
+    void queryClient.invalidateQueries({ queryKey: ['encaixe'] })
+  }
   if (topics.includes('anamneses')) {
     void queryClient.invalidateQueries({ queryKey: ['anamnese'], refetchType: 'none' })
   }
