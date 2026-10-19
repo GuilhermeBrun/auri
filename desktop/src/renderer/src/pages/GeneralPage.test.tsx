@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 import type { UpdateState } from '@shared/api'
 import { renderRoute } from '@renderer/testing'
 
-const { updates, emit } = vi.hoisted(() => {
+const { updates, reports, emit } = vi.hoisted(() => {
   const bridge = (): unknown =>
     new Proxy({} as Record<string, unknown>, {
       get: (target, key: string) =>
@@ -22,6 +22,12 @@ const { updates, emit } = vi.hoisted(() => {
       return () => {}
     }
   }
+  const reports = {
+    info: vi.fn(() => new Promise(() => {})),
+    setEnabled: vi.fn(),
+    copy: vi.fn(() => Promise.resolve()),
+    error: vi.fn()
+  }
   Object.assign(Element.prototype, {
     hasPointerCapture: () => false,
     releasePointerCapture: () => {},
@@ -32,9 +38,10 @@ const { updates, emit } = vi.hoisted(() => {
     backup: bridge(),
     connection: bridge(),
     prefs: bridge(),
-    updates
+    updates,
+    reports
   })
-  return { updates, emit: (state: unknown) => listener(state) }
+  return { updates, reports, emit: (state: unknown) => listener(state) }
 })
 
 import { GeneralPage } from './GeneralPage'
@@ -119,5 +126,25 @@ describe('Configurações › Geral', () => {
     expect(
       screen.getByRole('combobox', { name: 'Canal de atualização' }).hasAttribute('disabled')
     ).toBe(true)
+  })
+
+  it('liga e desliga o envio dos relatórios de erro e copia as falhas guardadas', async () => {
+    reports.info.mockResolvedValueOnce({ enabled: true, count: 0 })
+    const toast = renderPage()
+    const toggle = await screen.findByRole('switch', { name: 'Enviar relatórios de erro' })
+    expect(toggle.getAttribute('aria-checked')).toBe('true')
+    expect(screen.getByText(/Nenhum dado de paciente vai junto/)).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /Copiar relatório/ })).toBeNull()
+
+    reports.setEnabled.mockResolvedValue({ enabled: false, count: 2 })
+    await userEvent.click(toggle)
+    expect(reports.setEnabled).toHaveBeenCalledExactlyOnceWith(false)
+    expect(await screen.findByText(/as falhas ficam só neste computador/)).toBeTruthy()
+    expect(toggle.getAttribute('aria-checked')).toBe('false')
+    expect(screen.getByText(/2 falhas guardadas/)).toBeTruthy()
+
+    await userEvent.click(screen.getByRole('button', { name: /Copiar relatório/ }))
+    expect(reports.copy).toHaveBeenCalledOnce()
+    expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: 'Relatório copiado' }))
   })
 })

@@ -3,6 +3,7 @@ import type {
   AuriBackup,
   AuriConnection,
   AuriPrefs,
+  AuriReports,
   AuriTransfer,
   AuriUpdates
 } from '../shared/api'
@@ -15,6 +16,7 @@ declare global {
     backup: AuriBackup
     transfer: AuriTransfer
     updates: AuriUpdates
+    reports: AuriReports
     platform: string
   }
 }

@@ -14,11 +14,15 @@
     "check": "vp check",
     "fmt": "vp fmt",
     "lint": "vp lint",
-    "test": "vp test run"
+    "test": "vp test run",
+    "erros:servidor": "node scripts/servidor-erros.ts",
+    "erros:migrar": "node scripts/migrar-erros.ts"
   },
   "dependencies": {
+    "postgres": "^3.4.9",
     "react": "^19.2.8",
-    "react-dom": "^19.2.8"
+    "react-dom": "^19.2.8",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@types/node": "^24.13.3",

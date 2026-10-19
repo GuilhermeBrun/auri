@@ -220,6 +220,20 @@ export type UpdateState = {
   error: string | null
 }
 
+export type ErrorReportsInfo = {
+  enabled: boolean
+  count: number
+}
+
+export type RendererError = { name?: string; message?: string; stack?: string }
+
+export interface AuriReports {
+  info(): Promise<ErrorReportsInfo>
+  setEnabled(on: boolean): Promise<ErrorReportsInfo>
+  copy(): Promise<void>
+  error(error: RendererError): void
+}
+
 export interface AuriUpdates {
   info(): Promise<UpdateState>
   check(): Promise<UpdateState>
