@@ -8,6 +8,7 @@ import {
   createAppointment,
   getAppointment,
   listPatientAppointments,
+  PRESENCA_SO_ASSINADA,
   updateAppointment
 } from './appointments'
 import { openDatabase, type Db } from './connection'
@@ -45,17 +46,38 @@ describe('registro da sessão', () => {
       {
         ...slot(a.inicio, a.fim),
         tipo: 'avaliacao',
-        presenca: 'presente',
+        presenca: 'falta',
         evolucao: 'Avaliação inicial'
       },
       a.updated_at
     )
     expect(saved).toMatchObject({
       tipo: 'avaliacao',
-      presenca: 'presente',
+      presenca: 'falta',
       evolucao: 'Avaliação inicial'
     })
     expect(getAppointment(db, a.id).evolucao).toBe('Avaliação inicial')
+  })
+
+  it('presente só pela assinatura da chegada', () => {
+    const input = slot('2025-09-08T14:00', '2025-09-08T14:30')
+    expect(() => createAppointment(db, { ...input, presenca: 'presente' })).toThrow(
+      PRESENCA_SO_ASSINADA
+    )
+    const a = createAppointment(db, input)
+    expect(() =>
+      updateAppointment(db, a.id, { ...slot(a.inicio, a.fim), presenca: 'presente' }, a.updated_at)
+    ).toThrow(PRESENCA_SO_ASSINADA)
+    db.prepare("UPDATE appointments SET presenca = 'presente' WHERE id = ?").run(a.id)
+    const legado = getAppointment(db, a.id)
+    expect(
+      updateAppointment(
+        db,
+        a.id,
+        { ...slot(a.inicio, a.fim), presenca: 'presente', evolucao: 'Sessão boa' },
+        legado.updated_at
+      )
+    ).toMatchObject({ presenca: 'presente', evolucao: 'Sessão boa' })
   })
 
   it('recusa presença ou tipo desconhecidos', () => {
