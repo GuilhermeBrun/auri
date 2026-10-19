@@ -21,7 +21,7 @@ export function SwitchField({
 }: SwitchFieldProps): React.JSX.Element {
   const id = useId()
   return (
-    <div className={cn('flex items-start justify-between gap-6', className)}>
+    <div className={cn('flex items-center justify-between gap-6', className)}>
       <div className="min-w-0">
         <label htmlFor={id} className="text-[13px] font-medium">
           {label}
@@ -38,7 +38,7 @@ export function SwitchField({
         disabled={disabled}
         onCheckedChange={onCheckedChange}
         aria-describedby={description ? `${id}-descricao` : undefined}
-        className="relative mt-0.5 inline-flex h-5 w-9 shrink-0 items-center rounded-full bg-fill-hover p-0.5 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-40 data-[state=checked]:bg-ink pointer-coarse:mt-0"
+        className="relative inline-flex h-5 w-9 shrink-0 items-center rounded-full bg-fill-hover p-0.5 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-40 data-[state=checked]:bg-ink"
       >
         <RadixSwitch.Thumb className="block size-4 rounded-full bg-surface shadow-lift transition-transform duration-150 ease-slide data-[state=checked]:translate-x-4" />
       </RadixSwitch.Root>

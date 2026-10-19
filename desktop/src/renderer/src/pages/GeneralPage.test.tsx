@@ -107,7 +107,7 @@ describe('Configurações › Geral', () => {
     expect((await screen.findByRole('alert')).textContent).toContain('não autorizada')
     show({ status: 'unavailable' })
     expect(screen.getByText(/não procura versões novas sozinha/)).toBeTruthy()
-    expect(screen.queryByRole('button')).toBeNull()
+    expect(screen.queryByRole('button', { name: /atualiz/ })).toBeNull()
     expect(screen.queryByRole('combobox')).toBeNull()
   })
 

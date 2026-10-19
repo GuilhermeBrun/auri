@@ -41,6 +41,10 @@ export function ArrivalSignature({
       <DialogPrimitive.Portal>
         <DialogPrimitive.Content
           aria-describedby={undefined}
+          onOpenAutoFocus={(e) => {
+            e.preventDefault()
+            ;(e.currentTarget as HTMLElement).focus()
+          }}
           className="fixed inset-0 z-[70] flex flex-col bg-surface focus:outline-none data-[state=closed]:animate-fade-out data-[state=open]:animate-fade-in"
         >
           {open && (
@@ -198,7 +202,7 @@ function ArrivalForm({
         )}
       </div>
 
-      <footer className="flex items-center justify-end gap-2 bg-canvas px-10 py-4">
+      <footer className="flex items-center justify-end gap-2 px-10 pt-2 pb-8">
         <Button variant="secondary" size="lg" onClick={onCancel}>
           Cancelar
         </Button>

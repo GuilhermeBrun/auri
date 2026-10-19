@@ -1,6 +1,7 @@
 import { Check } from 'lucide-react'
 import type { CSSProperties } from 'react'
 import { Page } from '@renderer/components/Layout'
+import { PageSection, SettingsGroup } from '@renderer/components/ui/section'
 import { isMac } from '@renderer/lib/platform'
 import { SETTINGS_CRUMB } from '@renderer/lib/settings'
 import { setTheme, useTheme } from '@renderer/lib/theme'
@@ -88,8 +89,8 @@ function ThemePicker(): React.JSX.Element {
   const theme = useTheme()
   return (
     <fieldset>
-      <legend className="text-[13px] font-medium">Tema</legend>
-      <div className="mt-3 grid grid-cols-3 gap-3">
+      <legend className="sr-only">Tema</legend>
+      <div className="grid grid-cols-3 gap-3">
         {THEME_OPTIONS.map(({ value, label }) => {
           const selected = theme === value
           return (
@@ -151,8 +152,12 @@ export function AppearancePage(): React.JSX.Element {
     <Page trail={[SETTINGS_CRUMB, { label: 'Aparência' }]}>
       <div className="mx-auto max-w-[720px] px-8 pt-8 pb-16">
         <p className="text-[13px] text-ink-soft">Como o Auri aparece neste computador.</p>
-        <div className="mt-6">
-          <ThemePicker />
+        <div className="mt-8">
+          <PageSection id="tema" title="Tema" description="Claro, escuro ou igual ao sistema.">
+            <SettingsGroup>
+              <ThemePicker />
+            </SettingsGroup>
+          </PageSection>
         </div>
       </div>
     </Page>

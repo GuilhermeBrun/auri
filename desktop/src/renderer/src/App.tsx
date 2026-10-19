@@ -1,18 +1,16 @@
 import { Navigate, Route, Routes } from 'react-router'
 import { Layout } from './components/Layout'
 import { AgendaPage } from './pages/AgendaPage'
-import { BackupPage } from './pages/BackupPage'
 import { ClinicPage } from './pages/ClinicPage'
-import { TermModelRoute } from './pages/TermModelPage'
-import { ConnectionPage } from './pages/ConnectionPage'
 import { PatientAnamneseRoute } from './pages/PatientAnamnesePage'
 import { PatientFormRoute } from './pages/PatientFormPage'
 import { PatientSessionsRoute } from './pages/PatientSessionsPage'
 import { PatientTermsRoute } from './pages/PatientTermsPage'
+import { StoragePage } from './pages/StoragePage'
+import { TermModelRoute } from './pages/TermModelPage'
 import { PatientsPage } from './pages/PatientsPage'
 import { GeneralPage } from './pages/GeneralPage'
 import { AppearancePage } from './pages/SettingsPage'
-import { TransferPage } from './pages/TransferPage'
 
 function App(): React.JSX.Element {
   return (
@@ -32,9 +30,7 @@ function App(): React.JSX.Element {
         <Route path="configuracoes" element={<Navigate to="geral" replace />} />
         <Route path="configuracoes/geral" element={<GeneralPage />} />
         <Route path="configuracoes/aparencia" element={<AppearancePage />} />
-        <Route path="configuracoes/conexao" element={<ConnectionPage />} />
-        <Route path="configuracoes/copia" element={<BackupPage />} />
-        <Route path="configuracoes/transferir" element={<TransferPage />} />
+        <Route path="configuracoes/armazenamento" element={<StoragePage />} />
         <Route path="*" element={<Navigate to="/agenda" replace />} />
       </Route>
     </Routes>
