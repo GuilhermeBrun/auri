@@ -13,7 +13,7 @@ sem ninguém exportar ou importar arquivo; de casa a médica também acessa, se 
 
 ## Decisões tomadas
 
-- **Modelo do T3 Code:** um computador guarda os dados (servidor) e o outro só mostra as telas
+- **Um servidor, um cliente:** um computador guarda os dados (servidor) e o outro só mostra as telas
   (cliente). Um banco só, então não há conflito de sincronização e a regra de não sobrepor sessões
   continua estrita. Sem o servidor, o cliente não funciona (aceito; edição offline fica para
   depois, se fizer falta).

@@ -1,7 +1,6 @@
 # CI e releases
 
-Modelo inspirado no T3 Code: o PR é validado rápido, o uso real vem do alpha e a estável promove
-um alpha que já foi usado.
+O PR é validado rápido, o uso real vem do alpha e a estável promove um alpha que já foi usado.
 
 ## Pull requests
 
