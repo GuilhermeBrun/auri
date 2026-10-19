@@ -14,34 +14,70 @@ const optionalEmail = text().refine(
   'E-mail inválido'
 )
 
-export const patientInputSchema = z.object({
-  nome: text().min(1, 'Informe o nome do paciente'),
-  data_nascimento: optionalDate,
-  cpf: optionalCpf,
+export const RESPONSAVEL_TIPOS = ['mae', 'pai', 'outro'] as const
+export type ResponsavelTipo = (typeof RESPONSAVEL_TIPOS)[number]
 
-  escola: text(),
-  serie: text(),
-  professora: text(),
+export const PARENTESCOS = ['avo_f', 'avo_m', 'tia', 'tio', 'outro'] as const
+export type Parentesco = (typeof PARENTESCOS)[number]
 
-  mae_nome: text(),
-  mae_cpf: optionalCpf,
-  mae_rg: text(30),
-  mae_celular: optionalPhone,
-  mae_email: optionalEmail,
-  mae_profissao: text(),
+export const patientInputSchema = z
+  .object({
+    nome: text().min(1, 'Informe o nome do paciente'),
+    data_nascimento: optionalDate,
+    cpf: optionalCpf,
+    celular: optionalPhone,
+    email: optionalEmail,
 
-  pai_nome: text(),
-  pai_profissao: text(),
+    escola: text(),
+    serie: text(),
+    professora: text(),
 
-  endereco: text(),
-  bairro: text(),
-  cidade: text(),
+    mae_nome: text(),
+    mae_cpf: optionalCpf,
+    mae_rg: text(30),
+    mae_celular: optionalPhone,
+    mae_email: optionalEmail,
+    mae_profissao: text(),
 
-  indicacao: text(),
-  pediatra: text(),
-  data_entrada: optionalDate,
-  observacoes: text(5000)
-})
+    pai_nome: text(),
+    pai_cpf: optionalCpf,
+    pai_rg: text(30),
+    pai_celular: optionalPhone,
+    pai_email: optionalEmail,
+    pai_profissao: text(),
+
+    resp_tipo: z.enum(['', ...RESPONSAVEL_TIPOS]),
+    resp_nome: text(),
+    resp_parentesco: z.enum(['', ...PARENTESCOS]),
+    resp_parentesco_outro: text(60),
+    resp_cpf: optionalCpf,
+    resp_rg: text(30),
+    resp_celular: optionalPhone,
+    resp_email: optionalEmail,
+
+    endereco: text(),
+    bairro: text(),
+    cidade: text(),
+
+    indicacao: text(),
+    pediatra: text(),
+    data_entrada: optionalDate,
+    observacoes: text(5000)
+  })
+  .superRefine((p, ctx) => {
+    const missing = (path: string, message: string): void => {
+      ctx.addIssue({ code: 'custom', path: [path], message })
+    }
+    if (p.resp_tipo === 'mae' && p.mae_nome === '')
+      missing('mae_nome', 'Informe o nome da mãe, que é a responsável')
+    if (p.resp_tipo === 'pai' && p.pai_nome === '')
+      missing('pai_nome', 'Informe o nome do pai, que é o responsável')
+    if (p.resp_tipo !== 'outro') return
+    if (p.resp_nome === '') missing('resp_nome', 'Informe o nome do responsável')
+    if (p.resp_parentesco === '') missing('resp_parentesco', 'Escolha o parentesco')
+    if (p.resp_parentesco === 'outro' && p.resp_parentesco_outro === '')
+      missing('resp_parentesco_outro', 'Diga qual é o parentesco')
+  })
 
 export type PatientInput = z.infer<typeof patientInputSchema>
 

@@ -21,6 +21,26 @@ describe('busca de pacientes', () => {
     expect(names('444.777')).toEqual(['Carlos Demo'])
   })
 
+  it('encontra pelo pai e pelo responsável', () => {
+    const search = createPatientSearch([
+      ...patients,
+      {
+        nome: 'Davi Exemplo',
+        mae_nome: '',
+        cpf: '',
+        mae_cpf: '',
+        pai_nome: 'Otávio Pai',
+        pai_cpf: '',
+        resp_nome: 'Rosa Avó',
+        resp_cpf: '168.995.350-09'
+      }
+    ])
+    const found = (busca: string): string[] => search(busca).map((p) => p.nome)
+    expect(found('otavio')).toEqual(['Davi Exemplo'])
+    expect(found('rosa avo')).toEqual(['Davi Exemplo'])
+    expect(found('16899535009')).toEqual(['Davi Exemplo'])
+  })
+
   it('não casa entre o nome do paciente e o da mãe', () => {
     expect(names('teste conceicao')).toEqual([])
   })

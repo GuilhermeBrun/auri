@@ -5,6 +5,7 @@ import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router'
 import { formatAge, isIsoDate, parseIsoDate } from '@shared/dates'
 import type { Patient } from '@shared/schemas'
+import { responsavelDe } from '@shared/responsavel'
 import { createPatientSearch } from '@shared/search'
 import { Page } from '@renderer/components/Layout'
 import { Avatar } from '@renderer/components/ui/avatar'
@@ -24,7 +25,7 @@ function formatDate(value: string): string {
 
 const COLUMNS: { label: string; className?: string }[] = [
   { label: 'Paciente', className: 'w-[36%]' },
-  { label: 'Mãe', className: 'w-[26%]' },
+  { label: 'Responsável', className: 'w-[26%]' },
   { label: 'Escola' },
   { label: 'Entrada', className: 'w-[13%]' }
 ]
@@ -55,6 +56,17 @@ function TwoLines({
       </span>
       {sub && <span className="truncate text-xs text-ink-soft tabular-nums">{sub}</span>}
     </span>
+  )
+}
+
+function ResponsavelCell({ patient }: { patient: Patient }): React.JSX.Element {
+  const { pessoa } = responsavelDe(patient)
+  if (!pessoa) return <Blank />
+  const detalhe = [pessoa.parentesco, pessoa.celular].filter(Boolean).join(' · ')
+  return pessoa.papel === 'paciente' ? (
+    <TwoLines main="Próprio paciente" sub={pessoa.celular} />
+  ) : (
+    <TwoLines main={pessoa.nome} sub={detalhe} />
   )
 }
 
@@ -108,11 +120,7 @@ const PatientRow = memo(function PatientRow({
         </span>
       </td>
       <td className="px-3">
-        {p.mae_nome || p.mae_celular ? (
-          <TwoLines main={p.mae_nome || <Blank />} sub={p.mae_celular} />
-        ) : (
-          <Blank />
-        )}
+        <ResponsavelCell patient={p} />
       </td>
       <td className="px-3">{p.escola ? <TwoLines main={p.escola} sub={p.serie} /> : <Blank />}</td>
       <td className="px-3 text-ink-soft tabular-nums">{formatDate(p.data_entrada) || <Blank />}</td>
@@ -209,8 +217,8 @@ export function PatientsPage(): React.JSX.Element {
             ref={searchRef}
             value={busca}
             onChange={setBusca}
-            placeholder="Nome, mãe ou CPF"
-            label="Buscar pacientes por nome, mãe ou CPF"
+            placeholder="Nome, família ou CPF"
+            label="Buscar pacientes por nome, mãe, pai, responsável ou CPF"
             className="w-52 @min-[960px]:w-64"
             autoFocus
           />

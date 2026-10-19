@@ -17,8 +17,9 @@ type PatientRow = { [K in keyof PatientInput]: string | null } & {
 
 function fromRow(row: PatientRow): Patient {
   const patient = { ...row, ativo: row.ativo === 1 } as unknown as Patient
+  const fields = patient as unknown as Record<keyof PatientInput, string>
   for (const field of PATIENT_FIELDS) {
-    patient[field] = row[field] ?? ''
+    fields[field] = row[field] ?? ''
   }
   return patient
 }
