@@ -1,10 +1,36 @@
+import { fileURLToPath } from 'node:url'
 import react from '@vitejs/plugin-react'
-import { defineConfig, lazyPlugins } from 'vite-plus'
+import { defineConfig, lazyPlugins, type Connect, type Plugin } from 'vite-plus'
+
+const pagina = (caminho: string) => fileURLToPath(new URL(caminho, import.meta.url))
+
+const semBarra: Connect.NextHandleFunction = (pedido, _resposta, seguir) => {
+  const url = pedido.url ?? ''
+  const caminho = url.split(/[?#]/)[0]
+  if (caminho === '/assinar' || caminho === '/recebido')
+    pedido.url = `${caminho}/${url.slice(caminho.length)}`
+  seguir()
+}
+
+const paginasSemBarra: Plugin = {
+  name: 'paginas-sem-barra',
+  configureServer: (servidor) => void servidor.middlewares.use(semBarra),
+  configurePreviewServer: (servidor) => void servidor.middlewares.use(semBarra)
+}
 
 const generated = ['**/node_modules/**', '**/dist/**', '**/dist-ssr/**', '.vite-plus/**']
 
 export default defineConfig({
-  plugins: lazyPlugins(() => [react()]),
+  plugins: lazyPlugins(() => [react(), paginasSemBarra]),
+  build: {
+    rolldownOptions: {
+      input: {
+        principal: pagina('./index.html'),
+        assinar: pagina('./assinar/index.html'),
+        recebido: pagina('./recebido/index.html')
+      }
+    }
+  },
   fmt: {
     singleQuote: true,
     semi: false,
