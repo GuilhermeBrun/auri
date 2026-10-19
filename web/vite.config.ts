@@ -33,7 +33,7 @@ export default defineConfig({
     '*': 'vp check --fix'
   },
   test: {
-    include: ['src/**/*.test.{ts,tsx}', 'tests/**/*.test.ts'],
+    include: ['src/**/*.test.{ts,tsx}', 'tests/**/*.test.ts', 'contrato/**/*.test.ts'],
     environment: 'node',
     passWithNoTests: false,
     retry: 0
