@@ -430,8 +430,30 @@
   font-variant-numeric: tabular-nums;
 }
 
-.rbc-weekend {
+.rbc-time-gutter .rbc-time-slot[data-meia]::before {
+  content: attr(data-meia);
+  display: block;
+  padding: 4px 8px 0 0;
+  text-align: right;
+  font-size: 10.5px;
+  color: var(--color-ink-faint);
+  opacity: 0.6;
+  font-variant-numeric: tabular-nums;
+}
+
+.rbc-day-bg.day-closed,
+.rbc-day-slot.day-closed,
+.rbc-day-slot .rbc-time-slot.slot-closed {
   background: var(--color-subtle);
+}
+
+.rbc-header.day-hidden,
+.rbc-day-slot.day-hidden {
+  display: none;
+}
+
+.rbc-header.day-hidden:first-child + .rbc-header {
+  border-left: 0;
 }
 
 .rbc-today {
@@ -590,6 +612,10 @@
 
 .agenda-day .rbc-event .event-inline-time {
   display: inline;
+}
+
+.rbc-time-view .event-tipo-long {
+  display: none;
 }
 
 .rbc-month-view .event-detail {

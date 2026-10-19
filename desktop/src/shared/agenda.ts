@@ -18,7 +18,7 @@ export const DIAS_DA_SEMANA_NOMES: Record<DiaSemana, string> = {
   6: 'Sábado'
 }
 
-const NO_DIA: Record<DiaSemana, string> = {
+export const NO_DIA: Record<DiaSemana, string> = {
   0: 'no domingo',
   1: 'na segunda',
   2: 'na terça',
@@ -26,6 +26,10 @@ const NO_DIA: Record<DiaSemana, string> = {
   4: 'na quinta',
   5: 'na sexta',
   6: 'no sábado'
+}
+
+export function noDia(date: Date): string {
+  return NO_DIA[date.getDay() as DiaSemana]
 }
 
 const SEMANA: Horario = { abre: '07:00', fecha: '20:00' }
