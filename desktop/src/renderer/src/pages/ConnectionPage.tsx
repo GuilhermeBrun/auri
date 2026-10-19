@@ -644,7 +644,7 @@ function NameField({ name }: { name: string }): React.JSX.Element {
 
 /**
  * Configurações → Conexão: se este computador guarda os dados ou usa os de outro, e tudo o que
- * cada papel precisa (ver docs/superpowers/specs/2026-10-13-conexao-entre-computadores-design.md).
+ * cada papel precisa (ver docs/specs/2026-10-13-conexao-entre-computadores-design.md).
  * Uma coluna, como Aparência; grupos separados só por espaço.
  */
 export function ConnectionPage(): React.JSX.Element {

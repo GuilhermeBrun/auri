@@ -7,3 +7,8 @@ out
 .quality/
 .vite-plus/
 coverage/
+
+# Editor e agentes: configuração local de cada um
+.claude/
+.vscode/
+*.code-workspace

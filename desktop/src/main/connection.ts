@@ -81,7 +81,7 @@ export function parseAddress(value: string): Address | null {
 
 /**
  * Onde ficam os dados deste computador e como ele conversa com o outro (ver
- * docs/superpowers/specs/2026-10-13-conexao-entre-computadores-design.md).
+ * docs/specs/2026-10-13-conexao-entre-computadores-design.md).
  *
  * - Papel `server` (recepção): abre o SQLite; com o compartilhamento ligado, aceita computadores
  *   pareados pela rede local (TCP, anunciado por mDNS) e, com o acesso de fora ligado, também pela

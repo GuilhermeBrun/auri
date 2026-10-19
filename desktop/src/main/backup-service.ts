@@ -83,7 +83,7 @@ export type BackupService = {
 }
 
 /**
- * Cópia de segurança dos dados (ver docs/superpowers/specs/2026-10-13-copia-de-seguranca-design.md).
+ * Cópia de segurança dos dados (ver docs/specs/2026-10-13-copia-de-seguranca-design.md).
  * Só no papel servidor, que é quem tem o banco. A chave das cópias fica no cofre do sistema, então
  * as cópias automáticas não pedem senha; a senha e o código de recuperação só servem para abrir
  * as cópias em outro computador e para trocar a própria senha.

@@ -18,7 +18,7 @@ import {
 } from './crypto'
 
 /**
- * Arquivo `.auribackup` (ver docs/superpowers/specs/2026-10-13-copia-de-seguranca-design.md):
+ * Arquivo `.auribackup` (ver docs/specs/2026-10-13-copia-de-seguranca-design.md):
  * "AURIBAK1" | tamanho do cabeçalho (uint32) | cabeçalho JSON | dados cifrados | etiqueta GCM.
  * O cabeçalho é legível sem senha (data e contagens para a lista) e vai como dado adicional do
  * GCM, então qualquer mudança nele invalida o arquivo.
