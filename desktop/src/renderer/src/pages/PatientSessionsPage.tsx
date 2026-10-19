@@ -1,12 +1,13 @@
 import { useQuery } from '@tanstack/react-query'
 import { differenceInCalendarDays, format, isSameYear } from 'date-fns'
 import { ptBR } from 'date-fns/locale/pt-BR'
-import { CalendarClock, Check, CircleDashed, Plus, Undo2, X } from 'lucide-react'
+import { CalendarClock, Check, CircleDashed, FileText, Plus, Undo2, X } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useParams } from 'react-router'
 import { formatTime, parseIsoLocalDateTime } from '@shared/dates'
 import type { Appointment, AttendanceRecord, Patient, Presenca } from '@shared/schemas'
 import { AttendanceChart } from '@renderer/components/AttendanceChart'
+import { AttendanceReportDialog, MonthReportButton } from '@renderer/components/AttendanceReport'
 import { AppointmentDialog, type AppointmentDraft } from '@renderer/components/AppointmentDialog'
 import { Page } from '@renderer/components/Layout'
 import { SignatureImage } from '@renderer/components/SignatureImage'
@@ -33,6 +34,7 @@ function PatientSessionsPage({ patientId }: { patientId: number }): React.JSX.El
   const sessions = useQuery(patientAppointmentsQuery(patientId))
   const attendance = useQuery(patientAttendanceQuery(patientId))
   const [draft, setDraft] = useState<AppointmentDraft | null>(null)
+  const [reporting, setReporting] = useState(false)
   const error = patient.error ?? sessions.error
 
   const schedule = (): void => {
@@ -64,16 +66,28 @@ function PatientSessionsPage({ patientId }: { patientId: number }): React.JSX.El
     <Page
       trail={[PATIENTS_CRUMB, { label: patient.data?.nome ?? 'Sessões' }]}
       actions={
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={schedule}
-          disabled={!patient.data}
-          aria-label="Nova sessão"
-          title="Nova sessão"
-        >
-          <Plus />
-        </Button>
+        <>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setReporting(true)}
+            disabled={!sessions.data?.length}
+            aria-label="Relatório de presença"
+            title="Relatório de presença"
+          >
+            <FileText />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={schedule}
+            disabled={!patient.data}
+            aria-label="Nova sessão"
+            title="Nova sessão"
+          >
+            <Plus />
+          </Button>
+        </>
       }
     >
       {patient.data && sessions.data ? (
@@ -98,6 +112,7 @@ function PatientSessionsPage({ patientId }: { patientId: number }): React.JSX.El
         state
       )}
       <AppointmentDialog draft={draft} onClose={() => setDraft(null)} />
+      <AttendanceReportDialog patientId={patientId} open={reporting} onOpenChange={setReporting} />
     </Page>
   )
 }
@@ -166,7 +181,15 @@ function SessionList({
         <div className="flex flex-col gap-10">
           {past.length > 0 && <AttendanceChart sessions={past} onOpen={onOpen} />}
           {upcoming.length > 0 && <Upcoming sessions={upcoming} now={now} onOpen={onOpen} />}
-          {past.length > 0 && <Past sessions={past} records={records} now={now} onOpen={onOpen} />}
+          {past.length > 0 && (
+            <Past
+              patientId={patient.id}
+              sessions={past}
+              records={records}
+              now={now}
+              onOpen={onOpen}
+            />
+          )}
         </div>
       )}
     </div>
@@ -251,18 +274,20 @@ function DateBlock({
 }
 
 function Past({
+  patientId,
   sessions,
   records,
   now,
   onOpen
 }: {
+  patientId: number
   sessions: Appointment[]
   records: AttendanceRecord[]
   now: Date
   onOpen: (appointment: Appointment) => void
 }): React.JSX.Element {
   const months = useMemo(() => {
-    const groups: { key: string; label: string; sessions: Appointment[] }[] = []
+    const groups: { key: string; label: string; month: Date; sessions: Appointment[] }[] = []
     for (const a of sessions) {
       const inicio = parseIsoLocalDateTime(a.inicio)
       const key = format(inicio, 'yyyy-MM')
@@ -273,6 +298,7 @@ function Past({
         groups.push({
           key,
           label: isSameYear(inicio, now) ? month : `${month} de ${format(inicio, 'yyyy')}`,
+          month: inicio,
           sessions: [a]
         })
       }
@@ -294,7 +320,10 @@ function Past({
       <div className="mt-3 flex flex-col gap-6">
         {months.map((m) => (
           <div key={m.key}>
-            <h3 className="mb-1 text-xs font-medium text-ink-faint">{m.label}</h3>
+            <div className="mb-1 flex items-center justify-between gap-2">
+              <h3 className="text-xs font-medium text-ink-faint">{m.label}</h3>
+              <MonthReportButton patientId={patientId} month={m.month} />
+            </div>
             <ul className="-mx-3 flex flex-col">
               {m.sessions.map((a) => (
                 <li key={a.id}>

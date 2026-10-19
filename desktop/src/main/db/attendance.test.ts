@@ -9,7 +9,13 @@ import {
   removeAppointment,
   updateAppointment
 } from './appointments'
-import { canonicalRecord, listPatientAttendance, signArrival, voidArrival } from './attendance'
+import {
+  attendanceReport,
+  canonicalRecord,
+  listPatientAttendance,
+  signArrival,
+  voidArrival
+} from './attendance'
 import { openDatabase, type Db } from './connection'
 import { createPatient } from './patients'
 
@@ -144,5 +150,30 @@ describe('assinatura de chegada', () => {
       ['Marina Fictícia', 'Assinou na sessão errada']
     ])
     expect(() => db.prepare('DELETE FROM attendance_voids').run()).toThrow(/não pode ser apagada/)
+  })
+})
+
+describe('relatório de presença', () => {
+  it('junta as sessões do período, da mais antiga para a mais nova, com as assinaturas', () => {
+    sessao('2026-09-30T14:00', '2026-09-30T14:45')
+    const primeira = sessao('2026-10-05T14:00', '2026-10-05T14:45')
+    const hoje = sessao()
+    sessao('2026-11-02T14:00', '2026-11-02T14:45')
+    signArrival(db, hoje, assinante, 'Recepção', HOJE)
+
+    const report = attendanceReport(db, patientId, '2026-10-01', '2026-10-31')
+    expect(report.patient).toMatchObject({ id: patientId, nome: 'Helena Fictícia' })
+    expect(report.clinic.nome).toBe('')
+    expect(report.sessions.map((s) => s.id)).toEqual([primeira, hoje])
+    expect(report.sessions[0].records).toEqual([])
+    expect(report.sessions[1].records).toMatchObject([
+      { signer_nome: 'Marina Fictícia', anulada: null }
+    ])
+  })
+
+  it('inclui o último dia do período', () => {
+    const ultima = sessao('2026-10-31T18:00', '2026-10-31T18:45')
+    const report = attendanceReport(db, patientId, '2026-10-01', '2026-10-31')
+    expect(report.sessions.map((s) => s.id)).toEqual([ultima])
   })
 })

@@ -169,6 +169,22 @@ const MIGRATIONS: string[] = [
   BEGIN
     SELECT RAISE(ABORT, 'Esta sessão tem assinatura registrada e não pode ser excluída.');
   END;
+  `,
+  `
+  CREATE TABLE clinic (
+    id           INTEGER PRIMARY KEY CHECK (id = 1),
+    nome         TEXT,
+    documento    TEXT,
+    endereco     TEXT,
+    telefone     TEXT,
+    whatsapp     TEXT,
+    profissional TEXT,
+    registro     TEXT,
+    logo         BLOB,
+    updated_at   TEXT NOT NULL DEFAULT ${NOW}
+  );
+
+  INSERT INTO clinic (id) VALUES (1);
   `
 ]
 

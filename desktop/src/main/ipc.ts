@@ -1,6 +1,8 @@
 import { clipboard, ipcMain } from 'electron'
 import { z } from 'zod'
 import type { AuriTransfer, IpcResult } from '../shared/api'
+import type { AttendanceReport } from '../shared/schemas'
+import { attendanceReportHtml, attendanceReportName } from './attendance-report'
 import type { BackupService } from './backup-service'
 import type { Connection } from './connection'
 import type { ErrorReportService } from './error-reports'
@@ -8,6 +10,8 @@ import { DATA_CHANNELS, errorMessage } from './operations'
 import type { PrefsStore } from './prefs'
 import type { UpdateService } from './updates'
 import { assertTrustedSender } from './ipc-security'
+import { chooseLogo } from './logo'
+import { documentFont, htmlToPdf, savePdf } from './pdf'
 
 export type IpcServices = {
   connection: Connection
@@ -103,6 +107,15 @@ export function registerIpc({
   )
   handle('connection:forget', () => connection.forget())
   handle('connection:retry', () => connection.retry())
+
+  handle('clinic:chooseLogo', () => chooseLogo())
+  handle('pdf:attendance', async (patientId: unknown, de: unknown, ate: unknown) => {
+    const result = await connection.call('attendance:report', [patientId, de, ate])
+    if (!result.ok) throw new Error(result.error)
+    const report = result.data as AttendanceReport
+    const html = attendanceReportHtml(report, { font: await documentFont() })
+    return savePdf(await htmlToPdf(html), attendanceReportName(report))
+  })
 
   handle('backup:info', () => backup.info())
   handle('backup:providers', () => backup.providers())

@@ -5,14 +5,17 @@ import {
   appointmentInputSchema,
   appointmentRangeSchema,
   arrivalSignInputSchema,
+  clinicInputSchema,
   computadorSchema,
   idSchema,
   patientFilterSchema,
   patientInputSchema,
+  reportRangeSchema,
   voidMotivoSchema
 } from '../shared/schemas'
 import { getAnamnese, saveAnamnese } from './db/anamneses'
-import { listPatientAttendance, signArrival, voidArrival } from './db/attendance'
+import { attendanceReport, listPatientAttendance, signArrival, voidArrival } from './db/attendance'
+import { getClinic, saveClinic } from './db/clinic'
 import {
   createAppointment,
   listAppointments,
@@ -114,6 +117,19 @@ const OPERATIONS: Record<string, Operation> = {
   },
   'attendance:listByPatient': {
     run: (db, [patientId]) => listPatientAttendance(db, idSchema.parse(patientId))
+  },
+  'attendance:report': {
+    run: (db, [patientId, de, ate]) => {
+      const range = reportRangeSchema.parse({ de, ate })
+      return attendanceReport(db, idSchema.parse(patientId), range.de, range.ate)
+    }
+  },
+
+  'clinic:get': { run: (db) => getClinic(db) },
+  'clinic:save': {
+    run: (db, [input, expected]) =>
+      saveClinic(db, clinicInputSchema.parse(input), expectedSchema.parse(expected)),
+    changes: ['clinic']
   },
 
   'anamneses:get': { run: (db, [patientId]) => getAnamnese(db, idSchema.parse(patientId)) },

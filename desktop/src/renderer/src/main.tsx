@@ -27,6 +27,9 @@ window.api.onChanged((topics) => {
   if (topics.includes('attendance')) {
     void queryClient.invalidateQueries({ queryKey: ['attendance'] })
   }
+  if (topics.includes('clinic')) {
+    void queryClient.invalidateQueries({ queryKey: ['clinic'] })
+  }
   if (topics.includes('anamneses')) {
     void queryClient.invalidateQueries({ queryKey: ['anamnese'], refetchType: 'none' })
   }

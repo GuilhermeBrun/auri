@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router'
 import { Layout } from './components/Layout'
 import { AgendaPage } from './pages/AgendaPage'
 import { BackupPage } from './pages/BackupPage'
+import { ClinicPage } from './pages/ClinicPage'
 import { ConnectionPage } from './pages/ConnectionPage'
 import { PatientAnamneseRoute } from './pages/PatientAnamnesePage'
 import { PatientFormRoute } from './pages/PatientFormPage'
@@ -22,6 +23,7 @@ function App(): React.JSX.Element {
         <Route path="pacientes/:id" element={<PatientFormRoute />} />
         <Route path="pacientes/:id/anamnese" element={<PatientAnamneseRoute />} />
         <Route path="pacientes/:id/sessoes" element={<PatientSessionsRoute />} />
+        <Route path="clinica" element={<ClinicPage />} />
         <Route path="configuracoes" element={<Navigate to="geral" replace />} />
         <Route path="configuracoes/geral" element={<GeneralPage />} />
         <Route path="configuracoes/aparencia" element={<AppearancePage />} />
