@@ -2,6 +2,7 @@
   "name": "auri",
   "version": "0.0.1",
   "description": "Cadastro de pacientes e agenda para clínica de fonoaudiologia",
+  "license": "PolyForm-Noncommercial-1.0.0",
   "main": "./out/main/index.js",
   "author": "Auri",
   "scripts": {

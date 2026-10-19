@@ -1,5 +1,6 @@
-// Dados da página de download, vindos do `releases.json` que o workflow Release publica junto com
-// os instaladores (desktop/scripts/release/cli.mjs site).
+// Dados da página de download, montados no build a partir das GitHub Releases (feed.ts).
+
+import { downloadUrl } from './feed'
 
 export type Release = {
   tag: string
@@ -7,7 +8,7 @@ export type Release = {
   assets: { name: string; size?: number }[]
 }
 
-/** Releases publicadas: a última estável, o alpha mais novo e os arquivos que estão no site. */
+/** Releases publicadas: a última estável, o alpha mais novo e os arquivos que o site oferece. */
 export type Releases = {
   stable: Release | null
   alpha: Release | null
@@ -21,7 +22,7 @@ export const SYSTEMS: Record<Os, { label: string; pattern: RegExp; requires: str
   mac: { label: 'Mac', pattern: /\.dmg$/, requires: 'Apple Silicon (M1 ou mais novo)' }
 }
 
-export type Installer = { os: Os; name: string; size?: number }
+export type Installer = { os: Os; name: string; url: string; size?: number }
 
 export const megabytes = (bytes: number) =>
   `${new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 }).format(bytes / 1024 ** 2)} MB`
@@ -34,12 +35,12 @@ export const longDate = (iso: string) =>
     timeZone: 'America/Sao_Paulo'
   }).format(new Date(iso))
 
-/** Instalador de `os` publicado no site para `release`, com o tamanho, ou nada. */
+/** Instalador de `os` de `release`, com o endereço no GitHub e o tamanho, ou nada. */
 function installer(release: Release, files: Releases['files'], os: Os): Installer | null {
   const file = files.find((file) => file.tag === release.tag && SYSTEMS[os].pattern.test(file.name))
   if (!file) return null
   const asset = release.assets.find((asset) => asset.name === file.name)
-  return { os, name: file.name, size: asset?.size }
+  return { os, name: file.name, url: downloadUrl(release.tag, file.name), size: asset?.size }
 }
 
 /** O que a página mostra: a estável, ou o alpha enquanto ainda não houver estável. */

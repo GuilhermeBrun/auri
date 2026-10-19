@@ -31,8 +31,12 @@ describe('página de download (HTML sem script)', () => {
   test('estável: Windows em primeiro, Mac ao lado, seletor escondido', () => {
     const html = page(stable, null)
     expect(html.indexOf('auri-1.1.0-setup.exe')).toBeLessThan(html.indexOf('auri-1.1.0-arm64.dmg'))
-    expect(html).toMatch(/btn-primary" href="auri-1\.1\.0-setup\.exe"/)
-    expect(html).toMatch(/btn-secondary" href="auri-1\.1\.0-arm64\.dmg"/)
+    expect(html).toMatch(
+      /btn-primary" href="https:\/\/github\.com\/GuilhermeBrun\/auri\/releases\/download\/v1\.1\.0\/auri-1\.1\.0-setup\.exe"/
+    )
+    expect(html).toMatch(
+      /btn-secondary" href="https:\/\/github\.com\/GuilhermeBrun\/auri\/releases\/download\/v1\.1\.0\/auri-1\.1\.0-arm64\.dmg"/
+    )
     expect(html).toContain('101 MB')
     expect(html).toContain('Versão 1.1.0 · 17 de outubro de 2026')
     expect(html).toMatch(/data-os-switch="" hidden=""/)
@@ -54,9 +58,9 @@ describe('página de download (HTML sem script)', () => {
     expect(html).not.toContain('data-os-switch')
   })
 
-  test('nomes de arquivo vão escapados', () => {
+  test('nomes de arquivo vão codificados no endereço', () => {
     const odd = release('v1.0.0', ['latest.yml', 'auri-"1"<b>-setup.exe'])
-    expect(page(odd, null)).toContain('href="auri-&quot;1&quot;&lt;b&gt;-setup.exe"')
+    expect(page(odd, null)).toContain('/v1.0.0/auri-%221%22%3Cb%3E-setup.exe"')
   })
 
   test('a prévia da agenda vem pronta, com a semana de 18 a 24 de outubro', () => {

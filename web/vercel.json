@@ -18,29 +18,18 @@
       "permanent": false
     },
     {
-      "source": "/:file(.+)",
-      "has": [
-        {
-          "type": "host",
-          "value": "atualizacoes.auri.dev.br"
-        }
-      ],
-      "destination": "https://tmjyk19jrikg8aex.public.blob.vercel-storage.com/:file",
+      "source": "/auri-:version([0-9][^/]*)-setup.exe",
+      "destination": "https://github.com/GuilhermeBrun/auri/releases/download/v:version/auri-:version-setup.exe",
       "permanent": false
     },
     {
-      "source": "/:file((?:latest|alpha|beta)(?:-mac)?\\.yml)",
-      "destination": "https://tmjyk19jrikg8aex.public.blob.vercel-storage.com/:file",
+      "source": "/auri-:version([0-9][^/]*)-arm64.dmg",
+      "destination": "https://github.com/GuilhermeBrun/auri/releases/download/v:version/auri-:version-arm64.dmg",
       "permanent": false
     },
     {
-      "source": "/:file([^/]+\\.(?:exe|dmg|zip|blockmap))",
-      "destination": "https://tmjyk19jrikg8aex.public.blob.vercel-storage.com/:file",
-      "permanent": false
-    },
-    {
-      "source": "/releases.json",
-      "destination": "https://tmjyk19jrikg8aex.public.blob.vercel-storage.com/releases.json",
+      "source": "/Auri-:version([0-9][^/]*)-arm64-mac.zip",
+      "destination": "https://github.com/GuilhermeBrun/auri/releases/download/v:version/Auri-:version-arm64-mac.zip",
       "permanent": false
     }
   ],

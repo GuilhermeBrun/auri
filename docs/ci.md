@@ -95,8 +95,8 @@ tinha escolhido o canal Beta passa para o Alpha sozinho.
   pedida), para Windows e Mac (só Apple Silicon). Antes, rodar `npm run ci:mac` no Mac e o
   workflow Windows: `gh workflow run release.yml -f channel=stable [-f version=1.2.0]`.
 
-Os arquivos de atualização (Vercel Blob, ver abaixo) são remontados das releases a
-cada publicação: `latest.yml` aponta para a última estável e `alpha.yml` para o alpha mais novo que
+Os arquivos de atualização (no site, ver abaixo) são remontados das releases a cada
+publicação: `latest.yml` aponta para a última estável e `alpha.yml` para o alpha mais novo que
 ela. Quem escolhe o canal Alpha em Configurações › Geral segue o `alpha.yml`. O Mac se atualiza
 sozinho só quando a estável sai assinada com o Developer ID (abaixo); sem isso, instala-se pela
 página do site. No alpha, o Mac fica na estável (o alpha é só Windows).
@@ -104,25 +104,37 @@ página do site. No alpha, o Mac fica na estável (o alpha é só Windows).
 ## Site e atualização
 
 A página de download é o projeto `web/` (React + Vite+). A **Vercel** a publica em `auri.dev.br` a
-cada push no `main` (e faz uma prévia por PR). O build lê o `releases.json` publicado no Blob e
-pré-renderiza a página com a versão, os tamanhos e a data.
+cada push no `main` (e faz uma prévia por PR, só quando o commit mexe no `web/`).
 
-O **Vercel Blob** `auri-atualizacoes` (público, região São Paulo) guarda o que o Auri instalado
-usa: `latest.yml`, `alpha.yml`, os instaladores e o `releases.json`. O job Atualização baixa os
-arquivos das releases (`desktop/scripts/release/cli.mjs site`) e os envia com
-`web/scripts/publicar-atualizacoes.mjs` (secret `BLOB_READ_WRITE_TOKEN`), a cada release ou com
-`gh workflow run release.yml -f channel=site`. Um instalador só sobe uma vez; os `.yml` são
-regravados; versões que saíram do site são apagadas. Depois, o job chama o Deploy Hook da Vercel
-(secret `VERCEL_DEPLOY_HOOK`) para a página mostrar a versão nova.
+O repositório é público, e os instaladores ficam só nas **releases do GitHub**, sem limite de
+download. No build, `web/scripts/prerender.mjs` lê as releases sem token: a última estável
+(`/releases/latest`) e o alpha mais novo (`/releases.atom`). Ele grava em `dist/` o `latest.yml`,
+o `alpha.yml` (do alpha, se for mais novo que a estável) e os `-mac.yml`, com `url` e `path`
+apontando para a release no GitHub, além do `releases.json` usado para pré-renderizar a página
+com a versão, os tamanhos e a data. As regras de escolha estão em `web/src/feed.ts`.
 
 O Auri procura versões em `atualizacoes.auri.dev.br` (`publish.url` do
-`desktop/electron-builder.yml`); as versões até 0.0.x, em `auri.dev.br`. Os dois domínios são da
-Vercel, e o `web/vercel.json` redireciona os `.yml`, os instaladores e o `releases.json` para o
-Blob, sem passar o arquivo pela Vercel.
+`desktop/electron-builder.yml`); as versões até 0.0.x, em `auri.dev.br`. Os dois domínios servem o
+mesmo site, então os dois têm os `.yml`. O instalador e o `.blockmap` (atualização diferencial)
+vêm direto do GitHub. O `web/vercel.json` ainda redireciona os nomes antigos dos instaladores
+(`auri.dev.br/auri-<versão>-setup.exe`) para a release.
 
-Limites do plano Hobby: 1 GB guardado (só a estável e o alpha mais novo, ~500 MB) e **10 GB de
-download por mês**. Passando disso, o Blob para por 30 dias, e com ele a página de download e as
-atualizações. O uso aparece em Vercel › Storage › auri-atualizacoes.
+Depois de cada release, o job Atualização chama o Deploy Hook da Vercel (secret
+`VERCEL_DEPLOY_HOOK`) para o site ler a versão nova. Para refazer o site sem release:
+`gh workflow run release.yml -f channel=site`.
+
+## Proteções do repositório
+
+Configuradas no GitHub (não ficam em arquivo):
+
+- PRs só de colaboradores (`pull_request_creation_policy`) e interações (issues, comentários)
+  limitadas a colaboradores (vale 6 meses; renovar em Settings › Moderation options).
+- Actions: workflows de fork só rodam com aprovação (todo colaborador externo), só actions do
+  GitHub e fixadas por SHA, `GITHUB_TOKEN` só leitura por padrão.
+- Varredura de segredos com bloqueio no push, alertas do Dependabot e relato privado de
+  vulnerabilidade.
+- `main`: PR obrigatório, check `Check` com a branch atualizada, conversas resolvidas, vale para
+  administradores. Wiki e Projects desligados.
 
 ## Assinatura do Mac (Developer ID)
 

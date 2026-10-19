@@ -1,13 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import {
-  isNewer,
-  latestTags,
-  nextAlpha,
-  outsideApp,
-  siteFiles,
-  stableFromAlpha
-} from './versions.mjs'
+import { isNewer, latestTags, nextAlpha, outsideApp, stableFromAlpha } from './versions.mjs'
 
 const date = new Date('2026-10-16T06:00:00Z')
 
@@ -65,58 +58,4 @@ await test('a estável promove o último alpha', () => {
     /não é mais nova/
   )
   assert.throws(() => stableFromAlpha({ tagNames, alphaTag, requested: '1.2' }), /inválida/)
-})
-
-const stable = {
-  tag: 'v1.1.0',
-  assets: [
-    'Auri-1.1.0.exe',
-    'Auri-1.1.0.exe.blockmap',
-    'Auri-1.1.0.dmg',
-    'Auri-1.1.0-arm64-mac.zip',
-    'latest.yml',
-    'alpha.yml',
-    'latest-mac.yml',
-    'alpha-mac.yml'
-  ]
-}
-const alpha = {
-  tag: 'v1.1.1-alpha.20261016.1',
-  assets: [
-    'Auri-1.1.1-alpha.20261016.1.exe',
-    'Auri-1.1.1-alpha.20261016.1.exe.blockmap',
-    'alpha.yml'
-  ]
-}
-
-await test('o site leva a estável e o alpha mais novo, com o alpha.yml do alpha', () => {
-  const files = siteFiles({ stable, alpha })
-  const from = Object.fromEntries(files.map((file) => [file.name, file.tag]))
-  assert.equal(from['latest.yml'], 'v1.1.0')
-  assert.equal(from['alpha.yml'], alpha.tag)
-  assert.equal(from['Auri-1.1.1-alpha.20261016.1.exe'], alpha.tag)
-  assert.equal(from['Auri-1.1.0.dmg'], 'v1.1.0')
-  // alpha só de Windows: o Mac do canal alpha segue na estável
-  assert.equal(from['alpha-mac.yml'], 'v1.1.0')
-  assert.equal(from['Auri-1.1.0-arm64-mac.zip'], 'v1.1.0')
-})
-
-await test('um alpha com Mac leva o zip e o alpha-mac.yml dele', () => {
-  const withMac = {
-    ...alpha,
-    assets: [...alpha.assets, 'Auri-1.1.1-alpha.20261016.1-arm64-mac.zip', 'alpha-mac.yml']
-  }
-  const from = Object.fromEntries(
-    siteFiles({ stable, alpha: withMac }).map((file) => [file.name, file.tag])
-  )
-  assert.equal(from['alpha-mac.yml'], alpha.tag)
-  assert.equal(from['Auri-1.1.1-alpha.20261016.1-arm64-mac.zip'], alpha.tag)
-  assert.equal(from['latest-mac.yml'], 'v1.1.0')
-})
-
-await test('depois da promoção o alpha antigo sai do site', () => {
-  const promoted = { ...stable, tag: 'v1.1.1' }
-  const files = siteFiles({ stable: promoted, alpha })
-  assert.ok(files.every((file) => file.tag === 'v1.1.1'))
-  assert.throws(() => siteFiles({ stable: null, alpha: null }), /Nenhum latest.yml/)
 })
