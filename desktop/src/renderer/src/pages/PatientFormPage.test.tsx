@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, screen, waitFor } from '@testing-library/react'
+import { cleanup, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import type { ToastInput } from '@renderer/lib/toast'
@@ -86,7 +86,8 @@ describe('responsável na ficha', () => {
 
   it('sem escolha, a mãe aparece como responsável', async () => {
     await abrir({})
-    expect(screen.getByRole('button', { name: 'Mãe', pressed: true })).toBeTruthy()
+    const grupo = screen.getByRole('group', { name: 'Responsável pelo paciente' })
+    expect(within(grupo).getByRole('button', { name: 'Mãe', pressed: true })).toBeTruthy()
     expect(screen.getByText('Assina: Marina Fictícia Andrade')).toBeTruthy()
   })
 
@@ -123,5 +124,83 @@ describe('imprimir a ficha', () => {
     await userEvent.type(screen.getByLabelText('Professora'), 'Ana')
     expect(imprimir.disabled).toBe(true)
     expect(imprimir.title).toBe('Salve as alterações para imprimir')
+  })
+})
+
+describe('ficha ampliada', () => {
+  let nextId = 60
+  const abrir = async (
+    over: Parameters<typeof fakePatient>[0]
+  ): Promise<ReturnType<typeof vi.fn>> => {
+    const id = nextId++
+    const atual = fakePatient({ id, nome: 'Pedro Fictício Souza', ...over })
+    const update = vi.fn(async (_id: number, input: object) => ({ ...atual, ...input }))
+    Object.assign(window, {
+      api: { patients: { get: vi.fn(async () => atual), update, setAtivo } }
+    })
+    renderRoute(`/pacientes/${id}`, '/pacientes/:id', <PatientFormRoute />)
+    await screen.findByDisplayValue(atual.nome)
+    return update
+  }
+  const salvar = (): Promise<void> =>
+    userEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
+
+  it('contato principal segue o responsável e pode ser trocado', async () => {
+    const update = await abrir({ pai_nome: 'Paulo Fictício', pai_celular: '(66) 98888-0000' })
+    const grupo = screen.getByRole('group', { name: 'Contato principal' })
+    expect(within(grupo).getByRole('button', { name: 'Mãe', pressed: true })).toBeTruthy()
+    expect(screen.getByText('Marina Fictícia Andrade está sem celular na ficha.')).toBeTruthy()
+    await userEvent.click(within(grupo).getByRole('button', { name: 'Pai' }))
+    expect(screen.getByText('Mensagens para Paulo Fictício · (66) 98888-0000')).toBeTruthy()
+    await salvar()
+    await waitFor(() => expect(update).toHaveBeenCalled())
+    expect(update.mock.calls[0][1]).toMatchObject({ contato_principal: 'pai' })
+  })
+
+  it('série com número e tipo mostra o ordinal', async () => {
+    const update = await abrir({})
+    await userEvent.type(screen.getByRole('textbox', { name: 'Número da série' }), '2')
+    await userEvent.click(screen.getByRole('button', { name: 'Série' }))
+    expect(screen.getByText('2ª série')).toBeTruthy()
+    await userEvent.click(screen.getByRole('button', { name: 'Médio' }))
+    expect(screen.getByText('2ª série do Médio')).toBeTruthy()
+    await salvar()
+    await waitFor(() => expect(update).toHaveBeenCalled())
+    expect(update.mock.calls[0][1]).toMatchObject({
+      serie_numero: '2',
+      serie_tipo: 'serie',
+      serie_etapa: 'medio'
+    })
+  })
+
+  it('série antiga que não foi convertida continua visível', async () => {
+    await abrir({ serie: 'Maternal II' })
+    expect(screen.getByDisplayValue('Maternal II')).toBeTruthy()
+  })
+
+  it('atividades: adiciona, valida o horário e salva com a ficha', async () => {
+    const update = await abrir({
+      atividades: [
+        { id: 1, patient_id: 1, atividade: 'Natação', dia_semana: 2, inicio: '14:00', fim: '15:00' }
+      ]
+    })
+    expect(screen.getByDisplayValue('Natação')).toBeTruthy()
+    await userEvent.click(screen.getByRole('button', { name: 'Adicionar atividade' }))
+    await userEvent.type(screen.getByRole('textbox', { name: 'Atividade 2' }), 'Balé')
+    await userEvent.type(screen.getByRole('combobox', { name: 'Início da atividade 2' }), '1000')
+    await userEvent.type(screen.getByRole('combobox', { name: 'Término da atividade 2' }), '0900')
+    await salvar()
+    expect(await screen.findByText('O término deve ser depois do início')).toBeTruthy()
+    expect(update).not.toHaveBeenCalled()
+
+    const fim = screen.getByRole('combobox', { name: 'Término da atividade 2' })
+    await userEvent.clear(fim)
+    await userEvent.type(fim, '1100')
+    await userEvent.click(screen.getByRole('button', { name: 'Remover atividade 1' }))
+    await salvar()
+    await waitFor(() => expect(update).toHaveBeenCalled())
+    expect(update.mock.calls[0][1]).toMatchObject({
+      atividades: [{ atividade: 'Balé', dia_semana: 1, inicio: '10:00', fim: '11:00' }]
+    })
   })
 })

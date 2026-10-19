@@ -178,7 +178,7 @@ try {
       'Escola',
       'Entrada'
     ])
-    await expect(page.getByText('7 anos', { exact: true })).toBeVisible()
+    await expect(page.getByText('7 anos e 1 mês', { exact: true })).toBeVisible()
     await expect(page.getByRole('cell', { name: '14/10/2026', exact: true })).toBeVisible()
     await page.getByRole('searchbox').fill('')
     await accessibility('pacientes-lista')

@@ -1,8 +1,11 @@
 import type Database from 'better-sqlite3'
+import { parseSerie } from '../../shared/serie'
+
+type Migration = string | ((db: Database.Database) => void)
 
 const NOW = `(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`
 
-const MIGRATIONS: string[] = [
+const MIGRATIONS: Migration[] = [
   `
   CREATE TABLE patients (
     id              INTEGER PRIMARY KEY,
@@ -290,7 +293,44 @@ const MIGRATIONS: string[] = [
   BEGIN
     SELECT RAISE(ABORT, 'Um termo assinado não pode ser apagado.');
   END;
-  `
+  `,
+  (db) => {
+    db.exec(`
+    ALTER TABLE patients ADD COLUMN rg TEXT;
+    ALTER TABLE patients ADD COLUMN uf TEXT CHECK (length(uf) = 2);
+    ALTER TABLE patients ADD COLUMN serie_numero TEXT
+      CHECK (serie_numero GLOB '[1-9]' OR serie_numero GLOB '[1-9][0-9]');
+    ALTER TABLE patients ADD COLUMN serie_tipo TEXT CHECK (serie_tipo IN ('ano', 'serie', 'grau'));
+    ALTER TABLE patients ADD COLUMN serie_etapa TEXT
+      CHECK (serie_etapa IN ('infantil', 'fundamental', 'medio'));
+    ALTER TABLE patients ADD COLUMN contato_principal TEXT
+      CHECK (contato_principal IN ('mae', 'pai', 'responsavel', 'paciente'));
+
+    CREATE TABLE patient_activities (
+      id         INTEGER PRIMARY KEY,
+      patient_id INTEGER NOT NULL REFERENCES patients (id) ON DELETE CASCADE,
+      atividade  TEXT NOT NULL,
+      dia_semana INTEGER NOT NULL CHECK (dia_semana BETWEEN 0 AND 6),
+      inicio     TEXT NOT NULL,
+      fim        TEXT NOT NULL,
+      CHECK (fim > inicio)
+    );
+
+    CREATE INDEX patient_activities_patient ON patient_activities (patient_id);
+    `)
+    const rows = db
+      .prepare("SELECT id, serie FROM patients WHERE trim(coalesce(serie, '')) <> ''")
+      .all() as { id: number; serie: string }[]
+    const update = db.prepare(
+      `UPDATE patients SET serie_numero = @serie_numero, serie_tipo = @serie_tipo,
+         serie_etapa = @serie_etapa, serie = NULL
+       WHERE id = @id`
+    )
+    for (const row of rows) {
+      const parsed = parseSerie(row.serie)
+      if (parsed) update.run({ ...parsed, serie_etapa: parsed.serie_etapa || null, id: row.id })
+    }
+  }
 ]
 
 export class DatabaseTooNewError extends Error {
@@ -309,8 +349,10 @@ export function migrate(db: Database.Database): void {
     throw new DatabaseTooNewError(current)
   }
   for (let version = current; version < MIGRATIONS.length; version++) {
+    const migration = MIGRATIONS[version]
     db.transaction(() => {
-      db.exec(MIGRATIONS[version])
+      if (typeof migration === 'string') db.exec(migration)
+      else migration(db)
       db.pragma(`user_version = ${version + 1}`)
     })()
   }

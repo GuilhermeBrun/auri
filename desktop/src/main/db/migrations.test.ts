@@ -55,6 +55,79 @@ describe('compatibilidade do banco', () => {
     expect(reopened.prepare('SELECT COUNT(*) AS n FROM appointments').get()).toEqual({ n: 1 })
   })
 
+  it('converte a série escrita à mão e guarda o que não entende', () => {
+    const file = join(dir, 'serie.db')
+    const legacy = new Database(file)
+    opened.push(legacy)
+    legacy.exec(readFileSync('docs/qualidade/fixtures/v1.sql', 'utf8'))
+    const insert = legacy.prepare(
+      "INSERT INTO patients (id, nome, serie, updated_at) VALUES (?, ?, ?, '2026-01-01T00:00:00.000Z')"
+    )
+    insert.run(1, 'Ana', '3 ano')
+    insert.run(2, 'Bia', '2ª Série do Ensino Médio')
+    insert.run(3, 'Caio', 'Maternal II')
+    insert.run(4, 'Davi', null)
+    legacy.close()
+
+    const db = openDatabase(file)
+    opened.push(db)
+    expect(
+      db
+        .prepare(
+          'SELECT id, serie, serie_numero, serie_tipo, serie_etapa, updated_at FROM patients WHERE id < 10 ORDER BY id'
+        )
+        .all()
+    ).toEqual([
+      {
+        id: 1,
+        serie: null,
+        serie_numero: '3',
+        serie_tipo: 'ano',
+        serie_etapa: null,
+        updated_at: '2026-01-01T00:00:00.000Z'
+      },
+      {
+        id: 2,
+        serie: null,
+        serie_numero: '2',
+        serie_tipo: 'serie',
+        serie_etapa: 'medio',
+        updated_at: '2026-01-01T00:00:00.000Z'
+      },
+      {
+        id: 3,
+        serie: 'Maternal II',
+        serie_numero: null,
+        serie_tipo: null,
+        serie_etapa: null,
+        updated_at: '2026-01-01T00:00:00.000Z'
+      },
+      {
+        id: 4,
+        serie: null,
+        serie_numero: null,
+        serie_tipo: null,
+        serie_etapa: null,
+        updated_at: '2026-01-01T00:00:00.000Z'
+      }
+    ])
+  })
+
+  it('apaga as atividades junto com o paciente e recusa dia ou horário fora do formato', () => {
+    const db = openDatabase(':memory:')
+    opened.push(db)
+    db.prepare("INSERT INTO patients (id, nome) VALUES (1, 'Ana')").run()
+    const insert = db.prepare(
+      'INSERT INTO patient_activities (patient_id, atividade, dia_semana, inicio, fim) VALUES (?, ?, ?, ?, ?)'
+    )
+    insert.run(1, 'Natação', 2, '14:00', '15:00')
+    expect(() => insert.run(1, 'Balé', 7, '14:00', '15:00')).toThrow(/CHECK/)
+    expect(() => insert.run(1, 'Balé', 3, '15:00', '14:00')).toThrow(/CHECK/)
+    expect(() => insert.run(99, 'Balé', 3, '14:00', '15:00')).toThrow(/FOREIGN KEY/)
+    db.prepare('DELETE FROM patients WHERE id = 1').run()
+    expect(db.prepare('SELECT COUNT(*) AS n FROM patient_activities').get()).toEqual({ n: 0 })
+  })
+
   it('recusa versão futura sem modificar o arquivo', () => {
     const file = join(dir, 'futuro.db')
     const db = new Database(file)

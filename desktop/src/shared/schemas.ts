@@ -20,49 +20,125 @@ export type ResponsavelTipo = (typeof RESPONSAVEL_TIPOS)[number]
 export const PARENTESCOS = ['avo_f', 'avo_m', 'tia', 'tio', 'outro'] as const
 export type Parentesco = (typeof PARENTESCOS)[number]
 
-export const patientInputSchema = z
+export const UFS = [
+  'AC',
+  'AL',
+  'AP',
+  'AM',
+  'BA',
+  'CE',
+  'DF',
+  'ES',
+  'GO',
+  'MA',
+  'MT',
+  'MS',
+  'MG',
+  'PA',
+  'PB',
+  'PR',
+  'PE',
+  'PI',
+  'RJ',
+  'RN',
+  'RS',
+  'RO',
+  'RR',
+  'SC',
+  'SP',
+  'SE',
+  'TO'
+] as const
+export type Uf = (typeof UFS)[number]
+
+export const SERIE_TIPOS = ['ano', 'serie', 'grau'] as const
+export type SerieTipo = (typeof SERIE_TIPOS)[number]
+
+export const SERIE_ETAPAS = ['infantil', 'fundamental', 'medio'] as const
+export type SerieEtapa = (typeof SERIE_ETAPAS)[number]
+
+export const CONTATOS_PRINCIPAIS = ['mae', 'pai', 'responsavel', 'paciente'] as const
+export type ContatoPrincipal = (typeof CONTATOS_PRINCIPAIS)[number]
+
+export const DIAS_SEMANA = [0, 1, 2, 3, 4, 5, 6] as const
+
+const hhmm = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Horário inválido')
+
+export const patientActivityInputSchema = z
   .object({
-    nome: text().min(1, 'Informe o nome do paciente'),
-    data_nascimento: optionalDate,
-    cpf: optionalCpf,
-    celular: optionalPhone,
-    email: optionalEmail,
+    atividade: text(80).min(1, 'Diga qual é a atividade'),
+    dia_semana: z.number().int().min(0).max(6),
+    inicio: hhmm,
+    fim: hhmm
+  })
+  .refine((a) => a.fim > a.inicio, {
+    message: 'O término deve ser depois do início',
+    path: ['fim']
+  })
 
-    escola: text(),
-    serie: text(),
-    professora: text(),
+export type PatientActivityInput = z.infer<typeof patientActivityInputSchema>
 
-    mae_nome: text(),
-    mae_cpf: optionalCpf,
-    mae_rg: text(30),
-    mae_celular: optionalPhone,
-    mae_email: optionalEmail,
-    mae_profissao: text(),
+export type PatientActivity = PatientActivityInput & { id: number; patient_id: number }
 
-    pai_nome: text(),
-    pai_cpf: optionalCpf,
-    pai_rg: text(30),
-    pai_celular: optionalPhone,
-    pai_email: optionalEmail,
-    pai_profissao: text(),
+export const ATIVIDADES_MAX = 20
 
-    resp_tipo: z.enum(['', ...RESPONSAVEL_TIPOS]),
-    resp_nome: text(),
-    resp_parentesco: z.enum(['', ...PARENTESCOS]),
-    resp_parentesco_outro: text(60),
-    resp_cpf: optionalCpf,
-    resp_rg: text(30),
-    resp_celular: optionalPhone,
-    resp_email: optionalEmail,
+const patientFieldsSchema = z.object({
+  nome: text().min(1, 'Informe o nome do paciente'),
+  data_nascimento: optionalDate,
+  cpf: optionalCpf,
+  rg: text(30),
+  celular: optionalPhone,
+  email: optionalEmail,
 
-    endereco: text(),
-    bairro: text(),
-    cidade: text(),
+  escola: text(),
+  serie_numero: z.string().regex(/^([1-9]\d?)?$/, 'Número inválido'),
+  serie_tipo: z.enum(['', ...SERIE_TIPOS]),
+  serie_etapa: z.enum(['', ...SERIE_ETAPAS]),
+  serie: text(),
+  professora: text(),
 
-    indicacao: text(),
-    pediatra: text(),
-    data_entrada: optionalDate,
-    observacoes: text(5000)
+  mae_nome: text(),
+  mae_cpf: optionalCpf,
+  mae_rg: text(30),
+  mae_celular: optionalPhone,
+  mae_email: optionalEmail,
+  mae_profissao: text(),
+
+  pai_nome: text(),
+  pai_cpf: optionalCpf,
+  pai_rg: text(30),
+  pai_celular: optionalPhone,
+  pai_email: optionalEmail,
+  pai_profissao: text(),
+
+  resp_tipo: z.enum(['', ...RESPONSAVEL_TIPOS]),
+  resp_nome: text(),
+  resp_parentesco: z.enum(['', ...PARENTESCOS]),
+  resp_parentesco_outro: text(60),
+  resp_cpf: optionalCpf,
+  resp_rg: text(30),
+  resp_celular: optionalPhone,
+  resp_email: optionalEmail,
+
+  contato_principal: z.enum(['', ...CONTATOS_PRINCIPAIS]),
+
+  endereco: text(),
+  bairro: text(),
+  cidade: text(),
+  uf: z.enum(['', ...UFS]),
+
+  indicacao: text(),
+  pediatra: text(),
+  data_entrada: optionalDate,
+  observacoes: text(5000)
+})
+
+export const patientInputSchema = patientFieldsSchema
+  .extend({
+    atividades: z
+      .array(patientActivityInputSchema)
+      .max(ATIVIDADES_MAX, `Cadastre no máximo ${ATIVIDADES_MAX} atividades`)
+      .optional()
   })
   .superRefine((p, ctx) => {
     const missing = (path: string, message: string): void => {
@@ -72,6 +148,9 @@ export const patientInputSchema = z
       missing('mae_nome', 'Informe o nome da mãe, que é a responsável')
     if (p.resp_tipo === 'pai' && p.pai_nome === '')
       missing('pai_nome', 'Informe o nome do pai, que é o responsável')
+    if (p.serie_numero !== '' && p.serie_tipo === '')
+      missing('serie_tipo', 'Escolha ano, série ou grau')
+    if (p.serie_tipo !== '' && p.serie_numero === '') missing('serie_numero', 'Informe o número')
     if (p.resp_tipo !== 'outro') return
     if (p.resp_nome === '') missing('resp_nome', 'Informe o nome do responsável')
     if (p.resp_parentesco === '') missing('resp_parentesco', 'Escolha o parentesco')
@@ -81,13 +160,21 @@ export const patientInputSchema = z
 
 export type PatientInput = z.infer<typeof patientInputSchema>
 
-export const PATIENT_FIELDS = Object.keys(patientInputSchema.shape) as (keyof PatientInput)[]
+export type PatientFields = z.infer<typeof patientFieldsSchema>
+
+export type PatientField = keyof PatientFields
+
+export const PATIENT_FIELDS = Object.keys(patientFieldsSchema.shape) as PatientField[]
 
 export function emptyPatientInput(): PatientInput {
-  return Object.fromEntries(PATIENT_FIELDS.map((f) => [f, ''])) as PatientInput
+  return {
+    ...(Object.fromEntries(PATIENT_FIELDS.map((f) => [f, ''])) as PatientFields),
+    atividades: []
+  }
 }
 
-export type Patient = PatientInput & {
+export type Patient = PatientFields & {
+  atividades: PatientActivity[]
   id: number
   ativo: boolean
   created_at: string
