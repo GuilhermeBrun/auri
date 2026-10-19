@@ -127,6 +127,9 @@ try {
       sandbox: true,
       webSecurity: true
     })
+    const continuar = page.getByRole('button', { name: 'Continuar', exact: true })
+    await continuar.click()
+    await continuar.click()
     await page.getByRole('button', { name: 'Começar do zero', exact: true }).click()
     await page.getByRole('link', { name: 'Pacientes', exact: true }).click()
     await page.getByRole('button', { name: 'Novo paciente', exact: true }).click()

@@ -1,8 +1,10 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ImagePlus } from 'lucide-react'
+import { format } from 'date-fns'
+import { ChevronRight, FileSignature, ImagePlus, Plus } from 'lucide-react'
 import { useEffect } from 'react'
 import { Controller, useForm, type Control } from 'react-hook-form'
+import { useNavigate } from 'react-router'
 import { logoDataUrl } from '@shared/clinic'
 import { formatPhone } from '@shared/masks'
 import { clinicInputSchema, type Clinic, type ClinicInput } from '@shared/schemas'
@@ -13,7 +15,7 @@ import { ErrorState } from '@renderer/components/ui/error'
 import { Field, Input } from '@renderer/components/ui/input'
 import { Loading } from '@renderer/components/ui/loading'
 import { FormSection } from '@renderer/components/ui/section'
-import { clinicQuery } from '@renderer/lib/queries'
+import { clinicQuery, termModelsQuery } from '@renderer/lib/queries'
 import { useToast } from '@renderer/lib/toast'
 
 const TRAIL = [{ label: 'Clínica' }]
@@ -195,10 +197,72 @@ function ClinicForm({ clinic }: { clinic: Clinic }): React.JSX.Element {
                 <PhoneInput control={control} name="whatsapp" />
               </Field>
             </FormSection>
+            <TermModels />
           </div>
         </div>
       </Page>
     </form>
+  )
+}
+
+function TermModels(): React.JSX.Element {
+  const navigate = useNavigate()
+  const models = useQuery(termModelsQuery())
+  const list = [...(models.data ?? [])].sort((a, b) => Number(a.arquivado) - Number(b.arquivado))
+  return (
+    <FormSection
+      id="modelos"
+      title="Modelos de termo"
+      description="Os termos que a clínica envia para a família ler e assinar pelo celular."
+      className="grid-cols-1 gap-y-2"
+    >
+      {models.error && <p className="text-xs text-danger">{models.error.message}</p>}
+      {models.data && list.length === 0 && (
+        <p className="text-[13px] text-ink-faint">
+          Nenhum modelo ainda. O texto é da clínica: o Auri só leva até a família e guarda o que
+          voltar assinado.
+        </p>
+      )}
+      {list.length > 0 && (
+        <ul className="-mx-3 flex flex-col">
+          {list.map((m) => (
+            <li key={m.id}>
+              <button
+                type="button"
+                onClick={() => void navigate(`/clinica/termos/${m.id}`)}
+                className="flex w-full items-center gap-3 rounded-card px-3 py-2.5 text-left transition-colors hover:bg-fill focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-accent"
+              >
+                <FileSignature
+                  className={m.arquivado ? 'size-4 text-ink-faint' : 'size-4 text-ink-soft'}
+                  aria-hidden
+                />
+                <span className="flex min-w-0 flex-1 flex-col">
+                  <span
+                    className={
+                      m.arquivado
+                        ? 'truncate text-[13px] text-ink-soft'
+                        : 'truncate text-[13px] font-medium'
+                    }
+                  >
+                    {m.titulo}
+                  </span>
+                  <span className="text-xs text-ink-faint">
+                    {m.arquivado ? 'Arquivado · ' : ''}Versão {m.versao} · atualizado em{' '}
+                    {format(new Date(m.atualizado_em), 'dd/MM/yyyy')}
+                  </span>
+                </span>
+                <ChevronRight className="size-4 text-ink-faint" aria-hidden />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <div>
+        <Button variant="secondary" onClick={() => void navigate('/clinica/termos/novo')}>
+          <Plus /> Novo modelo
+        </Button>
+      </div>
+    </FormSection>
   )
 }
 

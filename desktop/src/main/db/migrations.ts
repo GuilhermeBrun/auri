@@ -185,6 +185,111 @@ const MIGRATIONS: string[] = [
   );
 
   INSERT INTO clinic (id) VALUES (1);
+  `,
+  `
+  CREATE TABLE term_models (
+    id           INTEGER PRIMARY KEY,
+    arquivado_em TEXT,
+    created_at   TEXT NOT NULL DEFAULT ${NOW}
+  );
+
+  CREATE TABLE term_versions (
+    id         INTEGER PRIMARY KEY,
+    model_id   INTEGER NOT NULL REFERENCES term_models (id) ON DELETE RESTRICT,
+    versao     INTEGER NOT NULL CHECK (versao >= 1),
+    titulo     TEXT NOT NULL CHECK (length(trim(titulo)) > 0),
+    texto      TEXT NOT NULL CHECK (length(trim(texto)) > 0),
+    created_at TEXT NOT NULL DEFAULT ${NOW},
+    UNIQUE (model_id, versao)
+  );
+
+  CREATE TABLE term_requests (
+    id                 INTEGER PRIMARY KEY,
+    envio              TEXT NOT NULL UNIQUE,
+    patient_id         INTEGER NOT NULL REFERENCES patients (id) ON DELETE RESTRICT,
+    version_id         INTEGER NOT NULL REFERENCES term_versions (id) ON DELETE RESTRICT,
+    termo              TEXT NOT NULL,
+    texto_sha256       TEXT NOT NULL,
+    destino_nome       TEXT NOT NULL,
+    destino_papel      TEXT NOT NULL CHECK (destino_papel IN ('paciente', 'mae', 'pai', 'outro')),
+    destino_parentesco TEXT NOT NULL,
+    destino_cpf        TEXT,
+    destino_numero     TEXT NOT NULL,
+    prazo              TEXT NOT NULL,
+    computador         TEXT NOT NULL,
+    chave              BLOB,
+    link               TEXT,
+    estado             TEXT NOT NULL DEFAULT 'aguardando'
+      CHECK (estado IN ('aguardando', 'cancelado', 'trocado', 'assinado')),
+    estado_em          TEXT,
+    created_at         TEXT NOT NULL DEFAULT ${NOW}
+  );
+
+  CREATE INDEX term_requests_patient ON term_requests (patient_id);
+
+  CREATE TABLE signed_terms (
+    id               INTEGER PRIMARY KEY,
+    request_id       INTEGER NOT NULL UNIQUE REFERENCES term_requests (id) ON DELETE RESTRICT,
+    patient_id       INTEGER NOT NULL REFERENCES patients (id) ON DELETE RESTRICT,
+    nome             TEXT NOT NULL,
+    cpf              TEXT NOT NULL,
+    papel            TEXT NOT NULL CHECK (papel IN ('paciente', 'mae', 'pai', 'outro')),
+    parentesco       TEXT NOT NULL,
+    traco            BLOB NOT NULL,
+    assinado_em      INTEGER NOT NULL,
+    fuso_minutos     INTEGER NOT NULL,
+    recebido_em      TEXT NOT NULL,
+    computador       TEXT NOT NULL,
+    resposta_sha256  TEXT NOT NULL,
+    registro_sha256  TEXT NOT NULL,
+    created_at       TEXT NOT NULL DEFAULT ${NOW}
+  );
+
+  CREATE INDEX signed_terms_patient ON signed_terms (patient_id);
+
+  CREATE TRIGGER term_versions_no_update
+  BEFORE UPDATE ON term_versions
+  BEGIN
+    SELECT RAISE(ABORT, 'Uma versão de termo não pode ser alterada.');
+  END;
+
+  CREATE TRIGGER term_versions_no_delete
+  BEFORE DELETE ON term_versions
+  BEGIN
+    SELECT RAISE(ABORT, 'Uma versão de termo não pode ser apagada.');
+  END;
+
+  CREATE TRIGGER term_requests_content_locked
+  BEFORE UPDATE OF envio, patient_id, version_id, termo, texto_sha256, destino_nome, destino_papel,
+    destino_parentesco, destino_cpf, destino_numero, prazo, computador, created_at ON term_requests
+  BEGIN
+    SELECT RAISE(ABORT, 'O conteúdo de um envio não muda.');
+  END;
+
+  CREATE TRIGGER term_requests_signed_locked
+  BEFORE UPDATE OF estado ON term_requests
+  WHEN OLD.estado <> 'aguardando'
+  BEGIN
+    SELECT RAISE(ABORT, 'Este envio já foi concluído.');
+  END;
+
+  CREATE TRIGGER term_requests_no_delete
+  BEFORE DELETE ON term_requests
+  BEGIN
+    SELECT RAISE(ABORT, 'Um envio de termo não pode ser apagado.');
+  END;
+
+  CREATE TRIGGER signed_terms_no_update
+  BEFORE UPDATE ON signed_terms
+  BEGIN
+    SELECT RAISE(ABORT, 'Um termo assinado não pode ser alterado.');
+  END;
+
+  CREATE TRIGGER signed_terms_no_delete
+  BEFORE DELETE ON signed_terms
+  BEGIN
+    SELECT RAISE(ABORT, 'Um termo assinado não pode ser apagado.');
+  END;
   `
 ]
 

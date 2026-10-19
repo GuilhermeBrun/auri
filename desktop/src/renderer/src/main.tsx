@@ -27,6 +27,9 @@ window.api.onChanged((topics) => {
   if (topics.includes('attendance')) {
     void queryClient.invalidateQueries({ queryKey: ['attendance'] })
   }
+  if (topics.includes('terms')) {
+    void queryClient.invalidateQueries({ queryKey: ['terms'] })
+  }
   if (topics.includes('clinic')) {
     void queryClient.invalidateQueries({ queryKey: ['clinic'] })
   }

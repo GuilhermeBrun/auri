@@ -12,9 +12,10 @@ const { clinic } = vi.hoisted(() => {
         (target[key] ??= () => (key === 'onChange' ? () => {} : new Promise(() => {})))
     })
   const clinic = { get: vi.fn(), save: vi.fn(), chooseLogo: vi.fn() }
+  const terms = { models: vi.fn(() => Promise.resolve([])) }
   Object.assign(window, {
     platform: 'win32',
-    api: { clinic },
+    api: { clinic, terms },
     backup: bridge(),
     connection: bridge(),
     prefs: bridge(),

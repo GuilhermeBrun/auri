@@ -7,6 +7,8 @@ import {
   arrivalSignInputSchema,
   clinicInputSchema,
   computadorSchema,
+  termModelInputSchema,
+  termSendInputSchema,
   idSchema,
   patientFilterSchema,
   patientInputSchema,
@@ -16,6 +18,19 @@ import {
 import { getAnamnese, saveAnamnese } from './db/anamneses'
 import { attendanceReport, listPatientAttendance, signArrival, voidArrival } from './db/attendance'
 import { getClinic, saveClinic } from './db/clinic'
+import {
+  acceptResponse,
+  cancelTerm,
+  checkResponse,
+  listModels,
+  listPatientTerms,
+  measureModel,
+  saveModel,
+  sendTerm,
+  setModelArchived,
+  signedTermRecord,
+  termLink
+} from './db/terms'
 import {
   createAppointment,
   listAppointments,
@@ -36,6 +51,8 @@ type Operation = {
   run: (db: Db, args: unknown[]) => unknown
   changes?: DataTopic[]
 }
+
+const responseText = z.string().max(20_000)
 
 const expectedSchema = z
   .string()
@@ -131,6 +148,46 @@ const OPERATIONS: Record<string, Operation> = {
       saveClinic(db, clinicInputSchema.parse(input), expectedSchema.parse(expected)),
     changes: ['clinic']
   },
+
+  'terms:models': { run: (db) => listModels(db) },
+  'terms:measureModel': {
+    run: (db, [input]) => measureModel(db, termModelInputSchema.parse(input))
+  },
+  'terms:saveModel': {
+    run: (db, [id, input]) =>
+      saveModel(db, idSchema.nullable().parse(id), termModelInputSchema.parse(input)),
+    changes: ['terms']
+  },
+  'terms:archiveModel': {
+    run: (db, [id, arquivado]) =>
+      setModelArchived(db, idSchema.parse(id), z.boolean().parse(arquivado)),
+    changes: ['terms']
+  },
+  'terms:listByPatient': {
+    run: (db, [patientId]) => listPatientTerms(db, idSchema.parse(patientId))
+  },
+  'terms:send': {
+    run: (db, [patientId, input, computador]) =>
+      sendTerm(
+        db,
+        idSchema.parse(patientId),
+        termSendInputSchema.parse(input),
+        computadorSchema.parse(computador)
+      ),
+    changes: ['terms']
+  },
+  'terms:link': { run: (db, [requestId]) => termLink(db, idSchema.parse(requestId)) },
+  'terms:cancel': {
+    run: (db, [requestId]) => cancelTerm(db, idSchema.parse(requestId)),
+    changes: ['terms']
+  },
+  'terms:check': { run: (db, [texto]) => checkResponse(db, responseText.parse(texto)) },
+  'terms:accept': {
+    run: (db, [texto, computador]) =>
+      acceptResponse(db, responseText.parse(texto), computadorSchema.parse(computador)),
+    changes: ['terms']
+  },
+  'terms:record': { run: (db, [signedId]) => signedTermRecord(db, idSchema.parse(signedId)) },
 
   'anamneses:get': { run: (db, [patientId]) => getAnamnese(db, idSchema.parse(patientId)) },
   'anamneses:save': {

@@ -251,3 +251,115 @@ export type AttendanceReport = {
   ate: string
   sessions: (Appointment & { records: AttendanceRecord[] })[]
 }
+
+export const TERM_TEXTO_MAX = 16_000
+
+export const termModelInputSchema = z.object({
+  titulo: text(120).min(1, 'Dê um título ao termo'),
+  texto: z
+    .string()
+    .max(TERM_TEXTO_MAX, `Use no máximo ${TERM_TEXTO_MAX} caracteres`)
+    .refine((v) => v.trim() !== '', 'Escreva o texto do termo')
+})
+
+export type TermModelInput = z.infer<typeof termModelInputSchema>
+
+export type TermModel = TermModelInput & {
+  id: number
+  versao: number
+  arquivado: boolean
+  atualizado_em: string
+}
+
+export const TERM_PRAZOS = [3, 7, 15] as const
+
+export const termSendInputSchema = z.object({
+  model_id: idSchema,
+  destino: z.object({
+    papel: z.enum(SIGNER_PAPEIS),
+    nome: text(120).min(1, 'Informe para quem vai o termo'),
+    parentesco: text(60).min(1, 'Informe o parentesco'),
+    cpf: optionalCpf,
+    celular: text(15).refine(isValidPhone, 'Celular inválido')
+  }),
+  dias: z
+    .number()
+    .int()
+    .refine((d) => (TERM_PRAZOS as readonly number[]).includes(d), 'Prazo inválido')
+})
+
+export type TermSendInput = z.infer<typeof termSendInputSchema>
+
+export type TermEstado = 'aguardando' | 'vencido' | 'cancelado' | 'trocado' | 'assinado'
+
+export type SignedTermSummary = {
+  id: number
+  nome: string
+  parentesco: string
+  assinado_em: number
+  fuso_minutos: number
+  recebido_em: string
+}
+
+export type TermRequest = {
+  id: number
+  patient_id: number
+  model_id: number
+  titulo: string
+  versao: number
+  versao_atual: number
+  destino_nome: string
+  destino_papel: SignerPapel
+  destino_parentesco: string
+  destino_numero: string
+  prazo: string
+  created_at: string
+  estado: TermEstado
+  estado_em: string | null
+  assinado: SignedTermSummary | null
+}
+
+export type TermLink = { link: string; mensagem: string; numero: string }
+
+export type TermSendResult = TermLink & { request: TermRequest }
+
+export type TermCheck =
+  | { ok: false; erro: string; guardado: number | null }
+  | {
+      ok: true
+      request: TermRequest
+      patient_nome: string
+      resposta: {
+        nome: string
+        cpf: string
+        papel: SignerPapel
+        parentesco: string
+        assinado_em: number
+        fuso_minutos: number
+      }
+      traco: string
+      avisos: string[]
+    }
+
+export type SignedTermRecord = {
+  id: number
+  envio: string
+  titulo: string
+  versao: number
+  texto: string
+  texto_sha256: string
+  clinica: string
+  profissional: { nome: string; registro: string }
+  paciente: { nome: string; nascimento: string }
+  nome: string
+  cpf: string
+  parentesco: string
+  traco: string
+  assinado_em: number
+  fuso_minutos: number
+  recebido_em: string
+  enviado_em: string
+  destino_numero: string
+  registro_sha256: string
+  logo: string
+}

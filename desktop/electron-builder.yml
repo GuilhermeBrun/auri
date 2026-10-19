@@ -24,6 +24,9 @@ files:
 asarUnpack:
   - resources/**
 npmRebuild: false
+protocols:
+  - name: Auri
+    schemes: [auri]
 win:
   executableName: Auri
   target:

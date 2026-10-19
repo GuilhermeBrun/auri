@@ -140,6 +140,9 @@ async function newAppointment(time, observation) {
 try {
   await launch()
   await check('UI: primeira abertura e lista vazia acessíveis', async () => {
+    const continuar = page.getByRole('button', { name: 'Continuar', exact: true })
+    await continuar.click()
+    await continuar.click()
     await page.getByRole('button', { name: 'Começar do zero', exact: true }).click()
     await page.getByRole('link', { name: 'Pacientes', exact: true }).click()
     await expect(page.getByText('Nenhum paciente cadastrado ainda', { exact: true })).toBeVisible()

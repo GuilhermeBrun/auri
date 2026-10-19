@@ -42,7 +42,8 @@ beforeEach(() => {
     backup: {} as BackupService,
     transfer: { exportSettings } as unknown as AuriTransfer,
     updates: { check: checkUpdates, install: installUpdate } as unknown as UpdateService,
-    reports: { capture, captureUnexpected } as unknown as ErrorReportService
+    reports: { capture, captureUnexpected } as unknown as ErrorReportService,
+    inbox: { receber: () => false, retirar: () => [] }
   })
 })
 
