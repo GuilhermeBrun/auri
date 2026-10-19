@@ -613,6 +613,44 @@ ${onlyVoid('finance_payments', ['id', 'patient_id', 'data', 'valor_centavos', 'f
 
   ALTER TABLE clinic ADD COLUMN margem_deslocamento INTEGER NOT NULL DEFAULT 30
     CHECK (margem_deslocamento BETWEEN 0 AND 120);
+  `,
+  `
+  CREATE TABLE confirmation_requests (
+    id              INTEGER PRIMARY KEY,
+    envio           TEXT NOT NULL UNIQUE,
+    appointment_id  INTEGER NOT NULL REFERENCES appointments (id) ON DELETE CASCADE,
+    inicio          TEXT NOT NULL,
+    destino_nome    TEXT NOT NULL,
+    destino_numero  TEXT NOT NULL,
+    prazo           TEXT NOT NULL,
+    computador      TEXT NOT NULL,
+    confirmacao     TEXT NOT NULL,
+    chave           BLOB,
+    link            TEXT,
+    estado          TEXT NOT NULL DEFAULT 'aguardando'
+      CHECK (estado IN ('aguardando', 'respondido', 'cancelado', 'vencido')),
+    resposta        TEXT CHECK (resposta IN ('confirmada', 'desmarcada')),
+    respondido_em   INTEGER,
+    recebido_em     TEXT,
+    outra_resposta  TEXT CHECK (outra_resposta IN ('confirmada', 'desmarcada')),
+    vencido_em      TEXT,
+    charge_id       INTEGER REFERENCES finance_charges (id),
+    cobranca_erro   TEXT,
+    aviso_visto_em  TEXT,
+    created_at      TEXT NOT NULL DEFAULT ${NOW},
+    CHECK ((estado = 'respondido') = (resposta IS NOT NULL))
+  );
+
+  CREATE INDEX confirmation_requests_appointment ON confirmation_requests (appointment_id);
+  CREATE INDEX confirmation_requests_aguardando ON confirmation_requests (prazo)
+    WHERE estado = 'aguardando';
+
+  CREATE TRIGGER confirmation_requests_content_locked
+  BEFORE UPDATE OF envio, appointment_id, inicio, destino_nome, destino_numero, prazo, computador,
+    confirmacao, created_at ON confirmation_requests
+  BEGIN
+    SELECT RAISE(ABORT, 'O conteúdo de um pedido de confirmação não muda.');
+  END;
   `
 ]
 

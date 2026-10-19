@@ -55,6 +55,7 @@ function sessao(inicio: string, extra: Partial<Appointment> = {}): Appointment {
     evolucao: 'Treino de /r/.',
     assinatura: null,
     confirmado_em: null,
+    pedido: null,
     created_at: '',
     updated_at: '',
     ...extra

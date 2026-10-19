@@ -1,4 +1,5 @@
 import { foraDoFuncionamentoIso } from '../../shared/agenda'
+import { pedidoNaSessao, type RegistroDoPedido } from '../../shared/confirmacao'
 import { toIsoLocalDateTime } from '../../shared/dates'
 import {
   appointmentInputSchema,
@@ -20,9 +21,10 @@ import {
 
 type AppointmentRow = Omit<
   Appointment,
-  'observacao' | 'presenca' | 'evolucao' | 'assinatura' | 'etiquetas'
+  'observacao' | 'presenca' | 'evolucao' | 'assinatura' | 'etiquetas' | 'pedido'
 > & {
   etiquetas: string
+  pedido: string | null
   observacao: string | null
   presenca: Appointment['presenca'] | null
   evolucao: string | null
@@ -40,7 +42,11 @@ const SELECT = `
          (SELECT json_group_array(json_object('id', g.id, 'nome', g.nome, 'cor', g.cor))
             FROM (SELECT g.id, g.nome, g.cor FROM appointment_tags x
                   JOIN tags g ON g.id = x.tag_id
-                  WHERE x.appointment_id = a.id ORDER BY g.nome COLLATE NOCASE) g) AS etiquetas
+                  WHERE x.appointment_id = a.id ORDER BY g.nome COLLATE NOCASE) g) AS etiquetas,
+         (SELECT json_object('estado', r.estado, 'resposta', r.resposta, 'prazo', r.prazo)
+            FROM confirmation_requests r
+            WHERE r.appointment_id = a.id AND r.estado <> 'cancelado'
+            ORDER BY r.id DESC LIMIT 1) AS pedido
   FROM appointments a
   JOIN patients p ON p.id = a.patient_id
   ${TIPO_JOIN}
@@ -58,6 +64,10 @@ function fromRow(row: AppointmentRow): Appointment {
   return {
     ...rest,
     etiquetas: JSON.parse(row.etiquetas) as EtiquetaResumo[],
+    pedido: pedidoNaSessao(
+      row.pedido === null ? null : (JSON.parse(row.pedido) as RegistroDoPedido),
+      row.confirmado_em
+    ),
     observacao: row.observacao ?? '',
     presenca: row.presenca ?? '',
     evolucao: row.evolucao ?? '',
