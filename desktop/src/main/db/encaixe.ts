@@ -5,7 +5,6 @@ import {
   sugerirHorarios,
   type AtividadeDoPaciente,
   type Funcionamento,
-  type Intervalo,
   type Sugestao
 } from '../../shared/encaixe'
 import {
@@ -15,6 +14,7 @@ import {
   type SugestaoPedido,
   type Vaga
 } from '../../shared/waitlist'
+import { busyIn } from './busy'
 import type { Db } from './connection'
 import { listWaitlist } from './waitlist'
 
@@ -34,13 +34,11 @@ export function readAtividades(db: Db, patientIds: number[]): AtividadeDoPacient
     .all(JSON.stringify(patientIds)) as AtividadeDoPaciente[]
 }
 
-function readOcupados(db: Db, de: string, ate: string, ignorar?: number): Intervalo[] {
-  return db
-    .prepare(
-      `SELECT inicio, fim FROM appointments
-       WHERE inicio < @ate AND fim > @de AND id IS NOT @ignorar`
-    )
-    .all({ de, ate, ignorar: ignorar ?? null }) as Intervalo[]
+function readMargem(db: Db): number {
+  const row = db.prepare('SELECT margem_deslocamento FROM clinic WHERE id = 1').get() as {
+    margem_deslocamento: number
+  }
+  return row.margem_deslocamento
 }
 
 export function suggestSlots(db: Db, input: SugestaoPedido, agora: Date): Sugestao[] {
@@ -52,10 +50,10 @@ export function suggestSlots(db: Db, input: SugestaoPedido, agora: Date): Sugest
     ate: pedido.ate,
     duracao: pedido.duracao,
     funcionamento: readFuncionamento(db),
-    ocupados: readOcupados(db, de, ate, pedido.ignorar_appointment_id),
+    ocupados: busyIn(db, de, ate, { appointment: pedido.ignorar_appointment_id }),
     atividades: readAtividades(db, [pedido.patient_id]),
     preferencias: { dias: pedido.dias, periodos: pedido.periodos },
-    margem: pedido.margem,
+    margem: pedido.margem ?? readMargem(db),
     depoisDe: toIsoLocalDateTime(agora)
   })
 }
@@ -70,6 +68,6 @@ export function whoFits(db: Db, input: Vaga): EncaixeNaVaga[] {
       db,
       esperas.map((e) => e.patient_id)
     ),
-    margem: vaga.margem
+    margem: vaga.margem ?? readMargem(db)
   })
 }

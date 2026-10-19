@@ -594,6 +594,25 @@ ${onlyVoid('finance_payments', ['id', 'patient_id', 'data', 'valor_centavos', 'f
   BEGIN
     UPDATE waitlist_entries SET tipo_id = 1 WHERE id = NEW.id;
   END;
+  `,
+  `
+  CREATE TABLE commitments (
+    id         INTEGER PRIMARY KEY,
+    tipo       TEXT NOT NULL
+      CHECK (tipo IN ('palestra', 'curso', 'hospital', 'reuniao', 'reserva')),
+    titulo     TEXT,
+    inicio     TEXT NOT NULL,
+    fim        TEXT NOT NULL,
+    observacao TEXT,
+    created_at TEXT NOT NULL DEFAULT ${NOW},
+    updated_at TEXT NOT NULL DEFAULT ${NOW},
+    CHECK (fim > inicio)
+  );
+
+  CREATE INDEX commitments_inicio ON commitments (inicio);
+
+  ALTER TABLE clinic ADD COLUMN margem_deslocamento INTEGER NOT NULL DEFAULT 30
+    CHECK (margem_deslocamento BETWEEN 0 AND 120);
   `
 ]
 

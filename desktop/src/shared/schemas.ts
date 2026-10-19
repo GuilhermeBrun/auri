@@ -354,7 +354,8 @@ export const clinicInputSchema = z.object({
     .string()
     .max(LOGO_MAX_BASE64, 'Logo grande demais')
     .regex(/^[A-Za-z0-9+/]*={0,2}$/, 'Logo inválido'),
-  funcionamento: funcionamentoSchema.optional()
+  funcionamento: funcionamentoSchema.optional(),
+  margem_deslocamento: z.number().int().min(0).max(120).optional()
 })
 
 export type ClinicInput = z.input<typeof clinicInputSchema>

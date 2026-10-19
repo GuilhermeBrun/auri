@@ -7,6 +7,7 @@ import type {
   TermModel,
   TermRequest
 } from '@shared/schemas'
+import type { Commitment } from '@shared/commitments'
 import type { Sugestao } from '@shared/encaixe'
 import type { EncaixeNaVaga, SugestaoPedido, Vaga, WaitlistEntry } from '@shared/waitlist'
 import type { FinanceCatalog, FinanceOverview, PatientFinance } from '@shared/finance'
@@ -113,5 +114,12 @@ export function quemCabeQuery(vaga: Vaga): Query<EncaixeNaVaga[]> {
   return {
     queryKey: ['encaixe', 'quemCabe', vaga],
     queryFn: () => window.api.encaixe.quemCabe(vaga)
+  }
+}
+
+export function commitmentsQuery({ de, ate }: { de: string; ate: string }): Query<Commitment[]> {
+  return {
+    queryKey: ['commitments', de, ate],
+    queryFn: () => window.api.commitments.listRange(de, ate)
   }
 }

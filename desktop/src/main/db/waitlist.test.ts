@@ -143,12 +143,11 @@ describe('lista de espera', () => {
     expect(() =>
       closeWaitlist(db, entry.id, { motivo: 'agendado', appointment_id: outro.id })
     ).toThrow(/outro paciente/)
-    const sessao = createAppointment(db, {
-      patient_id: ana,
-      inicio: '2026-10-21T15:00',
-      fim: '2026-10-21T15:30',
-      observacao: ''
-    })
+    const sessao = createAppointment(
+      db,
+      { patient_id: ana, inicio: '2026-10-21T15:00', fim: '2026-10-21T15:30', observacao: '' },
+      new Date(2026, 11, 1)
+    )
     closeWaitlist(db, entry.id, { motivo: 'agendado', appointment_id: sessao.id })
     expect(
       db.prepare('SELECT encerrado_motivo, appointment_id FROM waitlist_entries').get()
@@ -157,6 +156,32 @@ describe('lista de espera', () => {
     expect(db.prepare('SELECT appointment_id FROM waitlist_entries').get()).toEqual({
       appointment_id: null
     })
+  })
+
+  it('agendar o paciente em qualquer lugar tira ele da lista', () => {
+    const entry = addToWaitlist(db, { patient_id: ana, duracao: 30 })
+    addToWaitlist(db, { patient_id: bruno, duracao: 30 })
+    const sessao = createAppointment(
+      db,
+      { patient_id: ana, inicio: '2026-10-21T15:00', fim: '2026-10-21T15:30', observacao: '' },
+      new Date(2026, 9, 19, 9, 0)
+    )
+    expect(listWaitlist(db).map((e) => e.patient_nome)).toEqual(['Bruno Fictício'])
+    expect(
+      db
+        .prepare('SELECT encerrado_motivo, appointment_id FROM waitlist_entries WHERE id = ?')
+        .get(entry.id)
+    ).toEqual({ encerrado_motivo: 'agendado', appointment_id: sessao.id })
+  })
+
+  it('lançar uma sessão que já passou não tira da lista', () => {
+    addToWaitlist(db, { patient_id: ana, duracao: 30 })
+    createAppointment(
+      db,
+      { patient_id: ana, inicio: '2026-10-14T15:00', fim: '2026-10-14T15:30', observacao: '' },
+      new Date(2026, 9, 19, 9, 0)
+    )
+    expect(getPatientWaitlist(db, ana)).not.toBeNull()
   })
 
   it('o banco recusa encerramento pela metade', () => {

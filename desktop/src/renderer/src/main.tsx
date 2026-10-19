@@ -33,7 +33,14 @@ window.api.onChanged((topics) => {
   if (topics.includes('clinic')) {
     void queryClient.invalidateQueries({ queryKey: ['clinic'] })
   }
-  if (topics.some((t) => t === 'waitlist' || t === 'appointments' || t === 'patients')) {
+  if (topics.includes('commitments')) {
+    void queryClient.invalidateQueries({ queryKey: ['commitments'] })
+  }
+  if (
+    topics.some(
+      (t) => t === 'waitlist' || t === 'appointments' || t === 'patients' || t === 'commitments'
+    )
+  ) {
     void queryClient.invalidateQueries({ queryKey: ['waitlist'] })
     void queryClient.invalidateQueries({ queryKey: ['encaixe'] })
   }

@@ -19,7 +19,8 @@ import type {
   TermSendResult,
   UiPrefs
 } from './schemas'
-import type { Sugestao } from './encaixe'
+import type { Commitment, CommitmentInput } from './commitments'
+import type { Intervalo, Sugestao } from './encaixe'
 import type {
   EncaixeNaVaga,
   SugestaoPedido,
@@ -62,6 +63,14 @@ export interface AuriApi {
     listByPatient(patientId: number): Promise<Appointment[]>
     create(input: AppointmentInput): Promise<Appointment>
     update(id: number, input: AppointmentInput, expected?: string): Promise<Appointment>
+    remove(id: number): Promise<void>
+    move(id: number, slot: Intervalo, expected?: string): Promise<Appointment>
+    scheduleOnReserve(reserveId: number, input: AppointmentInput): Promise<Appointment>
+  }
+  commitments: {
+    listRange(de: string, ate: string): Promise<Commitment[]>
+    create(input: CommitmentInput): Promise<Commitment>
+    update(id: number, input: CommitmentInput, expected?: string): Promise<Commitment>
     remove(id: number): Promise<void>
   }
   attendance: {
@@ -156,7 +165,8 @@ export const DATA_TOPICS = [
   'terms',
   'waitlist',
   'finance',
-  'types'
+  'types',
+  'commitments'
 ] as const
 export type DataTopic = (typeof DATA_TOPICS)[number]
 

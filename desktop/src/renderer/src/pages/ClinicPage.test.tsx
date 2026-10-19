@@ -7,6 +7,11 @@ import type { Clinic } from '@shared/schemas'
 import { renderRoute } from '@renderer/testing'
 
 const { clinic, tipos, etiquetas } = vi.hoisted(() => {
+  Object.assign(Element.prototype, {
+    hasPointerCapture: () => false,
+    releasePointerCapture: () => {},
+    scrollIntoView: () => {}
+  })
   const bridge = (): unknown =>
     new Proxy({} as Record<string, unknown>, {
       get: (target, key: string) =>
@@ -70,6 +75,7 @@ const vazia: Clinic = {
   profissional: '',
   registro: '',
   logo: '',
+  margem_deslocamento: 30,
   funcionamento: FUNCIONAMENTO_PADRAO,
   updated_at: '2026-10-19T12:00:00.000Z'
 }
@@ -162,6 +168,21 @@ describe('Clínica', () => {
     })
   })
 
+  it('salva a margem de deslocamento junto do funcionamento', async () => {
+    clinic.get.mockResolvedValue(vazia)
+    clinic.save.mockImplementation((input) =>
+      Promise.resolve({ ...input, updated_at: '2026-10-19T12:01:00.000Z' })
+    )
+    renderRoute('/clinica', '/clinica', <ClinicPage />)
+    const margem = await screen.findByRole('combobox', { name: 'Margem de deslocamento' })
+    expect(margem.textContent).toContain('30 min')
+    await userEvent.click(margem)
+    await userEvent.click(await screen.findByRole('option', { name: '60 min' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
+    await waitFor(() => expect(clinic.save).toHaveBeenCalled())
+    expect(clinic.save.mock.calls[0][0].margem_deslocamento).toBe(60)
+  })
+
   it('recusa um dia que fecha antes de abrir', async () => {
     clinic.get.mockResolvedValue(vazia)
     renderRoute('/clinica', '/clinica', <ClinicPage />)
@@ -180,8 +201,9 @@ describe('Clínica', () => {
       Promise.resolve({ id: 9, ...input, arquivado: false })
     )
     renderRoute('/clinica', '/clinica', <ClinicPage />)
-    expect(await screen.findByText('30 min')).toBeTruthy()
-    expect(screen.getByText('60 min')).toBeTruthy()
+    const tiposLista = (await screen.findByText('Avaliação')).closest('ul') as HTMLElement
+    expect(within(tiposLista).getByText(/30 min/)).toBeTruthy()
+    expect(within(tiposLista).getAllByText(/60 min/).length).toBeGreaterThan(0)
     await userEvent.click(screen.getByRole('button', { name: 'Novo tipo' }))
     const dialog = await screen.findByRole('dialog', { name: 'Novo tipo' })
     await userEvent.type(within(dialog).getByLabelText('Nome'), 'Audiometria')

@@ -259,3 +259,24 @@ export function quemCabe<T extends EsperaQueCabe>({
       a.espera.id - b.espera.id
   )
 }
+
+export function vagaEm(
+  instante: string,
+  funcionamento: readonly Funcionamento[],
+  ocupados: readonly Intervalo[]
+): Intervalo | null {
+  const ponto = partes(instante)
+  if (!ponto) return null
+  const { data, minutos } = ponto
+  const turno = turnosDoDia(funcionamento, diaDaSemana(data)).find(
+    ([abre, fecha]) => abre <= minutos && minutos < fecha
+  )
+  if (!turno) return null
+  let [inicio, fim] = turno
+  for (const [a, b] of ocupadosDoDia(ocupados, data)) {
+    if (a <= minutos && minutos < b) return null
+    if (b <= minutos) inicio = Math.max(inicio, b)
+    if (a > minutos) fim = Math.min(fim, a)
+  }
+  return { inicio: `${data}T${horaDe(inicio)}`, fim: `${data}T${horaDe(fim)}` }
+}

@@ -55,6 +55,7 @@ function clinicWith(funcionamento: Funcionamento): Clinic {
     profissional: '',
     registro: '',
     logo: '',
+    margem_deslocamento: 30,
     funcionamento,
     updated_at: '2026-10-01T00:00:00.000Z'
   }

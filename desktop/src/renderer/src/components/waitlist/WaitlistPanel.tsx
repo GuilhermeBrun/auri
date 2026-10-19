@@ -17,22 +17,28 @@ import { esperaTexto, horarioTexto, preferenciasTexto } from '@renderer/lib/wait
 export const SUGESTAO_DIAS = 14
 const SUGESTOES_VISIVEIS = 6
 
-type Pick = (entry: WaitlistEntry, horario: Intervalo) => void
+type OnPick = (entry: WaitlistEntry, horario: Intervalo) => void
 
 type WaitlistPanelProps = {
   vaga?: Intervalo | null
-  onPick?: Pick
+  onPick?: OnPick
+  vagaActions?: ReactNode
   className?: string
 }
 
-export function WaitlistPanel({ vaga, onPick, className }: WaitlistPanelProps): React.JSX.Element {
+export function WaitlistPanel({
+  vaga,
+  onPick,
+  vagaActions,
+  className
+}: WaitlistPanelProps): React.JSX.Element {
   const [editing, setEditing] = useState<WaitlistTarget | null>(null)
   const edit = (entry: WaitlistEntry): void =>
     setEditing({ patient: { id: entry.patient_id, nome: entry.patient_nome }, entry })
   return (
     <section aria-label="Lista de espera" className={cn('flex min-w-0 flex-col', className)}>
       {vaga ? (
-        <VagaList vaga={vaga} onEdit={edit} onPick={onPick} />
+        <VagaList vaga={vaga} onEdit={edit} onPick={onPick} actions={vagaActions} />
       ) : (
         <FullList onEdit={edit} onPick={onPick} />
       )}
@@ -43,15 +49,20 @@ export function WaitlistPanel({ vaga, onPick, className }: WaitlistPanelProps): 
 
 function PanelHeader({
   title,
+  actions,
   children
 }: {
   title: string
+  actions?: ReactNode
   children: ReactNode
 }): React.JSX.Element {
   return (
-    <div className="mb-3 px-3">
-      <h2 className="text-[15px] font-semibold tracking-tight">{title}</h2>
-      <p className="mt-0.5 text-xs text-ink-soft tabular-nums">{children}</p>
+    <div className="mb-3 flex items-start gap-2 px-3">
+      <div className="min-w-0 flex-1">
+        <h2 className="text-[15px] font-semibold tracking-tight">{title}</h2>
+        <p className="mt-0.5 text-xs text-ink-soft tabular-nums">{children}</p>
+      </div>
+      {actions && <div className="-mt-1 -mr-1.5 flex shrink-0 items-center">{actions}</div>}
     </div>
   )
 }
@@ -75,7 +86,7 @@ function FullList({
   onPick
 }: {
   onEdit: (entry: WaitlistEntry) => void
-  onPick?: Pick
+  onPick?: OnPick
 }): React.JSX.Element {
   const list = useQuery(waitlistQuery())
   const [open, setOpen] = useState<number | null>(null)
@@ -130,17 +141,21 @@ function FullList({
 function VagaList({
   vaga,
   onEdit,
-  onPick
+  onPick,
+  actions
 }: {
   vaga: Intervalo
   onEdit: (entry: WaitlistEntry) => void
-  onPick?: Pick
+  onPick?: OnPick
+  actions?: ReactNode
 }): React.JSX.Element {
   const cabem = useQuery(quemCabeQuery({ inicio: vaga.inicio, fim: vaga.fim }))
   const [now] = useState(() => new Date())
   return (
     <>
-      <PanelHeader title="Cabem neste horário">{horarioTexto(vaga)}</PanelHeader>
+      <PanelHeader title="Cabem neste horário" actions={actions}>
+        {horarioTexto(vaga)}
+      </PanelHeader>
       {cabem.error ? (
         <Note tone="danger">Não foi possível procurar. {cabem.error.message}</Note>
       ) : cabem.data?.length === 0 ? (
@@ -215,7 +230,7 @@ function Suggestions({
 }: {
   entry: WaitlistEntry
   now: Date
-  onPick?: Pick
+  onPick?: OnPick
 }): React.JSX.Element {
   const sugestoes = useQuery(
     sugestoesQuery({

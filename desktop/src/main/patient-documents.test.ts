@@ -22,6 +22,7 @@ const clinic: Clinic = {
   profissional: 'Lara Fictícia',
   registro: 'CRFa 0-0000',
   logo: '',
+  margem_deslocamento: 30,
   funcionamento: FUNCIONAMENTO_PADRAO,
   updated_at: ''
 }

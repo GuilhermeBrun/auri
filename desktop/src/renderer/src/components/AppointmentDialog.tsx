@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { addMinutes, differenceInMinutes, format, isSameDay } from 'date-fns'
-import { CalendarCheck2, Check, PenLine, Trash2, Undo2 } from 'lucide-react'
+import { CalendarCheck2, CalendarClock, Check, PenLine, Trash2, Undo2 } from 'lucide-react'
 import { ptBR } from 'date-fns/locale/pt-BR'
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { Controller, useForm, useWatch, type Resolver } from 'react-hook-form'
@@ -22,6 +22,7 @@ import { EtiquetasEscolha } from '@renderer/components/EtiquetasEscolha'
 import { PatientCombobox } from '@renderer/components/PatientCombobox'
 import { TipoSelect } from '@renderer/components/TipoSelect'
 import { SessionPayment } from '@renderer/components/SessionPayment'
+import { RescheduleDialog } from '@renderer/components/RescheduleDialog'
 import { SignatureImage } from '@renderer/components/SignatureImage'
 import { Button } from '@renderer/components/ui/button'
 import { Callout } from '@renderer/components/ui/callout'
@@ -47,6 +48,7 @@ export type AppointmentDraft =
       duracao: number
       patient?: { id: number; nome: string }
       tipo_id?: number
+      reserveId?: number
     }
   | { mode: 'edit'; appointment: Appointment }
 
@@ -220,7 +222,7 @@ function SegmentedField({
   )
 }
 
-function AppointmentForm({
+export function AppointmentForm({
   draft,
   onClose,
   onSaved
@@ -236,6 +238,7 @@ function AppointmentForm({
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [now] = useState(() => new Date())
   const [signing, setSigning] = useState(false)
+  const [rescheduling, setRescheduling] = useState(false)
   const [voiding, setVoiding] = useState(false)
   const [motivo, setMotivo] = useState('')
   const { info } = useConnection()
@@ -278,7 +281,9 @@ function AppointmentForm({
     mutationFn: (input: AppointmentInput) =>
       editing
         ? window.api.appointments.update(editing.id, input, editing.updated_at)
-        : window.api.appointments.create(input),
+        : draft.mode === 'create' && draft.reserveId
+          ? window.api.appointments.scheduleOnReserve(draft.reserveId, input)
+          : window.api.appointments.create(input),
     onSuccess: (saved) => {
       toast({
         title: !editing
@@ -638,9 +643,16 @@ function AppointmentForm({
                 <Trash2 /> {editing.evolucao ? 'Excluir com a evolução' : 'Confirmar exclusão'}
               </Button>
             ) : (
-              <Button variant="danger-ghost" onClick={() => setConfirmDelete(true)}>
-                <Trash2 /> Excluir
-              </Button>
+              <span className="flex gap-1">
+                <Button variant="danger-ghost" onClick={() => setConfirmDelete(true)}>
+                  <Trash2 /> Excluir
+                </Button>
+                {!started && (
+                  <Button variant="ghost" onClick={() => setRescheduling(true)}>
+                    <CalendarClock /> Remarcar
+                  </Button>
+                )}
+              </span>
             )
           ) : (
             <span className="flex items-center gap-1 text-xs text-ink-soft">
@@ -659,6 +671,18 @@ function AppointmentForm({
           </Button>
         </div>
       </DialogFooter>
+      {editing && !signed && (
+        <RescheduleDialog
+          appointment={editing}
+          open={rescheduling}
+          onOpenChange={setRescheduling}
+          onMoved={(moved) => {
+            setRescheduling(false)
+            onSaved?.(moved)
+            done()
+          }}
+        />
+      )}
       {editing && (
         <ArrivalSignature
           appointment={editing}
