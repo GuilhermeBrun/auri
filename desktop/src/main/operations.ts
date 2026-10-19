@@ -4,11 +4,15 @@ import {
   anamneseInputSchema,
   appointmentInputSchema,
   appointmentRangeSchema,
+  arrivalSignInputSchema,
+  computadorSchema,
   idSchema,
   patientFilterSchema,
-  patientInputSchema
+  patientInputSchema,
+  voidMotivoSchema
 } from '../shared/schemas'
 import { getAnamnese, saveAnamnese } from './db/anamneses'
+import { listPatientAttendance, signArrival, voidArrival } from './db/attendance'
 import {
   createAppointment,
   listAppointments,
@@ -86,6 +90,30 @@ const OPERATIONS: Record<string, Operation> = {
   'appointments:remove': {
     run: (db, [id]) => removeAppointment(db, idSchema.parse(id)),
     changes: ['appointments']
+  },
+
+  'attendance:sign': {
+    run: (db, [appointmentId, input, computador]) =>
+      signArrival(
+        db,
+        idSchema.parse(appointmentId),
+        arrivalSignInputSchema.parse(input),
+        computadorSchema.parse(computador)
+      ),
+    changes: ['appointments', 'attendance']
+  },
+  'attendance:void': {
+    run: (db, [signatureId, motivo, computador]) =>
+      voidArrival(
+        db,
+        idSchema.parse(signatureId),
+        voidMotivoSchema.parse(motivo),
+        computadorSchema.parse(computador)
+      ),
+    changes: ['appointments', 'attendance']
+  },
+  'attendance:listByPatient': {
+    run: (db, [patientId]) => listPatientAttendance(db, idSchema.parse(patientId))
   },
 
   'anamneses:get': { run: (db, [patientId]) => getAnamnese(db, idSchema.parse(patientId)) },

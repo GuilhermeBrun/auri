@@ -16,7 +16,7 @@ import {
   isToday
 } from 'date-fns'
 import { ptBR } from 'date-fns/locale/pt-BR'
-import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
+import { ChevronLeft, ChevronRight, PenLine, Plus } from 'lucide-react'
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import {
   Calendar,
@@ -143,6 +143,12 @@ function EventContent({ event }: EventProps<CalendarEvent>): React.JSX.Element {
           </span>
           <span className="name-short">{shortName(event.title)}</span>
           <span className="name-full">{event.title}</span>
+          {event.appointment.assinatura && (
+            <PenLine
+              aria-label="Chegada assinada"
+              className="ml-1 inline size-3 -translate-y-px stroke-[2] opacity-75"
+            />
+          )}
         </span>
         {short && (
           <span className="event-inline-time ml-auto hidden shrink-0 text-xs font-normal tabular-nums opacity-75">
@@ -261,9 +267,11 @@ const CALENDAR_STYLE = { height: '100%' }
 
 function tooltip(event: CalendarEvent): string {
   const { tipo, presenca, observacao } = event.appointment
+  const { assinatura } = event.appointment
   const tags = [
     tipo === 'avaliacao' ? TIPO_LABELS.avaliacao : '',
-    presenca ? PRESENCA_LABELS[presenca] : ''
+    presenca ? PRESENCA_LABELS[presenca] : '',
+    assinatura ? `chegada assinada por ${assinatura.signer_nome}` : ''
   ].filter(Boolean)
   const extra = tags.length > 0 ? ` (${tags.join(', ')})` : ''
   return `${timeRange(event)} · ${event.title}${extra}${observacao ? `\n${observacao}` : ''}`

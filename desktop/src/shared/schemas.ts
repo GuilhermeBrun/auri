@@ -128,11 +128,58 @@ export const appointmentInputSchema = z
 
 export type AppointmentInput = z.input<typeof appointmentInputSchema>
 
+export type ArrivalSignature = {
+  id: number
+  signer_nome: string
+  signer_parentesco: string
+  assinado_em: string
+}
+
 export type Appointment = z.output<typeof appointmentInputSchema> & {
   id: number
   patient_nome: string
+  assinatura: ArrivalSignature | null
   created_at: string
   updated_at: string
+}
+
+export const SIGNER_PAPEIS = ['paciente', 'mae', 'pai', 'outro'] as const
+export type SignerPapel = (typeof SIGNER_PAPEIS)[number]
+
+export const TRACO_MAX_BASE64 = 16_000
+
+export const arrivalSignInputSchema = z.object({
+  signer_nome: text(120).min(1, 'Informe quem está assinando'),
+  signer_papel: z.enum(SIGNER_PAPEIS),
+  signer_parentesco: text(60).min(1, 'Informe o parentesco'),
+  traco: z
+    .string()
+    .min(1, 'Assine no quadro')
+    .max(TRACO_MAX_BASE64, 'Assinatura longa demais. Limpe e assine de novo.')
+    .regex(/^[\w-]+$/, 'Assinatura inválida')
+})
+
+export type ArrivalSignInput = z.input<typeof arrivalSignInputSchema>
+
+export const computadorSchema = text(60).min(1)
+
+export const voidMotivoSchema = text(300).min(1, 'Diga por que a assinatura está sendo anulada')
+
+export type AttendanceRecord = {
+  id: number
+  appointment_id: number
+  inicio: string
+  fim: string
+  tipo: AppointmentTipo
+  signer_nome: string
+  signer_papel: SignerPapel
+  signer_parentesco: string
+  traco: string
+  assinado_em: string
+  fuso_minutos: number
+  computador: string
+  registro_sha256: string
+  anulada: { motivo: string; anulado_em: string; computador: string } | null
 }
 
 export const appointmentRangeSchema = z
