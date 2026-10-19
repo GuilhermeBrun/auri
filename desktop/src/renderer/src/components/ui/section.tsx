@@ -23,21 +23,6 @@ export function ErrorText({
   )
 }
 
-export function SectionTitle({
-  title,
-  children
-}: {
-  title: string
-  children?: ReactNode
-}): React.JSX.Element {
-  return (
-    <>
-      <h3 className="text-[13px] font-medium">{title}</h3>
-      {children && <p className="mt-0.5 text-xs text-ink-soft">{children}</p>}
-    </>
-  )
-}
-
 export function StatusDot({ on }: { on: boolean }): React.JSX.Element {
   return (
     <span
