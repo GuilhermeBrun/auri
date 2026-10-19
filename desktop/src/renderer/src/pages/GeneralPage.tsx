@@ -4,7 +4,7 @@ import { useId } from 'react'
 import { Page } from '@renderer/components/Layout'
 import { ImportButton, ImportPreview } from '@renderer/components/SettingsImport'
 import { Button } from '@renderer/components/ui/button'
-import { ErrorText, PageSection } from '@renderer/components/ui/section'
+import { ErrorText, PageSection, SettingsGroup } from '@renderer/components/ui/section'
 import { Select } from '@renderer/components/ui/select'
 import { SwitchField } from '@renderer/components/ui/switch'
 import { formatWhen } from '@renderer/lib/backup'
@@ -86,7 +86,7 @@ function ErrorReports(): React.JSX.Element | null {
       title="Relatórios de erro"
       description="O que o Auri avisa à equipe quando algo dá errado."
     >
-      <div className="mt-6 flex flex-col gap-6">
+      <SettingsGroup className="flex flex-col gap-5">
         <SwitchField
           label="Enviar relatórios de erro"
           description={
@@ -111,7 +111,7 @@ function ErrorReports(): React.JSX.Element | null {
         {(enable.error ?? copy.error) && (
           <ErrorText>{(enable.error ?? copy.error)?.message}</ErrorText>
         )}
-      </div>
+      </SettingsGroup>
     </PageSection>
   )
 }
@@ -131,20 +131,32 @@ function Transfer(): React.JSX.Element {
     <PageSection
       id="levar"
       title="Levar para outro computador"
-      description="As configurações deste computador num arquivo, para abrir no outro: aparência, opções da conexão e escolhas da cópia de segurança. Não vão pacientes, senhas, chaves nem a lista de computadores conectados."
+      description="As configurações deste computador num arquivo, para abrir no outro."
     >
-      <div className="mt-6 flex flex-wrap gap-2">
-        <Button
-          variant="secondary"
-          loading={exportFile.isPending}
-          onClick={() => exportFile.mutate()}
+      <SettingsGroup className="flex flex-col gap-5">
+        <Row
+          title="Exportar configurações"
+          description="Aparência, opções da conexão e escolhas da cópia de segurança. Não vão pacientes, senhas, chaves nem a lista de computadores conectados."
         >
-          <FileUp /> Exportar configurações…
-        </Button>
-        {!importing.preview && <ImportButton state={importing} />}
-      </div>
-      <ImportPreview state={importing} className="mt-4" />
-      {exportFile.error && <ErrorText>{exportFile.error.message}</ErrorText>}
+          <Button
+            variant="secondary"
+            loading={exportFile.isPending}
+            onClick={() => exportFile.mutate()}
+          >
+            <FileUp /> Exportar…
+          </Button>
+        </Row>
+        <div>
+          <Row
+            title="Importar configurações"
+            description="De um arquivo exportado por outro Auri. Antes de aplicar, aparece o que vai mudar."
+          >
+            {!importing.preview && <ImportButton state={importing} label="Importar…" />}
+          </Row>
+          <ImportPreview state={importing} className="mt-4 bg-surface" />
+        </div>
+        {exportFile.error && <ErrorText>{exportFile.error.message}</ErrorText>}
+      </SettingsGroup>
     </PageSection>
   )
 }
@@ -179,7 +191,7 @@ export function GeneralPage(): React.JSX.Element {
             description="A versão instalada e como as novas chegam."
           >
             {state && (
-              <div className="mt-6 flex flex-col gap-6">
+              <SettingsGroup className="flex flex-col gap-5">
                 <Row
                   title={
                     <>
@@ -230,10 +242,10 @@ export function GeneralPage(): React.JSX.Element {
                     </div>
                   </Row>
                 )}
-              </div>
-            )}
-            {(check.error ?? install.error ?? channel.error) && (
-              <ErrorText>{(check.error ?? install.error ?? channel.error)?.message}</ErrorText>
+                {(check.error ?? install.error ?? channel.error) && (
+                  <ErrorText>{(check.error ?? install.error ?? channel.error)?.message}</ErrorText>
+                )}
+              </SettingsGroup>
             )}
           </PageSection>
           <Transfer />

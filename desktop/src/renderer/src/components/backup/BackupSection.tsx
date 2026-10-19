@@ -10,7 +10,14 @@ import { RestoreDialog } from '@renderer/components/backup/RestoreDialog'
 import { Button } from '@renderer/components/ui/button'
 import { Callout } from '@renderer/components/ui/callout'
 import { Loading } from '@renderer/components/ui/loading'
-import { ErrorText, PageSection, SectionTitle, StatusDot } from '@renderer/components/ui/section'
+import {
+  ErrorText,
+  GroupText,
+  PageSection,
+  SectionTitle,
+  SettingsGroup,
+  StatusDot
+} from '@renderer/components/ui/section'
 import { Segmented } from '@renderer/components/ui/segmented'
 import { Select } from '@renderer/components/ui/select'
 import { Sensitive } from '@renderer/components/ui/sensitive'
@@ -192,9 +199,8 @@ function Status({ info }: { info: BackupInfo }): React.JSX.Element {
   }, [problem, label, toast])
 
   return (
-    <section>
-      <SectionTitle title="Situação" />
-      <div className="mt-3 flex items-start gap-3">
+    <SettingsGroup label="Situação">
+      <div className="flex items-start gap-3">
         <span className="mt-[5px] flex">
           <StatusDot on={!failed && !info.stale && !problem} />
         </span>
@@ -238,7 +244,7 @@ function Status({ info }: { info: BackupInfo }): React.JSX.Element {
           Confira se a pasta está disponível ou faça uma cópia agora.
         </Callout>
       )}
-    </section>
+    </SettingsGroup>
   )
 }
 
@@ -255,9 +261,8 @@ function Destination({ info }: { info: BackupInfo }): React.JSX.Element {
   })
   const destination = info.destination!
   return (
-    <section className="mt-10">
-      <SectionTitle title="Onde ficam" />
-      <div className="mt-3 flex items-center gap-3">
+    <SettingsGroup label="Onde ficam">
+      <div className="flex items-center gap-3">
         <DestinationLine destination={destination} />
         {!changing && (
           <Button variant="secondary" size="sm" onClick={() => setChanging(true)}>
@@ -274,7 +279,7 @@ function Destination({ info }: { info: BackupInfo }): React.JSX.Element {
         </ErrorText>
       )}
       {changing && (
-        <div className="mt-4 animate-fade-in rounded-card bg-fill p-4">
+        <div className="mt-4 animate-fade-in rounded-card bg-surface p-4">
           <p className="mb-3 text-xs text-ink-soft">
             As próximas cópias vão para a pasta nova. As que já estão na pasta atual ficam lá.
           </p>
@@ -285,7 +290,7 @@ function Destination({ info }: { info: BackupInfo }): React.JSX.Element {
           {change.error && <ErrorText>{change.error.message}</ErrorText>}
         </div>
       )}
-    </section>
+    </SettingsGroup>
   )
 }
 
@@ -299,9 +304,8 @@ function Frequency({ info }: { info: BackupInfo }): React.JSX.Element {
     ? TIME_OPTIONS
     : [...TIME_OPTIONS, { value: info.dailyTime, label: info.dailyTime }]
   return (
-    <section className="mt-10">
-      <SectionTitle title="Quando copiar" />
-      <div className="mt-3 flex flex-wrap items-center gap-3">
+    <SettingsGroup label="Quando copiar">
+      <div className="flex flex-wrap items-center gap-3">
         <Segmented
           label="Quando copiar"
           value={info.frequency}
@@ -320,7 +324,7 @@ function Frequency({ info }: { info: BackupInfo }): React.JSX.Element {
       </div>
       <p className="mt-2 text-xs text-ink-soft">{frequencyText(info.frequency, info.dailyTime)}</p>
       {change.error && <ErrorText>{change.error.message}</ErrorText>}
-    </section>
+    </SettingsGroup>
   )
 }
 
@@ -328,10 +332,8 @@ function Password(): React.JSX.Element {
   const [request, setRequest] = useState<{ mode: PasswordMode; id: number } | null>(null)
   const open = (mode: PasswordMode): void => setRequest({ mode, id: Date.now() })
   return (
-    <section className="mt-10">
-      <SectionTitle title="Senha das cópias">
-        Pedida só para abrir uma cópia em outro computador.
-      </SectionTitle>
+    <SettingsGroup label="Senha das cópias">
+      <GroupText>Pedida só para abrir uma cópia em outro computador.</GroupText>
       <div className="mt-3 flex flex-wrap gap-2">
         <Button variant="secondary" size="sm" onClick={() => open('change')}>
           Alterar senha
@@ -344,7 +346,7 @@ function Password(): React.JSX.Element {
         </Button>
       </div>
       <PasswordDialog request={request} onClose={() => setRequest(null)} />
-    </section>
+    </SettingsGroup>
   )
 }
 
@@ -361,11 +363,11 @@ function Restore({ info }: { info: BackupInfo }): React.JSX.Element {
     }
   })
   return (
-    <section className="mt-10">
-      <SectionTitle title="Restaurar dados">
+    <SettingsGroup label="Restaurar dados">
+      <GroupText>
         Troca os pacientes e a agenda deste computador pelos de uma cópia. As configurações não
         mudam.
-      </SectionTitle>
+      </GroupText>
       <Button
         variant="secondary"
         size="sm"
@@ -375,7 +377,7 @@ function Restore({ info }: { info: BackupInfo }): React.JSX.Element {
         Restaurar de uma cópia…
       </Button>
       {info.undo && (
-        <div className="mt-4 flex animate-fade-in items-center gap-3 rounded-card bg-fill px-4 py-3">
+        <div className="mt-4 flex animate-fade-in items-center gap-3 rounded-card bg-surface px-4 py-3">
           <p className="min-w-0 flex-1 text-xs text-ink-soft">
             {confirming
               ? 'Voltar aos dados de antes da restauração? O que foi feito depois dela se perde.'
@@ -399,7 +401,7 @@ function Restore({ info }: { info: BackupInfo }): React.JSX.Element {
       )}
       {undo.error && <ErrorText>{undo.error.message}</ErrorText>}
       <RestoreDialog request={request} onClose={() => setRequest(null)} />
-    </section>
+    </SettingsGroup>
   )
 }
 
@@ -410,7 +412,7 @@ function Disable(): React.JSX.Element {
     onSuccess: setBackupInfo
   })
   return (
-    <section className="mt-10">
+    <section>
       {confirming ? (
         <div className="animate-fade-in rounded-card bg-fill p-4">
           <p className="text-xs text-ink-soft">
@@ -456,7 +458,7 @@ export function BackupSection(): React.JSX.Element {
       title="Cópia de segurança"
       description="Uma cópia cifrada dos pacientes e da agenda, numa pasta da nuvem, para não perder nada se este computador quebrar."
     >
-      <div className="mt-8">
+      <div className="flex flex-col gap-8">
         {!info ? (
           <Loading />
         ) : !info.available ? (

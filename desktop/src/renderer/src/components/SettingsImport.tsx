@@ -5,12 +5,18 @@ import { formatWhen } from '@renderer/lib/backup'
 import { cn } from '@renderer/lib/utils'
 import { useSettingsImport, type ImportState } from '@renderer/lib/settings-import'
 
-export function ImportButton({ state }: { state: ImportState }): React.JSX.Element {
+export function ImportButton({
+  state,
+  label = 'Importar configurações…'
+}: {
+  state: ImportState
+  label?: string
+}): React.JSX.Element {
   const { pick } = state
   return (
     <div>
       <Button variant="secondary" loading={pick.isPending} onClick={() => pick.mutate()}>
-        <FileDown /> Importar configurações…
+        <FileDown /> {label}
       </Button>
       {pick.error && <ErrorText>{pick.error.message}</ErrorText>}
     </div>

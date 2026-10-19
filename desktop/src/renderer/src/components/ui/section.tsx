@@ -1,5 +1,5 @@
 import { CircleAlert } from 'lucide-react'
-import type { ReactNode } from 'react'
+import { useId, type ReactNode } from 'react'
 import { cn } from '@renderer/lib/utils'
 
 export function ErrorText({
@@ -64,7 +64,35 @@ export function PageSection({
         {title}
       </h2>
       <p className="mt-1 text-[13px] text-ink-soft">{description}</p>
-      {children}
+      <div className="mt-6 flex flex-col gap-8">{children}</div>
     </section>
   )
+}
+
+export function SettingsGroup({
+  label,
+  bare = false,
+  className,
+  children
+}: {
+  label?: string
+  bare?: boolean
+  className?: string
+  children: ReactNode
+}): React.JSX.Element {
+  const id = useId()
+  return (
+    <section aria-labelledby={label ? id : undefined}>
+      {label && (
+        <h3 id={id} className="mb-2 text-xs font-medium text-ink-soft">
+          {label}
+        </h3>
+      )}
+      <div className={cn(!bare && 'rounded-card bg-fill p-4', className)}>{children}</div>
+    </section>
+  )
+}
+
+export function GroupText({ children }: { children: ReactNode }): React.JSX.Element {
+  return <p className="text-xs text-ink-soft">{children}</p>
 }

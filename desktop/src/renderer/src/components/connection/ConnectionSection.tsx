@@ -5,7 +5,13 @@ import { Button } from '@renderer/components/ui/button'
 import { ConfirmAction } from '@renderer/components/ui/confirm-action'
 import { Field, Input } from '@renderer/components/ui/input'
 import { Loading } from '@renderer/components/ui/loading'
-import { ErrorText, PageSection, SectionTitle, StatusDot } from '@renderer/components/ui/section'
+import {
+  ErrorText,
+  GroupText,
+  PageSection,
+  SettingsGroup,
+  StatusDot
+} from '@renderer/components/ui/section'
 import { Sensitive } from '@renderer/components/ui/sensitive'
 import { SwitchField } from '@renderer/components/ui/switch'
 import { useConnection } from '@renderer/lib/connection'
@@ -69,8 +75,8 @@ function RolePicker({ role }: { role: ConnectionRole }): React.JSX.Element {
   })
   return (
     <fieldset disabled={change.isPending}>
-      <legend className="text-[13px] font-medium">Onde ficam os dados</legend>
-      <div className="mt-3 grid grid-cols-2 gap-3">
+      <legend className="sr-only">Onde ficam os dados</legend>
+      <div className="grid grid-cols-2 gap-3">
         {ROLE_OPTIONS.map(({ value, label, description, icon }) => {
           const selected = role === value
           return (
@@ -160,7 +166,7 @@ function PairingPanel({ devices }: { devices: PairedDevice[] }): React.JSX.Eleme
   const minutes = Math.floor(remaining / 60)
   const seconds = String(remaining % 60).padStart(2, '0')
   return (
-    <div className="mt-4 animate-fade-in rounded-card bg-fill p-5">
+    <div className="mt-4 animate-fade-in rounded-card bg-surface p-5">
       <p className="text-xs text-ink-soft">
         No outro computador, abra Configurações / Armazenamento, escolha “Usar os dados de outro
         computador” e digite o código abaixo (clique nele para mostrar):
@@ -191,13 +197,14 @@ function DeviceList({ devices }: { devices: PairedDevice[] }): React.JSX.Element
     onSuccess: () => setConfirming(null)
   })
   return (
-    <div className="mt-10">
-      <SectionTitle title="Computadores conectados">
-        {devices.length === 0 &&
-          'Nenhum ainda. Use “Conectar computador” e digite o código no outro computador.'}
-      </SectionTitle>
+    <SettingsGroup label="Computadores conectados">
+      {devices.length === 0 && (
+        <GroupText>
+          Nenhum ainda. Use “Conectar computador” e digite o código no outro computador.
+        </GroupText>
+      )}
       {devices.length > 0 && (
-        <ul className="mt-3 flex flex-col gap-3">
+        <ul className="flex flex-col gap-3">
           {devices.map((device) => (
             <li key={device.publicKey} className="flex min-h-8 items-center gap-3">
               <StatusDot on={device.online} />
@@ -226,7 +233,7 @@ function DeviceList({ devices }: { devices: PairedDevice[] }): React.JSX.Element
         </ul>
       )}
       {remove.error && <ErrorText>{remove.error.message}</ErrorText>}
-    </div>
+    </SettingsGroup>
   )
 }
 
@@ -244,46 +251,47 @@ function ServerSection({ info }: { info: ConnectionInfo }): React.JSX.Element {
   const live = info.sharing && !info.sharingError
 
   return (
-    <section>
-      <SwitchField
-        label="Compartilhar com outros computadores da rede"
-        description={
-          info.sharing
-            ? 'Só computadores conectados com um código conseguem ver e salvar os dados. Tudo viaja cifrado.'
-            : 'Desligado: nenhum outro computador consegue acessar os dados deste.'
-        }
-        checked={info.sharing}
-        disabled={sharing.isPending}
-        onCheckedChange={(on) => sharing.mutate(on)}
-      />
-      {(info.sharingError ?? sharing.error?.message) && (
-        <ErrorText>{info.sharingError ?? sharing.error?.message}</ErrorText>
-      )}
-      {live && (
-        <>
-          <p className="mt-3 text-xs text-ink-soft">
-            {info.addresses.length > 0 && (
-              <>
-                Endereço deste computador:{' '}
-                <Sensitive
-                  label="Endereço deste computador"
-                  what="o endereço"
-                  className="font-medium text-ink"
-                >
-                  {info.addresses.join(', ')}
-                </Sensitive>
-                .{' '}
-              </>
-            )}
-            {!isMac && 'Se o Windows perguntar, permita o acesso do Auri em redes privadas.'}
-          </p>
-          <PairingPanel devices={info.devices} />
-        </>
-      )}
+    <>
+      <SettingsGroup label="Rede">
+        <SwitchField
+          label="Compartilhar com outros computadores da rede"
+          description={
+            info.sharing
+              ? 'Só computadores conectados com um código conseguem ver e salvar os dados. Tudo viaja cifrado.'
+              : 'Desligado: nenhum outro computador consegue acessar os dados deste.'
+          }
+          checked={info.sharing}
+          disabled={sharing.isPending}
+          onCheckedChange={(on) => sharing.mutate(on)}
+        />
+        {(info.sharingError ?? sharing.error?.message) && (
+          <ErrorText>{info.sharingError ?? sharing.error?.message}</ErrorText>
+        )}
+        {live && (
+          <>
+            <p className="mt-3 text-xs text-ink-soft">
+              {info.addresses.length > 0 && (
+                <>
+                  Endereço deste computador:{' '}
+                  <Sensitive
+                    label="Endereço deste computador"
+                    what="o endereço"
+                    className="font-medium text-ink"
+                  >
+                    {info.addresses.join(', ')}
+                  </Sensitive>
+                  .{' '}
+                </>
+              )}
+              {!isMac && 'Se o Windows perguntar, permita o acesso do Auri em redes privadas.'}
+            </p>
+            <PairingPanel devices={info.devices} />
+          </>
+        )}
+      </SettingsGroup>
       {(info.sharing || info.devices.length > 0) && <DeviceList devices={info.devices} />}
       {info.sharing && (
-        <div className="mt-10 flex flex-col gap-5">
-          <SectionTitle title="Acesso dos outros computadores" />
+        <SettingsGroup label="Acesso dos outros computadores" className="flex flex-col gap-5">
           <div>
             <SwitchField
               label="Permitir acesso de fora da clínica"
@@ -308,9 +316,9 @@ function ServerSection({ info }: { info: ConnectionInfo }): React.JSX.Element {
             disabled={openAtLogin.isPending}
             onCheckedChange={(on) => openAtLogin.mutate(on)}
           />
-        </div>
+        </SettingsGroup>
       )}
-    </section>
+    </>
   )
 }
 
@@ -337,18 +345,18 @@ function RemoteTest({ server }: { server: string }): React.JSX.Element {
   const test = useMutation({ mutationFn: () => window.connection.testRemote() })
   const result = test.data
   return (
-    <section className="mt-10">
-      <SectionTitle title="Acesso de fora da clínica">
+    <SettingsGroup label="Acesso de fora da clínica">
+      <GroupText>
         Testa a conexão com {server} só pela internet. Para valer, ligue este computador em outra
         rede antes (por exemplo, o celular roteando internet).
-      </SectionTitle>
+      </GroupText>
       <Button
         variant="secondary"
         className="mt-3"
         loading={test.isPending}
         onClick={() => test.mutate()}
       >
-        {test.isPending ? 'Testando…' : 'Testar acesso pela internet'}
+        Testar acesso pela internet
       </Button>
       {result?.ok && (
         <p role="status" className="mt-2 flex animate-fade-in items-center gap-1.5 text-xs">
@@ -360,7 +368,7 @@ function RemoteTest({ server }: { server: string }): React.JSX.Element {
       )}
       {result && !result.ok && <ErrorText>{result.error}</ErrorText>}
       {test.error && <ErrorText>{test.error.message}</ErrorText>}
-    </section>
+    </SettingsGroup>
   )
 }
 
@@ -386,9 +394,8 @@ function LinkedServer({
   const canRetry = info.status === 'offline' || info.status === 'version'
   return (
     <>
-      <section>
-        <SectionTitle title="Usando os dados de" />
-        <div className="mt-3 flex items-center gap-3">
+      <SettingsGroup label="Usando os dados de">
+        <div className="flex items-center gap-3">
           <StatusDot on={info.status === 'connected'} />
           <div className="min-w-0 flex-1">
             <p className="truncate text-[13px] font-medium">{server.name}</p>
@@ -426,7 +433,7 @@ function LinkedServer({
           )}
         </div>
         {confirming && (
-          <div className="mt-4 animate-fade-in rounded-card bg-fill p-4">
+          <div className="mt-4 animate-fade-in rounded-card bg-surface p-4">
             <p className="text-xs text-ink-soft">
               Para conectar de novo vai ser preciso gerar um código novo em {server.name}.
             </p>
@@ -446,7 +453,7 @@ function LinkedServer({
           </div>
         )}
         {forget.error && <ErrorText>{forget.error.message}</ErrorText>}
-      </section>
+      </SettingsGroup>
       <RemoteTest server={server.name} />
     </>
   )
@@ -482,10 +489,8 @@ function FindServer(): React.JSX.Element {
   }
 
   return (
-    <section>
-      <SectionTitle title="Computadores na rede">
-        Aparecem aqui os que estão com o compartilhamento ligado.
-      </SectionTitle>
+    <SettingsGroup label="Computadores na rede">
+      <GroupText>Aparecem aqui os que estão com o compartilhamento ligado.</GroupText>
 
       {!manual && (
         <div className="mt-3">
@@ -580,7 +585,7 @@ function FindServer(): React.JSX.Element {
         )}
         {pair.error && <ErrorText>{pair.error.message}</ErrorText>}
       </form>
-    </section>
+    </SettingsGroup>
   )
 }
 
@@ -593,14 +598,8 @@ function NameField({ name }: { name: string }): React.JSX.Element {
     else if (next !== name) save.mutate(next)
   }
   return (
-    <section className="mt-10">
-      <SectionTitle title="Este computador" />
-      <Field
-        className="mt-3"
-        label="Nome"
-        hint="como os outros computadores o veem"
-        error={save.error?.message}
-      >
+    <SettingsGroup label="Este computador">
+      <Field label="Nome" hint="como os outros computadores o veem" error={save.error?.message}>
         <Input
           value={value}
           maxLength={60}
@@ -611,7 +610,7 @@ function NameField({ name }: { name: string }): React.JSX.Element {
           }}
         />
       </Field>
-    </section>
+    </SettingsGroup>
   )
 }
 
@@ -625,7 +624,7 @@ export function ConnectionSection(): React.JSX.Element {
     >
       {info ? (
         <>
-          <div className="mt-6">
+          <SettingsGroup label="Onde ficam os dados">
             <RolePicker role={info.role} />
             {info.role === 'client' && (
               <p className="mt-3 text-xs text-ink-soft">
@@ -633,16 +632,14 @@ export function ConnectionSection(): React.JSX.Element {
                 aparecer se você escolher “Este computador guarda os dados”.
               </p>
             )}
-          </div>
-          <div className="mt-10">
-            {info.role === 'server' ? (
-              <ServerSection info={info} />
-            ) : info.server ? (
-              <LinkedServer info={info} server={info.server} />
-            ) : (
-              <FindServer />
-            )}
-          </div>
+          </SettingsGroup>
+          {info.role === 'server' ? (
+            <ServerSection info={info} />
+          ) : info.server ? (
+            <LinkedServer info={info} server={info.server} />
+          ) : (
+            <FindServer />
+          )}
           <NameField key={info.name} name={info.name} />
         </>
       ) : (
