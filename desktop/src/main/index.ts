@@ -113,6 +113,10 @@ async function loadUpdater(): Promise<Updater | null> {
   return autoUpdater as unknown as Updater
 }
 
+function appVersion(): string {
+  return app.isPackaged || !__AURI_LOCAL_VERSION__ ? app.getVersion() : __AURI_LOCAL_VERSION__
+}
+
 function reportsEndpoint(): string | null {
   const custom = process.env['AURI_ERROS_URL']
   if (custom !== undefined) return custom || null
@@ -125,7 +129,7 @@ function startErrorReports(): ErrorReportService {
     endpoint: reportsEndpoint(),
     home: app.getPath('home'),
     context: () => ({
-      version: app.getVersion(),
+      version: appVersion(),
       channel: updates?.info().channel ?? 'latest',
       platform: process.platform,
       arch: process.arch,
@@ -273,7 +277,7 @@ void app.whenReady().then(async () => {
   })
   const channel = channelFile(join(app.getPath('userData'), 'atualizacoes.json'))
   updates = createUpdateService({
-    version: app.getVersion(),
+    version: appVersion(),
     updater: await loadUpdater(),
     channel: channel.read(),
     onChange: (state) => sendToWindows('updates:changed', state),
