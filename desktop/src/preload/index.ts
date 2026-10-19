@@ -87,6 +87,30 @@ const api: AuriApi = {
     sugerir: (input) => invoke('encaixe:sugerir', input),
     quemCabe: (vaga) => invoke('encaixe:quemCabe', vaga)
   },
+  finance: {
+    catalog: () => invoke('finance:catalog'),
+    saveService: (id, input) => invoke('finance:saveService', id, input),
+    archiveService: (id, arquivado) => invoke('finance:archiveService', id, arquivado),
+    savePlan: (id, input) => invoke('finance:savePlan', id, input),
+    archivePlan: (id, arquivado) => invoke('finance:archivePlan', id, arquivado),
+    saveInsurer: (id, input) => invoke('finance:saveInsurer', id, input),
+    archiveInsurer: (id, arquivado) => invoke('finance:archiveInsurer', id, arquivado),
+    patient: (patientId) => invoke('finance:patient', patientId),
+    setBilling: (patientId, input, expected) =>
+      invoke('finance:setBilling', patientId, input, expected),
+    contractPackage: (patientId, input, computador) =>
+      invoke('finance:contractPackage', patientId, input, computador),
+    charge: (patientId, input, computador) =>
+      invoke('finance:charge', patientId, input, computador),
+    pay: (patientId, input, computador) => invoke('finance:pay', patientId, input, computador),
+    launchSession: (appointmentId, computador, serviceId) =>
+      invoke('finance:launchSession', appointmentId, computador, serviceId),
+    chargeAbsence: (appointmentId, computador) =>
+      invoke('finance:chargeAbsence', appointmentId, computador),
+    void: (kind, id, motivo, computador) => invoke('finance:void', kind, id, motivo, computador),
+    sessionStatus: (ids) => invoke('finance:sessionStatus', ids),
+    overview: (de, ate) => invoke('finance:overview', de, ate)
+  },
   onChanged: (listener) => subscribe<DataTopic[]>('data:changed', listener)
 }
 

@@ -2,8 +2,11 @@ import { Navigate, Route, Routes } from 'react-router'
 import { Layout } from './components/Layout'
 import { AgendaPage } from './pages/AgendaPage'
 import { ClinicPage } from './pages/ClinicPage'
+import { FinanceCatalogPage } from './pages/FinanceCatalogPage'
+import { FinancePage } from './pages/FinancePage'
 import { PatientAnamneseRoute } from './pages/PatientAnamnesePage'
 import { PatientEvolutionsRoute } from './pages/PatientEvolutionsPage'
+import { PatientFinanceRoute } from './pages/PatientFinancePage'
 import { PatientFormRoute } from './pages/PatientFormPage'
 import { PatientSessionsRoute } from './pages/PatientSessionsPage'
 import { PatientTermsRoute } from './pages/PatientTermsPage'
@@ -28,6 +31,9 @@ function App(): React.JSX.Element {
         <Route path="pacientes/:id/evolucoes" element={<PatientEvolutionsRoute />} />
         <Route path="pacientes/:id/termos" element={<PatientTermsRoute />} />
         <Route path="lista-de-espera" element={<WaitlistPage />} />
+        <Route path="pacientes/:id/financeiro" element={<PatientFinanceRoute />} />
+        <Route path="financeiro" element={<FinancePage />} />
+        <Route path="financeiro/valores" element={<FinanceCatalogPage />} />
         <Route path="clinica" element={<ClinicPage />} />
         <Route path="clinica/termos/novo" element={<TermModelRoute />} />
         <Route path="clinica/termos/:id" element={<TermModelRoute />} />
