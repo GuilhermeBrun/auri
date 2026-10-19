@@ -3,6 +3,10 @@ import type {
   AnamneseInput,
   Appointment,
   AppointmentInput,
+  ArrivalSignInput,
+  AttendanceRecord,
+  Clinic,
+  ClinicInput,
   Patient,
   PatientFilter,
   PatientInput,
@@ -24,6 +28,17 @@ export interface AuriApi {
     update(id: number, input: AppointmentInput, expected?: string): Promise<Appointment>
     remove(id: number): Promise<void>
   }
+  attendance: {
+    sign(appointmentId: number, input: ArrivalSignInput, computador: string): Promise<Appointment>
+    void(signatureId: number, motivo: string, computador: string): Promise<Appointment>
+    listByPatient(patientId: number): Promise<AttendanceRecord[]>
+    reportPdf(patientId: number, de: string, ate: string): Promise<string | null>
+  }
+  clinic: {
+    get(): Promise<Clinic>
+    save(input: ClinicInput, expected?: string): Promise<Clinic>
+    chooseLogo(): Promise<string | null>
+  }
   anamneses: {
     get(patientId: number): Promise<Anamnese>
     save(patientId: number, input: AnamneseInput, expected?: string): Promise<Anamnese>
@@ -31,7 +46,13 @@ export interface AuriApi {
   onChanged(listener: (topics: DataTopic[]) => void): () => void
 }
 
-export const DATA_TOPICS = ['patients', 'appointments', 'anamneses'] as const
+export const DATA_TOPICS = [
+  'patients',
+  'appointments',
+  'anamneses',
+  'attendance',
+  'clinic'
+] as const
 export type DataTopic = (typeof DATA_TOPICS)[number]
 
 export type IpcResult<T> = { ok: true; data: T } | { ok: false; error: string }

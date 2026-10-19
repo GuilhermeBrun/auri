@@ -42,6 +42,7 @@ export function AttendanceChart({
     return c
   }, [sessions])
   const registered = sessions.length - counts.pendente
+  const signedCount = useMemo(() => sessions.filter((a) => a.assinatura).length, [sessions])
   const frequency = registered > 0 ? Math.round((counts.presente / registered) * 100) : null
 
   const [active, setActive] = useState<number | null>(null)
@@ -75,7 +76,7 @@ export function AttendanceChart({
           <span className="text-[13px] text-ink-soft tabular-nums">
             {frequency === null
               ? 'nenhuma presença marcada'
-              : `${frequency}% · ${counts.presente} de ${registered}`}
+              : `${frequency}% · ${counts.presente} de ${registered}${signedCount > 0 ? ` · ${signedCount} ${signedCount === 1 ? 'assinada' : 'assinadas'}` : ''}`}
           </span>
         </h2>
 

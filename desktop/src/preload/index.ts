@@ -38,6 +38,19 @@ const api: AuriApi = {
     update: (id, input, expected) => invoke('appointments:update', id, input, expected),
     remove: (id) => invoke('appointments:remove', id)
   },
+  attendance: {
+    sign: (appointmentId, input, computador) =>
+      invoke('attendance:sign', appointmentId, input, computador),
+    void: (signatureId, motivo, computador) =>
+      invoke('attendance:void', signatureId, motivo, computador),
+    listByPatient: (patientId) => invoke('attendance:listByPatient', patientId),
+    reportPdf: (patientId, de, ate) => invoke('pdf:attendance', patientId, de, ate)
+  },
+  clinic: {
+    get: () => invoke('clinic:get'),
+    save: (input, expected) => invoke('clinic:save', input, expected),
+    chooseLogo: () => invoke('clinic:chooseLogo')
+  },
   anamneses: {
     get: (patientId) => invoke('anamneses:get', patientId),
     save: (patientId, input, expected) => invoke('anamneses:save', patientId, input, expected)

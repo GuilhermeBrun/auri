@@ -1,20 +1,26 @@
 import { useQuery } from '@tanstack/react-query'
 import { differenceInCalendarDays, format, isSameYear } from 'date-fns'
 import { ptBR } from 'date-fns/locale/pt-BR'
-import { CalendarClock, Check, CircleDashed, Plus, Undo2, X } from 'lucide-react'
+import { CalendarClock, Check, CircleDashed, FileText, Plus, Undo2, X } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useParams } from 'react-router'
 import { formatTime, parseIsoLocalDateTime } from '@shared/dates'
-import type { Appointment, Patient, Presenca } from '@shared/schemas'
+import type { Appointment, AttendanceRecord, Patient, Presenca } from '@shared/schemas'
 import { AttendanceChart } from '@renderer/components/AttendanceChart'
+import { AttendanceReportDialog, MonthReportButton } from '@renderer/components/AttendanceReport'
 import { AppointmentDialog, type AppointmentDraft } from '@renderer/components/AppointmentDialog'
 import { Page } from '@renderer/components/Layout'
+import { SignatureImage } from '@renderer/components/SignatureImage'
 import { PATIENT_COLUMN, PatientHeader } from '@renderer/components/PatientHeader'
 import { Button } from '@renderer/components/ui/button'
 import { EmptyState } from '@renderer/components/ui/empty'
 import { ErrorState } from '@renderer/components/ui/error'
 import { Loading } from '@renderer/components/ui/loading'
-import { patientAppointmentsQuery, patientQuery } from '@renderer/lib/queries'
+import {
+  patientAppointmentsQuery,
+  patientAttendanceQuery,
+  patientQuery
+} from '@renderer/lib/queries'
 import { DEFAULT_DURATION, nextSlot, PATIENTS_CRUMB, PRESENCA_LABELS } from '@renderer/lib/session'
 import { cn } from '@renderer/lib/utils'
 
@@ -26,7 +32,9 @@ export function PatientSessionsRoute(): React.JSX.Element {
 function PatientSessionsPage({ patientId }: { patientId: number }): React.JSX.Element {
   const patient = useQuery(patientQuery(patientId))
   const sessions = useQuery(patientAppointmentsQuery(patientId))
+  const attendance = useQuery(patientAttendanceQuery(patientId))
   const [draft, setDraft] = useState<AppointmentDraft | null>(null)
+  const [reporting, setReporting] = useState(false)
   const error = patient.error ?? sessions.error
 
   const schedule = (): void => {
@@ -58,22 +66,35 @@ function PatientSessionsPage({ patientId }: { patientId: number }): React.JSX.El
     <Page
       trail={[PATIENTS_CRUMB, { label: patient.data?.nome ?? 'Sessões' }]}
       actions={
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={schedule}
-          disabled={!patient.data}
-          aria-label="Nova sessão"
-          title="Nova sessão"
-        >
-          <Plus />
-        </Button>
+        <>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setReporting(true)}
+            disabled={!sessions.data?.length}
+            aria-label="Relatório de presença"
+            title="Relatório de presença"
+          >
+            <FileText />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={schedule}
+            disabled={!patient.data}
+            aria-label="Nova sessão"
+            title="Nova sessão"
+          >
+            <Plus />
+          </Button>
+        </>
       }
     >
       {patient.data && sessions.data ? (
         <SessionList
           patient={patient.data}
           sessions={sessions.data}
+          records={attendance.data ?? []}
           onOpen={(appointment) => setDraft({ mode: 'edit', appointment })}
           onSchedule={schedule}
         />
@@ -91,6 +112,7 @@ function PatientSessionsPage({ patientId }: { patientId: number }): React.JSX.El
         state
       )}
       <AppointmentDialog draft={draft} onClose={() => setDraft(null)} />
+      <AttendanceReportDialog patientId={patientId} open={reporting} onOpenChange={setReporting} />
     </Page>
   )
 }
@@ -114,11 +136,13 @@ function spokenDate(date: Date): string {
 function SessionList({
   patient,
   sessions,
+  records,
   onOpen,
   onSchedule
 }: {
   patient: Patient
   sessions: Appointment[]
+  records: AttendanceRecord[]
   onOpen: (appointment: Appointment) => void
   onSchedule: () => void
 }): React.JSX.Element {
@@ -157,7 +181,15 @@ function SessionList({
         <div className="flex flex-col gap-10">
           {past.length > 0 && <AttendanceChart sessions={past} onOpen={onOpen} />}
           {upcoming.length > 0 && <Upcoming sessions={upcoming} now={now} onOpen={onOpen} />}
-          {past.length > 0 && <Past sessions={past} now={now} onOpen={onOpen} />}
+          {past.length > 0 && (
+            <Past
+              patientId={patient.id}
+              sessions={past}
+              records={records}
+              now={now}
+              onOpen={onOpen}
+            />
+          )}
         </div>
       )}
     </div>
@@ -242,16 +274,20 @@ function DateBlock({
 }
 
 function Past({
+  patientId,
   sessions,
+  records,
   now,
   onOpen
 }: {
+  patientId: number
   sessions: Appointment[]
+  records: AttendanceRecord[]
   now: Date
   onOpen: (appointment: Appointment) => void
 }): React.JSX.Element {
   const months = useMemo(() => {
-    const groups: { key: string; label: string; sessions: Appointment[] }[] = []
+    const groups: { key: string; label: string; month: Date; sessions: Appointment[] }[] = []
     for (const a of sessions) {
       const inicio = parseIsoLocalDateTime(a.inicio)
       const key = format(inicio, 'yyyy-MM')
@@ -262,12 +298,19 @@ function Past({
         groups.push({
           key,
           label: isSameYear(inicio, now) ? month : `${month} de ${format(inicio, 'yyyy')}`,
+          month: inicio,
           sessions: [a]
         })
       }
     }
     return groups
   }, [sessions, now])
+
+  const byAppointment = useMemo(() => {
+    const map = new Map<number, AttendanceRecord[]>()
+    for (const r of records) map.set(r.appointment_id, [...(map.get(r.appointment_id) ?? []), r])
+    return map
+  }, [records])
 
   return (
     <section aria-labelledby="anteriores">
@@ -277,11 +320,18 @@ function Past({
       <div className="mt-3 flex flex-col gap-6">
         {months.map((m) => (
           <div key={m.key}>
-            <h3 className="mb-1 text-xs font-medium text-ink-faint">{m.label}</h3>
+            <div className="mb-1 flex items-center justify-between gap-2">
+              <h3 className="text-xs font-medium text-ink-faint">{m.label}</h3>
+              <MonthReportButton patientId={patientId} month={m.month} />
+            </div>
             <ul className="-mx-3 flex flex-col">
               {m.sessions.map((a) => (
                 <li key={a.id}>
-                  <SessionRow appointment={a} onOpen={onOpen} />
+                  <SessionRow
+                    appointment={a}
+                    records={byAppointment.get(a.id) ?? []}
+                    onOpen={onOpen}
+                  />
                 </li>
               ))}
             </ul>
@@ -298,15 +348,42 @@ const PRESENCA_ICONS: Record<Presenca, React.ReactNode> = {
   desmarcou: <Undo2 />
 }
 
+function clock(iso: string): string {
+  return format(new Date(iso), 'HH:mm')
+}
+
+function SignatureNote({
+  appointment: a,
+  records
+}: {
+  appointment: Appointment
+  records: AttendanceRecord[]
+}): React.JSX.Element | null {
+  const active = records.find((r) => r.anulada === null)
+  if (active)
+    return (
+      <span className="text-xs text-ink-soft">
+        {active.signer_parentesco} · {clock(active.assinado_em)}
+      </span>
+    )
+  if (records.length > 0) return <span className="text-xs text-ink-faint">assinatura anulada</span>
+  if (a.presenca === 'presente')
+    return <span className="text-xs text-ink-faint">sem assinatura</span>
+  return null
+}
+
 function SessionRow({
   appointment: a,
+  records,
   onOpen
 }: {
   appointment: Appointment
+  records: AttendanceRecord[]
   onOpen: (appointment: Appointment) => void
 }): React.JSX.Element {
   const inicio = parseIsoLocalDateTime(a.inicio)
   const missed = a.presenca === 'falta' || a.presenca === 'desmarcou'
+  const active = records.find((r) => r.anulada === null)
 
   return (
     <button
@@ -337,23 +414,35 @@ function SessionRow({
         )}
       </span>
 
-      <span
-        className={cn(
-          'flex items-center gap-1.5 self-center text-xs font-medium [&_svg]:size-3.5 [&_svg]:stroke-[2]',
-          a.presenca === 'presente' || a.presenca === '' ? 'text-ink' : 'text-ink-soft'
+      <span className="flex items-center gap-3 self-center">
+        {active && (
+          <SignatureImage
+            traco={active.traco}
+            label={`Assinatura de ${active.signer_nome}`}
+            className="h-7 w-[70px]"
+          />
         )}
-      >
-        {a.presenca ? (
-          <>
-            {PRESENCA_ICONS[a.presenca]}
-            {PRESENCA_LABELS[a.presenca]}
-          </>
-        ) : (
-          <>
-            <CircleDashed />
-            Sem registro
-          </>
-        )}
+        <span className="flex min-w-[92px] flex-col items-start gap-0.5">
+          <span
+            className={cn(
+              'flex items-center gap-1.5 text-xs font-medium [&_svg]:size-3.5 [&_svg]:stroke-[2]',
+              a.presenca === 'presente' || a.presenca === '' ? 'text-ink' : 'text-ink-soft'
+            )}
+          >
+            {a.presenca ? (
+              <>
+                {PRESENCA_ICONS[a.presenca]}
+                {PRESENCA_LABELS[a.presenca]}
+              </>
+            ) : (
+              <>
+                <CircleDashed />
+                Sem registro
+              </>
+            )}
+          </span>
+          <SignatureNote appointment={a} records={records} />
+        </span>
       </span>
     </button>
   )

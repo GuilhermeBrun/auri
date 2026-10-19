@@ -17,6 +17,12 @@ vi.hoisted(() => {
     connection: bridge(),
     prefs: bridge()
   })
+  window.matchMedia ??= ((query: string) => ({
+    matches: false,
+    media: query,
+    addEventListener: () => {},
+    removeEventListener: () => {}
+  })) as unknown as typeof window.matchMedia
   globalThis.ResizeObserver ??= class {
     observe(): void {}
     disconnect(): void {}
@@ -35,7 +41,18 @@ const past = fakeAppointment({
   tipo: 'avaliacao'
 })
 const missed = fakeAppointment({ inicio: '2026-09-12T14:00', presenca: 'falta' })
-const plain = fakeAppointment({ inicio: '2026-09-05T14:00', presenca: 'presente' })
+const ASSINADO_EM = new Date(2026, 8, 5, 13, 52).toISOString()
+const plain = fakeAppointment({
+  inicio: '2026-09-05T14:00',
+  presenca: 'presente',
+  assinatura: {
+    id: 7,
+    signer_nome: 'Marina Fictícia Andrade',
+    signer_parentesco: 'Mãe',
+    assinado_em: ASSINADO_EM
+  }
+})
+const TRACO = 'AQRkyAGQA58BkAOYApAD7wE'
 const older = fakeAppointment({ inicio: '2025-12-05T14:00' })
 const soon = fakeAppointment({ inicio: '2026-10-15T09:00' })
 const later = fakeAppointment({ inicio: '2026-10-24T14:00', tipo: 'avaliacao' })
@@ -44,6 +61,7 @@ const today = fakeAppointment({ inicio: '2026-10-14T18:00' })
 let api: {
   patients: Record<string, ReturnType<typeof vi.fn>>
   appointments: Record<string, ReturnType<typeof vi.fn>>
+  attendance: Record<string, ReturnType<typeof vi.fn>>
 }
 
 beforeEach(() => {
@@ -58,6 +76,28 @@ beforeEach(() => {
       listByPatient: vi.fn(async () => [later, soon, today, past, missed, plain, older]),
       remove: vi.fn(async () => undefined),
       create: vi.fn(async () => past)
+    },
+    attendance: {
+      listByPatient: vi.fn(async () => [
+        {
+          id: 7,
+          appointment_id: plain.id,
+          inicio: plain.inicio,
+          fim: plain.fim,
+          tipo: 'sessao',
+          signer_nome: 'Marina Fictícia Andrade',
+          signer_papel: 'mae',
+          signer_parentesco: 'Mãe',
+          traco: TRACO,
+          assinado_em: ASSINADO_EM,
+          fuso_minutos: -240,
+          computador: 'Recepção',
+          registro_sha256: 'a'.repeat(64),
+          anulada: null
+        }
+      ]),
+      void: vi.fn(async () => ({ ...plain, assinatura: null })),
+      sign: vi.fn(async () => today)
     }
   }
   Object.assign(window, { api })
@@ -148,5 +188,46 @@ describe('aba Sessões do paciente', () => {
     )
     await userEvent.click(within(partes).getByRole('link', { name: 'Ficha' }))
     expect(await screen.findByText('Outra tela')).toBeTruthy()
+  })
+
+  it('mostra quem assinou a chegada e marca as presenças sem assinatura', async () => {
+    open()
+    expect(await screen.findByText('Mãe · 13:52')).toBeTruthy()
+    expect(screen.getByRole('img', { name: 'Assinatura de Marina Fictícia Andrade' })).toBeTruthy()
+    expect(screen.getByText('sem assinatura')).toBeTruthy()
+    expect(screen.getByText(/1 assinada/)).toBeTruthy()
+  })
+
+  it('sessão assinada fica travada e pode ter a assinatura anulada com motivo', async () => {
+    open()
+    await userEvent.click(await screen.findByText('Mãe · 13:52'))
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).getByText(/chegada assinada às 13:52/)).toBeTruthy()
+    expect(within(dialog).queryByRole('button', { name: 'Excluir' })).toBeNull()
+    expect(within(dialog).queryByRole('group', { name: 'Presença' })).toBeNull()
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Anular assinatura' }))
+    await userEvent.type(within(dialog).getByLabelText('Por que anular?'), 'Sessão errada')
+    const anular = within(dialog).getAllByRole('button', { name: 'Anular assinatura' }).at(-1)!
+    await userEvent.click(anular)
+    await waitFor(() =>
+      expect(api.attendance.void).toHaveBeenCalledWith(7, 'Sessão errada', 'Este computador')
+    )
+  })
+
+  it('sessão de hoje oferece assinar a chegada, com o responsável já escolhido', async () => {
+    open()
+    const proximas = (await screen.findByRole('heading', { name: 'Próximas' })).parentElement!
+    await userEvent.click(within(proximas).getByText('hoje'))
+    const dialog = await screen.findByRole('dialog')
+    await userEvent.click(within(dialog).getByRole('button', { name: /Assinar chegada/ }))
+    expect(await screen.findByText('Quem está assinando')).toBeTruthy()
+    expect(
+      screen.getByRole('button', { name: /Marina Fictícia Andrade/, pressed: true })
+    ).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Confirmar chegada/ }).hasAttribute('disabled')).toBe(
+      true
+    )
+    await userEvent.click(screen.getByRole('button', { name: 'Outra pessoa' }))
+    expect(screen.getByLabelText('Nome de quem assina')).toBeTruthy()
   })
 })
