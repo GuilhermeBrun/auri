@@ -35,7 +35,7 @@ function Cursor({ className }: { className: string }): React.JSX.Element {
       focusable="false"
     >
       <path
-        d="M5 2.5v17l4.4-4.2 2.9 6.6 2.7-1.2-2.9-6.5h6.1z"
+        d="M5.3 3.6 20.1 9.8c1 .4.9 1.8-.2 2.1l-6.7 1.3-1.3 6.7c-.3 1.1-1.7 1.2-2.1.2L3.6 5.3c-.4-1 .7-2.1 1.7-1.7z"
         className="fill-ink stroke-surface"
         strokeWidth="1.5"
         strokeLinejoin="round"
