@@ -95,7 +95,9 @@ export async function receive(
 }
 
 export function connect(url: string, options: postgres.Options<{}> = {}, env?: Env): postgres.Sql {
-  return postgres(url, {
+  const target = new URL(url)
+  target.searchParams.delete('channel_binding')
+  return postgres(target.toString(), {
     ...options,
     ssl: setting('DATABASE_SSL', env) === 'disable' ? false : 'verify-full'
   })
