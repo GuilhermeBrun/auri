@@ -21,6 +21,7 @@
   "include": [
     "vite.config.ts",
     "api",
+    "db",
     "tests",
     "scripts/servidor-erros.ts",
     "scripts/migrar-erros.ts"

@@ -1,8 +1,8 @@
-import { readFileSync } from 'node:fs'
 import postgres from 'postgres'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vite-plus/test'
 import handler, { connect, receive, Rejected, saveTo, type Payload } from '../api/erros.ts'
 import contract from '../contrato/relatorio-de-erro.json' with { type: 'json' }
+import { loadMigrations, migrate } from '../db/migrar.ts'
 
 const payload: Payload = {
   installId: '0b5c5f2e-8d3f-4a43-9a51-2f1a0f6b8c11',
@@ -151,6 +151,16 @@ describe('/api/erros', () => {
 })
 
 const url = process.env.TEST_DATABASE_URL
+describe('migrações', () => {
+  it('vêm em ordem, numeradas, a partir da 001', () => {
+    const versions = loadMigrations().map((m) => m.version)
+    expect(versions[0]).toBe('001_relatorios_de_erro')
+    expect(versions).toEqual(versions.toSorted())
+    for (const [index, version] of versions.entries())
+      expect(version.slice(0, 3)).toBe(String(index + 1).padStart(3, '0'))
+  })
+})
+
 describe('conexão com o banco', () => {
   it('aceita o endereço do Neon com channel_binding e sempre confere o certificado', async () => {
     const sql = connect(
@@ -171,8 +181,9 @@ describe.skipIf(!url)('tabela error_reports', () => {
 
   beforeAll(async () => {
     await admin`DROP TABLE IF EXISTS error_reports`
-    await admin.unsafe(readFileSync(new URL('../db/erros.sql', import.meta.url), 'utf8'))
-    await admin.unsafe(readFileSync(new URL('../db/erros.sql', import.meta.url), 'utf8'))
+    await admin`DROP TABLE IF EXISTS schema_migrations`
+    expect(await migrate(admin)).toEqual(loadMigrations().map((m) => m.version))
+    expect(await migrate(admin)).toEqual([])
     await admin.unsafe('DROP ROLE IF EXISTS erros_teste')
     await admin.unsafe("CREATE ROLE erros_teste LOGIN PASSWORD 'teste' IN ROLE erros_gravacao")
     await admin`CREATE TABLE IF NOT EXISTS segredo (valor text)`
@@ -181,8 +192,27 @@ describe.skipIf(!url)('tabela error_reports', () => {
     await writer.end()
     await admin`DROP TABLE IF EXISTS error_reports`
     await admin`DROP TABLE IF EXISTS segredo`
+    await admin`DROP TABLE IF EXISTS schema_migrations`
     await admin.unsafe('DROP ROLE IF EXISTS erros_teste')
     await admin.end()
+  })
+
+  it('registra cada migração uma vez e recusa uma migração editada depois de aplicada', async () => {
+    const versions = await admin`SELECT version FROM schema_migrations ORDER BY version`
+    expect(versions.map((row) => row.version)).toEqual(loadMigrations().map((m) => m.version))
+    const [first] = loadMigrations()
+    await expect(migrate(admin, [{ ...first!, sql: `${first!.sql}\nSELECT 1;` }])).rejects.toThrow(
+      /mudou depois de aplicada/
+    )
+    await expect(
+      migrate(admin, [
+        ...loadMigrations(),
+        { version: '999_quebrada', sql: 'SELECT * FROM nao_existe' }
+      ])
+    ).rejects.toThrow()
+    expect(
+      await admin`SELECT 1 FROM schema_migrations WHERE version = '999_quebrada'`
+    ).toHaveLength(0)
   })
 
   it('grava uma linha por falha e ignora o mesmo envio repetido', async () => {
