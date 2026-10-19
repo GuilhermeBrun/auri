@@ -1,0 +1,17 @@
+{
+  "maxBytes": 65536,
+  "reportsPerSend": 20,
+  "maxCount": 1000000,
+  "origins": ["main", "renderer", "process"],
+  "platforms": ["darwin", "win32", "linux"],
+  "lengths": {
+    "name": 200,
+    "message": 300,
+    "stack": 5000,
+    "version": 60,
+    "channel": 20,
+    "arch": 20,
+    "osVersion": 60,
+    "electron": 30
+  }
+}

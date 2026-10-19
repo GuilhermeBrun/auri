@@ -1,10 +1,11 @@
-import { useMutation } from '@tanstack/react-query'
-import { Download, RotateCcw } from 'lucide-react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Copy, Download, RotateCcw } from 'lucide-react'
 import { useId } from 'react'
 import { Page } from '@renderer/components/Layout'
 import { Button } from '@renderer/components/ui/button'
 import { ErrorText } from '@renderer/components/ui/section'
 import { Select } from '@renderer/components/ui/select'
+import { SwitchField } from '@renderer/components/ui/switch'
 import { formatWhen } from '@renderer/lib/backup'
 import { isMac } from '@renderer/lib/platform'
 import { SETTINGS_CRUMB } from '@renderer/lib/settings'
@@ -55,6 +56,58 @@ function Row({
       </div>
       {children && <div className="shrink-0">{children}</div>}
     </div>
+  )
+}
+
+function ErrorReports(): React.JSX.Element | null {
+  const queryClient = useQueryClient()
+  const toast = useToast()
+  const info = useQuery({
+    queryKey: ['reports'],
+    queryFn: () => window.reports.info(),
+    staleTime: 0
+  })
+  const enable = useMutation({
+    mutationFn: (on: boolean) => window.reports.setEnabled(on),
+    onSuccess: (next) => queryClient.setQueryData(['reports'], next)
+  })
+  const copy = useMutation({
+    mutationFn: () => window.reports.copy(),
+    onSuccess: () =>
+      toast({ title: 'Relatório copiado', description: 'Cole na conversa com o suporte.' })
+  })
+  if (!info.data) return null
+  const { enabled, count } = info.data
+  return (
+    <section className="mt-10">
+      <h2 className="text-[13px] font-medium">Relatórios de erro</h2>
+      <div className="mt-3 flex flex-col gap-6 rounded-card bg-fill p-5">
+        <SwitchField
+          label="Enviar relatórios de erro"
+          description={
+            enabled
+              ? 'Quando algo falha, o Auri manda sozinho para a equipe o tipo do erro e o ponto do código onde ele aconteceu. Nenhum dado de paciente vai junto.'
+              : 'Desligado: as falhas ficam só neste computador.'
+          }
+          checked={enabled}
+          disabled={enable.isPending}
+          onCheckedChange={(on) => enable.mutate(on)}
+        />
+        {count > 0 && (
+          <Row
+            title="Falhas neste computador"
+            description={`${count === 1 ? '1 falha guardada' : `${count} falhas guardadas`}. O texto copiado também não tem dados de pacientes.`}
+          >
+            <Button variant="secondary" loading={copy.isPending} onClick={() => copy.mutate()}>
+              {!copy.isPending && <Copy />} Copiar relatório
+            </Button>
+          </Row>
+        )}
+      </div>
+      {(enable.error ?? copy.error) && (
+        <ErrorText>{(enable.error ?? copy.error)?.message}</ErrorText>
+      )}
+    </section>
   )
 }
 
@@ -136,6 +189,7 @@ export function GeneralPage(): React.JSX.Element {
         {(check.error ?? install.error ?? channel.error) && (
           <ErrorText>{(check.error ?? install.error ?? channel.error)?.message}</ErrorText>
         )}
+        <ErrorReports />
       </div>
     </Page>
   )

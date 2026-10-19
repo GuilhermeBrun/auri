@@ -7,6 +7,7 @@ import {
   type AuriConnection,
   type BackupInfo,
   type AuriPrefs,
+  type AuriReports,
   type AuriTransfer,
   type AuriUpdates,
   type ConnectionInfo,
@@ -116,10 +117,18 @@ const updates: AuriUpdates = {
   onChange: (listener) => subscribe<UpdateState>('updates:changed', listener)
 }
 
+const reports: AuriReports = {
+  info: () => invoke('reports:info'),
+  setEnabled: (on) => invoke('reports:setEnabled', on),
+  copy: () => invoke('reports:copy'),
+  error: (error) => ipcRenderer.send('reports:error', error)
+}
+
 contextBridge.exposeInMainWorld('api', api)
 contextBridge.exposeInMainWorld('prefs', prefs)
 contextBridge.exposeInMainWorld('connection', connection)
 contextBridge.exposeInMainWorld('backup', backup)
 contextBridge.exposeInMainWorld('transfer', transfer)
 contextBridge.exposeInMainWorld('updates', updates)
+contextBridge.exposeInMainWorld('reports', reports)
 contextBridge.exposeInMainWorld('platform', process.platform)

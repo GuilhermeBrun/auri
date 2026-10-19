@@ -8,6 +8,7 @@ import type { Theme, UiPrefs } from '../shared/schemas'
 import { createBackupService, type BackupService } from './backup-service'
 import { detectProviders, systemProbe } from './backup/providers'
 import { createConnection, type Connection } from './connection'
+import { createErrorReports, type ErrorReportService } from './error-reports'
 import { registerIpc } from './ipc'
 import { trustRenderer } from './ipc-security'
 import { pathToFileURL } from 'node:url'
@@ -21,6 +22,7 @@ import {
   type Updater
 } from './updates'
 import { existsSync } from 'node:fs'
+import { release } from 'node:os'
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
 
@@ -29,6 +31,7 @@ let backup: BackupService | null = null
 let prefs: PrefsStore | null = null
 let tray: Tray | null = null
 let updates: UpdateService | null = null
+let reports: ErrorReportService | null = null
 let quitConfirmed = false
 
 function windowBackground(): string {
@@ -116,6 +119,36 @@ async function loadUpdater(): Promise<Updater | null> {
   return autoUpdater as unknown as Updater
 }
 
+function reportsEndpoint(): string | null {
+  const custom = process.env['AURI_ERROS_URL']
+  if (custom !== undefined) return custom || null
+  return app.isPackaged ? 'https://erros.auri.dev.br/api/erros' : null
+}
+
+function watchFailures(): void {
+  process.on('uncaughtExceptionMonitor', (error) => reports?.capture('main', error))
+  process.on('unhandledRejection', (reason) => {
+    console.error('[main] promessa rejeitada sem tratamento', reason)
+    reports?.capture('main', reason)
+  })
+  app.on('render-process-gone', (_event, _contents, details) => {
+    if (details.reason === 'clean-exit') return
+    reports?.record('process', {
+      name: 'render-process-gone',
+      message: `${details.reason} (${details.exitCode})`,
+      stack: null
+    })
+  })
+  app.on('child-process-gone', (_event, details) => {
+    if (details.reason === 'clean-exit') return
+    reports?.record('process', {
+      name: `child-process-gone: ${details.type}`,
+      message: `${details.reason} (${details.exitCode})`,
+      stack: null
+    })
+  })
+}
+
 function showWindow(): void {
   const [window] = BrowserWindow.getAllWindows()
   if (!window) return createWindow(prefs!.get())
@@ -158,12 +191,27 @@ if (!isFirstInstance) {
   app.on('second-instance', () => {
     if (app.isReady()) showWindow()
   })
+  watchFailures()
 }
 
 void app.whenReady().then(async () => {
   if (!isFirstInstance) return
 
   electronApp.setAppUserModelId('com.auri.app')
+
+  reports = createErrorReports({
+    file: join(app.getPath('userData'), 'relatorios-de-erro.json'),
+    endpoint: reportsEndpoint(),
+    home: app.getPath('home'),
+    context: () => ({
+      version: app.getVersion(),
+      channel: updates?.info().channel ?? 'latest',
+      platform: process.platform,
+      arch: process.arch,
+      osVersion: release(),
+      electron: process.versions.electron
+    })
+  })
 
   if (process.platform === 'darwin') app.dock?.setIcon(icon)
 
@@ -207,7 +255,8 @@ void app.whenReady().then(async () => {
     prefs,
     backup,
     createTransferService({ prefs, connection, backup }),
-    updates
+    updates,
+    reports
   )
   applyTheme(prefs.get().theme)
   nativeTheme.on('updated', syncWindowBackgrounds)
@@ -246,6 +295,8 @@ app.on('before-quit', (event) => {
 })
 
 app.on('will-quit', () => {
+  reports?.close()
+  reports = null
   updates?.close()
   updates = null
   backup?.close()

@@ -11,6 +11,17 @@
       "has": [
         {
           "type": "host",
+          "value": "erros.auri.dev.br"
+        }
+      ],
+      "destination": "https://auri.dev.br/",
+      "permanent": false
+    },
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "host",
           "value": "atualizacoes.auri.dev.br"
         }
       ],

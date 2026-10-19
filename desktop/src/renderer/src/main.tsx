@@ -30,7 +30,24 @@ window.api.onChanged((topics) => {
 
 document.documentElement.dataset.platform = window.platform
 
-createRoot(document.getElementById('root')!).render(
+function report(error: unknown): void {
+  const value = (error instanceof Error ? error : { message: String(error) }) as Error
+  window.reports.error({ name: value.name, message: value.message, stack: value.stack })
+}
+
+window.addEventListener('error', (event) => report(event.error ?? event.message))
+window.addEventListener('unhandledrejection', (event) => report(event.reason))
+
+createRoot(document.getElementById('root')!, {
+  onUncaughtError: (error) => {
+    console.error(error)
+    report(error)
+  },
+  onCaughtError: (error) => {
+    console.error(error)
+    report(error)
+  }
+}).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       <HashRouter>

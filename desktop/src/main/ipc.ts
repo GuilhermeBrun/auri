@@ -1,8 +1,9 @@
-import { ipcMain } from 'electron'
+import { clipboard, ipcMain } from 'electron'
 import { z } from 'zod'
 import type { AuriTransfer, IpcResult } from '../shared/api'
 import type { BackupService } from './backup-service'
 import type { Connection } from './connection'
+import type { ErrorReportService } from './error-reports'
 import { DATA_CHANNELS, errorMessage } from './operations'
 import type { PrefsStore } from './prefs'
 import type { UpdateService } from './updates'
@@ -35,7 +36,8 @@ export function registerIpc(
   prefs: PrefsStore,
   backup: BackupService,
   transfer: AuriTransfer,
-  updates: UpdateService
+  updates: UpdateService,
+  reports: ErrorReportService
 ): void {
   for (const channel of DATA_CHANNELS) {
     ipcMain.handle(channel, (event, ...args) => {
@@ -138,6 +140,23 @@ export function registerIpc(
   handle('updates:setChannel', (channel: unknown) =>
     updates.setChannel(z.enum(['latest', 'alpha']).parse(channel))
   )
+
+  handle('reports:info', () => reports.info())
+  handle('reports:setEnabled', (on: unknown) => reports.setEnabled(bool.parse(on)))
+  handle('reports:copy', () => clipboard.writeText(reports.text()))
+  const rendererError = z.object({
+    name: z.string().max(200).optional(),
+    message: z.string().max(2000).optional(),
+    stack: z.string().max(20_000).optional()
+  })
+  ipcMain.on('reports:error', (event, value: unknown) => {
+    try {
+      assertTrustedSender(event)
+      reports.capture('renderer', rendererError.parse(value))
+    } catch (error) {
+      console.error('[ipc] reports:error', errorMessage(error))
+    }
+  })
 
   ipcMain.on('prefs:save', (event, value: unknown) => {
     try {

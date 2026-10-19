@@ -49,7 +49,7 @@ async function check(name, fn) {
 
 async function launch(data) {
   mkdirSync(data, { recursive: true })
-  const env = { ...process.env, TZ: 'America/Cuiaba' }
+  const env = { ...process.env, TZ: 'America/Cuiaba', AURI_ERROS_URL: '' }
   delete env.ELECTRON_RUN_AS_NODE
   application = await electron.launch({
     executablePath: executable(),

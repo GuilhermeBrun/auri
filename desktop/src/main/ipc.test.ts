@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import type { IpcMainEvent, IpcMainInvokeEvent, WebContents } from 'electron'
 import type { Connection } from './connection'
 import type { BackupService } from './backup-service'
+import type { ErrorReportService } from './error-reports'
 import type { AuriTransfer } from '../shared/api'
 import type { PrefsStore } from './prefs'
 import type { UpdateService } from './updates'
@@ -13,6 +14,7 @@ const { handlers, listeners } = vi.hoisted(() => ({
   listeners: new Map<string, (event: IpcMainEvent, ...args: unknown[]) => unknown>()
 }))
 vi.mock('electron', () => ({
+  clipboard: { writeText: vi.fn() },
   ipcMain: {
     handle: (name: string, fn: (event: IpcMainInvokeEvent, ...args: unknown[]) => unknown) =>
       handlers.set(name, fn),
@@ -23,6 +25,7 @@ vi.mock('electron', () => ({
 
 const call = vi.fn(() => ({ ok: true, data: [] }))
 const save = vi.fn()
+const capture = vi.fn()
 const exportSettings = vi.fn(() => 'arquivo fictício')
 const checkUpdates = vi.fn(() => ({ status: 'checking' }))
 const installUpdate = vi.fn(() => {
@@ -37,7 +40,8 @@ beforeEach(() => {
     { save } as unknown as PrefsStore,
     {} as BackupService,
     { exportSettings } as unknown as AuriTransfer,
-    { check: checkUpdates, install: installUpdate } as unknown as UpdateService
+    { check: checkUpdates, install: installUpdate } as unknown as UpdateService,
+    { capture } as unknown as ErrorReportService
   )
 })
 
@@ -48,8 +52,10 @@ describe('handlers IPC', () => {
     for (const handler of handlers.values())
       expect(await handler(event)).toEqual({ ok: false, error: 'Origem da chamada não autorizada' })
     listeners.get('prefs:save')!(event as unknown as IpcMainEvent, { theme: 'dark' })
+    listeners.get('reports:error')!(event as unknown as IpcMainEvent, { name: 'TypeError' })
     expect(call).not.toHaveBeenCalled()
     expect(save).not.toHaveBeenCalled()
+    expect(capture).not.toHaveBeenCalled()
     expect(exportSettings).not.toHaveBeenCalled()
     expect(checkUpdates).not.toHaveBeenCalled()
     expect(installUpdate).not.toHaveBeenCalled()
@@ -81,6 +87,15 @@ describe('handlers IPC', () => {
     })
     listeners.get('prefs:save')!(event as unknown as IpcMainEvent, { theme: 'dark' })
     expect(save).toHaveBeenCalledExactlyOnceWith({ theme: 'dark' })
+    const crash = {
+      name: 'TypeError',
+      message: 'x is not a function',
+      stack: 'TypeError\n    at y'
+    }
+    listeners.get('reports:error')!(event as unknown as IpcMainEvent, crash)
+    expect(capture).toHaveBeenCalledExactlyOnceWith('renderer', crash)
+    listeners.get('reports:error')!(event as unknown as IpcMainEvent, { stack: 'x'.repeat(30_000) })
+    expect(capture).toHaveBeenCalledOnce()
     vi.clearAllMocks()
     const subframe = { ...event, senderFrame: { url: mainFrame.url } } as IpcMainInvokeEvent
     expect(await handlers.get('patients:list')!(subframe)).toEqual({
