@@ -1,10 +1,27 @@
 # Assinatura de termos pelo celular — design
 
-Data: 18/10/2026. Estado: desenho para aprovação; nada implementado.
+Data: 18/10/2026, revisto em 19/10/2026. Estado: aprovado; em implementação. Feitos: o responsável
+na ficha, o traço da assinatura (código comum e quadro no desktop) e a fase 1 (formato, páginas e
+link de teste). Falta o teste de campo da fase 1.
 Protótipo interativo (dados fictícios): https://claude.ai/artifact/KLQ9VjRhNNeyoKhQLdtMds
 
-Os caminhos já seguem a estrutura nova do repositório (`desktop/`, `web/`, `shared/`), que está
-sendo montada em paralelo.
+### Mudanças de 19/10
+
+- **Código comum em `web/contrato/assinatura/`**, ao lado do contrato do relatório de erro. Não
+  existe pasta `shared/` na raiz.
+- **O número que recebe a resposta vem no link** (`cli.whats`). A página mostra em destaque "Enviar
+  para <clínica> · (65) 99999-0000" antes do botão. Não há lista fixa de clínicas no site.
+- **O link leva o papel esperado de quem assina** (`resp`: paciente, mãe, pai ou outro, com o
+  parentesco), sem nome nem CPF. A página pergunta nome e CPF; o parentesco vem marcado conforme o
+  papel e pode ser trocado. Paciente maior de idade vê "Você, paciente".
+- **O termo é da clínica:** o texto vem num formato próprio e pequeno, com títulos, parágrafos,
+  listas e negrito, nunca HTML (ver "Conteúdo do termo"). O mesmo código lê o texto para a página e
+  para o PDF.
+- **O PDF não fica guardado no banco.** O desktop gera na hora, a partir do registro imutável do
+  termo assinado, porque as operações do banco são síncronas e gerar o PDF não é.
+- **Clínica no menu lateral principal**, ao lado de Agenda e Pacientes, e não em Configurações:
+  dados da clínica e modelos de termo são conteúdo que a própria clínica mantém, não ajuste do
+  app.
 
 ## Objetivo
 
@@ -16,7 +33,7 @@ O computador da recepção fica virado para a secretária: o paciente não vê a
 assinar.
 
 Sucesso: a secretária clica em "Enviar termo"; o responsável assina em dois minutos no celular e
-toca em "Enviar para a clínica"; a secretária clica no link que chegou e o termo aparece como
+toca em "Enviar pelo WhatsApp"; a secretária clica no link que chegou e o termo aparece como
 "Assinado em 18/10", com o PDF.
 
 ## Fluxo
@@ -26,10 +43,10 @@ Recepção (Auri)              Celular do responsável               Recepção 
 "Enviar termo" ─WhatsApp─▶  auri.dev.br/assinar#<termo>
                              lê, informa nome, CPF e parentesco,
                              assina com o dedo
-                             "Enviar para a clínica" ─WhatsApp─▶ auri.dev.br/recebido#<resposta>
+                             "Enviar pelo WhatsApp" ──WhatsApp──▶ auri.dev.br/recebido#<resposta>
                                                                   └▶ auri://receber#<resposta>
                                                                      confere, decifra, mostra;
-                                                                     "Guardar termo assinado" → PDF
+                                                                     "Guardar termo assinado" → registro
 ```
 
 1. Na ficha (aba Termos), a secretária clica em "Enviar termo", escolhe para quem (a mãe da
@@ -38,15 +55,18 @@ Recepção (Auri)              Celular do responsável               Recepção 
    "Aguardando assinatura".
 2. O responsável abre o link no celular. A página decifra o termo e mostra a clínica, o paciente e
    o texto. Ele informa nome completo, CPF e parentesco, marca o aceite e assina com o dedo.
-3. "Enviar para a clínica" cifra a resposta e abre o WhatsApp com o número da clínica e a mensagem
-   com `https://auri.dev.br/recebido#<resposta>`. Ele toca em enviar. A página não tem como saber
-   se ele enviou: a tela final diz que falta esse toque e oferece abrir o WhatsApp de novo.
+3. A página mostra para onde vai a resposta ("Enviar para Clínica Elo · (65) 99999-0000", o número
+   que veio no link). "Enviar pelo WhatsApp" cifra a resposta e abre o WhatsApp com esse número e a
+   mensagem com `https://auri.dev.br/recebido#<resposta>`. Ele toca em enviar. A página não tem
+   como saber se ele enviou: a tela final diz que falta esse toque e oferece abrir o WhatsApp de
+   novo ou copiar a mensagem.
 4. A mensagem chega no WhatsApp da clínica (Desktop ou Web, no computador da recepção). A
    secretária clica no link; a página `recebido` só repassa o fragmento para
    `auri://receber#<resposta>` (o navegador pergunta uma vez se pode abrir o Auri).
 5. O Auri acha o envio pelo id, decifra com a chave que guardou, confere (ver "Conferência") e
    mostra o que chegou: nome, CPF, parentesco, a assinatura e as conferências. "Guardar termo
-   assinado" gera o PDF e o termo fica "Assinado em 18/10".
+   assinado" grava o registro e o termo fica "Assinado em 18/10"; o PDF é gerado na hora, sempre
+   que alguém o abre.
 6. Reserva: se o `auri://` não abrir (navegador que bloqueia, link aberto no celular da clínica), a
    página `recebido` tem "Copiar resposta" e o Auri tem "Colar resposta", que aceita a mensagem
    inteira do WhatsApp ou só o link.
@@ -72,12 +92,16 @@ Recepção (Auri)              Celular do responsável               Recepção 
 - **Página estática no `web/`** (Vite+ e React, na Vercel, em auri.dev.br): `/assinar` e
   `/recebido`. Sem análise de acesso, sem script de terceiros e com `connect-src 'none'` na CSP: a
   página não consegue mandar nada a lugar nenhum, só abrir o WhatsApp.
-- **Código comum em `shared/`**, na raiz, sem dependências (ver "Código comum").
+- **Código comum em `web/contrato/assinatura/`**, sem dependências (ver "Código comum").
 - **Conferência antes de guardar.** O Auri mostra o que chegou e só guarda em "Guardar termo
   assinado"; "Recusar" descarta, e a secretária pede de novo. Guardado, o termo não muda mais.
 - **Termo assinado é imutável.** Um termo novo do mesmo modelo não altera o anterior: o anterior
-  passa a aparecer como "Substituído em dd/mm" e os dois PDFs continuam na ficha.
-- **Modelos em Configurações, com versão.** Editar um modelo cria a versão seguinte; cada envio
+  passa a aparecer como "Substituído em dd/mm" e os dois continuam na ficha, cada um com o seu PDF.
+- **O número que recebe a resposta vem no link.** A página não tem lista de clínicas: mostra em
+  destaque o nome e o número antes do botão, e quem assina vê para onde vão os dados. Um link falso
+  no nosso domínio continua possível (ver "Riscos e limites"); trocar o número da clínica não pede
+  publicar o site.
+- **Modelos na tela Clínica, com versão.** Editar um modelo cria a versão seguinte; cada envio
   guarda o texto exato da versão usada.
 - **Na recepção, como os pacientes.** Envios, chaves e termos assinados ficam no banco da
   recepção. O consultório envia e recebe pelo registro de operações da Conexão, como qualquer
@@ -99,18 +123,21 @@ dados    iv (12 bytes) | AES-GCM(chave, deflate-raw(conteúdo)) | etiqueta (16 b
 
 Conteúdo, em JSON com chaves curtas, antes de comprimir:
 
-| Campo  | O que é                                                    |
-| ------ | ---------------------------------------------------------- |
-| `id`   | id do envio, 16 bytes aleatórios (22 caracteres)           |
-| `ate`  | prazo, em segundos Unix (padrão: 7 dias depois do envio)   |
-| `cli`  | nome da clínica e número de WhatsApp que recebe a resposta |
-| `pac`  | nome e nascimento do paciente                              |
-| `mod`  | título e versão do modelo                                  |
-| `prof` | profissional responsável e registro (CRFa)                 |
-| `txt`  | texto do termo, já com os campos preenchidos               |
+| Campo  | O que é                                                                                     |
+| ------ | ------------------------------------------------------------------------------------------- |
+| `id`   | id do envio, 16 bytes aleatórios (22 caracteres)                                            |
+| `ate`  | prazo, em segundos Unix (padrão: 7 dias depois do envio)                                    |
+| `cli`  | `nome` da clínica e `whats`, o número que recebe a resposta (só dígitos, com 55 e DDD)      |
+| `pac`  | `nome` e `nasc` (AAAA-MM-DD) do paciente                                                    |
+| `resp` | `papel` esperado de quem assina (`paciente`, `mae`, `pai` ou `outro`) e, se `outro`, `par`  |
+| `mod`  | `titulo` e `versao` do modelo                                                               |
+| `prof` | `nome` do profissional responsável e `reg`, o registro (CRFa; pode ficar vazio)             |
+| `txt`  | texto do termo, já com os campos preenchidos, no formato de "Conteúdo do termo"             |
 
-Não vão o nome nem o CPF do responsável: quem assina digita os próprios dados, e o Auri compara
-com a ficha.
+Não vão o nome nem o CPF de quem assina: a pessoa digita os próprios dados, e o Auri compara com a
+ficha. O `papel` só marca a opção certa na página: com `outro`, o `par` é o parentesco da ficha
+("Avó", "Tio"); paciente maior de idade vem como `paciente`. A página e o desktop validam o
+conteúdo campo a campo, com tamanhos máximos, e ignoram campos que não conhecem.
 
 ### Volta: `https://auri.dev.br/recebido#1.<id>.<dados>`
 
@@ -123,13 +150,18 @@ dados    iv | AES-GCM(chave do envio, deflate-raw(conteúdo)) | etiqueta
 
 Conteúdo: tamanho do cabeçalho (uint16) | cabeçalho JSON | traço da assinatura (binário).
 
-| Campo                | O que é                                                            |
-| -------------------- | ------------------------------------------------------------------ |
-| `id`                 | o mesmo id (conferido com o de fora)                               |
-| `h`                  | SHA-256 do `txt` que a página mostrou                              |
-| `nome`, `cpf`, `rel` | nome completo, CPF (11 dígitos), parentesco (`mae`, `pai`, `resp`) |
-| `ok`                 | aceite marcado                                                     |
-| `em`, `tz`           | hora da assinatura no relógio do celular e fuso, em minutos        |
+| Campo         | O que é                                                                         |
+| ------------- | ------------------------------------------------------------------------------- |
+| `id`          | o mesmo id (conferido com o de fora)                                            |
+| `h`           | SHA-256 do `txt` que a página mostrou, em hexadecimal                           |
+| `nome`, `cpf` | nome completo (espaços normalizados) e CPF (11 dígitos)                         |
+| `rel`, `par`  | quem assina (`paciente`, `mae`, `pai` ou `outro`); com `outro`, o parentesco    |
+| `ok`          | `true`: aceite marcado                                                          |
+| `em`, `tz`    | hora da assinatura no relógio do celular, em segundos Unix, e fuso, em minutos  |
+
+Com `outro`, o `par` é o parentesco que veio no link, ou "Responsável legal" se o link esperava
+outro papel. A mensagem que a página põe no WhatsApp é "Termo assinado: <modelo> · <paciente>"
+seguida do link.
 
 ### Assinatura em traço vetorial
 
@@ -156,9 +188,12 @@ Medidos com WebCrypto e `CompressionStream` de verdade (Node 24), com o mesmo c�
 | Termo de ~5.000 caracteres (pela mesma taxa de compressão)                                 | ida com ~4.000           |
 | Assinatura de 4 traços (305 pontos depois de simplificar, 629 bytes), com nome, CPF e hash | volta com 1.042          |
 
-**Limites:** ida até 4.000 caracteres e volta até 2.000. O editor do modelo mostra quanto do
-limite o texto usa e não deixa salvar o que não cabe. Os dois números são constantes em `shared/`,
-a ajustar depois do teste com aparelhos reais (fase 1).
+**Limites:** ida até 4.000 caracteres e volta até 2.000, contados sempre com `https://auri.dev.br`
+(o link de uma prévia da Vercel não muda a conta). O editor do modelo mostra quanto do limite o
+texto usa e não deixa salvar o que não cabe. Os dois números são constantes em
+`web/contrato/assinatura/formato.ts`, a ajustar depois do teste com aparelhos reais (fase 1). Na
+leitura, a página e o Auri recusam fragmentos com mais de 8.192 caracteres e param de descomprimir
+em 64 KB.
 
 ### Uso único e prazo
 
@@ -171,25 +206,38 @@ a ajustar depois do teste com aparelhos reais (fase 1).
 - Resposta depois do prazo é recusada, com "Enviar de novo" ao lado.
 - A chave de um envio assinado, cancelado ou vencido é apagada.
 
-## Código comum (`shared/`)
+## Código comum (`web/contrato/assinatura/`)
 
 TypeScript sem nenhuma dependência: só `crypto.subtle` (WebCrypto), `CompressionStream` e
-`TextEncoder`, que existem no Node do Electron e nos navegadores. Não há `package.json` nem
-`node_modules` na raiz: o `desktop/` e o `web/` importam por caminho (um alias no Vite de cada um e
-`paths` no tsconfig).
+`TextEncoder`, que existem no Node do Electron e nos navegadores. O `desktop/` importa por caminho
+relativo, e os dois `tsconfig` do desktop incluem a pasta (sem os testes).
 
 ```
-shared/terms/
-  format.ts       versão, montar e ler os links de ida e de volta, limites
-  crypto.ts       chave, AES-256-GCM, SHA-256
-  compress.ts     deflate-raw por CompressionStream
-  stroke.ts       simplificar, codificar, decodificar e desenhar (SVG) a assinatura
+web/contrato/assinatura/
+  formato.ts      versão, montar e ler os links de ida e de volta, limites, CPF e nome completo
+  cifra.ts        chave, AES-256-GCM, SHA-256
+  compressao.ts   deflate-raw por CompressionStream, com teto na descompressão
+  conteudo.ts     lê o texto do termo em blocos (títulos, parágrafos, listas, negrito)
+  traco.ts        simplificar, codificar, decodificar e desenhar (SVG) a assinatura
   base64url.ts
-shared/cpf.ts     validação do CPF, que sai de desktop/src/shared/cpf.ts para servir também à página
+  ficticio.ts     termo e assinatura fictícios, para os testes e o link de teste
 ```
 
-Não confundir com `desktop/src/shared/`, que é comum ao main e às telas do app. Os testes ficam ao
-lado (`*.test.ts`) e rodam pelo Vitest do `desktop/`, que passa a incluir `../shared`.
+Os testes ficam ao lado (`*.test.ts`) e rodam pelo Vitest do `web/`. A validação do CPF existe
+também em `desktop/src/shared/cpf.ts`; as duas seguem a mesma regra.
+
+### Conteúdo do termo
+
+O texto é da clínica, escrito no modelo, e viaja como texto, nunca como HTML:
+
+- linha em branco separa blocos; quebra simples continua no mesmo parágrafo, como quebra de linha;
+- `# Título` e `## Subtítulo` (o terceiro nível é texto comum);
+- `- item` ou `• item` em linhas seguidas formam uma lista;
+- `**negrito**` dentro de qualquer bloco; asteriscos sem par ficam como texto.
+
+`lerConteudo` devolve os blocos; a página desenha com elementos do React e o PDF vai desenhar com o
+mesmo resultado, escapando o texto. Esse formato faz parte da versão 1 do link: mudar o que ele
+aceita pede uma versão nova, para um termo antigo continuar igual no PDF.
 
 ## Desktop
 
@@ -221,7 +269,7 @@ lado (`*.test.ts`) e rodam pelo Vitest do `desktop/`, que passa a incluir `../sh
 ### Telas
 
 - **Ficha do paciente, aba Termos** (quarta aba, depois de Sessões). Uma linha por modelo ativo,
-  com o estado:
+  com o estado (o PDF de cada termo assinado é gerado na hora, ao abrir):
   - **Pendente**: nunca enviado, ou o último envio venceu ou foi cancelado. Ação: "Enviar termo".
   - **Aguardando assinatura**: "Enviado para Maria em 18/10 · vence em 25/10". Ações: "Reenviar"
     (abre o WhatsApp de novo com o mesmo link), "Colar resposta" e, no menu, "Copiar link" e
@@ -236,10 +284,11 @@ lado (`*.test.ts`) e rodam pelo Vitest do `desktop/`, que passa a incluir `../sh
   (borrado até clicar, como os outros dados sensíveis) e parentesco; a assinatura; as conferências;
   "Enviado para (66) 99999-1234: confira se a resposta veio desse número". "Guardar termo
   assinado" (principal) ou "Recusar".
-- **Configurações / Termos:** dados da clínica (nome que o responsável vê, WhatsApp que recebe as
-  respostas, profissional e registro) e os modelos (título, texto com os campos `{paciente}`,
-  `{nascimento}`, `{clinica}`, `{profissional}` e `{data}`, versão atual, quanto do limite do link o
-  texto usa, arquivar).
+- **Clínica** (item do menu lateral principal, depois de Agenda e Pacientes): dados da clínica
+  (nome que o responsável vê, WhatsApp que recebe as respostas, profissional e registro) e os
+  modelos de termo (título, texto no formato de "Conteúdo do termo"
+  com os campos `{paciente}`, `{nascimento}`, `{clinica}`, `{profissional}` e `{data}`, prévia como
+  a página mostra, versão atual, quanto do limite do link o texto usa, arquivar).
 
 ### Abrir o WhatsApp
 
@@ -249,7 +298,7 @@ lado (`*.test.ts`) e rodam pelo Vitest do `desktop/`, que passa a incluir `../sh
 - Por quê: pelo `wa.me`, o texto da mensagem (o link de ida, com a chave) vai como parâmetro numa
   requisição ao site do WhatsApp; o `whatsapp://` entrega direto ao app. Na volta tanto faz, porque
   o link não leva a chave.
-- No celular, "Enviar para a clínica" é um link `https://wa.me/…`: com o WhatsApp instalado, o
+- No celular, "Enviar pelo WhatsApp" é um link `https://wa.me/…`: com o WhatsApp instalado, o
   sistema abre o app direto (link universal no iPhone, App Link no Android).
 
 ### Conferência
@@ -264,11 +313,12 @@ Na ordem, parando no primeiro que falhar:
    fora.
 5. Dentro do prazo, pelo relógio deste computador.
 6. SHA-256 do texto mostrado igual ao do texto enviado.
-7. Nome com pelo menos duas palavras, CPF válido, parentesco conhecido, aceite marcado e
-   assinatura não vazia.
+7. Nome com pelo menos duas palavras, CPF válido, quem assina conhecido, aceite marcado e
+   assinatura não vazia (`nomeCompleto`, `cpfValido` e `assinaturaMinima`, os mesmos da página).
 
-Avisos que não impedem guardar: CPF diferente do da mãe na ficha ("confira"); hora do celular a
-mais de 10 minutos da hora do recebimento.
+Avisos que não impedem guardar: CPF diferente do da pessoa esperada na ficha ("confira"); quem
+assinou diferente do papel do link (a mãe recebeu, o pai assinou); hora do celular a mais de 10
+minutos da hora do recebimento.
 
 ### Dados
 
@@ -278,22 +328,28 @@ Migração nova, com três tabelas:
   a atual é a maior.
 - `term_requests`: envios (paciente, modelo e versão, texto exato e SHA-256, nome e número de
   destino, chave, criado em, prazo, estado `aguardando`/`cancelado`/`assinado`/`vencido`).
-- `signed_terms`: termos assinados (envio, paciente, nome, CPF, parentesco, traço, hora do celular
-  e fuso, hora do recebimento, SHA-256 do documento, PDF e SHA-256 do PDF). Só aceita `INSERT`: um
-  trigger recusa `UPDATE` e `DELETE`. É uma exceção à regra do projeto de validar só no código,
-  porque aqui a imutabilidade é parte do valor do documento.
+- `signed_terms`: termos assinados (envio, paciente, nome, CPF, quem assinou e parentesco, traço,
+  hora do celular e fuso, hora do recebimento, SHA-256 do documento). Sem o PDF: ele sai deste
+  registro e do texto exato do envio, sempre que alguém abre. Só aceita `INSERT`: um trigger recusa
+  `UPDATE` e `DELETE`. É uma exceção à regra do projeto de validar só no código, porque aqui a
+  imutabilidade é parte do valor do documento.
 
 Operações novas no registro (`desktop/src/main/operations.ts`): `terms:templates`,
 `terms:saveTemplate`, `terms:list`, `terms:send` (devolve o link), `terms:cancel`, `terms:check`
-(confere e devolve o resultado), `terms:accept` (confere de novo, gera o PDF e grava) e
-`terms:pdf`, com o aviso ao vivo "termos mudou". Abrir o WhatsApp e abrir o PDF são locais (IPC
-próprio), no computador onde se clicou. O consultório que recebe um `auri://` repassa a resposta à
+(confere e devolve o resultado), `terms:accept` (confere de novo e grava o registro) e
+`terms:record` (devolve o registro de um termo assinado), com o aviso ao vivo "termos mudou". As
+operações do banco são síncronas e gerar o PDF não é, então o PDF não passa por elas: abrir o
+WhatsApp e gerar e abrir o PDF são locais (IPC próprio), no computador onde se clicou, a partir
+do registro. O consultório que recebe um `auri://` repassa a resposta à
 recepção pela conexão; sem conexão, a conferência mostra o erro com "Tentar de novo".
 
 ### PDF
 
-Gerado na recepção, ao guardar, a partir de um HTML num `BrowserWindow` oculto e sem rede
-(`webContents.printToPDF`), com a Bricolage embutida: sem dependência nova.
+Gerado na hora, no computador onde se clicou em "Abrir PDF", a partir do registro imutável e do
+texto exato do envio: um HTML num `BrowserWindow` oculto e sem rede (`webContents.printToPDF`), com
+a Bricolage embutida, sem dependência nova. O texto passa por `lerConteudo`, o mesmo da página, e
+cada trecho entra escapado. Nada fica guardado: o arquivo vai para uma pasta temporária e abre no
+leitor de PDF do sistema.
 
 - Nome da clínica, título e versão do modelo.
 - Texto do termo, exatamente como foi mostrado.
@@ -307,35 +363,56 @@ Gerado na recepção, ao guardar, a partir de um HTML num `BrowserWindow` oculto
   MP 2.200-2/2001, art. 10, § 2º".
 
 O SHA-256 do documento é o do registro canônico (JSON com as chaves em ordem: id, texto e o hash
-dele, paciente, dados do responsável, traço, horários e número de destino), não o do arquivo: o
-PDF não tem como conter o próprio hash. O Auri guarda também o SHA-256 do arquivo e mostra os dois
-nos detalhes do termo.
+dele, paciente, dados de quem assinou, traço, horários e número de destino), não o do arquivo: o
+PDF não tem como conter o próprio hash, e o arquivo pode mudar de um byte para outro entre versões
+do Electron sem mudar o documento. É esse hash que prova o que foi assinado.
 
 ### Cópia de segurança
 
-Os PDFs ficam no banco (BLOB, ~100 KB cada), então já entram no `.auribackup` cifrado sem mudar o
-formato; o cabeçalho da cópia ganha a contagem de termos. As chaves dos envios aguardando vão
-junto: restaurado em outro computador, o Auri ainda recebe as respostas pendentes.
+Os registros dos termos assinados ficam no banco (poucos KB cada, sem PDF), então já entram no
+`.auribackup` cifrado sem mudar o formato; o cabeçalho da cópia ganha a contagem de termos. As
+chaves dos envios aguardando vão junto: restaurado em outro computador, o Auri ainda recebe as
+respostas pendentes e gera os PDFs de todos os termos.
 
 ## Página web (`web/`)
 
-- `/assinar`: lê o fragmento, decifra e mostra clínica, paciente e termo; campos, aceite, quadro de
-  assinatura e "Enviar para a clínica". O que já foi preenchido fica no `sessionStorage` até
-  enviar (o navegador do WhatsApp recarrega a página quando se troca de app). Escala de toque do
-  Design System: texto de 15px, títulos de 17px, alvos de 44px.
-- Estados: link incompleto ou adulterado; versão desconhecida ("Atualize a página"); vencido;
-  navegador sem WebCrypto ou `CompressionStream` (iPhone antes do iOS 16.4: "Abra o link em outro
-  navegador ou aparelho"); já enviado (volta à tela final).
-- **Só envia para números conhecidos** (proposta, ver "Em aberto"): a página só abre o WhatsApp
-  para os números da lista de clínicas do próprio site (`web/src/clinics.ts`). Sem isso, qualquer
-  um monta no nosso domínio um link com termo falso que manda CPF e assinatura para o número dele.
-  Custo: trocar o número da clínica pede publicar o site de novo.
-- `/recebido`: "Abrindo o Auri…", repassa para `auri://receber#…`, com "Abrir no Auri" (se o
-  navegador pedir um clique) e "Copiar resposta". No celular: "Abra este link no computador da
-  recepção".
-- Cabeçalhos na Vercel: CSP `default-src 'self'; connect-src 'none'; frame-ancestors 'none'`,
-  `Referrer-Policy: no-referrer`, sem Analytics. A prévia do link no WhatsApp é genérica ("Termo
-  para assinar"), porque é gerada sem o fragmento.
+Duas páginas a mais no site, `web/assinar/index.html` e `web/recebido/index.html`, entradas em
+`build.rolldownOptions.input` do `web/vite.config.ts` (o nome atual de `rollupOptions` no Vite+).
+Só no cliente, sem pré-render: o `prerender.mjs` continua mexendo só no `dist/index.html`. O
+código fica em `web/src/assinatura/`, com a identidade do site (Bricolage, grafite, sem verde) e
+os mesmos tokens de cor (`web/src/tokens.css`, separado do `style.css`).
+
+- `/assinar`: lê o fragmento, decifra e mostra clínica, paciente e termo; nome, CPF (com máscara),
+  quem assina, aceite com a declaração do papel escolhido, quadro de assinatura (`traco.ts`, com
+  desfazer e limpar), "Enviar para <clínica> · <número>" em destaque e "Enviar pelo WhatsApp". O
+  link de volta é montado assim que tudo está preenchido, e o botão é um link `https://wa.me/…`
+  comum: o toque abre o WhatsApp direto, sem esperar a cifra. O preenchido fica no
+  `sessionStorage` até enviar (o navegador do WhatsApp recarrega a página quando se troca de app);
+  ao enviar, fica só a mensagem pronta, para a tela final. Escala de toque do Design System: texto
+  de 15px, títulos de 17px, campos de 16px (o iPhone não amplia), alvos de 44px ou mais.
+- Estados: link incompleto ou adulterado; versão desconhecida ("Atualize a página"); vencido, com
+  "Falar com a clínica"; navegador sem WebCrypto ou `CompressionStream` (iPhone antes do iOS 16.4:
+  "Abra o link em outro navegador ou aparelho"); já enviado (volta à tela final).
+- `/recebido`: confere só o formato (não tem a chave) e mostra "Copiar resposta", que copia o link
+  inteiro, com "Abra este link no computador da recepção". Enquanto o `auri://` não existe, é só
+  isso; na fase 3 ganha "Abrindo o Auri…" e o repasse.
+- Cabeçalhos na Vercel (`web/vercel.json`): as duas páginas têm CSP própria, `default-src 'none';
+  script-src 'self'; style-src 'self'; img-src 'self'; font-src 'self'; connect-src 'none'`, sem
+  `unsafe-inline`, mais `X-Robots-Tag: noindex`; o resto do site segue com a CSP de antes. Valem
+  também `Referrer-Policy: no-referrer` e a ausência de Analytics. `/assinar` e `/recebido` sem a
+  barra no fim têm `rewrites` para o `index.html` de cada pasta (e o mesmo no servidor local do
+  Vite). A prévia do link no WhatsApp é genérica ("Termo para assinar"), porque é gerada sem o
+  fragmento.
+
+### Link de teste
+
+`npm run termo:teste` (em `web/`) monta um termo fictício e imprime o link de ida, guarda a chave
+numa pasta temporária e espera a resposta colada no terminal: decifra, confere o hash do texto e
+salva a assinatura em SVG. Opções: `--whats` (o número que recebe a resposta), `--para` (imprime
+também o `wa.me` de ida com a mensagem), `--tamanho` (aumenta o termo até o link chegar perto do
+tamanho pedido, acima do limite se for o caso), `--papel`, `--dias` (0 gera um link vencido) e
+`--site` (uma prévia da Vercel ou `http://localhost:4173`). `npm run termo:teste -- ler` lê uma
+resposta depois.
 
 ## Pontos legais
 
@@ -349,14 +426,17 @@ real. O que o desenho cobre:
   especial para a declaração de vontade quando a lei não pede.
 - **Cláusula de aceite.** Por causa do art. 10, § 2º, o termo traz uma cláusula em que o
   responsável aceita a assinatura pelo celular (nome, CPF e assinatura desenhada) como válida, e a
-  página exige marcar "Li e concordo" antes de enviar.
+  página exige marcar o aceite ("Li o termo e concordo. Declaro ser a mãe de … e aceito esta
+  assinatura eletrônica…", conforme quem assina) antes de enviar.
 - **Documentos do profissional.** A mesma Lei 14.063 pede assinatura avançada ou qualificada para
   documentos assinados por profissionais de saúde (receitas, atestados). Aqui quem assina é o
   responsável; o profissional só aparece identificado. Confirmar com o advogado.
 - **Responsável legal do menor.** Quem consente pelo paciente menor é um dos pais ou o responsável
-  legal (Código Civil, art. 1.634, VII). O parentesco só oferece "Mãe", "Pai" e "Responsável legal
-  (tutor ou guardião)", e o termo diz que quem assina declara ter essa condição. Avó ou tio sem a
-  guarda não servem.
+  legal (Código Civil, art. 1.634, VII). Para o menor, a página só oferece "Mãe", "Pai" e
+  "Responsável legal" (com o parentesco da ficha, como "Avó, responsável legal", quando a ficha
+  aponta outra pessoa), e o aceite diz que quem assina declara ter essa condição. Avó ou tio sem a
+  guarda não servem. Paciente maior de idade assina por si ("Você, paciente"); a opção de
+  responsável legal fica para o caso de curatela.
 - **LGPD, art. 14.** Dados de criança pedem consentimento específico e em destaque de ao menos um
   dos pais ou do responsável (§ 1º), e o controlador deve fazer esforços razoáveis para conferir
   que veio deles (§ 5º). Os esforços aqui: o link vai só para o número da ficha, quem assina
@@ -372,6 +452,11 @@ real. O que o desenho cobre:
 - **Quem tem o link lê o termo** (com o nome do paciente) e pode assinar no lugar do responsável.
   Limitam: o link vai só para o número da ficha, vale 7 dias e uma resposta, e a conferência pede
   para ver se a resposta veio desse número.
+- **Link falso no nosso domínio.** Qualquer um pode montar um link de ida com um termo inventado e o
+  próprio número em `cli.whats`, e a página manda nome, CPF e assinatura para ele. Limita: a página
+  mostra em destaque, antes do botão, o nome e o número para onde vai a resposta. Uma lista fixa de
+  clínicas no site fecharia isso, ao custo de publicar o site a cada número novo; fica para quando
+  houver mais de uma clínica.
 - **Não há IP nem hora de servidor.** As horas são a do celular (que o dono pode mudar) e a do
   computador da recepção. O PDF mostra as duas e diz de onde vem cada uma; a que vale para o prazo
   é a do recebimento.
@@ -384,14 +469,12 @@ real. O que o desenho cobre:
   2.000 a 6.000 caracteres e se o `wa.me` corta textos longos. É o primeiro teste da fase 1;
   "Copiar link" e "Colar resposta" cobrem a falha.
 - **Celulares antigos:** iPhone sem iOS 16.4 não tem `CompressionStream`. Se aparecer na prática,
-  entra em `shared/` um inflate próprio e pequeno, sem dependência.
+  entra em `web/contrato/assinatura/` um inflate próprio e pequeno, sem dependência.
 - **Prazo e uso único dependem do Auri:** a página não impede ninguém de responder depois; quem
   recusa é o Auri.
 
 ## Em aberto
 
-- Números da clínica fixos no site (proposta acima) ou o número vindo no link, com a página só
-  mostrando em destaque para onde vai.
 - Prazo padrão de 7 dias.
 - CPF diferente do da ficha: só aviso (proposta) ou impede guardar.
 - Quais modelos a Elo terá no começo (consentimento, uso de imagem, contrato) e se algum é
@@ -399,13 +482,15 @@ real. O que o desenho cobre:
 
 ## Fases
 
-1. **Formato e teste de campo:** `shared/terms` com testes, um script que gera link de teste, as
-   páginas `/assinar` e `/recebido` em `web/` e o teste com aparelhos reais (links longos no
-   WhatsApp; `auri://` no Chrome, no Edge e no Safari, no Mac e no Windows), com dados fictícios.
-2. **Envio no Auri:** Configurações / Termos (clínica e modelos), aba Termos, diálogo de envio,
+1. **Formato e teste de campo:** `web/contrato/assinatura/` com testes, o link de teste
+   (`npm run termo:teste`), as páginas `/assinar` e `/recebido` em `web/` e o teste com aparelhos
+   reais (links longos no WhatsApp do iPhone, do Android, do Desktop e da Web; `wa.me` com texto
+   longo), com dados fictícios. O `auri://` no Chrome, no Edge e no Safari fica para a fase 3, que
+   cria o protocolo.
+2. **Envio no Auri:** tela Clínica no menu principal (dados e modelos), aba Termos, diálogo de envio,
    WhatsApp e "Copiar link", operações pela conexão.
-3. **Recebimento:** protocolo `auri://` (Mac e Windows), "Colar resposta", conferência, PDF, tabela
-   imutável e cópia de segurança.
+3. **Recebimento:** protocolo `auri://` (Mac e Windows, com o teste nos navegadores), "Colar
+   resposta", conferência, tabela imutável, PDF gerado na hora e cópia de segurança.
 
 ## Erros
 
@@ -416,22 +501,24 @@ real. O que o desenho cobre:
 - Resposta danificada (copiada pela metade): "A resposta chegou incompleta. Peça para enviar de
   novo pelo mesmo link."
 - Texto diferente do enviado: "O texto assinado não é o que foi enviado." Recusada.
-- Falha ao gerar o PDF: nada é gravado (uma transação só) e a conferência mostra o erro com "Tentar
-  de novo".
+- Falha ao gerar o PDF: o termo continua guardado (o PDF sai do registro); "Abrir PDF" mostra o
+  erro com "Tentar de novo".
 - `auri://` sem resposta (Auri não instalado nesse computador): a página `recebido` mostra
   "Copiar resposta" depois de 2 s.
 
 ## Testes
 
-- `shared/terms`: ida e volta dos dois links no Node (WebCrypto); chave errada; um byte trocado;
-  dado adicional trocado (resposta de um envio usada em outro); versão desconhecida; limites;
-  traço: simplificação dentro da tolerância, ida e volta da codificação e tamanho com assinaturas
-  fictícias gravadas.
+- `web/contrato/assinatura/`: ida e volta dos dois links no Node (WebCrypto); chave errada; um
+  caractere trocado; link cortado; dado adicional trocado (resposta de um envio usada em outro);
+  id de dentro diferente do de fora; versão desconhecida; limites e tolerância que sobe até caber;
+  conteúdo do termo (blocos, negrito, nunca HTML); descompressão com teto; traço: simplificação
+  dentro da tolerância, ida e volta da codificação e tamanho com assinaturas fictícias.
 - `desktop`: leitura do `auri://` (com `#`, `?r=` ou `/`, longo demais, outro caminho); `open-url`
   antes do `ready`; `argv` no `second-instance`; conferência (desconhecido, cancelado, trocado,
   repetido igual, repetido diferente, vencido, hash diferente, CPF inválido); trigger recusa
-  `UPDATE` e `DELETE`; PDF com os dois hashes; envio e recebimento pelo consultório (servidor e
-  cliente por TCP local, banco em memória).
-- `web`: Vitest da página (decifrar, validar campos, montar a resposta); manual no iPhone (Safari e
-  navegador do WhatsApp) e no Android (Chrome e navegador do WhatsApp).
+  `UPDATE` e `DELETE`; PDF gerado do registro, com o hash do documento; envio e recebimento pelo
+  consultório (servidor e cliente por TCP local, banco em memória).
+- `web`: Vitest da página (abrir o link e cada estado de erro, rascunho, validar campos, montar a
+  resposta que o Auri lê, telas desenhadas sem HTML do termo) e dos cabeçalhos da Vercel; manual no
+  iPhone (Safari e navegador do WhatsApp) e no Android (Chrome e navegador do WhatsApp).
 - Só dados fictícios.

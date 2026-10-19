@@ -1,0 +1,185 @@
+@font-face {
+  font-family: 'Bricolage Grotesque Variable';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 200 800;
+  src: url(/bricolage-latin-ext.woff2) format('woff2-variations');
+  unicode-range:
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329,
+    U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F,
+    U+A720-A7FF;
+}
+
+@font-face {
+  font-family: 'Bricolage Grotesque Variable';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 200 800;
+  src: url(/bricolage-latin.woff2) format('woff2-variations');
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+:root {
+  color-scheme: light dark;
+  --bg: #ffffff;
+  --ink: #1b1b22;
+  --ink-soft: #5b5b68;
+  --ink-faint: #6e6e7c;
+  --fill: rgba(27, 27, 34, 0.055);
+  --fill-hover: rgba(27, 27, 34, 0.09);
+  --solid: #1b1b22;
+  --solid-hover: #34343f;
+  --solid-active: #000000;
+  --on-solid: #ffffff;
+  --accent: #1b1b22;
+  --raised: #ffffff;
+  --selected: #ffffff;
+  --now: #e5484d;
+  --danger: #c4271b;
+  --danger-soft: #fdeeec;
+  --danger-soft-hover: #f9d5d1;
+  --edge: rgba(27, 27, 34, 0.07);
+  --ring: rgba(27, 27, 34, 0.32);
+  --control: #8e8e9c;
+  --glow: rgba(27, 27, 34, 0.07);
+  --dots: rgba(27, 27, 34, 0.1);
+  --selection: rgba(27, 27, 34, 0.14);
+  --media-from: #cdcdd8;
+  --media-to: #ececf1;
+  --media-glow: rgba(255, 255, 255, 0.7);
+  --app-surface: #ffffff;
+  --app-sidebar: #f4f4f7;
+  --app-solid: #1b1b22;
+  --app-subtle: #f8f8fa;
+  --app-canvas: #f4f4f7;
+  --app-line: #e6e6ec;
+  --app-accent-soft: #eeeef3;
+  --app-session: #e6e6ec;
+  --app-session-hover: #dcdce5;
+  --app-session-edge: rgba(27, 27, 34, 0.12);
+  --app-grid-faint: rgba(27, 27, 34, 0.07);
+  --app-slot-selection: rgba(27, 27, 34, 0.08);
+  --app-dot: #d4d4dc;
+  --app-lift: 0 0 0 1px rgba(27, 27, 34, 0.06), 0 1px 2px rgba(27, 27, 34, 0.12);
+  --app-pop:
+    0 0 0 1px rgba(27, 27, 34, 0.08), 0 20px 44px -14px rgba(27, 27, 34, 0.34),
+    0 2px 6px rgba(27, 27, 34, 0.06);
+  --shadow-button: 0 1px 2px rgba(27, 27, 34, 0.2), 0 10px 24px -10px rgba(27, 27, 34, 0.55);
+  --shadow-window:
+    0 0 0 1px var(--edge), 0 2px 4px rgba(27, 27, 34, 0.04),
+    0 24px 48px -16px rgba(27, 27, 34, 0.18), 0 60px 120px -40px rgba(27, 27, 34, 0.22);
+  --shadow-pop: 0 0 0 1px var(--edge), 0 8px 24px -6px rgba(27, 27, 34, 0.18);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+    --bg: #0f0f12;
+    --ink: #ececf1;
+    --ink-soft: #a9a9b7;
+    --ink-faint: #8a8a98;
+    --fill: rgba(236, 236, 245, 0.06);
+    --fill-hover: rgba(236, 236, 245, 0.1);
+    --solid: #4b4b57;
+    --solid-hover: #55555f;
+    --solid-active: #60606b;
+    --on-solid: #ececf1;
+    --accent: #ececf1;
+    --raised: #212128;
+    --selected: #36363f;
+    --now: #ff5a5f;
+    --danger: #f0675b;
+    --danger-soft: #3a1b1a;
+    --danger-soft-hover: #562826;
+    --edge: rgba(255, 255, 255, 0.08);
+    --ring: rgba(236, 236, 241, 0.3);
+    --control: #6c6c7a;
+    --glow: rgba(150, 150, 185, 0.16);
+    --dots: rgba(255, 255, 255, 0.075);
+    --selection: rgba(255, 255, 255, 0.18);
+    --media-from: #2a2a33;
+    --media-to: #141418;
+    --media-glow: rgba(190, 190, 220, 0.12);
+    --app-surface: #17171c;
+    --app-sidebar: #101014;
+    --app-solid: #42424d;
+    --app-subtle: #1c1c22;
+    --app-canvas: #212128;
+    --app-line: #2a2a32;
+    --app-accent-soft: #2a2a32;
+    --app-session: #2f2f38;
+    --app-session-hover: #36363f;
+    --app-session-edge: rgba(236, 236, 245, 0.08);
+    --app-grid-faint: rgba(236, 236, 245, 0.06);
+    --app-slot-selection: rgba(236, 236, 245, 0.08);
+    --app-dot: #3a3a44;
+    --app-lift: 0 0 0 1px rgba(236, 236, 245, 0.08), 0 1px 2px rgba(0, 0, 0, 0.5);
+    --app-pop:
+      0 0 0 1px rgba(236, 236, 245, 0.09), 0 20px 44px -14px rgba(0, 0, 0, 0.7),
+      0 2px 6px rgba(0, 0, 0, 0.3);
+    --shadow-button: 0 1px 2px rgba(0, 0, 0, 0.4), 0 10px 24px -10px rgba(0, 0, 0, 0.7);
+    --shadow-window:
+      0 0 0 1px var(--edge), 0 24px 48px -16px rgba(0, 0, 0, 0.6),
+      0 60px 120px -40px rgba(0, 0, 0, 0.7);
+    --shadow-pop: 0 0 0 1px var(--edge), 0 8px 24px -6px rgba(0, 0, 0, 0.5);
+  }
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #0f0f12;
+  --ink: #ececf1;
+  --ink-soft: #a9a9b7;
+  --ink-faint: #8a8a98;
+  --fill: rgba(236, 236, 245, 0.06);
+  --fill-hover: rgba(236, 236, 245, 0.1);
+  --solid: #4b4b57;
+  --solid-hover: #55555f;
+  --solid-active: #60606b;
+  --on-solid: #ececf1;
+  --accent: #ececf1;
+  --raised: #212128;
+  --selected: #36363f;
+  --now: #ff5a5f;
+  --danger: #f0675b;
+  --danger-soft: #3a1b1a;
+  --danger-soft-hover: #562826;
+  --edge: rgba(255, 255, 255, 0.08);
+  --ring: rgba(236, 236, 241, 0.3);
+  --control: #6c6c7a;
+  --glow: rgba(150, 150, 185, 0.16);
+  --dots: rgba(255, 255, 255, 0.075);
+  --selection: rgba(255, 255, 255, 0.18);
+  --media-from: #2a2a33;
+  --media-to: #141418;
+  --media-glow: rgba(190, 190, 220, 0.12);
+  --app-surface: #17171c;
+  --app-sidebar: #101014;
+  --app-solid: #42424d;
+  --app-subtle: #1c1c22;
+  --app-canvas: #212128;
+  --app-line: #2a2a32;
+  --app-accent-soft: #2a2a32;
+  --app-session: #2f2f38;
+  --app-session-hover: #36363f;
+  --app-session-edge: rgba(236, 236, 245, 0.08);
+  --app-grid-faint: rgba(236, 236, 245, 0.06);
+  --app-slot-selection: rgba(236, 236, 245, 0.08);
+  --app-dot: #3a3a44;
+  --app-lift: 0 0 0 1px rgba(236, 236, 245, 0.08), 0 1px 2px rgba(0, 0, 0, 0.5);
+  --app-pop:
+    0 0 0 1px rgba(236, 236, 245, 0.09), 0 20px 44px -14px rgba(0, 0, 0, 0.7),
+    0 2px 6px rgba(0, 0, 0, 0.3);
+  --shadow-button: 0 1px 2px rgba(0, 0, 0, 0.4), 0 10px 24px -10px rgba(0, 0, 0, 0.7);
+  --shadow-window:
+    0 0 0 1px var(--edge), 0 24px 48px -16px rgba(0, 0, 0, 0.6),
+    0 60px 120px -40px rgba(0, 0, 0, 0.7);
+  --shadow-pop: 0 0 0 1px var(--edge), 0 8px 24px -6px rgba(0, 0, 0, 0.5);
+}
