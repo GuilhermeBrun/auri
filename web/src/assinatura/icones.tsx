@@ -129,3 +129,33 @@ export function Carregando() {
     </Icone>
   )
 }
+
+export function Confirmar() {
+  return (
+    <Icone>
+      <path d="M20 6 9 17l-5-5" />
+    </Icone>
+  )
+}
+
+export function Desmarcar() {
+  return (
+    <Icone>
+      <path d="M8 2v4" />
+      <path d="M16 2v4" />
+      <rect width="18" height="18" x="3" y="4" rx="2" />
+      <path d="M3 10h18" />
+      <path d="m14 14-4 4" />
+      <path d="m10 14 4 4" />
+    </Icone>
+  )
+}
+
+export function Voltar() {
+  return (
+    <Icone>
+      <path d="m12 19-7-7 7-7" />
+      <path d="M19 12H5" />
+    </Icone>
+  )
+}

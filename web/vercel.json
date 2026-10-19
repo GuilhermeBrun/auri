@@ -53,6 +53,14 @@
     {
       "source": "/recebido",
       "destination": "/recebido/index.html"
+    },
+    {
+      "source": "/confirmar",
+      "destination": "/confirmar/index.html"
+    },
+    {
+      "source": "/resposta",
+      "destination": "/resposta/index.html"
     }
   ],
   "headers": [
@@ -74,7 +82,7 @@
       ]
     },
     {
-      "source": "/((?!assinar|recebido).*)",
+      "source": "/((?!assinar|recebido|confirmar|resposta).*)",
       "headers": [
         {
           "key": "Content-Security-Policy",
@@ -83,7 +91,7 @@
       ]
     },
     {
-      "source": "/(assinar|recebido)(.*)",
+      "source": "/(assinar|recebido|confirmar|resposta)(.*)",
       "headers": [
         {
           "key": "Content-Security-Policy",
