@@ -242,7 +242,9 @@ function ResponsavelFields({
   )
 }
 
-const SERIE_TIPO_OPCOES = SERIE_TIPOS.map((t) => [t, SERIE_TIPO_LABEL[t]] as const)
+const SERIE_TIPO_OPCOES = SERIE_TIPOS.map(
+  (t) => [t, SERIE_TIPO_LABEL[t][0].toUpperCase() + SERIE_TIPO_LABEL[t].slice(1)] as const
+)
 const SERIE_ETAPA_OPCOES = SERIE_ETAPAS.map((e) => [e, SERIE_ETAPA_LABEL[e]] as const)
 const UF_OPCOES = UFS.map((uf) => ({ value: uf, label: uf }))
 
@@ -428,7 +430,7 @@ function AtividadesFields({
 }): React.JSX.Element {
   const ids = useId()
   const { fields, append, remove } = useFieldArray({ control, name: 'atividades' })
-  const rowClass = 'grid grid-cols-[minmax(0,1fr)_8.5rem_6.5rem_6.5rem_2rem] items-start gap-x-3'
+  const rowClass = 'grid grid-cols-[minmax(0,1fr)_7.5rem_6.25rem_6.25rem_2rem] items-start gap-x-3'
 
   return (
     <div className="col-span-6 flex flex-col gap-2">
@@ -705,7 +707,6 @@ function PatientFormPage({ patientId }: { patientId: number | null }): React.JSX
                 label="Data de nascimento"
                 htmlFor={`${ids}-nascimento`}
                 error={err('data_nascimento')}
-                hint={idade}
                 className="col-span-2"
               >
                 <Controller

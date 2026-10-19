@@ -142,7 +142,7 @@ describe('ficha ampliada', () => {
   it('série com número e tipo mostra o ordinal', async () => {
     const update = await abrir({})
     await userEvent.type(screen.getByRole('textbox', { name: 'Número da série' }), '2')
-    await userEvent.click(screen.getByRole('button', { name: 'série' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Série' }))
     expect(screen.getByText('2ª série')).toBeTruthy()
     await userEvent.click(screen.getByRole('button', { name: 'Médio' }))
     expect(screen.getByText('2ª série do Médio')).toBeTruthy()
