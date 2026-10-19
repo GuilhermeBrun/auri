@@ -1,0 +1,65 @@
+.sessao {
+  margin-top: 1.25rem;
+  padding: 1rem;
+  border-radius: 12px;
+  background: var(--fill);
+}
+
+.sessao .dia {
+  font-size: 1.0625rem;
+  line-height: 1.5rem;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+}
+
+.sessao .hora {
+  margin-top: 0.125rem;
+  font-size: 1.5rem;
+  line-height: 1.75rem;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  font-variation-settings: 'opsz' 28;
+}
+
+.sessao .quem {
+  margin-top: 0.5rem;
+  color: var(--ink-soft);
+  font-size: 0.8125rem;
+  line-height: 1.125rem;
+}
+
+.politica {
+  margin-top: 1.5rem;
+}
+
+.politica .prazo {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  font-weight: 580;
+}
+
+.politica .prazo .icone {
+  margin-top: 0.0625rem;
+}
+
+.politica .suave {
+  margin-top: 0.25rem;
+  font-size: 0.8125rem;
+  line-height: 1.125rem;
+}
+
+.politica .prazo + .suave {
+  padding-left: 1.75rem;
+}
+
+.respostas {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 2rem;
+}
+
+.respostas .erro {
+  margin: 0 0 0.25rem;
+}

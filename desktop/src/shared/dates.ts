@@ -56,7 +56,9 @@ export function formatAge(birthDate: string, today: Date = new Date()): string {
   if (months < 1) return plural(days, 'dia', 'dias')
   const years = differenceInYears(today, birth)
   if (years < 1) return plural(months, 'mês', 'meses')
-  return plural(years, 'ano', 'anos')
+  const rest = months - years * 12
+  const anos = plural(years, 'ano', 'anos')
+  return rest === 0 ? anos : `${anos} e ${plural(rest, 'mês', 'meses')}`
 }
 
 export function isoToBrDate(iso: string): string {

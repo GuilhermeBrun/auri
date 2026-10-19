@@ -36,7 +36,7 @@ export function sha256(texto: string | Uint8Array): string {
   return createHash('sha256').update(texto).digest('hex')
 }
 
-function cifrar(chave: Uint8Array, dadoAdicional: string, dados: Uint8Array): Buffer {
+export function cifrar(chave: Uint8Array, dadoAdicional: string, dados: Uint8Array): Buffer {
   const iv = randomBytes(IV)
   const cifra = createCipheriv('aes-256-gcm', chave, iv, { authTagLength: ETIQUETA })
   cifra.setAAD(Buffer.from(dadoAdicional))
@@ -44,7 +44,7 @@ function cifrar(chave: Uint8Array, dadoAdicional: string, dados: Uint8Array): Bu
   return Buffer.concat([iv, corpo, cifra.getAuthTag()])
 }
 
-function decifrar(chave: Uint8Array, dadoAdicional: string, pacote: Uint8Array): Buffer {
+export function decifrar(chave: Uint8Array, dadoAdicional: string, pacote: Uint8Array): Buffer {
   if (pacote.length < IV + ETIQUETA) throw new RangeError('Pacote curto')
   const decifra = createDecipheriv('aes-256-gcm', chave, pacote.subarray(0, IV), {
     authTagLength: ETIQUETA
@@ -55,6 +55,13 @@ function decifrar(chave: Uint8Array, dadoAdicional: string, pacote: Uint8Array):
     decifra.update(pacote.subarray(IV, pacote.length - ETIQUETA)),
     decifra.final()
   ])
+}
+
+export function abrirPacote(chave: Uint8Array, dadoAdicional: string, dados: string): Uint8Array {
+  const corpo = inflateRawSync(decifrar(chave, dadoAdicional, deBase64url(dados)), {
+    maxOutputLength: MAXIMO_DESCOMPRIMIDO
+  })
+  return new Uint8Array(corpo)
 }
 
 export function montarIda(termo: Termo, chave: Uint8Array, limite: number = LIMITE_IDA): string {
@@ -70,10 +77,7 @@ export function lerVolta(fragmento: string, chave: Uint8Array): Volta {
   const id = idDaVolta(fragmento)
   const [, dados] = partes(fragmento)
   try {
-    const corpo = inflateRawSync(decifrar(chave, dadoDaVolta(id), deBase64url(dados)), {
-      maxOutputLength: MAXIMO_DESCOMPRIMIDO
-    })
-    return lerCorpoDaVolta(new Uint8Array(corpo), id)
+    return lerCorpoDaVolta(abrirPacote(chave, dadoDaVolta(id), dados), id)
   } catch (erro) {
     throw new LinkInvalido('incompleto', { cause: erro })
   }

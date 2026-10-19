@@ -3,6 +3,7 @@ import { Link } from 'react-router'
 import { formatAge } from '@shared/dates'
 import { Avatar } from '@renderer/components/ui/avatar'
 import { Badge } from '@renderer/components/ui/badge'
+import { WaitlistButton } from '@renderer/components/waitlist/WaitlistButton'
 import { cn } from '@renderer/lib/utils'
 
 export const PATIENT_COLUMN = 'mx-auto max-w-[840px] px-8 pt-6 pb-16'
@@ -40,25 +41,34 @@ export function PatientHeader({
           </div>
         </div>
       </div>
-      {tabs && <PatientTabs {...tabs} />}
+      {tabs && (
+        <div className="mt-5 flex items-center justify-between gap-3">
+          <PatientTabs {...tabs} />
+          {!inativo && <WaitlistButton patient={{ id: tabs.patientId, nome }} />}
+        </div>
+      )}
     </header>
   )
 }
 
-export type PatientTab = 'ficha' | 'anamnese' | 'sessoes' | 'termos'
+export type PatientTab = 'ficha' | 'anamnese' | 'sessoes' | 'evolucoes' | 'termos' | 'financeiro'
 
 const TABS: [PatientTab, string][] = [
   ['ficha', 'Ficha'],
   ['anamnese', 'Anamnese'],
   ['sessoes', 'Sessões'],
-  ['termos', 'Termos']
+  ['evolucoes', 'Evoluções'],
+  ['termos', 'Termos'],
+  ['financeiro', 'Financeiro']
 ]
 
 const TAB_PATH: Record<PatientTab, string> = {
   ficha: '',
   anamnese: '/anamnese',
   sessoes: '/sessoes',
-  termos: '/termos'
+  evolucoes: '/evolucoes',
+  termos: '/termos',
+  financeiro: '/financeiro'
 }
 
 function PatientTabs({
@@ -69,7 +79,7 @@ function PatientTabs({
   value: PatientTab
 }): React.JSX.Element {
   return (
-    <nav aria-label="Partes do paciente" className="mt-5 flex gap-1">
+    <nav aria-label="Partes do paciente" className="flex gap-1">
       {TABS.map(([tab, label]) => (
         <Link
           key={tab}

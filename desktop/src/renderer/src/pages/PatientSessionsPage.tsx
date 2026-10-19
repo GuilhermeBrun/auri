@@ -4,9 +4,11 @@ import { ptBR } from 'date-fns/locale/pt-BR'
 import { CalendarClock, Check, CircleDashed, FileText, Plus, Undo2, X } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useParams } from 'react-router'
-import { formatTime, parseIsoLocalDateTime } from '@shared/dates'
+import { parseIsoLocalDateTime } from '@shared/dates'
 import type { Appointment, AttendanceRecord, Patient, Presenca } from '@shared/schemas'
 import { AttendanceChart } from '@renderer/components/AttendanceChart'
+import { EtiquetasMarca, TipoMarca } from '@renderer/components/TipoMarca'
+import { DateBlock } from '@renderer/components/DateBlock'
 import { AttendanceReportDialog, MonthReportButton } from '@renderer/components/AttendanceReport'
 import { AppointmentDialog, type AppointmentDraft } from '@renderer/components/AppointmentDialog'
 import { Page } from '@renderer/components/Layout'
@@ -16,12 +18,21 @@ import { Button } from '@renderer/components/ui/button'
 import { EmptyState } from '@renderer/components/ui/empty'
 import { ErrorState } from '@renderer/components/ui/error'
 import { Loading } from '@renderer/components/ui/loading'
+import { sessionPay, sessionPayLabel } from '@renderer/lib/finance'
 import {
   patientAppointmentsQuery,
   patientAttendanceQuery,
+  patientFinanceQuery,
   patientQuery
 } from '@renderer/lib/queries'
-import { DEFAULT_DURATION, nextSlot, PATIENTS_CRUMB, PRESENCA_LABELS } from '@renderer/lib/session'
+import {
+  DEFAULT_DURATION,
+  nextSlot,
+  PATIENTS_CRUMB,
+  PRESENCA_LABELS,
+  spokenDate,
+  timeRange
+} from '@renderer/lib/session'
 import { cn } from '@renderer/lib/utils'
 
 export function PatientSessionsRoute(): React.JSX.Element {
@@ -119,18 +130,6 @@ function PatientSessionsPage({ patientId }: { patientId: number }): React.JSX.El
 
 function capitalize(text: string): string {
   return text.charAt(0).toUpperCase() + text.slice(1)
-}
-
-function weekdayShort(date: Date): string {
-  return format(date, 'EEE', { locale: ptBR }).replace('.', '').slice(0, 3)
-}
-
-function timeRange(a: Appointment): string {
-  return `${formatTime(parseIsoLocalDateTime(a.inicio))}–${formatTime(parseIsoLocalDateTime(a.fim))}`
-}
-
-function spokenDate(date: Date): string {
-  return format(date, "EEEE, d 'de' MMMM 'de' yyyy", { locale: ptBR })
 }
 
 function SessionList({
@@ -232,8 +231,7 @@ function Upcoming({
                 <span className="flex min-w-0 flex-col">
                   <span className="text-[13px] font-medium tabular-nums">{timeRange(a)}</span>
                   <span className="truncate text-xs text-ink-soft">
-                    {a.tipo === 'avaliacao' ? 'Avaliação · ' : ''}
-                    {relativeDay(inicio, now)}
+                    {a.tipo_nome} · {relativeDay(inicio, now)}
                   </span>
                 </span>
               </button>
@@ -242,34 +240,6 @@ function Upcoming({
         })}
       </ul>
     </section>
-  )
-}
-
-function DateBlock({
-  date,
-  muted,
-  className
-}: {
-  date: Date
-  muted?: boolean
-  className?: string
-}): React.JSX.Element {
-  return (
-    <span
-      aria-hidden
-      className={cn(
-        'flex size-11 shrink-0 flex-col items-center justify-center rounded-control tabular-nums',
-        muted && 'text-ink-faint',
-        className
-      )}
-    >
-      <span className="text-[17px] leading-none font-semibold tracking-tight">
-        {format(date, 'd')}
-      </span>
-      <span className={cn('mt-1 text-xs leading-none', muted ? 'text-ink-faint' : 'text-ink-soft')}>
-        {weekdayShort(date)}
-      </span>
-    </span>
   )
 }
 
@@ -306,6 +276,17 @@ function Past({
     return groups
   }, [sessions, now])
 
+  const finance = useQuery(patientFinanceQuery(patientId))
+  const pagamentos = useMemo(() => {
+    const map = new Map<number, string>()
+    if (!finance.data) return map
+    for (const a of sessions) {
+      const label = sessionPayLabel(sessionPay(finance.data, a.id))
+      if (label) map.set(a.id, label)
+    }
+    return map
+  }, [finance.data, sessions])
+
   const byAppointment = useMemo(() => {
     const map = new Map<number, AttendanceRecord[]>()
     for (const r of records) map.set(r.appointment_id, [...(map.get(r.appointment_id) ?? []), r])
@@ -330,6 +311,7 @@ function Past({
                   <SessionRow
                     appointment={a}
                     records={byAppointment.get(a.id) ?? []}
+                    pagamento={pagamentos.get(a.id)}
                     onOpen={onOpen}
                   />
                 </li>
@@ -375,10 +357,12 @@ function SignatureNote({
 function SessionRow({
   appointment: a,
   records,
+  pagamento,
   onOpen
 }: {
   appointment: Appointment
   records: AttendanceRecord[]
+  pagamento?: string
   onOpen: (appointment: Appointment) => void
 }): React.JSX.Element {
   const inicio = parseIsoLocalDateTime(a.inicio)
@@ -395,15 +379,12 @@ function SessionRow({
       <DateBlock date={inicio} muted={missed} />
 
       <span className="flex min-w-0 flex-col gap-0.5">
-        <span className="flex items-center gap-2">
+        <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
           <span className={cn('text-[13px] font-medium tabular-nums', missed && 'text-ink-soft')}>
             {timeRange(a)}
           </span>
-          {a.tipo === 'avaliacao' && (
-            <span className="rounded-chip bg-fill px-1.5 py-px text-xs font-medium text-ink">
-              Avaliação
-            </span>
-          )}
+          <TipoMarca nome={a.tipo_nome} cor={a.tipo_cor} />
+          <EtiquetasMarca etiquetas={a.etiquetas} />
         </span>
         {a.evolucao ? (
           <span className="line-clamp-2 text-[13px] text-ink-soft" title={a.evolucao}>
@@ -442,6 +423,7 @@ function SessionRow({
             )}
           </span>
           <SignatureNote appointment={a} records={records} />
+          {pagamento && <span className="text-xs text-ink-soft">{pagamento}</span>}
         </span>
       </span>
     </button>

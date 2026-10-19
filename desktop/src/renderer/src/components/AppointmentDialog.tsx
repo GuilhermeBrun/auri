@@ -1,28 +1,28 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { addMinutes, differenceInMinutes, format, isSameDay } from 'date-fns'
-import { CalendarCheck2, Check, PenLine, Trash2, Undo2 } from 'lucide-react'
+import { CalendarCheck2, CalendarClock, Check, PenLine, Trash2, Undo2 } from 'lucide-react'
 import { ptBR } from 'date-fns/locale/pt-BR'
-import { useId, useState } from 'react'
-import { Controller, useForm, useWatch } from 'react-hook-form'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
+import { Controller, useForm, useWatch, type Resolver } from 'react-hook-form'
 import { z } from 'zod'
 import {
-  DAY_END_LABEL,
-  DAY_START_LABEL,
-  endsWithinAgenda,
-  startsWithinAgenda
+  FUNCIONAMENTO_PADRAO,
+  horarioDoDia,
+  horariosDoDia,
+  minutesOf,
+  noDia,
+  type Funcionamento
 } from '@shared/agenda'
-import { TIME_SLOTS } from '@shared/agenda'
 import { isIsoDate, parseIsoLocalDateTime, toIsoLocalDateTime } from '@shared/dates'
 import { shortName } from '@shared/names'
-import {
-  APPOINTMENT_TIPOS,
-  PRESENCAS,
-  type Appointment,
-  type AppointmentInput
-} from '@shared/schemas'
+import { PRESENCAS, type Appointment, type AppointmentInput } from '@shared/schemas'
 import { ArrivalSignature } from '@renderer/components/ArrivalSignature'
+import { EtiquetasEscolha } from '@renderer/components/EtiquetasEscolha'
 import { PatientCombobox } from '@renderer/components/PatientCombobox'
+import { TipoSelect } from '@renderer/components/TipoSelect'
+import { SessionPayment } from '@renderer/components/SessionPayment'
+import { RescheduleDialog } from '@renderer/components/RescheduleDialog'
 import { SignatureImage } from '@renderer/components/SignatureImage'
 import { Button } from '@renderer/components/ui/button'
 import { Callout } from '@renderer/components/ui/callout'
@@ -32,48 +32,76 @@ import { Field, Textarea } from '@renderer/components/ui/input'
 import { Kbd } from '@renderer/components/ui/kbd'
 import { Segmented } from '@renderer/components/ui/segmented'
 import { Select } from '@renderer/components/ui/select'
+import { SwitchField } from '@renderer/components/ui/switch'
 import { TimeField } from '@renderer/components/ui/time-field'
 import { useConnection } from '@renderer/lib/connection'
 import { MOD_KEY } from '@renderer/lib/platform'
-import { patientAttendanceQuery } from '@renderer/lib/queries'
-import { PRESENCA_OPTIONS, TIPO_OPTIONS } from '@renderer/lib/session'
+import { clinicQuery, patientAttendanceQuery } from '@renderer/lib/queries'
+import { ConfirmacaoDaSessao } from '@renderer/components/confirmacao/ConfirmacaoDaSessao'
+import { PRESENCA_OPTIONS } from '@renderer/lib/session'
 import { useToast } from '@renderer/lib/toast'
+import { useTipos } from '@renderer/lib/tipos'
 
 export type AppointmentDraft =
-  | { mode: 'create'; inicio: Date; duracao: number; patient?: { id: number; nome: string } }
+  | {
+      mode: 'create'
+      inicio: Date
+      duracao: number
+      patient?: { id: number; nome: string }
+      tipo_id?: number
+      reserveId?: number
+    }
   | { mode: 'edit'; appointment: Appointment }
 
 const DURATIONS = [30, 45, 60, 90]
 
 const TIME = /^([01]\d|2[0-3]):[0-5]\d$/
 
-const formSchema = z
-  .object({
-    patient: z
-      .object({ id: z.number(), nome: z.string() })
-      .nullable()
-      .refine((p) => p !== null, 'Escolha o paciente'),
-    data: z.string().refine(isIsoDate, 'Data inválida'),
-    hora: z
-      .string()
-      .regex(TIME, 'Hora inválida')
-      .refine(startsWithinAgenda, `Use entre ${DAY_START_LABEL} e ${DAY_END_LABEL}`),
-    duracao: z.number().int().min(5).max(600),
-    observacao: z.string().trim().max(1000, 'Use no máximo 1000 caracteres'),
-    tipo: z.enum(APPOINTMENT_TIPOS),
-    presenca: z.enum([...PRESENCAS, '']),
-    evolucao: z.string().trim().max(10000, 'Use no máximo 10000 caracteres')
-  })
-  .refine(
-    (v) => !TIME.test(v.hora) || !startsWithinAgenda(v.hora) || endsWithinAgenda(v.hora, v.duracao),
-    {
-      message: `Passa das ${DAY_END_LABEL}`,
-      path: ['duracao']
-    }
-  )
+const baseSchema = z.object({
+  patient: z
+    .object({ id: z.number(), nome: z.string() })
+    .nullable()
+    .refine((p) => p !== null, 'Escolha o paciente'),
+  data: z.string().refine(isIsoDate, 'Data inválida'),
+  hora: z.string().regex(TIME, 'Hora inválida'),
+  duracao: z.number().int().min(5).max(600),
+  observacao: z.string().trim().max(1000, 'Use no máximo 1000 caracteres'),
+  tipo_id: z.number().int().optional(),
+  etiquetas: z.array(z.number().int()),
+  presenca: z.enum([...PRESENCAS, '']),
+  evolucao: z.string().trim().max(10000, 'Use no máximo 10000 caracteres'),
+  confirmado: z.boolean()
+})
 
-type FormValues = z.input<typeof formSchema>
-type ValidValues = z.output<typeof formSchema>
+type Horario = Pick<z.input<typeof baseSchema>, 'data' | 'hora' | 'duracao'>
+
+function formSchema(funcionamento: Funcionamento | null, original: Horario | null) {
+  return baseSchema.superRefine((v, ctx) => {
+    if (!funcionamento || !isIsoDate(v.data) || !TIME.test(v.hora)) return
+    if (
+      original &&
+      v.data === original.data &&
+      v.hora === original.hora &&
+      v.duracao === original.duracao
+    ) {
+      return
+    }
+    const date = parseIsoLocalDateTime(`${v.data}T${v.hora}`)
+    const horario = horarioDoDia(funcionamento, date)
+    const issue = (path: string, message: string): void => {
+      ctx.addIssue({ code: 'custom', path: [path], message })
+    }
+    if (!horario) return issue('data', `A clínica não abre ${noDia(date)}`)
+    const start = minutesOf(v.hora)
+    if (start < minutesOf(horario.abre) || start >= minutesOf(horario.fecha)) {
+      return issue('hora', `Use entre ${horario.abre} e ${horario.fecha}`)
+    }
+    if (start + v.duracao > minutesOf(horario.fecha)) issue('duracao', `Passa das ${horario.fecha}`)
+  })
+}
+
+type FormValues = z.input<typeof baseSchema>
+type ValidValues = z.output<typeof baseSchema>
 
 function initialValues(draft: AppointmentDraft): FormValues {
   if (draft.mode === 'create') {
@@ -83,9 +111,11 @@ function initialValues(draft: AppointmentDraft): FormValues {
       hora: format(draft.inicio, 'HH:mm'),
       duracao: draft.duracao,
       observacao: '',
-      tipo: 'sessao',
+      tipo_id: draft.tipo_id,
+      etiquetas: [],
       presenca: '',
-      evolucao: ''
+      evolucao: '',
+      confirmado: false
     }
   }
   const { appointment: a } = draft
@@ -96,9 +126,11 @@ function initialValues(draft: AppointmentDraft): FormValues {
     hora: format(inicio, 'HH:mm'),
     duracao: differenceInMinutes(parseIsoLocalDateTime(a.fim), inicio),
     observacao: a.observacao,
-    tipo: a.tipo,
+    tipo_id: a.tipo_id,
+    etiquetas: a.etiquetas.map((e) => e.id),
     presenca: a.presenca,
-    evolucao: a.evolucao
+    evolucao: a.evolucao,
+    confirmado: a.confirmado_em !== null
   }
 }
 
@@ -116,9 +148,11 @@ function toInput(values: ValidValues, now: Date, signed: boolean): AppointmentIn
     inicio,
     fim: toIsoLocalDateTime(addMinutes(parseIsoLocalDateTime(inicio), values.duracao)),
     observacao: values.observacao,
-    tipo: values.tipo,
+    tipo_id: values.tipo_id,
+    etiquetas: values.etiquetas,
     presenca: signed || hasStarted(values.data, values.hora, now) ? values.presenca : '',
-    evolucao: values.evolucao
+    evolucao: values.evolucao,
+    confirmado: values.confirmado
   }
 }
 
@@ -133,13 +167,13 @@ function when(inicio: string): string {
   return `${weekday}, ${day} às ${format(date, 'HH:mm')}`
 }
 
-function summary(values: FormValues): string | null {
+function summary(values: FormValues, tipoNome: string): string | null {
   if (!isIsoDate(values.data ?? '') || !/^\d{2}:\d{2}$/.test(values.hora ?? '')) return null
   const inicio = parseIsoLocalDateTime(`${values.data}T${values.hora}`)
   const fim = addMinutes(inicio, values.duracao)
   const dia = format(inicio, "EEEE, d 'de' MMMM", { locale: ptBR })
   const quem = values.patient ? ` com ${values.patient.nome}` : ''
-  return `Sessão de ${values.duracao} min${quem} na ${dia}, das ${format(inicio, 'HH:mm')} às ${format(fim, 'HH:mm')}.`
+  return `${tipoNome} de ${values.duracao} min${quem} na ${dia}, das ${format(inicio, 'HH:mm')} às ${format(fim, 'HH:mm')}.`
 }
 
 function title(draft: AppointmentDraft | null): string {
@@ -189,7 +223,7 @@ function SegmentedField({
   )
 }
 
-function AppointmentForm({
+export function AppointmentForm({
   draft,
   onClose,
   onSaved
@@ -205,6 +239,7 @@ function AppointmentForm({
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [now] = useState(() => new Date())
   const [signing, setSigning] = useState(false)
+  const [rescheduling, setRescheduling] = useState(false)
   const [voiding, setVoiding] = useState(false)
   const [motivo, setMotivo] = useState('')
   const { info } = useConnection()
@@ -217,13 +252,24 @@ function AppointmentForm({
   })
   const record = signed ? records.data?.find((r) => r.id === signed.id) : undefined
 
+  const clinic = useQuery(clinicQuery())
+  const funcionamento = clinic.data?.funcionamento ?? null
+  const funcionamentoRef = useRef(funcionamento)
+  useEffect(() => {
+    funcionamentoRef.current = funcionamento
+  }, [funcionamento])
+  const [original] = useState(() => (editing ? initialValues(draft) : null))
+  const resolver: Resolver<FormValues, unknown, ValidValues> = (values, context, options) =>
+    zodResolver(formSchema(funcionamentoRef.current, original))(values, context, options)
+
   const {
     register,
     control,
     handleSubmit,
+    setValue,
     formState: { errors }
   } = useForm<FormValues, unknown, ValidValues>({
-    resolver: zodResolver(formSchema),
+    resolver,
     defaultValues: initialValues(draft)
   })
 
@@ -235,8 +281,15 @@ function AppointmentForm({
   const save = useMutation({
     mutationFn: (input: AppointmentInput) =>
       editing
-        ? window.api.appointments.update(editing.id, input, editing.updated_at)
-        : window.api.appointments.create(input),
+        ? window.api.appointments.update(
+            editing.id,
+            input,
+            editing.updated_at,
+            info?.name || 'Este computador'
+          )
+        : draft.mode === 'create' && draft.reserveId
+          ? window.api.appointments.scheduleOnReserve(draft.reserveId, input)
+          : window.api.appointments.create(input),
     onSuccess: (saved) => {
       toast({
         title: !editing
@@ -284,9 +337,11 @@ function AppointmentForm({
                 inicio: gone.inicio,
                 fim: gone.fim,
                 observacao: gone.observacao,
-                tipo: gone.tipo,
+                tipo_id: gone.tipo_id,
+                etiquetas: gone.etiquetas.map((e) => e.id),
                 presenca: gone.presenca === 'presente' ? '' : gone.presenca,
-                evolucao: gone.evolucao
+                evolucao: gone.evolucao,
+                ...(gone.confirmado_em ? { confirmado: true } : {})
               })
               .then(() => {
                 void queryClient.invalidateQueries({ queryKey: ['appointments'] })
@@ -299,19 +354,26 @@ function AppointmentForm({
     }
   })
 
-  const initialDuration = initialValues(draft).duracao
-  const durations = DURATIONS.includes(initialDuration)
-    ? DURATIONS
-    : [...DURATIONS, initialDuration].sort((a, b) => a - b)
-
   const error = save.error ?? remove.error ?? voidSignature.error
   const values = useWatch({ control }) as FormValues
+  const { tipos, porId } = useTipos(editing?.tipo_id)
+  const tipoId = values.tipo_id ?? (tipos.find((t) => t.categoria === 'sessao') ?? tipos.at(0))?.id
+  const tipoNome = (tipoId === undefined ? undefined : porId(tipoId)?.nome) ?? 'Sessão'
+  const durations = [
+    ...new Set([...DURATIONS, initialValues(draft).duracao, values.duracao ?? 30])
+  ].sort((a, b) => a - b)
   const started = hasStarted(values.data, values.hora, now)
-  const resumo = started ? null : summary(values)
+  const resumo = started ? null : summary(values, tipoNome)
+  const slots = useMemo(() => {
+    const day = isIsoDate(values.data ?? '') ? parseIsoLocalDateTime(`${values.data}T00:00`) : now
+    return horariosDoDia(funcionamento ?? FUNCIONAMENTO_PADRAO, day)
+  }, [values.data, funcionamento, now])
 
   return (
     <form
-      onSubmit={handleSubmit((valid) => save.mutate(toInput(valid, now, signed !== null)))}
+      onSubmit={handleSubmit((valid) =>
+        save.mutate(toInput({ ...valid, tipo_id: valid.tipo_id ?? tipoId }, now, signed !== null))
+      )}
       onKeyDown={(e) => {
         if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
           e.preventDefault()
@@ -325,8 +387,7 @@ function AppointmentForm({
           <div className="flex flex-col gap-1 rounded-control bg-canvas px-3 py-2.5">
             <span className="text-[13px] font-medium">{editing.patient_nome}</span>
             <span className="text-xs text-ink-soft tabular-nums">
-              {when(editing.inicio)} · {values.duracao} min ·{' '}
-              {editing.tipo === 'avaliacao' ? 'Avaliação' : 'Sessão'}
+              {when(editing.inicio)} · {values.duracao} min · {editing.tipo_nome}
             </span>
           </div>
         ) : (
@@ -369,7 +430,7 @@ function AppointmentForm({
                       id={`${ids}-hora`}
                       value={field.value}
                       onChange={field.onChange}
-                      slots={TIME_SLOTS}
+                      slots={slots}
                       invalid={fieldState.invalid}
                     />
                   )}
@@ -395,20 +456,23 @@ function AppointmentForm({
         )}
         <div className="flex flex-wrap items-end gap-x-6 gap-y-4">
           {!signed && (
-            <SegmentedField label="Tipo">
+            <Field label="Tipo" htmlFor={`${ids}-tipo`} className="w-52">
               <Controller
                 control={control}
-                name="tipo"
+                name="tipo_id"
                 render={({ field }) => (
-                  <Segmented
-                    label="Tipo"
-                    value={field.value}
-                    options={TIPO_OPTIONS}
-                    onChange={field.onChange}
+                  <TipoSelect
+                    id={`${ids}-tipo`}
+                    value={tipoId}
+                    tipos={tipos}
+                    onChange={(tipo) => {
+                      field.onChange(tipo.id)
+                      if (!started) setValue('duracao', tipo.duracao, { shouldValidate: true })
+                    }}
                   />
                 )}
               />
-            </SegmentedField>
+            </Field>
           )}
           {!signed && started && (
             <SegmentedField label="Presença">
@@ -427,6 +491,25 @@ function AppointmentForm({
             </SegmentedField>
           )}
         </div>
+        {!signed && !started && (
+          <Controller
+            control={control}
+            name="confirmado"
+            render={({ field }) => (
+              <SwitchField
+                label="Confirmado"
+                description={
+                  field.value && editing?.confirmado_em
+                    ? `Confirmado em ${format(new Date(editing.confirmado_em), "dd/MM 'às' HH:mm")}.`
+                    : 'Marque quando a família confirmar que vem.'
+                }
+                checked={field.value}
+                onCheckedChange={field.onChange}
+              />
+            )}
+          />
+        )}
+        {editing && !signed && !started && <ConfirmacaoDaSessao appointment={editing} />}
         {!signed && started && !canSign && editing?.presenca !== 'presente' && (
           <p className="-mt-2 text-xs text-ink-soft">
             Presente só com a assinatura de quem trouxe o paciente, no dia da sessão.
@@ -504,6 +587,12 @@ function AppointmentForm({
             )}
           </div>
         )}
+        <Controller
+          control={control}
+          name="etiquetas"
+          render={({ field }) => <EtiquetasEscolha value={field.value} onChange={field.onChange} />}
+        />
+        {editing && started && <SessionPayment appointment={editing} onLeave={onClose} />}
         <Field label="Observação" error={errors.observacao?.message}>
           <Textarea
             {...register('observacao')}
@@ -561,9 +650,16 @@ function AppointmentForm({
                 <Trash2 /> {editing.evolucao ? 'Excluir com a evolução' : 'Confirmar exclusão'}
               </Button>
             ) : (
-              <Button variant="danger-ghost" onClick={() => setConfirmDelete(true)}>
-                <Trash2 /> Excluir
-              </Button>
+              <span className="flex gap-1">
+                <Button variant="danger-ghost" onClick={() => setConfirmDelete(true)}>
+                  <Trash2 /> Excluir
+                </Button>
+                {!started && (
+                  <Button variant="ghost" onClick={() => setRescheduling(true)}>
+                    <CalendarClock /> Remarcar
+                  </Button>
+                )}
+              </span>
             )
           ) : (
             <span className="flex items-center gap-1 text-xs text-ink-soft">
@@ -582,6 +678,18 @@ function AppointmentForm({
           </Button>
         </div>
       </DialogFooter>
+      {editing && !signed && (
+        <RescheduleDialog
+          appointment={editing}
+          open={rescheduling}
+          onOpenChange={setRescheduling}
+          onMoved={(moved) => {
+            setRescheduling(false)
+            onSaved?.(moved)
+            done()
+          }}
+        />
+      )}
       {editing && (
         <ArrivalSignature
           appointment={editing}

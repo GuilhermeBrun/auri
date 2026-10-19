@@ -10,6 +10,12 @@
   --color-solid-active: #000000;
   --color-on-solid: #ffffff;
   --color-session: #e6e6ec;
+  --color-tipo-grafite: #9a9aa8;
+  --color-tipo-ardosia: #5c7184;
+  --color-tipo-azul: #4a6ea8;
+  --color-tipo-violeta: #7a62aa;
+  --color-tipo-rosa: #a65c86;
+  --color-tipo-areia: #94784f;
   --color-session-hover: #dcdce5;
 
   --color-ink: #1b1b22;
@@ -209,6 +215,12 @@
       --color-on-solid: #ececf1;
       --color-session: #2f2f38;
       --color-session-hover: #36363f;
+      --color-tipo-grafite: #6c6c7a;
+      --color-tipo-ardosia: #8aa0b3;
+      --color-tipo-azul: #7f9fd6;
+      --color-tipo-violeta: #a690d6;
+      --color-tipo-rosa: #d091b5;
+      --color-tipo-areia: #c4a77c;
 
       --color-ink: #ececf1;
       --color-ink-soft: #a9a9b7;
@@ -430,8 +442,30 @@
   font-variant-numeric: tabular-nums;
 }
 
-.rbc-weekend {
+.rbc-time-gutter .rbc-time-slot[data-meia]::before {
+  content: attr(data-meia);
+  display: block;
+  padding: 4px 8px 0 0;
+  text-align: right;
+  font-size: 10.5px;
+  color: var(--color-ink-faint);
+  opacity: 0.6;
+  font-variant-numeric: tabular-nums;
+}
+
+.rbc-day-bg.day-closed,
+.rbc-day-slot.day-closed,
+.rbc-day-slot .rbc-time-slot.slot-closed {
   background: var(--color-subtle);
+}
+
+.rbc-header.day-hidden,
+.rbc-day-slot.day-hidden {
+  display: none;
+}
+
+.rbc-header.day-hidden:first-child + .rbc-header {
+  border-left: 0;
 }
 
 .rbc-today {
@@ -496,6 +530,23 @@
   transition: background-color 120ms;
 }
 
+.rbc-event::before {
+  content: '';
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 3px;
+  width: 2px;
+  border-radius: 1px;
+  background: var(--tipo-cor, transparent);
+  pointer-events: none;
+}
+
+.rbc-event.rbc-selected::before {
+  background: currentColor;
+  opacity: 0.6;
+}
+
 .rbc-event:hover {
   background: var(--color-session-hover);
 }
@@ -539,6 +590,31 @@
 .rbc-event.event-missed .name-full {
   text-decoration: line-through;
   text-decoration-color: color-mix(in oklab, currentColor 60%, transparent);
+}
+
+.rbc-event.event-block {
+  background: repeating-linear-gradient(135deg, var(--color-fill-hover) 0 6px, transparent 6px 12px)
+    var(--color-subtle);
+  color: var(--color-ink-soft);
+  font-weight: 500;
+}
+
+.rbc-event.event-block:hover {
+  background-color: var(--color-canvas);
+}
+
+.rbc-day-slot .rbc-background-event.event-vaga {
+  background: var(--slot-selection);
+  color: var(--color-ink-soft);
+  border: 0;
+  border-radius: var(--radius-chip);
+  box-shadow: inset 0 0 0 1.5px var(--color-accent);
+  opacity: 1;
+  padding: 3px 6px 3px 8px;
+  font-size: 12px;
+  font-weight: 500;
+  pointer-events: none;
+  animation: fade-in 140ms ease-out both;
 }
 
 .rbc-event.rbc-selected,
@@ -590,6 +666,10 @@
 
 .agenda-day .rbc-event .event-inline-time {
   display: inline;
+}
+
+.rbc-time-view .event-tipo-long {
+  display: none;
 }
 
 .rbc-month-view .event-detail {

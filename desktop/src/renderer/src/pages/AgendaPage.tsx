@@ -8,7 +8,7 @@ import {
   format,
   getDay,
   parse,
-  setHours,
+  setMinutes,
   startOfDay,
   startOfMonth,
   startOfWeek,
@@ -16,8 +16,29 @@ import {
   isToday
 } from 'date-fns'
 import { ptBR } from 'date-fns/locale/pt-BR'
-import { ChevronLeft, ChevronRight, PenLine, Plus } from 'lucide-react'
-import { memo, useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
+import {
+  CalendarCheck,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  Clock,
+  Hourglass,
+  PenLine,
+  Plus,
+  TimerOff,
+  X
+} from 'lucide-react'
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type HTMLAttributes,
+  type RefObject
+} from 'react'
 import {
   Calendar,
   dateFnsLocalizer,
@@ -30,18 +51,50 @@ import {
   type SlotInfo,
   type View
 } from 'react-big-calendar'
-import { DAY_END_HOUR, DAY_START_HOUR } from '@shared/agenda'
+import {
+  abertoNoHorario,
+  algumDiaAberto,
+  CONFIRMACAO_LABELS,
+  confirmacao,
+  dentroDoFuncionamento,
+  diaAberto,
+  FUNCIONAMENTO_PADRAO,
+  horarioDoDia,
+  limitesDoFuncionamento,
+  minutesOf,
+  DIAS_SEMANA,
+  type DiaSemana,
+  type Funcionamento
+} from '@shared/agenda'
 import { formatTime, parseIsoLocalDateTime, toIsoLocalDateTime } from '@shared/dates'
 import { shortName } from '@shared/names'
+import { COMMITMENT_LABELS, type Commitment } from '@shared/commitments'
+import { PEDIDO_LABELS, type Vaga } from '@shared/confirmacao'
+import { vagaEm, type Intervalo } from '@shared/encaixe'
 import type { Appointment } from '@shared/schemas'
+import type { WaitlistEntry } from '@shared/waitlist'
 import { AppointmentDialog, type AppointmentDraft } from '@renderer/components/AppointmentDialog'
+import { AvisosDaConfirmacao } from '@renderer/components/confirmacao/AvisosDaConfirmacao'
+import { ConfirmacoesDialog } from '@renderer/components/confirmacao/ConfirmacoesDialog'
+import { CommitmentDialog, type CommitmentDraft } from '@renderer/components/CommitmentDialog'
+import { SlotDialog, type SlotDraft } from '@renderer/components/SlotDialog'
+import { WaitlistPanel } from '@renderer/components/waitlist/WaitlistPanel'
 import { Page } from '@renderer/components/Layout'
 import { Button } from '@renderer/components/ui/button'
 import { ErrorState } from '@renderer/components/ui/error'
+import { CorPonto } from '@renderer/components/ui/cor'
 import { Segmented } from '@renderer/components/ui/segmented'
-import { appointmentsQuery } from '@renderer/lib/queries'
-import { DEFAULT_DURATION, nextSlot, PRESENCA_LABELS, TIPO_LABELS } from '@renderer/lib/session'
+import { Select } from '@renderer/components/ui/select'
+import {
+  appointmentsQuery,
+  clinicQuery,
+  commitmentsQuery,
+  etiquetasQuery
+} from '@renderer/lib/queries'
+import { DEFAULT_DURATION, nextSlot, PRESENCA_LABELS } from '@renderer/lib/session'
+import { aoPedirEncaixe, horaDe } from '@renderer/lib/confirmacoes'
 import { cn } from '@renderer/lib/utils'
+import { corVar } from '@renderer/lib/tipos'
 
 const WEEK_OPTIONS = { weekStartsOn: 0 as const }
 
@@ -91,11 +144,55 @@ const formats: Formats = {
   weekdayFormat: (date) => format(date, 'EEE', { locale: ptBR })
 }
 
-function periodLabel(date: Date, view: View): string {
+function weekDays(date: Date): Date[] {
+  const start = startOfWeek(date, WEEK_OPTIONS)
+  return Array.from({ length: 7 }, (_, i) => addDays(start, i))
+}
+
+function shownWeekDays(date: Date, funcionamento: Funcionamento, events: CalendarEvent[]): Date[] {
+  const days = weekDays(date)
+  if (!algumDiaAberto(funcionamento)) return days
+  const busy = new Set(events.map((e) => dayNumber(e.start)))
+  return days.filter((d) => diaAberto(funcionamento, d) || busy.has(dayNumber(d)))
+}
+
+const DEFAULT_LIMITS = { abre: 7 * 60, fecha: 20 * 60 }
+const LAST_MINUTE = 24 * 60 - 1
+
+function gridLimits(
+  funcionamento: Funcionamento,
+  days: Date[],
+  events: CalendarEvent[]
+): { abre: number; fecha: number } {
+  const limits =
+    limitesDoFuncionamento(
+      funcionamento,
+      days.map((d) => getDay(d) as DiaSemana)
+    ) ??
+    limitesDoFuncionamento(funcionamento) ??
+    DEFAULT_LIMITS
+  let { abre, fecha } = limits
+  const keys = new Set(days.map(dayNumber))
+  for (const event of events) {
+    if (!keys.has(dayNumber(event.start))) continue
+    abre = Math.min(abre, event.start.getHours() * 60 + event.start.getMinutes())
+    const sameDay = dayNumber(event.end) === dayNumber(event.start)
+    fecha = Math.max(
+      fecha,
+      sameDay ? event.end.getHours() * 60 + event.end.getMinutes() : LAST_MINUTE
+    )
+  }
+  return {
+    abre: Math.floor(abre / 60) * 60,
+    fecha: Math.min(Math.ceil(fecha / 60) * 60, LAST_MINUTE)
+  }
+}
+
+function periodLabel(date: Date, view: View, shown: Date[]): string {
   if (view === Views.MONTH) return format(date, 'MMMM yyyy', { locale: ptBR })
   if (view === Views.DAY) return format(date, "EEEE, d 'de' MMMM", { locale: ptBR })
-  const start = startOfWeek(date, WEEK_OPTIONS)
-  const end = addDays(start, 6)
+  const start = shown[0] ?? startOfWeek(date, WEEK_OPTIONS)
+  const end = shown.at(-1) ?? addDays(start, 6)
   return start.getMonth() === end.getMonth()
     ? `${format(start, 'd')} a ${format(end, "d 'de' MMMM yyyy", { locale: ptBR })}`
     : `${format(start, "d 'de' MMM", { locale: ptBR })} a ${format(end, "d 'de' MMM yyyy", { locale: ptBR })}`
@@ -103,15 +200,43 @@ function periodLabel(date: Date, view: View): string {
 
 type NavAction = 'PREV' | 'NEXT' | 'TODAY'
 
-function navigateDate(date: Date, view: View, action: NavAction): Date {
+function navigateDate(
+  date: Date,
+  view: View,
+  action: NavAction,
+  funcionamento: Funcionamento
+): Date {
   if (action === 'TODAY') return new Date()
   const step = action === 'NEXT' ? 1 : -1
   if (view === Views.MONTH) return addMonths(date, step)
-  if (view === Views.DAY) return addDays(date, step)
-  return addWeeks(date, step)
+  if (view === Views.WEEK) return addWeeks(date, step)
+  let next = addDays(date, step)
+  if (!algumDiaAberto(funcionamento)) return next
+  while (!diaAberto(funcionamento, next)) next = addDays(next, step)
+  return next
 }
 
-type CalendarEvent = { id: number; title: string; start: Date; end: Date; appointment: Appointment }
+type AppointmentEvent = {
+  kind: 'appointment'
+  id: number
+  title: string
+  start: Date
+  end: Date
+  appointment: Appointment
+}
+
+type CommitmentEvent = {
+  kind: 'commitment'
+  id: string
+  title: string
+  start: Date
+  end: Date
+  commitment: Commitment
+}
+
+type VagaEvent = { kind: 'vaga'; id: string; title: string; start: Date; end: Date }
+
+type CalendarEvent = AppointmentEvent | CommitmentEvent | VagaEvent
 
 function visibleRange(date: Date, view: View): { de: string; ate: string } {
   let start: Date
@@ -129,11 +254,31 @@ function visibleRange(date: Date, view: View): { de: string; ate: string } {
   return { de: toIsoLocalDateTime(startOfDay(start)), ate: toIsoLocalDateTime(startOfDay(end)) }
 }
 
+function BlockContent({ event }: { event: CommitmentEvent | VagaEvent }): React.JSX.Element {
+  const label = event.kind === 'vaga' ? 'Vaga' : COMMITMENT_LABELS[event.commitment.tipo]
+  const titulo = event.kind === 'commitment' ? event.commitment.titulo : ''
+  return (
+    <span className="flex min-w-0 flex-col">
+      <span className="truncate">
+        {label}
+        {titulo && <span className="font-normal opacity-75"> · {titulo}</span>}
+      </span>
+      {differenceInMinutes(event.end, event.start) >= 45 && (
+        <span className="event-detail truncate text-xs font-normal tabular-nums opacity-75">
+          {timeRange(event)}
+        </span>
+      )}
+    </span>
+  )
+}
+
 function EventContent({ event }: EventProps<CalendarEvent>): React.JSX.Element {
+  if (event.kind !== 'appointment') return <BlockContent event={event} />
   const short = differenceInMinutes(event.end, event.start) < 45
   const start = formatTime(event.start)
-  const range =
-    event.appointment.tipo === 'avaliacao' ? `Avaliação · ${timeRange(event)}` : timeRange(event)
+  const { tipo_nome: tipoText, assinatura, etiquetas, pedido } = event.appointment
+  const confirmado = !assinatura && confirmacao(event.appointment) === 'confirmado'
+  const aguardando = !confirmado && pedido?.estado === 'aguardando'
   return (
     <span className="flex min-w-0 flex-col">
       <span className="flex min-w-0 items-baseline gap-3">
@@ -143,22 +288,57 @@ function EventContent({ event }: EventProps<CalendarEvent>): React.JSX.Element {
           </span>
           <span className="name-short">{shortName(event.title)}</span>
           <span className="name-full">{event.title}</span>
-          {event.appointment.assinatura && (
+          {assinatura && (
             <PenLine
               aria-label="Chegada assinada"
               className="ml-1 inline size-3 -translate-y-px stroke-[2] opacity-75"
             />
           )}
+          {confirmado && (
+            <Check
+              aria-label={CONFIRMACAO_LABELS.confirmado}
+              className="ml-1 inline size-3 -translate-y-px stroke-[2.5] opacity-75"
+            />
+          )}
+          {aguardando && (
+            <Clock
+              aria-label={`${PEDIDO_LABELS.aguardando} até ${horaDe(pedido.prazo)}`}
+              className="ml-1 inline size-3 -translate-y-px stroke-[2] opacity-75"
+            />
+          )}
+          {pedido?.estado === 'sem_resposta' && (
+            <TimerOff
+              aria-label={PEDIDO_LABELS.sem_resposta}
+              className="ml-1 inline size-3 -translate-y-px stroke-[2] opacity-75"
+            />
+          )}
+          {etiquetas.length > 0 && (
+            <span
+              role="img"
+              aria-label={`Etiquetas: ${etiquetas.map((e) => e.nome).join(', ')}`}
+              className="ml-1 inline-flex -translate-y-px gap-0.5 align-middle"
+            >
+              {etiquetas.map((e) => (
+                <CorPonto key={e.id} cor={e.cor} className="size-1.5" />
+              ))}
+            </span>
+          )}
+          <span
+            className={cn('event-tipo text-xs font-normal opacity-75', !short && 'event-tipo-long')}
+          >
+            {' · '}
+            {tipoText}
+          </span>
         </span>
         {short && (
           <span className="event-inline-time ml-auto hidden shrink-0 text-xs font-normal tabular-nums opacity-75">
-            {range}
+            {timeRange(event)}
           </span>
         )}
       </span>
       {!short && (
         <span className="event-detail truncate text-xs font-normal tabular-nums opacity-75">
-          {range}
+          {tipoText} · {timeRange(event)}
         </span>
       )}
     </span>
@@ -207,11 +387,39 @@ type AgendaControlsProps = {
   view: View
   onNavigate: (action: NavAction) => void
   onView: (view: View) => void
+  etiqueta: number | null
+  onEtiqueta: (etiqueta: number | null) => void
 }
 
-function AgendaControls({ view, onNavigate, onView }: AgendaControlsProps): React.JSX.Element {
+function AgendaControls({
+  view,
+  onNavigate,
+  onView,
+  etiqueta,
+  onEtiqueta
+}: AgendaControlsProps): React.JSX.Element {
+  const { data = [] } = useQuery(etiquetasQuery())
+  const opcoes = data.filter((e) => !e.arquivado || e.id === etiqueta)
   return (
     <>
+      {opcoes.length > 0 && (
+        <div className="w-48">
+          <Select
+            aria-label="Filtrar por etiqueta"
+            compact
+            value={etiqueta === null ? 'todas' : String(etiqueta)}
+            onValueChange={(v) => onEtiqueta(v === 'todas' ? null : Number(v))}
+            options={[
+              { value: 'todas', label: 'Todas as etiquetas' },
+              ...opcoes.map((e) => ({
+                value: String(e.id),
+                label: e.nome,
+                icon: <CorPonto cor={e.cor} />
+              }))
+            ]}
+          />
+        </div>
+      )}
       <div
         role="group"
         aria-label="Período"
@@ -249,11 +457,6 @@ function AgendaControls({ view, onNavigate, onView }: AgendaControlsProps): Reac
   )
 }
 
-function dayPropGetter(date: Date): { className?: string } {
-  const weekday = getDay(date)
-  return weekday === 0 || weekday === 6 ? { className: 'rbc-weekend' } : {}
-}
-
 const VIEWS: View[] = [Views.MONTH, Views.WEEK, Views.DAY]
 
 const COMPONENTS: Components<CalendarEvent> = {
@@ -266,11 +469,20 @@ const COMPONENTS: Components<CalendarEvent> = {
 const CALENDAR_STYLE = { height: '100%' }
 
 function tooltip(event: CalendarEvent): string {
-  const { tipo, presenca, observacao } = event.appointment
-  const { assinatura } = event.appointment
+  if (event.kind === 'vaga') return `Vaga · ${timeRange(event)}`
+  if (event.kind === 'commitment') {
+    const { tipo, titulo, observacao } = event.commitment
+    const nome = titulo ? `${COMMITMENT_LABELS[tipo]}: ${titulo}` : COMMITMENT_LABELS[tipo]
+    return `${timeRange(event)} · ${nome}${observacao ? `\n${observacao}` : ''}`
+  }
+  const { tipo_nome, presenca, observacao, etiquetas } = event.appointment
+  const { assinatura, pedido } = event.appointment
   const tags = [
-    tipo === 'avaliacao' ? TIPO_LABELS.avaliacao : '',
+    tipo_nome,
+    ...etiquetas.map((e) => e.nome),
     presenca ? PRESENCA_LABELS[presenca] : '',
+    pedido && pedido.estado !== 'confirmado' ? PEDIDO_LABELS[pedido.estado] : '',
+    !presenca && !assinatura ? CONFIRMACAO_LABELS[confirmacao(event.appointment)] : '',
     assinatura ? `chegada assinada por ${assinatura.signer_nome}` : ''
   ].filter(Boolean)
   const extra = tags.length > 0 ? ` (${tags.join(', ')})` : ''
@@ -281,9 +493,14 @@ type AgendaCalendarProps = {
   events: CalendarEvent[]
   date: Date
   view: View
+  funcionamento: Funcionamento
+  shownDays: Date[]
   onNavigate: (date: Date) => void
   onView: (view: View) => void
   onDraft: (draft: AppointmentDraft) => void
+  onSlot: (slot: SlotDraft, action: SlotInfo['action']) => void
+  onCommitment: (commitment: Commitment) => void
+  vaga: Intervalo | null
   arrivedRef: RefObject<number | null>
 }
 
@@ -291,44 +508,106 @@ const AgendaCalendar = memo(function AgendaCalendar({
   events,
   date,
   view,
+  funcionamento,
+  shownDays,
   onNavigate,
   onView,
   onDraft,
+  onSlot,
+  onCommitment,
+  vaga,
   arrivedRef
 }: AgendaCalendarProps): React.JSX.Element {
   const { min, max, scrollToTime } = useMemo(() => {
     const base = startOfDay(date)
+    const days = view === Views.DAY ? [base] : shownDays
+    const { abre, fecha } = gridLimits(funcionamento, days, events)
     return {
-      min: setHours(base, DAY_START_HOUR),
-      max: setHours(base, DAY_END_HOUR),
-      scrollToTime: setHours(base, DAY_START_HOUR)
+      min: setMinutes(base, abre),
+      max: setMinutes(base, fecha),
+      scrollToTime: setMinutes(base, abre)
     }
-  }, [date])
+  }, [date, view, shownDays, funcionamento, events])
+
+  const shownKeys = useMemo(() => new Set(shownDays.map(dayNumber)), [shownDays])
+
+  const dayPropGetter = useCallback(
+    (day: Date): { className?: string } => {
+      const className = cn(
+        !diaAberto(funcionamento, day) && 'day-closed',
+        view === Views.WEEK && !shownKeys.has(dayNumber(day)) && 'day-hidden'
+      )
+      return className ? { className } : {}
+    },
+    [funcionamento, view, shownKeys]
+  )
+
+  const slotPropGetter = useCallback(
+    (slot: Date): HTMLAttributes<HTMLDivElement> => {
+      const props: HTMLAttributes<HTMLDivElement> & Record<`data-${string}`, string> = {}
+      if (!abertoNoHorario(funcionamento, slot)) props.className = 'slot-closed'
+      if (slot.getMinutes() === 30) props['data-meia'] = formatTime(slot)
+      return props
+    },
+    [funcionamento]
+  )
+
+  const onSelecting = useCallback(
+    ({ start, end }: { start: Date; end: Date }): boolean =>
+      dentroDoFuncionamento(funcionamento, start, end),
+    [funcionamento]
+  )
 
   const onSelectSlot = useCallback(
     (slot: SlotInfo): void => {
       if (view === Views.MONTH) {
-        onDraft({
-          mode: 'create',
-          inicio: setHours(startOfDay(slot.start), 8),
-          duracao: DEFAULT_DURATION
-        })
+        const horario = horarioDoDia(funcionamento, slot.start)
+        if (!horario) return
+        onSlot(
+          {
+            inicio: setMinutes(startOfDay(slot.start), Math.max(minutesOf(horario.abre), 8 * 60)),
+            duracao: DEFAULT_DURATION
+          },
+          slot.action
+        )
       } else {
+        if (!abertoNoHorario(funcionamento, slot.start)) return
         const selected = differenceInMinutes(slot.end, slot.start)
-        onDraft({
-          mode: 'create',
-          inicio: slot.start,
-          duracao:
-            slot.action === 'select' && selected > DEFAULT_DURATION ? selected : DEFAULT_DURATION
-        })
+        onSlot(
+          {
+            inicio: slot.start,
+            duracao:
+              slot.action === 'select' && selected > DEFAULT_DURATION ? selected : DEFAULT_DURATION
+          },
+          slot.action
+        )
       }
     },
-    [view, onDraft]
+    [view, funcionamento, onSlot]
   )
 
   const onSelectEvent = useCallback(
-    (event: CalendarEvent): void => onDraft({ mode: 'edit', appointment: event.appointment }),
-    [onDraft]
+    (event: CalendarEvent): void => {
+      if (event.kind === 'appointment') onDraft({ mode: 'edit', appointment: event.appointment })
+      else if (event.kind === 'commitment') onCommitment(event.commitment)
+    },
+    [onDraft, onCommitment]
+  )
+
+  const backgroundEvents = useMemo<CalendarEvent[]>(
+    () =>
+      vaga
+        ? [
+            {
+              kind: 'vaga',
+              id: 'vaga',
+              title: 'Vaga',
+              start: parseIsoLocalDateTime(vaga.inicio),
+              end: parseIsoLocalDateTime(vaga.fim)
+            }
+          ]
+        : [],
+    [vaga]
   )
 
   const rootRef = useRef<HTMLDivElement>(null)
@@ -344,14 +623,17 @@ const AgendaCalendar = memo(function AgendaCalendar({
   }, [events, arrivedRef])
 
   const eventPropGetter = useCallback(
-    (event: CalendarEvent): { className?: string } => {
+    (event: CalendarEvent): { className?: string; style?: CSSProperties } => {
+      if (event.kind === 'commitment') return { className: 'event-block' }
+      if (event.kind === 'vaga') return { className: 'event-vaga' }
       const missed =
         event.appointment.presenca === 'falta' || event.appointment.presenca === 'desmarcou'
       const className = cn(
         event.id === arrivedRef.current && 'event-arrived',
         missed && 'event-missed'
       )
-      return className ? { className } : {}
+      const style = { '--tipo-cor': corVar(event.appointment.tipo_cor) } as CSSProperties
+      return className ? { className, style } : { style }
     },
     [arrivedRef]
   )
@@ -362,6 +644,7 @@ const AgendaCalendar = memo(function AgendaCalendar({
         localizer={localizer}
         culture="pt-BR"
         events={events}
+        backgroundEvents={backgroundEvents}
         date={date}
         view={view}
         onNavigate={onNavigate}
@@ -377,8 +660,10 @@ const AgendaCalendar = memo(function AgendaCalendar({
         formats={formats}
         components={COMPONENTS}
         dayPropGetter={dayPropGetter}
+        slotPropGetter={slotPropGetter}
         eventPropGetter={eventPropGetter}
         selectable
+        onSelecting={onSelecting}
         popup
         onSelectSlot={onSelectSlot}
         onSelectEvent={onSelectEvent}
@@ -390,62 +675,181 @@ const AgendaCalendar = memo(function AgendaCalendar({
   )
 })
 
+const PANEL_KEY = 'auri.agenda.listaDeEspera'
+
+function readPanelOpen(): boolean {
+  try {
+    return localStorage.getItem(PANEL_KEY) !== 'fechado'
+  } catch {
+    return true
+  }
+}
+
+function savePanelOpen(open: boolean): void {
+  try {
+    localStorage.setItem(PANEL_KEY, open ? 'aberto' : 'fechado')
+  } catch {
+    return
+  }
+}
+
 export function AgendaPage(): React.JSX.Element {
   const [date, setDate] = useState(() => new Date())
   const [view, setView] = useState<View>(Views.WEEK)
   const [draft, setDraft] = useState<AppointmentDraft | null>(null)
+  const [slot, setSlot] = useState<SlotDraft | null>(null)
+  const [commitment, setCommitment] = useState<Commitment | null>(null)
+  const commitmentDraft = useMemo<CommitmentDraft | null>(
+    () => (commitment ? { mode: 'edit', commitment } : null),
+    [commitment]
+  )
+  const [panelOpen, setPanelOpen] = useState(readPanelOpen)
+  const [vaga, setVaga] = useState<Intervalo | null>(null)
+  const [confirmacoes, setConfirmacoes] = useState(false)
   const arrivedRef = useRef<number | null>(null)
   const markArrived = useCallback((appointment: Appointment): void => {
     arrivedRef.current = appointment.id
+    setVaga(null)
     setTimeout(() => {
       if (arrivedRef.current === appointment.id) arrivedRef.current = null
     }, ARRIVED_MS)
   }, [])
 
   const queryClient = useQueryClient()
+  const clinic = useQuery(clinicQuery())
+  const funcionamento = clinic.data?.funcionamento ?? FUNCIONAMENTO_PADRAO
+  const range = visibleRange(date, view)
   const { data, error, refetch } = useQuery({
-    ...appointmentsQuery(visibleRange(date, view)),
+    ...appointmentsQuery(range),
+    placeholderData: (previous) => previous
+  })
+  const commitments = useQuery({
+    ...commitmentsQuery(range),
     placeholderData: (previous) => previous
   })
   const failed = error !== null && data === undefined
 
-  const events = useMemo<CalendarEvent[]>(
-    () =>
-      (data ?? []).map((a) => ({
+  const [etiqueta, setEtiqueta] = useState<number | null>(null)
+  const allEvents = useMemo<CalendarEvent[]>(
+    () => [
+      ...(data ?? []).map((a): CalendarEvent => ({
+        kind: 'appointment',
         id: a.id,
         title: a.patient_nome,
         start: parseIsoLocalDateTime(a.inicio),
         end: parseIsoLocalDateTime(a.fim),
         appointment: a
       })),
-    [data]
+      ...(commitments.data ?? []).map((c): CalendarEvent => ({
+        kind: 'commitment',
+        id: `c${c.id}`,
+        title: COMMITMENT_LABELS[c.tipo],
+        start: parseIsoLocalDateTime(c.inicio),
+        end: parseIsoLocalDateTime(c.fim),
+        commitment: c
+      }))
+    ],
+    [data, commitments.data]
+  )
+  const events = useMemo(
+    () =>
+      etiqueta === null
+        ? allEvents
+        : allEvents.filter(
+            (e) =>
+              e.kind !== 'appointment' || e.appointment.etiquetas.some((x) => x.id === etiqueta)
+          ),
+    [allEvents, etiqueta]
+  )
+
+  const shownDays = useMemo(
+    () => shownWeekDays(date, funcionamento, allEvents),
+    [date, funcionamento, allEvents]
   )
 
   useEffect(() => {
     const ranges = [
-      visibleRange(navigateDate(date, view, 'PREV'), view),
-      visibleRange(navigateDate(date, view, 'NEXT'), view),
+      visibleRange(navigateDate(date, view, 'PREV', funcionamento), view),
+      visibleRange(navigateDate(date, view, 'NEXT', funcionamento), view),
       ...VIEWS.filter((v) => v !== view).map((v) => visibleRange(date, v))
     ]
     const idle = requestIdleCallback(() => {
-      for (const range of ranges) void queryClient.prefetchQuery(appointmentsQuery(range))
+      for (const range of ranges) {
+        void queryClient.prefetchQuery(appointmentsQuery(range))
+        void queryClient.prefetchQuery(commitmentsQuery(range))
+      }
     })
     return () => cancelIdleCallback(idle)
-  }, [date, view, queryClient])
+  }, [date, view, funcionamento, queryClient])
 
   const navigate = useCallback(
-    (action: NavAction): void => setDate((current) => navigateDate(current, view, action)),
-    [view]
+    (action: NavAction): void =>
+      setDate((current) => navigateDate(current, view, action, funcionamento)),
+    [view, funcionamento]
   )
 
   const openNew = useCallback((): void => {
-    setDraft({ mode: 'create', inicio: nextSlot(new Date()), duracao: DEFAULT_DURATION })
+    setSlot({ inicio: nextSlot(new Date(), funcionamento), duracao: DEFAULT_DURATION })
+  }, [funcionamento])
+
+  const withPanel = panelOpen && view !== Views.MONTH
+
+  const turnos = useMemo(
+    () =>
+      DIAS_SEMANA.flatMap((dia) =>
+        funcionamento[dia] ? [{ dia_semana: dia, ...funcionamento[dia] }] : []
+      ),
+    [funcionamento]
+  )
+
+  const onSlot = useCallback(
+    (picked: SlotDraft, action: SlotInfo['action']): void => {
+      if (!withPanel || action !== 'click') {
+        setSlot(picked)
+        return
+      }
+      const ocupados = events.flatMap((e) =>
+        e.kind === 'commitment' ||
+        (e.kind === 'appointment' && e.appointment.presenca !== 'desmarcou')
+          ? [{ inicio: toIsoLocalDateTime(e.start), fim: toIsoLocalDateTime(e.end) }]
+          : []
+      )
+      setVaga(vagaEm(toIsoLocalDateTime(picked.inicio), turnos, ocupados))
+    },
+    [withPanel, events, turnos]
+  )
+
+  const encaixar = useCallback((livre: Vaga): void => {
+    setView((current) => (current === Views.MONTH ? Views.WEEK : current))
+    setDate(parseIsoLocalDateTime(livre.inicio))
+    setPanelOpen(true)
+    savePanelOpen(true)
+    setVaga(livre)
+  }, [])
+
+  useEffect(() => aoPedirEncaixe(encaixar), [encaixar])
+
+  const togglePanel = (): void => {
+    const next = !panelOpen
+    setPanelOpen(next)
+    savePanelOpen(next)
+    if (!next) setVaga(null)
+  }
+
+  const pickFromWaitlist = useCallback((entry: WaitlistEntry, horario: Intervalo): void => {
+    setDraft({
+      mode: 'create',
+      inicio: parseIsoLocalDateTime(horario.inicio),
+      duracao: entry.duracao,
+      patient: { id: entry.patient_id, nome: entry.patient_nome }
+    })
   }, [])
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent): void {
       const target = e.target as HTMLElement
       const typing = target.closest('input, textarea, select, [contenteditable="true"]')
+      if (e.key === 'Escape' && !document.querySelector('[role="dialog"]')) setVaga(null)
       if (e.key.toLowerCase() !== 'n' || e.metaKey || e.ctrlKey || e.altKey || typing) return
       if (document.querySelector('[role="dialog"]')) return
       e.preventDefault()
@@ -455,7 +859,7 @@ export function AgendaPage(): React.JSX.Element {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [openNew])
 
-  const period = periodLabel(date, view)
+  const period = periodLabel(date, view, shownDays)
 
   return (
     <Page
@@ -469,18 +873,49 @@ export function AgendaPage(): React.JSX.Element {
           )
         }
       ]}
-      toolbar={<AgendaControls view={view} onNavigate={navigate} onView={setView} />}
+      toolbar={
+        <AgendaControls
+          view={view}
+          onNavigate={navigate}
+          onView={setView}
+          etiqueta={etiqueta}
+          onEtiqueta={setEtiqueta}
+        />
+      }
       actions={
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={openNew}
-          aria-keyshortcuts="N"
-          aria-label="Novo agendamento"
-          title="Novo agendamento (N)"
-        >
-          <Plus />
-        </Button>
+        <>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setConfirmacoes(true)}
+            aria-label="Confirmações"
+            title="Pedir a confirmação das sessões do próximo dia"
+          >
+            <CalendarCheck />
+          </Button>
+          {view !== Views.MONTH && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={togglePanel}
+              aria-expanded={panelOpen}
+              aria-label="Lista de espera"
+              title={panelOpen ? 'Esconder a lista de espera' : 'Mostrar a lista de espera'}
+            >
+              <Hourglass />
+            </Button>
+          )}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={openNew}
+            aria-keyshortcuts="N"
+            aria-label="Novo agendamento"
+            title="Novo agendamento (N)"
+          >
+            <Plus />
+          </Button>
+        </>
       }
       bodyClassName="flex flex-col overflow-hidden"
     >
@@ -493,19 +928,90 @@ export function AgendaPage(): React.JSX.Element {
           Tente de novo. Se o problema continuar, feche e abra o Auri.
         </ErrorState>
       ) : (
-        <div className="min-h-[520px] flex-1">
-          <AgendaCalendar
-            events={events}
-            date={date}
-            view={view}
-            onNavigate={setDate}
-            onView={setView}
-            onDraft={setDraft}
-            arrivedRef={arrivedRef}
-          />
-        </div>
+        <>
+          <AvisosDaConfirmacao onEncaixar={encaixar} />
+          <div className="flex min-h-[520px] flex-1">
+            <div className="min-w-0 flex-1">
+              <AgendaCalendar
+                events={events}
+                date={date}
+                view={view}
+                funcionamento={funcionamento}
+                shownDays={shownDays}
+                onNavigate={setDate}
+                onView={setView}
+                onDraft={setDraft}
+                onSlot={onSlot}
+                onCommitment={setCommitment}
+                vaga={withPanel ? vaga : null}
+                arrivedRef={arrivedRef}
+              />
+            </div>
+            {withPanel && (
+              <aside
+                aria-label="Encaixe"
+                className="flex w-72 shrink-0 animate-fade-in flex-col overflow-y-auto pt-3 pr-3 pb-20 pl-2"
+              >
+                <WaitlistPanel
+                  vaga={vaga}
+                  onPick={pickFromWaitlist}
+                  vagaActions={
+                    vaga && (
+                      <>
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          aria-label="Marcar neste horário"
+                          title="Marcar neste horário"
+                          onClick={() =>
+                            setSlot({
+                              inicio: parseIsoLocalDateTime(vaga.inicio),
+                              duracao: DEFAULT_DURATION
+                            })
+                          }
+                        >
+                          <Plus />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          aria-label="Ver a lista toda"
+                          title="Ver a lista toda (Esc)"
+                          onClick={() => setVaga(null)}
+                        >
+                          <X />
+                        </Button>
+                      </>
+                    )
+                  }
+                />
+                {!vaga && (
+                  <p className="mt-4 px-3 text-xs text-ink-faint">
+                    Clique num horário vago da agenda para ver quem cabe nele.
+                  </p>
+                )}
+              </aside>
+            )}
+          </div>
+        </>
       )}
+      <ConfirmacoesDialog open={confirmacoes} onClose={() => setConfirmacoes(false)} />
       <AppointmentDialog draft={draft} onClose={() => setDraft(null)} onSaved={markArrived} />
+      <SlotDialog slot={slot} onClose={() => setSlot(null)} onSaved={markArrived} />
+      <CommitmentDialog
+        draft={commitmentDraft}
+        onClose={() => setCommitment(null)}
+        onScheduleReserve={(reserve) => {
+          setCommitment(null)
+          const inicio = parseIsoLocalDateTime(reserve.inicio)
+          setDraft({
+            mode: 'create',
+            inicio,
+            duracao: differenceInMinutes(parseIsoLocalDateTime(reserve.fim), inicio),
+            reserveId: reserve.id
+          })
+        }}
+      />
     </Page>
   )
 }

@@ -1,4 +1,7 @@
 import { z } from 'zod'
+import type { Funcionamento } from './agenda'
+import type { PedidoNaSessao } from './confirmacao'
+import type { Categoria, Cor, EtiquetaResumo } from './tipos'
 import { isValidCpf } from './cpf'
 import { isIsoDate, isIsoLocalDateTime } from './dates'
 import { isValidPhone } from './masks'
@@ -20,49 +23,122 @@ export type ResponsavelTipo = (typeof RESPONSAVEL_TIPOS)[number]
 export const PARENTESCOS = ['avo_f', 'avo_m', 'tia', 'tio', 'outro'] as const
 export type Parentesco = (typeof PARENTESCOS)[number]
 
-export const patientInputSchema = z
+export const UFS = [
+  'AC',
+  'AL',
+  'AP',
+  'AM',
+  'BA',
+  'CE',
+  'DF',
+  'ES',
+  'GO',
+  'MA',
+  'MT',
+  'MS',
+  'MG',
+  'PA',
+  'PB',
+  'PR',
+  'PE',
+  'PI',
+  'RJ',
+  'RN',
+  'RS',
+  'RO',
+  'RR',
+  'SC',
+  'SP',
+  'SE',
+  'TO'
+] as const
+
+export const SERIE_TIPOS = ['ano', 'serie', 'grau'] as const
+export type SerieTipo = (typeof SERIE_TIPOS)[number]
+
+export const SERIE_ETAPAS = ['infantil', 'fundamental', 'medio'] as const
+export type SerieEtapa = (typeof SERIE_ETAPAS)[number]
+
+export const CONTATOS_PRINCIPAIS = ['mae', 'pai', 'responsavel', 'paciente'] as const
+export type ContatoPrincipal = (typeof CONTATOS_PRINCIPAIS)[number]
+
+const hhmm = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Horário inválido')
+
+export const patientActivityInputSchema = z
   .object({
-    nome: text().min(1, 'Informe o nome do paciente'),
-    data_nascimento: optionalDate,
-    cpf: optionalCpf,
-    celular: optionalPhone,
-    email: optionalEmail,
+    atividade: text(80).min(1, 'Diga qual é a atividade'),
+    dia_semana: z.number().int().min(0).max(6),
+    inicio: hhmm,
+    fim: hhmm
+  })
+  .refine((a) => a.fim > a.inicio, {
+    message: 'O término deve ser depois do início',
+    path: ['fim']
+  })
 
-    escola: text(),
-    serie: text(),
-    professora: text(),
+export type PatientActivityInput = z.infer<typeof patientActivityInputSchema>
 
-    mae_nome: text(),
-    mae_cpf: optionalCpf,
-    mae_rg: text(30),
-    mae_celular: optionalPhone,
-    mae_email: optionalEmail,
-    mae_profissao: text(),
+export type PatientActivity = PatientActivityInput & { id: number; patient_id: number }
 
-    pai_nome: text(),
-    pai_cpf: optionalCpf,
-    pai_rg: text(30),
-    pai_celular: optionalPhone,
-    pai_email: optionalEmail,
-    pai_profissao: text(),
+export const ATIVIDADES_MAX = 20
 
-    resp_tipo: z.enum(['', ...RESPONSAVEL_TIPOS]),
-    resp_nome: text(),
-    resp_parentesco: z.enum(['', ...PARENTESCOS]),
-    resp_parentesco_outro: text(60),
-    resp_cpf: optionalCpf,
-    resp_rg: text(30),
-    resp_celular: optionalPhone,
-    resp_email: optionalEmail,
+const patientFieldsSchema = z.object({
+  nome: text().min(1, 'Informe o nome do paciente'),
+  data_nascimento: optionalDate,
+  cpf: optionalCpf,
+  rg: text(30),
+  celular: optionalPhone,
+  email: optionalEmail,
 
-    endereco: text(),
-    bairro: text(),
-    cidade: text(),
+  escola: text(),
+  serie_numero: z.string().regex(/^([1-9]\d?)?$/, 'Número inválido'),
+  serie_tipo: z.enum(['', ...SERIE_TIPOS]),
+  serie_etapa: z.enum(['', ...SERIE_ETAPAS]),
+  serie: text(),
+  professora: text(),
 
-    indicacao: text(),
-    pediatra: text(),
-    data_entrada: optionalDate,
-    observacoes: text(5000)
+  mae_nome: text(),
+  mae_cpf: optionalCpf,
+  mae_rg: text(30),
+  mae_celular: optionalPhone,
+  mae_email: optionalEmail,
+  mae_profissao: text(),
+
+  pai_nome: text(),
+  pai_cpf: optionalCpf,
+  pai_rg: text(30),
+  pai_celular: optionalPhone,
+  pai_email: optionalEmail,
+  pai_profissao: text(),
+
+  resp_tipo: z.enum(['', ...RESPONSAVEL_TIPOS]),
+  resp_nome: text(),
+  resp_parentesco: z.enum(['', ...PARENTESCOS]),
+  resp_parentesco_outro: text(60),
+  resp_cpf: optionalCpf,
+  resp_rg: text(30),
+  resp_celular: optionalPhone,
+  resp_email: optionalEmail,
+
+  contato_principal: z.enum(['', ...CONTATOS_PRINCIPAIS]),
+
+  endereco: text(),
+  bairro: text(),
+  cidade: text(),
+  uf: z.enum(['', ...UFS]),
+
+  indicacao: text(),
+  pediatra: text(),
+  data_entrada: optionalDate,
+  observacoes: text(5000)
+})
+
+export const patientInputSchema = patientFieldsSchema
+  .extend({
+    atividades: z
+      .array(patientActivityInputSchema)
+      .max(ATIVIDADES_MAX, `Cadastre no máximo ${ATIVIDADES_MAX} atividades`)
+      .optional()
   })
   .superRefine((p, ctx) => {
     const missing = (path: string, message: string): void => {
@@ -72,6 +148,9 @@ export const patientInputSchema = z
       missing('mae_nome', 'Informe o nome da mãe, que é a responsável')
     if (p.resp_tipo === 'pai' && p.pai_nome === '')
       missing('pai_nome', 'Informe o nome do pai, que é o responsável')
+    if (p.serie_numero !== '' && p.serie_tipo === '')
+      missing('serie_tipo', 'Escolha ano, série ou grau')
+    if (p.serie_tipo !== '' && p.serie_numero === '') missing('serie_numero', 'Informe o número')
     if (p.resp_tipo !== 'outro') return
     if (p.resp_nome === '') missing('resp_nome', 'Informe o nome do responsável')
     if (p.resp_parentesco === '') missing('resp_parentesco', 'Escolha o parentesco')
@@ -81,13 +160,21 @@ export const patientInputSchema = z
 
 export type PatientInput = z.infer<typeof patientInputSchema>
 
-export const PATIENT_FIELDS = Object.keys(patientInputSchema.shape) as (keyof PatientInput)[]
+export type PatientFields = z.infer<typeof patientFieldsSchema>
+
+export type PatientField = keyof PatientFields
+
+export const PATIENT_FIELDS = Object.keys(patientFieldsSchema.shape) as PatientField[]
 
 export function emptyPatientInput(): PatientInput {
-  return Object.fromEntries(PATIENT_FIELDS.map((f) => [f, ''])) as PatientInput
+  return {
+    ...(Object.fromEntries(PATIENT_FIELDS.map((f) => [f, ''])) as PatientFields),
+    atividades: []
+  }
 }
 
-export type Patient = PatientInput & {
+export type Patient = PatientFields & {
+  atividades: PatientActivity[]
   id: number
   ativo: boolean
   created_at: string
@@ -105,9 +192,6 @@ export const idSchema = z.number().int().positive()
 
 const localDateTime = z.string().refine(isIsoLocalDateTime, 'Data/hora inválida')
 
-export const APPOINTMENT_TIPOS = ['sessao', 'avaliacao'] as const
-export type AppointmentTipo = (typeof APPOINTMENT_TIPOS)[number]
-
 export const PRESENCAS = ['presente', 'falta', 'desmarcou'] as const
 export type Presenca = (typeof PRESENCAS)[number]
 
@@ -117,9 +201,11 @@ export const appointmentInputSchema = z
     inicio: localDateTime,
     fim: localDateTime,
     observacao: text(1000),
-    tipo: z.enum(APPOINTMENT_TIPOS).default('sessao'),
+    tipo_id: idSchema.optional(),
     presenca: z.enum([...PRESENCAS, '']).default(''),
-    evolucao: text(10000).default('')
+    evolucao: text(10000).default(''),
+    confirmado: z.boolean().optional(),
+    etiquetas: z.array(idSchema).max(10, 'Use no máximo 10 etiquetas').optional()
   })
   .refine((a) => a.fim > a.inicio, {
     message: 'O horário de término deve ser depois do início',
@@ -135,8 +221,18 @@ export type ArrivalSignature = {
   assinado_em: string
 }
 
-export type Appointment = z.output<typeof appointmentInputSchema> & {
+export type Appointment = Omit<
+  z.output<typeof appointmentInputSchema>,
+  'confirmado' | 'tipo_id' | 'etiquetas'
+> & {
   id: number
+  tipo_id: number
+  tipo_nome: string
+  tipo_cor: Cor
+  categoria: Categoria
+  etiquetas: EtiquetaResumo[]
+  confirmado_em: string | null
+  pedido: PedidoNaSessao | null
   patient_nome: string
   assinatura: ArrivalSignature | null
   created_at: string
@@ -170,7 +266,8 @@ export type AttendanceRecord = {
   appointment_id: number
   inicio: string
   fim: string
-  tipo: AppointmentTipo
+  tipo_nome: string
+  categoria: Categoria
   signer_nome: string
   signer_papel: SignerPapel
   signer_parentesco: string
@@ -203,6 +300,20 @@ export type AnamneseInput = z.infer<typeof anamneseInputSchema>
 
 export const ANAMNESE_FIELDS = Object.keys(anamneseInputSchema.shape) as (keyof AnamneseInput)[]
 
+export type AnamneseTema = Exclude<keyof AnamneseInput, 'data'>
+
+export const ANAMNESE_TEMAS: Record<AnamneseTema, string> = {
+  queixa: 'Queixa',
+  gestacao: 'Gestação e nascimento',
+  alimentacao: 'Alimentação',
+  sono: 'Sono',
+  desenvolvimento: 'Desenvolvimento e fala',
+  saude: 'Saúde',
+  rotina: 'Escola e rotina',
+  terapias: 'Terapias',
+  observacoes: 'Observações'
+}
+
 export function emptyAnamneseInput(): AnamneseInput {
   return Object.fromEntries(ANAMNESE_FIELDS.map((f) => [f, ''])) as AnamneseInput
 }
@@ -219,6 +330,20 @@ export type UiPrefs = z.infer<typeof uiPrefsSchema>
 
 export const LOGO_MAX_BASE64 = 400_000
 
+const horaSchema = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Hora inválida')
+
+export const horarioSchema = z
+  .object({ abre: horaSchema, fecha: horaSchema })
+  .refine((h) => h.fecha > h.abre, {
+    message: 'Fecha depois de abrir',
+    path: ['fecha']
+  })
+
+export const funcionamentoSchema: z.ZodType<Funcionamento, Funcionamento> = z.partialRecord(
+  z.enum(['0', '1', '2', '3', '4', '5', '6']),
+  horarioSchema
+)
+
 export const clinicInputSchema = z.object({
   nome: text(120),
   documento: text(30),
@@ -230,12 +355,14 @@ export const clinicInputSchema = z.object({
   logo: z
     .string()
     .max(LOGO_MAX_BASE64, 'Logo grande demais')
-    .regex(/^[A-Za-z0-9+/]*={0,2}$/, 'Logo inválido')
+    .regex(/^[A-Za-z0-9+/]*={0,2}$/, 'Logo inválido'),
+  funcionamento: funcionamentoSchema.optional(),
+  margem_deslocamento: z.number().int().min(0).max(120).optional()
 })
 
 export type ClinicInput = z.input<typeof clinicInputSchema>
 
-export type Clinic = z.output<typeof clinicInputSchema> & { updated_at: string }
+export type Clinic = Required<z.output<typeof clinicInputSchema>> & { updated_at: string }
 
 export const reportRangeSchema = z
   .object({
@@ -251,6 +378,18 @@ export type AttendanceReport = {
   ate: string
   sessions: (Appointment & { records: AttendanceRecord[] })[]
 }
+
+export type EvolutionReport = {
+  clinic: Clinic
+  patient: { id: number; nome: string; data_nascimento: string }
+  de: string
+  ate: string
+  sessions: Appointment[]
+}
+
+export type PatientDocument = { clinic: Clinic; patient: Patient }
+
+export type AnamneseDocument = PatientDocument & { anamnese: Anamnese }
 
 export const TERM_TEXTO_MAX = 16_000
 

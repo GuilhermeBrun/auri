@@ -11,6 +11,7 @@ import {
   SunMoon,
   TriangleAlert,
   Users,
+  Wallet,
   WifiOff
 } from 'lucide-react'
 import { Fragment, useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
@@ -25,6 +26,8 @@ import { UpdateCorner } from '@renderer/components/UpdateCorner'
 import { UpdateReady } from '@renderer/components/UpdateReady'
 import { WelcomeDialog } from '@renderer/components/WelcomeDialog'
 import { ReceiveTerm } from '@renderer/components/ReceiveTerm'
+import { ReceberConfirmacao } from '@renderer/components/confirmacao/ReceberConfirmacao'
+import { useIncomingConfirmacoes } from '@renderer/lib/confirmacoes'
 import { useIncomingTerms } from '@renderer/lib/terms'
 import { needsAttention, useBackup } from '@renderer/lib/backup'
 import { useConnection } from '@renderer/lib/connection'
@@ -58,6 +61,7 @@ function AlertDot(): React.JSX.Element {
 const NAV_ITEMS: NavItem[] = [
   { to: '/agenda', label: 'Agenda', icon: <CalendarDays /> },
   { to: '/pacientes', label: 'Pacientes', icon: <Users /> },
+  { to: '/financeiro', label: 'Financeiro', icon: <Wallet /> },
   { to: '/clinica', label: 'Clínica', icon: <Building2 /> }
 ]
 
@@ -215,6 +219,7 @@ export function Layout(): React.JSX.Element {
   const toggle = useCallback(() => setOpen((current) => !current), [])
   const navigate = useNavigate()
   useIncomingTerms()
+  useIncomingConfirmacoes()
 
   useEffect(() => {
     window.prefs.save({ sidebarOpen: open })
@@ -273,6 +278,7 @@ export function Layout(): React.JSX.Element {
         </div>
         <WelcomeDialog />
         <ReceiveTerm />
+        <ReceberConfirmacao />
         <BackupAttention />
         <UpdateReady />
       </ToastProvider>

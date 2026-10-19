@@ -1,27 +1,16 @@
 import { useMutation } from '@tanstack/react-query'
-import { endOfMonth, format, startOfMonth, subMonths } from 'date-fns'
-import { ptBR } from 'date-fns/locale/pt-BR'
+import { subMonths } from 'date-fns'
 import { FileDown } from 'lucide-react'
 import { useId, useState } from 'react'
-import { isIsoDate, parseIsoDate, toIsoDate } from '@shared/dates'
+import { isIsoDate, parseIsoDate } from '@shared/dates'
 import { Button } from '@renderer/components/ui/button'
 import { DateField } from '@renderer/components/ui/date-field'
 import { Dialog, DialogBody, DialogFooter } from '@renderer/components/ui/dialog'
 import { Field } from '@renderer/components/ui/input'
 import { ErrorText } from '@renderer/components/ui/section'
 import { Segmented } from '@renderer/components/ui/segmented'
+import { monthLabel, monthRange, type Range } from '@renderer/lib/period'
 import { useToast } from '@renderer/lib/toast'
-
-type Range = { de: string; ate: string }
-
-function monthRange(date: Date): Range {
-  return { de: toIsoDate(startOfMonth(date)), ate: toIsoDate(endOfMonth(date)) }
-}
-
-function monthLabel(date: Date): string {
-  const text = format(date, "MMMM 'de' yyyy", { locale: ptBR })
-  return text.charAt(0).toUpperCase() + text.slice(1)
-}
 
 function useSavePdf(patientId: number, onSaved?: () => void) {
   const toast = useToast()

@@ -2,7 +2,7 @@
 import { cleanup, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { fakeAppointment, fakePatient, renderRoute } from '@renderer/testing'
+import { fakeAppointment, fakePatient, renderRoute, AVALIACAO } from '@renderer/testing'
 import type { ToastInput } from '@renderer/lib/toast'
 
 vi.hoisted(() => {
@@ -38,7 +38,7 @@ const past = fakeAppointment({
   inicio: '2026-10-10T14:00',
   presenca: 'presente',
   evolucao: 'Treino de /r/ em sílabas.',
-  tipo: 'avaliacao'
+  ...AVALIACAO
 })
 const missed = fakeAppointment({ inicio: '2026-09-12T14:00', presenca: 'falta' })
 const ASSINADO_EM = new Date(2026, 8, 5, 13, 52).toISOString()
@@ -55,13 +55,14 @@ const plain = fakeAppointment({
 const TRACO = 'AQRkyAGQA58BkAOYApAD7wE'
 const older = fakeAppointment({ inicio: '2025-12-05T14:00' })
 const soon = fakeAppointment({ inicio: '2026-10-15T09:00' })
-const later = fakeAppointment({ inicio: '2026-10-24T14:00', tipo: 'avaliacao' })
+const later = fakeAppointment({ inicio: '2026-10-24T14:00', ...AVALIACAO })
 const today = fakeAppointment({ inicio: '2026-10-14T18:00' })
 
 let api: {
   patients: Record<string, ReturnType<typeof vi.fn>>
   appointments: Record<string, ReturnType<typeof vi.fn>>
   attendance: Record<string, ReturnType<typeof vi.fn>>
+  finance: Record<string, ReturnType<typeof vi.fn>>
 }
 
 beforeEach(() => {
@@ -84,7 +85,8 @@ beforeEach(() => {
           appointment_id: plain.id,
           inicio: plain.inicio,
           fim: plain.fim,
-          tipo: 'sessao',
+          tipo_nome: 'Sessão',
+          categoria: 'sessao',
           signer_nome: 'Marina Fictícia Andrade',
           signer_papel: 'mae',
           signer_parentesco: 'Mãe',
@@ -98,6 +100,49 @@ beforeEach(() => {
       ]),
       void: vi.fn(async () => ({ ...plain, assinatura: null })),
       sign: vi.fn(async () => today)
+    },
+    finance: {
+      patient: vi.fn(async () => ({
+        patient_id: 1,
+        billing: null,
+        saldo_centavos: 0,
+        convenios: [],
+        packages: [],
+        payments: [],
+        pendentes: [],
+        charges: [
+          {
+            id: 10,
+            data: '2026-10-10',
+            descricao: 'Avaliação de 10/10',
+            valor_centavos: 40000,
+            motivo: 'sessao',
+            appointment_id: past.id,
+            package_id: null,
+            insurer_id: null,
+            insurer_nome: null,
+            computador: 'Recepção',
+            created_at: '2026-10-10T17:00:00.000Z',
+            estorno: null,
+            situacao: 'pago',
+            pago_centavos: 40000
+          }
+        ],
+        uses: [
+          {
+            id: 30,
+            package_id: 4,
+            package_nome: '8 sessões',
+            appointment_id: plain.id,
+            inicio: plain.inicio,
+            numero: 1,
+            sessoes: 8,
+            computador: 'Recepção',
+            created_at: '2026-09-05T17:00:00.000Z',
+            estorno: null
+          }
+        ]
+      }))
     }
   }
   Object.assign(window, { api })
@@ -116,8 +161,8 @@ describe('aba Sessões do paciente', () => {
     open()
     expect(await screen.findByRole('heading', { name: 'Próximas' })).toBeTruthy()
     const proximas = screen.getByRole('heading', { name: 'Próximas' }).parentElement!
-    expect(within(proximas).getByText('hoje')).toBeTruthy()
-    expect(within(proximas).getByText('amanhã')).toBeTruthy()
+    expect(within(proximas).getByText('Sessão · hoje')).toBeTruthy()
+    expect(within(proximas).getByText('Sessão · amanhã')).toBeTruthy()
     expect(within(proximas).getByText('Avaliação · em 10 dias')).toBeTruthy()
     expect(screen.getByText('Outubro')).toBeTruthy()
     expect(screen.getByText('Dezembro de 2025')).toBeTruthy()
@@ -126,6 +171,8 @@ describe('aba Sessões do paciente', () => {
     expect(screen.getAllByText('Faltou').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Sem registro').length).toBeGreaterThan(0)
     expect(screen.getByText('Inativo')).toBeTruthy()
+    expect(await screen.findByText('Pago')).toBeTruthy()
+    expect(screen.getByText('1/8 do pacote')).toBeTruthy()
   })
 
   it('sem sessões, convida a agendar e abre o agendamento com o paciente escolhido', async () => {
@@ -164,7 +211,8 @@ describe('aba Sessões do paciente', () => {
         inicio: past.inicio,
         fim: past.fim,
         observacao: '',
-        tipo: 'avaliacao',
+        tipo_id: 2,
+        etiquetas: [],
         presenca: '',
         evolucao: 'Treino de /r/ em sílabas.'
       })
@@ -217,7 +265,7 @@ describe('aba Sessões do paciente', () => {
   it('sessão de hoje oferece assinar a chegada, com o responsável já escolhido', async () => {
     open()
     const proximas = (await screen.findByRole('heading', { name: 'Próximas' })).parentElement!
-    await userEvent.click(within(proximas).getByText('hoje'))
+    await userEvent.click(within(proximas).getByText('Sessão · hoje'))
     const dialog = await screen.findByRole('dialog')
     await userEvent.click(within(dialog).getByRole('button', { name: /Assinar chegada/ }))
     expect(await screen.findByText('Quem está assinando')).toBeTruthy()

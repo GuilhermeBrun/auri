@@ -1,13 +1,31 @@
-import { formatTime, parseIsoLocalDateTime } from '../../shared/dates'
+import { foraDoFuncionamentoIso } from '../../shared/agenda'
+import { pedidoNaSessao, type RegistroDoPedido } from '../../shared/confirmacao'
+import { toIsoLocalDateTime } from '../../shared/dates'
 import {
   appointmentInputSchema,
   type Appointment,
   type AppointmentInput
 } from '../../shared/schemas'
+import type { EtiquetaResumo } from '../../shared/tipos'
+import { getFuncionamento } from './clinic'
+import { assertAgendaFree } from './busy'
 import { assertUnchanged } from './concurrency'
 import type { Db } from './connection'
+import { estornarFalta } from './finance'
+import {
+  assertTipoUsavel,
+  setAppointmentEtiquetas,
+  TIPO_COLUMNS,
+  TIPO_JOIN,
+  tipoPadrao
+} from './tipos'
 
-type AppointmentRow = Omit<Appointment, 'observacao' | 'presenca' | 'evolucao' | 'assinatura'> & {
+type AppointmentRow = Omit<
+  Appointment,
+  'observacao' | 'presenca' | 'evolucao' | 'assinatura' | 'etiquetas' | 'pedido'
+> & {
+  etiquetas: string
+  pedido: string | null
   observacao: string | null
   presenca: Appointment['presenca'] | null
   evolucao: string | null
@@ -18,12 +36,21 @@ type AppointmentRow = Omit<Appointment, 'observacao' | 'presenca' | 'evolucao' |
 }
 
 const SELECT = `
-  SELECT a.id, a.patient_id, a.inicio, a.fim, a.observacao, a.tipo, a.presenca, a.evolucao,
-         a.created_at, a.updated_at, p.nome AS patient_nome,
+  SELECT a.id, a.patient_id, a.inicio, a.fim, a.observacao, ${TIPO_COLUMNS}, a.presenca,
+         a.evolucao, a.confirmado_em, a.created_at, a.updated_at, p.nome AS patient_nome,
          s.id AS assinatura_id, s.signer_nome AS assinatura_nome,
-         s.signer_parentesco AS assinatura_parentesco, s.assinado_em AS assinatura_em
+         s.signer_parentesco AS assinatura_parentesco, s.assinado_em AS assinatura_em,
+         (SELECT json_group_array(json_object('id', g.id, 'nome', g.nome, 'cor', g.cor))
+            FROM (SELECT g.id, g.nome, g.cor FROM appointment_tags x
+                  JOIN tags g ON g.id = x.tag_id
+                  WHERE x.appointment_id = a.id ORDER BY g.nome COLLATE NOCASE) g) AS etiquetas,
+         (SELECT json_object('estado', r.estado, 'resposta', r.resposta, 'prazo', r.prazo)
+            FROM confirmation_requests r
+            WHERE r.appointment_id = a.id AND r.estado <> 'cancelado'
+            ORDER BY r.id DESC LIMIT 1) AS pedido
   FROM appointments a
   JOIN patients p ON p.id = a.patient_id
+  ${TIPO_JOIN}
   LEFT JOIN attendance_signatures s
     ON s.appointment_id = a.id AND s.id NOT IN (SELECT signature_id FROM attendance_voids)`
 
@@ -37,6 +64,11 @@ function fromRow(row: AppointmentRow): Appointment {
   } = row
   return {
     ...rest,
+    etiquetas: JSON.parse(row.etiquetas) as EtiquetaResumo[],
+    pedido: pedidoNaSessao(
+      row.pedido === null ? null : (JSON.parse(row.pedido) as RegistroDoPedido),
+      row.confirmado_em
+    ),
     observacao: row.observacao ?? '',
     presenca: row.presenca ?? '',
     evolucao: row.evolucao ?? '',
@@ -52,16 +84,19 @@ function fromRow(row: AppointmentRow): Appointment {
   }
 }
 
+const NOW = `strftime('%Y-%m-%dT%H:%M:%fZ', 'now')`
+
 const orNull = (value: string): string | null => (value === '' ? null : value)
 
 function toParams(input: AppointmentInput): Record<string, string | number | null> {
   const full = appointmentInputSchema.parse(input)
   return {
+    confirmado: full.confirmado === undefined ? null : Number(full.confirmado),
     patient_id: full.patient_id,
     inicio: full.inicio,
     fim: full.fim,
     observacao: orNull(full.observacao),
-    tipo: full.tipo,
+    tipo_id: full.tipo_id ?? null,
     presenca: orNull(full.presenca),
     evolucao: orNull(full.evolucao)
   }
@@ -72,29 +107,18 @@ function assertPatientExists(db: Db, patientId: number): void {
   if (!row) throw new Error('Paciente não encontrado')
 }
 
+export function assertWithinHours(db: Db, input: Pick<AppointmentInput, 'inicio' | 'fim'>): void {
+  const problem = foraDoFuncionamentoIso(getFuncionamento(db), input.inicio, input.fim)
+  if (problem) throw new Error(problem)
+}
+
 function assertSlotFree(
   db: Db,
-  input: Pick<AppointmentInput, 'inicio' | 'fim'>,
+  input: Pick<AppointmentInput, 'inicio' | 'fim' | 'presenca'>,
   ignoreId: number | null
 ): void {
-  const busy = db
-    .prepare(
-      `${SELECT}
-       WHERE a.inicio < @fim AND a.fim > @inicio AND a.id IS NOT @ignoreId
-       ORDER BY a.inicio, a.id`
-    )
-    .all({ inicio: input.inicio, fim: input.fim, ignoreId }) as AppointmentRow[]
-  if (busy.length === 0) return
-
-  const [first, ...others] = busy
-  const time = (value: string): string => formatTime(parseIsoLocalDateTime(value))
-  const more =
-    others.length === 0
-      ? ''
-      : ` e mais ${others.length} ${others.length === 1 ? 'sessão' : 'sessões'}`
-  throw new Error(
-    `Esse horário já está ocupado: ${first.patient_nome}, das ${time(first.inicio)} às ${time(first.fim)}${more}.`
-  )
+  if (input.presenca === 'desmarcou') return
+  assertAgendaFree(db, input, { appointment: ignoreId })
 }
 
 export function getAppointment(db: Db, id: number): Appointment {
@@ -119,46 +143,137 @@ export function listAppointments(db: Db, de: string, ate: string): Appointment[]
 
 export const PRESENCA_SO_ASSINADA = 'A presença é marcada pela assinatura da chegada.'
 
-export function createAppointment(db: Db, input: AppointmentInput): Appointment {
+export function createAppointment(
+  db: Db,
+  input: AppointmentInput,
+  agora: Date = new Date()
+): Appointment {
   if (input.presenca === 'presente') throw new Error(PRESENCA_SO_ASSINADA)
-  assertPatientExists(db, input.patient_id)
-  assertSlotFree(db, input, null)
-  const result = db
-    .prepare(
-      `INSERT INTO appointments (patient_id, inicio, fim, observacao, tipo, presenca, evolucao)
-       VALUES (@patient_id, @inicio, @fim, @observacao, @tipo, @presenca, @evolucao)`
-    )
-    .run(toParams(input))
-  return getAppointment(db, Number(result.lastInsertRowid))
+  return db.transaction(() => {
+    assertPatientExists(db, input.patient_id)
+    const tipoId = input.tipo_id ?? tipoPadrao(db)
+    assertTipoUsavel(db, tipoId)
+    assertWithinHours(db, input)
+    assertSlotFree(db, input, null)
+    const result = db
+      .prepare(
+        `INSERT INTO appointments
+           (patient_id, inicio, fim, observacao, tipo_id, presenca, evolucao, confirmado_em)
+         VALUES (@patient_id, @inicio, @fim, @observacao, @tipo_id, @presenca, @evolucao,
+           CASE WHEN @confirmado = 1 THEN ${NOW} END)`
+      )
+      .run({ ...toParams(input), tipo_id: tipoId })
+    const id = Number(result.lastInsertRowid)
+    if (input.etiquetas) setAppointmentEtiquetas(db, id, input.etiquetas)
+    if (input.inicio >= toIsoLocalDateTime(agora)) {
+      db.prepare(
+        `UPDATE waitlist_entries
+         SET encerrado_em = ${NOW}, encerrado_motivo = 'agendado', appointment_id = @id,
+             updated_at = ${NOW}
+         WHERE patient_id = @patient_id AND encerrado_em IS NULL`
+      ).run({ id, patient_id: input.patient_id })
+    }
+    return getAppointment(db, id)
+  })()
 }
+
+const COMPUTADOR = 'Este computador'
+
+const FALTAS: readonly string[] = ['falta', 'desmarcou']
 
 export function updateAppointment(
   db: Db,
   id: number,
   input: AppointmentInput,
-  expected?: string
+  expected?: string,
+  computador: string = COMPUTADOR
 ): Appointment {
-  const current = getAppointment(db, id)
-  assertUnchanged(current.updated_at, expected)
-  if (input.presenca === 'presente' && current.presenca !== 'presente') {
-    throw new Error(PRESENCA_SO_ASSINADA)
-  }
-  assertPatientExists(db, input.patient_id)
-  assertSlotFree(db, input, id)
-  const result = db
-    .prepare(
+  return db.transaction(() => {
+    const current = getAppointment(db, id)
+    assertUnchanged(current.updated_at, expected)
+    if (input.presenca === 'presente' && current.presenca !== 'presente') {
+      throw new Error(PRESENCA_SO_ASSINADA)
+    }
+    assertPatientExists(db, input.patient_id)
+    if (input.tipo_id !== undefined && input.tipo_id !== current.tipo_id) {
+      assertTipoUsavel(db, input.tipo_id)
+    }
+    if (input.inicio !== current.inicio || input.fim !== current.fim) assertWithinHours(db, input)
+    assertSlotFree(db, input, id)
+    const result = db
+      .prepare(
+        `UPDATE appointments
+         SET patient_id = @patient_id, inicio = @inicio, fim = @fim, observacao = @observacao,
+             tipo_id = coalesce(@tipo_id, tipo_id), presenca = @presenca, evolucao = @evolucao,
+             confirmado_em = CASE
+               WHEN @confirmado IS NULL THEN confirmado_em
+               WHEN @confirmado = 1 THEN coalesce(confirmado_em, ${NOW})
+             END,
+             updated_at = ${NOW}
+         WHERE id = @id`
+      )
+      .run({ ...toParams(input), id })
+    if (result.changes === 0) throw new Error('Agendamento não encontrado')
+    const remarcou =
+      input.inicio !== current.inicio ||
+      input.fim !== current.fim ||
+      input.patient_id !== current.patient_id
+    if (FALTAS.includes(current.presenca) && (remarcou || !FALTAS.includes(input.presenca ?? '')))
+      estornarFalta(
+        db,
+        id,
+        remarcou ? 'Sessão remarcada na agenda.' : 'Falta desfeita na agenda.',
+        computador
+      )
+    if (input.etiquetas) {
+      setAppointmentEtiquetas(
+        db,
+        id,
+        input.etiquetas,
+        current.etiquetas.map((e) => e.id)
+      )
+    }
+    return getAppointment(db, id)
+  })()
+}
+
+export function moveAppointment(
+  db: Db,
+  id: number,
+  slot: { inicio: string; fim: string },
+  expected?: string,
+  computador: string = COMPUTADOR
+): Appointment {
+  return db.transaction(() => {
+    const current = getAppointment(db, id)
+    assertUnchanged(current.updated_at, expected)
+    if (current.assinatura) {
+      throw new Error('A chegada desta sessão foi assinada: o horário não muda mais.')
+    }
+    assertWithinHours(db, slot)
+    assertAgendaFree(db, slot, { appointment: id })
+    db.prepare(
       `UPDATE appointments
-       SET patient_id = @patient_id, inicio = @inicio, fim = @fim, observacao = @observacao,
-           tipo = @tipo, presenca = @presenca, evolucao = @evolucao,
-           updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+       SET inicio = @inicio, fim = @fim, presenca = NULL, confirmado_em = NULL, updated_at = ${NOW}
        WHERE id = @id`
-    )
-    .run({ ...toParams(input), id })
-  if (result.changes === 0) throw new Error('Agendamento não encontrado')
-  return getAppointment(db, id)
+    ).run({ ...slot, id })
+    estornarFalta(db, id, 'Sessão remarcada.', computador)
+    return getAppointment(db, id)
+  })()
 }
 
 export function removeAppointment(db: Db, id: number): void {
+  const lancada = db
+    .prepare(
+      `SELECT 1 FROM finance_charges WHERE appointment_id = @id
+       UNION ALL SELECT 1 FROM finance_package_uses WHERE appointment_id = @id`
+    )
+    .get({ id })
+  if (lancada) {
+    throw new Error(
+      'Esta sessão já passou pelo financeiro e fica no histórico. Em vez de excluir, marque como desmarcada.'
+    )
+  }
   const result = db.prepare('DELETE FROM appointments WHERE id = ?').run(id)
   if (result.changes === 0) throw new Error('Agendamento não encontrado')
 }

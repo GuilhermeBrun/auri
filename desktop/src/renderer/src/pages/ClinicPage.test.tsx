@@ -1,11 +1,17 @@
 // @vitest-environment jsdom
-import { cleanup, screen, waitFor } from '@testing-library/react'
+import { cleanup, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
+import { FUNCIONAMENTO_PADRAO } from '@shared/agenda'
 import type { Clinic } from '@shared/schemas'
 import { renderRoute } from '@renderer/testing'
 
-const { clinic } = vi.hoisted(() => {
+const { clinic, tipos, etiquetas } = vi.hoisted(() => {
+  Object.assign(Element.prototype, {
+    hasPointerCapture: () => false,
+    releasePointerCapture: () => {},
+    scrollIntoView: () => {}
+  })
   const bridge = (): unknown =>
     new Proxy({} as Record<string, unknown>, {
       get: (target, key: string) =>
@@ -13,19 +19,50 @@ const { clinic } = vi.hoisted(() => {
     })
   const clinic = { get: vi.fn(), save: vi.fn(), chooseLogo: vi.fn() }
   const terms = { models: vi.fn(() => Promise.resolve([])) }
+  const tipos = {
+    list: vi.fn(() =>
+      Promise.resolve([
+        {
+          id: 1,
+          nome: 'Sessão',
+          categoria: 'sessao',
+          cor: 'grafite',
+          duracao: 30,
+          arquivado: false
+        },
+        {
+          id: 2,
+          nome: 'Avaliação',
+          categoria: 'avaliacao',
+          cor: 'azul',
+          duracao: 60,
+          arquivado: false
+        }
+      ])
+    ),
+    save: vi.fn(),
+    archive: vi.fn()
+  }
+  const etiquetas = { list: vi.fn(() => Promise.resolve([])), save: vi.fn(), archive: vi.fn() }
   Object.assign(window, {
     platform: 'win32',
-    api: { clinic, terms },
+    api: { clinic, terms, tipos, etiquetas },
     backup: bridge(),
     connection: bridge(),
     prefs: bridge(),
     updates: bridge(),
     reports: bridge()
   })
-  return { clinic }
+  return { clinic, tipos, etiquetas }
 })
 
 import { ClinicPage } from './ClinicPage'
+
+globalThis.ResizeObserver ??= class {
+  observe(): void {}
+  disconnect(): void {}
+  unobserve(): void {}
+}
 
 const LOGO = 'iVBORw0KGgo='
 
@@ -38,6 +75,8 @@ const vazia: Clinic = {
   profissional: '',
   registro: '',
   logo: '',
+  margem_deslocamento: 30,
+  funcionamento: FUNCIONAMENTO_PADRAO,
   updated_at: '2026-10-19T12:00:00.000Z'
 }
 
@@ -97,5 +136,117 @@ describe('Clínica', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
     expect(await screen.findByText('Telefone inválido')).toBeTruthy()
     expect(clinic.save).not.toHaveBeenCalled()
+  })
+
+  it('abre o domingo, fecha o sábado e salva o funcionamento', async () => {
+    clinic.get.mockResolvedValue(vazia)
+    clinic.save.mockImplementation((input) =>
+      Promise.resolve({ ...input, updated_at: '2026-10-19T12:01:00.000Z' })
+    )
+    renderRoute('/clinica', '/clinica', <ClinicPage />)
+    const domingo = await screen.findByRole('switch', { name: 'Abre no domingo' })
+    expect(domingo.getAttribute('aria-checked')).toBe('false')
+    expect(
+      screen.getByRole('switch', { name: 'Abre no sábado' }).getAttribute('aria-checked')
+    ).toBe('true')
+    expect((screen.getByLabelText('Sábado, fecha às') as HTMLInputElement).value).toBe('12:00')
+
+    await userEvent.click(domingo)
+    await userEvent.click(screen.getByRole('switch', { name: 'Abre no sábado' }))
+    expect(screen.queryByLabelText('Sábado, fecha às')).toBeNull()
+    const fecha = screen.getByLabelText('Domingo, fecha às')
+    await userEvent.clear(fecha)
+    await userEvent.type(fecha, '12:00')
+    await userEvent.tab()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
+    await waitFor(() => expect(clinic.save).toHaveBeenCalled())
+    const { 6: _, ...semSabado } = FUNCIONAMENTO_PADRAO
+    expect(clinic.save.mock.calls[0][0].funcionamento).toEqual({
+      ...semSabado,
+      0: { abre: '07:00', fecha: '12:00' }
+    })
+  })
+
+  it('salva a margem de deslocamento junto do funcionamento', async () => {
+    clinic.get.mockResolvedValue(vazia)
+    clinic.save.mockImplementation((input) =>
+      Promise.resolve({ ...input, updated_at: '2026-10-19T12:01:00.000Z' })
+    )
+    renderRoute('/clinica', '/clinica', <ClinicPage />)
+    const margem = await screen.findByRole('combobox', { name: 'Margem de deslocamento' })
+    expect(margem.textContent).toContain('30 min')
+    await userEvent.click(margem)
+    await userEvent.click(await screen.findByRole('option', { name: '60 min' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
+    await waitFor(() => expect(clinic.save).toHaveBeenCalled())
+    expect(clinic.save.mock.calls[0][0].margem_deslocamento).toBe(60)
+  })
+
+  it('recusa um dia que fecha antes de abrir', async () => {
+    clinic.get.mockResolvedValue(vazia)
+    renderRoute('/clinica', '/clinica', <ClinicPage />)
+    const fecha = await screen.findByLabelText('Segunda, fecha às')
+    await userEvent.clear(fecha)
+    await userEvent.type(fecha, '06:00')
+    await userEvent.tab()
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
+    expect(await screen.findByText('Fecha depois de abrir')).toBeTruthy()
+    expect(clinic.save).not.toHaveBeenCalled()
+  })
+
+  it('cadastra um exame com cor e duração, sem salvar o resto da página', async () => {
+    clinic.get.mockResolvedValue(vazia)
+    tipos.save.mockImplementation((_id, input) =>
+      Promise.resolve({ id: 9, ...input, arquivado: false })
+    )
+    renderRoute('/clinica', '/clinica', <ClinicPage />)
+    const tiposLista = (await screen.findByText('Avaliação')).closest('ul') as HTMLElement
+    expect(within(tiposLista).getByText(/30 min/)).toBeTruthy()
+    expect(within(tiposLista).getAllByText(/60 min/).length).toBeGreaterThan(0)
+    await userEvent.click(screen.getByRole('button', { name: 'Novo tipo' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Novo tipo' })
+    await userEvent.type(within(dialog).getByLabelText('Nome'), 'Audiometria')
+    expect(within(dialog).getByRole('button', { name: 'Exame' }).getAttribute('aria-pressed')).toBe(
+      'true'
+    )
+    await userEvent.click(within(dialog).getByRole('radio', { name: 'Ardósia' }))
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Salvar' }))
+    await waitFor(() =>
+      expect(tipos.save).toHaveBeenCalledWith(null, {
+        nome: 'Audiometria',
+        categoria: 'exame',
+        cor: 'ardosia',
+        duracao: 60
+      })
+    )
+    expect(clinic.save).not.toHaveBeenCalled()
+  })
+
+  it('não deixa mudar a categoria de um tipo existente', async () => {
+    clinic.get.mockResolvedValue(vazia)
+    renderRoute('/clinica', '/clinica', <ClinicPage />)
+    await userEvent.click(await screen.findByRole('button', { name: /Avaliação/ }))
+    const dialog = await screen.findByRole('dialog', { name: 'Tipo · Avaliação' })
+    expect(within(dialog).queryByRole('group', { name: 'Categoria' })).toBeNull()
+    expect(within(dialog).getByRole('button', { name: 'Arquivar' })).toBeTruthy()
+  })
+
+  it('cadastra uma etiqueta e recusa sem nome', async () => {
+    clinic.get.mockResolvedValue(vazia)
+    etiquetas.save.mockImplementation((_id, input) =>
+      Promise.resolve({ id: 3, ...input, arquivado: false })
+    )
+    renderRoute('/clinica', '/clinica', <ClinicPage />)
+    expect(await screen.findByText('Nenhuma etiqueta ainda.')).toBeTruthy()
+    await userEvent.click(screen.getByRole('button', { name: 'Nova etiqueta' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Nova etiqueta' })
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Salvar' }))
+    expect(await within(dialog).findByText('Dê um nome à etiqueta')).toBeTruthy()
+    await userEvent.type(within(dialog).getByLabelText('Nome'), 'Convênio')
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Salvar' }))
+    await waitFor(() =>
+      expect(etiquetas.save).toHaveBeenCalledWith(null, { nome: 'Convênio', cor: 'ardosia' })
+    )
   })
 })

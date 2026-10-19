@@ -3,7 +3,13 @@ import { Copy, Send } from 'lucide-react'
 import { useId, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { formatPhone, isValidPhone } from '@shared/masks'
-import { isAdult, pessoasDaFicha, responsavelDe, type Pessoa } from '@shared/responsavel'
+import {
+  contatoPrincipal,
+  isAdult,
+  pessoasDaFicha,
+  responsavelDe,
+  type Pessoa
+} from '@shared/responsavel'
 import { TERM_PRAZOS, type Patient, type TermModel, type TermSendInput } from '@shared/schemas'
 import { mensagemDaIda } from '@shared/terms'
 import { Button } from '@renderer/components/ui/button'
@@ -59,7 +65,10 @@ function SendForm({
   const pessoas = pessoasDaFicha(patient).filter(
     (p) => p.papel !== 'paciente' || isAdult(patient.data_nascimento)
   )
-  const padrao = responsavelDe(patient).pessoa
+  const contato = contatoPrincipal(patient)
+  const padrao = pessoas.some((p) => p.papel === contato?.papel)
+    ? contato
+    : responsavelDe(patient).pessoa
   const [escolha, setEscolha] = useState<string>(padrao?.papel ?? pessoas[0]?.papel ?? OUTRA)
   const pessoa: Pessoa | null = pessoas.find((p) => p.papel === escolha) ?? null
   const [celulares, setCelulares] = useState<Record<string, string>>(() =>

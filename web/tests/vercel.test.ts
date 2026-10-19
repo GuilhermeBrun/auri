@@ -20,18 +20,25 @@ function cabecalhos(caminho: string): Map<string, string[]> {
 }
 
 describe('cabeçalhos da Vercel', () => {
-  test.each(['/assinar', '/assinar/', '/assinar/index.html', '/recebido', '/recebido/'])(
-    '%s: CSP própria, sem conexão nenhuma, e fora da busca',
-    (caminho) => {
-      const csp = cabecalhos(caminho).get('Content-Security-Policy')
-      expect(csp).toHaveLength(1)
-      expect(csp?.[0]).toContain("connect-src 'none'")
-      expect(csp?.[0]).toContain("default-src 'none'")
-      expect(csp?.[0]).not.toContain('unsafe-inline')
-      expect(cabecalhos(caminho).get('X-Robots-Tag')).toEqual(['noindex'])
-      expect(cabecalhos(caminho).get('Referrer-Policy')).toEqual(['no-referrer'])
-    }
-  )
+  test.each([
+    '/assinar',
+    '/assinar/',
+    '/assinar/index.html',
+    '/recebido',
+    '/recebido/',
+    '/confirmar',
+    '/confirmar/index.html',
+    '/resposta',
+    '/resposta/'
+  ])('%s: CSP própria, sem conexão nenhuma, e fora da busca', (caminho) => {
+    const csp = cabecalhos(caminho).get('Content-Security-Policy')
+    expect(csp).toHaveLength(1)
+    expect(csp?.[0]).toContain("connect-src 'none'")
+    expect(csp?.[0]).toContain("default-src 'none'")
+    expect(csp?.[0]).not.toContain('unsafe-inline')
+    expect(cabecalhos(caminho).get('X-Robots-Tag')).toEqual(['noindex'])
+    expect(cabecalhos(caminho).get('Referrer-Policy')).toEqual(['no-referrer'])
+  })
 
   test.each(['/', '/index.html', '/api/erros'])('%s: continua com a CSP do site', (caminho) => {
     const csp = cabecalhos(caminho).get('Content-Security-Policy')
@@ -44,7 +51,9 @@ describe('cabeçalhos da Vercel', () => {
     expect(vercel.rewrites).toEqual(
       expect.arrayContaining([
         { source: '/assinar', destination: '/assinar/index.html' },
-        { source: '/recebido', destination: '/recebido/index.html' }
+        { source: '/recebido', destination: '/recebido/index.html' },
+        { source: '/confirmar', destination: '/confirmar/index.html' },
+        { source: '/resposta', destination: '/resposta/index.html' }
       ])
     )
   })

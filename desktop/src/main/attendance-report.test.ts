@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vite-plus/test'
 import type { Appointment, AttendanceRecord, AttendanceReport } from '../shared/schemas'
 import { paraBase64url } from '../../../web/contrato/assinatura/base64url'
 import { codificar } from '../../../web/contrato/assinatura/traco'
-import { attendanceReportHtml, attendanceReportName, periodLabel } from './attendance-report'
-import { esc } from './document'
+import { attendanceReportHtml, attendanceReportName } from './attendance-report'
+import { esc, periodLabel } from './document'
 
 const TRACO = paraBase64url(
   codificar([
@@ -24,6 +24,8 @@ const clinic: AttendanceReport['clinic'] = {
   profissional: 'Lara Fictícia',
   registro: 'CRFa 0-0000',
   logo: '',
+  margem_deslocamento: 30,
+  funcionamento: {},
   updated_at: '2026-10-01T00:00:00.000Z'
 }
 
@@ -40,9 +42,15 @@ function session(
     inicio,
     fim: inicio.replace(':00', ':45'),
     observacao: '',
-    tipo: 'sessao',
+    tipo_id: 1,
+    tipo_nome: 'Sessão',
+    tipo_cor: 'grafite',
+    categoria: 'sessao',
+    etiquetas: [],
     presenca,
     evolucao: '',
+    confirmado_em: null,
+    pedido: null,
     assinatura: null,
     created_at: '',
     updated_at: '',
@@ -60,7 +68,8 @@ function record(
     appointment_id: appointmentId,
     inicio: '2026-10-19T14:00',
     fim: '2026-10-19T14:45',
-    tipo: 'sessao',
+    tipo_nome: 'Sessão',
+    categoria: 'sessao',
     signer_nome: 'Marina "Mãe" Fictícia',
     signer_papel: 'mae',
     signer_parentesco: 'Mãe',
@@ -139,7 +148,7 @@ describe('relatório de presença em HTML', () => {
 
   it('cabeçalho com o mês, idade e profissional', () => {
     expect(html).toContain('<p>Outubro de 2026</p>')
-    expect(html).toContain('12/03/2019 (7 anos)')
+    expect(html).toContain('12/03/2019 (7 anos e 7 meses)')
     expect(html).toContain('Lara Fictícia · CRFa 0-0000')
     expect(html).toContain('Gerado pelo Auri em 31/10/2026 às 18:00')
   })

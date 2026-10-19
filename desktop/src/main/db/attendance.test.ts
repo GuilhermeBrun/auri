@@ -98,7 +98,7 @@ describe('assinatura de chegada', () => {
       inicio: a.inicio,
       fim: a.fim,
       observacao: '',
-      tipo: a.tipo,
+      tipo_id: a.tipo_id,
       presenca: a.presenca
     }
     expect(() =>
@@ -107,9 +107,7 @@ describe('assinatura de chegada', () => {
     expect(() => updateAppointment(db, id, { ...base, presenca: 'falta' })).toThrow(
       /não mudam mais/
     )
-    expect(() => updateAppointment(db, id, { ...base, tipo: 'avaliacao' })).toThrow(
-      /não mudam mais/
-    )
+    expect(() => updateAppointment(db, id, { ...base, tipo_id: 2 })).toThrow(/não mudam mais/)
     const editada = updateAppointment(db, id, { ...base, evolucao: 'Boa sessão', observacao: 'ok' })
     expect(editada.evolucao).toBe('Boa sessão')
     expect(() => removeAppointment(db, id)).toThrow(/não pode ser excluída/)
@@ -172,7 +170,7 @@ describe('relatório de presença', () => {
   })
 
   it('inclui o último dia do período', () => {
-    const ultima = sessao('2026-10-31T18:00', '2026-10-31T18:45')
+    const ultima = sessao('2026-10-31T10:00', '2026-10-31T10:45')
     const report = attendanceReport(db, patientId, '2026-10-01', '2026-10-31')
     expect(report.sessions.map((s) => s.id)).toEqual([ultima])
   })

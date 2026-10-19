@@ -35,8 +35,19 @@ const api: AuriApi = {
     listRange: (de, ate) => invoke('appointments:listRange', de, ate),
     listByPatient: (patientId) => invoke('appointments:listByPatient', patientId),
     create: (input) => invoke('appointments:create', input),
-    update: (id, input, expected) => invoke('appointments:update', id, input, expected),
-    remove: (id) => invoke('appointments:remove', id)
+    update: (id, input, expected, computador) =>
+      invoke('appointments:update', id, input, expected, computador),
+    remove: (id) => invoke('appointments:remove', id),
+    move: (id, slot, expected, computador) =>
+      invoke('appointments:move', id, slot, expected, computador),
+    scheduleOnReserve: (reserveId, input) =>
+      invoke('appointments:scheduleOnReserve', reserveId, input)
+  },
+  commitments: {
+    listRange: (de, ate) => invoke('commitments:listRange', de, ate),
+    create: (input) => invoke('commitments:create', input),
+    update: (id, input, expected) => invoke('commitments:update', id, input, expected),
+    remove: (id) => invoke('commitments:remove', id)
   },
   attendance: {
     sign: (appointmentId, input, computador) =>
@@ -45,6 +56,11 @@ const api: AuriApi = {
       invoke('attendance:void', signatureId, motivo, computador),
     listByPatient: (patientId) => invoke('attendance:listByPatient', patientId),
     reportPdf: (patientId, de, ate) => invoke('pdf:attendance', patientId, de, ate)
+  },
+  documents: {
+    evolutionsPdf: (patientId, de, ate) => invoke('pdf:evolutions', patientId, de, ate),
+    patientPdf: (patientId) => invoke('pdf:patient', patientId),
+    anamnesePdf: (patientId) => invoke('pdf:anamnese', patientId)
   },
   clinic: {
     get: () => invoke('clinic:get'),
@@ -67,9 +83,65 @@ const api: AuriApi = {
     takeIncoming: () => invoke('terms:takeIncoming'),
     onIncoming: (listener) => subscribe<void>('terms:incoming', listener)
   },
+  confirmacoes: {
+    lista: () => invoke('confirmacoes:lista'),
+    enviar: (appointmentId, computador) => invoke('confirmacoes:enviar', appointmentId, computador),
+    receber: (texto, computador) => invoke('confirmacoes:receber', texto, computador),
+    aplicarOutra: (requestId, computador) =>
+      invoke('confirmacoes:aplicarOutra', requestId, computador),
+    avisos: () => invoke('confirmacoes:avisos'),
+    dispensar: (requestId, tipo) => invoke('confirmacoes:dispensar', requestId, tipo),
+    takeIncoming: () => invoke('confirmacoes:takeIncoming'),
+    onIncoming: (listener) => subscribe<void>('confirmacoes:incoming', listener)
+  },
   anamneses: {
     get: (patientId) => invoke('anamneses:get', patientId),
     save: (patientId, input, expected) => invoke('anamneses:save', patientId, input, expected)
+  },
+  tipos: {
+    list: () => invoke('tipos:list'),
+    save: (id, input) => invoke('tipos:save', id, input),
+    archive: (id, arquivado) => invoke('tipos:archive', id, arquivado)
+  },
+  etiquetas: {
+    list: () => invoke('etiquetas:list'),
+    save: (id, input) => invoke('etiquetas:save', id, input),
+    archive: (id, arquivado) => invoke('etiquetas:archive', id, arquivado)
+  },
+  waitlist: {
+    list: () => invoke('waitlist:list'),
+    getByPatient: (patientId) => invoke('waitlist:getByPatient', patientId),
+    add: (input) => invoke('waitlist:add', input),
+    update: (id, input, expected) => invoke('waitlist:update', id, input, expected),
+    close: (id, close) => invoke('waitlist:close', id, close)
+  },
+  encaixe: {
+    sugerir: (input) => invoke('encaixe:sugerir', input),
+    quemCabe: (vaga) => invoke('encaixe:quemCabe', vaga)
+  },
+  finance: {
+    catalog: () => invoke('finance:catalog'),
+    saveService: (id, input) => invoke('finance:saveService', id, input),
+    archiveService: (id, arquivado) => invoke('finance:archiveService', id, arquivado),
+    savePlan: (id, input) => invoke('finance:savePlan', id, input),
+    archivePlan: (id, arquivado) => invoke('finance:archivePlan', id, arquivado),
+    saveInsurer: (id, input) => invoke('finance:saveInsurer', id, input),
+    archiveInsurer: (id, arquivado) => invoke('finance:archiveInsurer', id, arquivado),
+    patient: (patientId) => invoke('finance:patient', patientId),
+    setBilling: (patientId, input, expected) =>
+      invoke('finance:setBilling', patientId, input, expected),
+    contractPackage: (patientId, input, computador) =>
+      invoke('finance:contractPackage', patientId, input, computador),
+    charge: (patientId, input, computador) =>
+      invoke('finance:charge', patientId, input, computador),
+    pay: (patientId, input, computador) => invoke('finance:pay', patientId, input, computador),
+    launchSession: (appointmentId, computador, serviceId) =>
+      invoke('finance:launchSession', appointmentId, computador, serviceId),
+    chargeAbsence: (appointmentId, computador) =>
+      invoke('finance:chargeAbsence', appointmentId, computador),
+    void: (kind, id, motivo, computador) => invoke('finance:void', kind, id, motivo, computador),
+    sessionStatus: (ids) => invoke('finance:sessionStatus', ids),
+    overview: (de, ate) => invoke('finance:overview', de, ate)
   },
   onChanged: (listener) => subscribe<DataTopic[]>('data:changed', listener)
 }

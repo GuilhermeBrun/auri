@@ -1,0 +1,145 @@
+import type { z } from 'zod'
+import { PERIODOS, type Periodo } from '../../shared/encaixe'
+import {
+  waitlistAddSchema,
+  waitlistCloseSchema,
+  waitlistInputSchema,
+  type WaitlistAdd,
+  type WaitlistClose,
+  type WaitlistEntry,
+  type WaitlistInput
+} from '../../shared/waitlist'
+import { assertUnchanged } from './concurrency'
+import type { Db } from './connection'
+import { assertTipoUsavel, tipoPadrao } from './tipos'
+
+type WaitlistRow = Omit<WaitlistEntry, 'dias' | 'periodos' | 'observacao'> & {
+  dias: string
+  periodos: string
+  observacao: string | null
+  encerrado_em: string | null
+}
+
+const SELECT = `
+  SELECT w.id, w.patient_id, p.nome AS patient_nome, w.tipo_id, t.nome AS tipo_nome,
+         t.categoria, w.duracao, w.dias, w.periodos, w.prioridade, w.observacao,
+         w.encerrado_em, w.created_at, w.updated_at
+  FROM waitlist_entries w
+  JOIN patients p ON p.id = w.patient_id
+  JOIN appointment_types t ON t.id = w.tipo_id`
+
+const ORDER = `ORDER BY w.prioridade = 'alta' DESC, w.created_at, w.id`
+
+function fromRow({ encerrado_em: _, ...row }: WaitlistRow): WaitlistEntry {
+  return {
+    ...row,
+    dias: row.dias === '' ? [] : row.dias.split(',').map(Number),
+    periodos: row.periodos
+      .split(',')
+      .filter((p): p is Periodo => (PERIODOS as readonly string[]).includes(p)),
+    observacao: row.observacao ?? ''
+  }
+}
+
+function toParams(
+  full: z.output<typeof waitlistInputSchema>
+): Record<string, string | number | null> {
+  return {
+    tipo_id: full.tipo_id ?? null,
+    duracao: full.duracao,
+    dias: full.dias.join(','),
+    periodos: full.periodos.join(','),
+    prioridade: full.prioridade,
+    observacao: full.observacao === '' ? null : full.observacao
+  }
+}
+
+function tipoDaEspera(db: Db, id: number | undefined): number {
+  if (id === undefined) return tipoPadrao(db)
+  return assertTipoUsavel(db, id).id
+}
+
+function getOpenEntry(db: Db, id: number): WaitlistEntry {
+  const row = db.prepare(`${SELECT} WHERE w.id = ?`).get(id) as WaitlistRow | undefined
+  if (!row) throw new Error('Paciente não está na lista de espera')
+  if (row.encerrado_em !== null) throw new Error('Este paciente já saiu da lista de espera')
+  return fromRow(row)
+}
+
+export function listWaitlist(db: Db): WaitlistEntry[] {
+  const rows = db
+    .prepare(`${SELECT} WHERE w.encerrado_em IS NULL AND p.ativo = 1 ${ORDER}`)
+    .all() as WaitlistRow[]
+  return rows.map(fromRow)
+}
+
+export function getPatientWaitlist(db: Db, patientId: number): WaitlistEntry | null {
+  const row = db
+    .prepare(`${SELECT} WHERE w.patient_id = ? AND w.encerrado_em IS NULL`)
+    .get(patientId) as WaitlistRow | undefined
+  return row ? fromRow(row) : null
+}
+
+export function addToWaitlist(db: Db, input: WaitlistAdd): WaitlistEntry {
+  const parsed = waitlistAddSchema.parse(input)
+  const { patient_id } = parsed
+  const patient = db.prepare('SELECT ativo FROM patients WHERE id = ?').get(patient_id) as
+    | { ativo: number }
+    | undefined
+  if (!patient) throw new Error('Paciente não encontrado')
+  if (!patient.ativo) throw new Error('Reative o paciente antes de pôr na lista de espera')
+  if (getPatientWaitlist(db, patient_id)) {
+    throw new Error('Este paciente já está na lista de espera')
+  }
+  const result = db
+    .prepare(
+      `INSERT INTO waitlist_entries
+         (patient_id, tipo_id, duracao, dias, periodos, prioridade, observacao)
+       VALUES (@patient_id, @tipo_id, @duracao, @dias, @periodos, @prioridade, @observacao)`
+    )
+    .run({ ...toParams(parsed), patient_id, tipo_id: tipoDaEspera(db, parsed.tipo_id) })
+  return getOpenEntry(db, Number(result.lastInsertRowid))
+}
+
+export function updateWaitlist(
+  db: Db,
+  id: number,
+  input: WaitlistInput,
+  expected?: string
+): WaitlistEntry {
+  const parsed = waitlistInputSchema.parse(input)
+  const current = getOpenEntry(db, id)
+  assertUnchanged(current.updated_at, expected)
+  if (parsed.tipo_id !== undefined && parsed.tipo_id !== current.tipo_id) {
+    assertTipoUsavel(db, parsed.tipo_id)
+  }
+  db.prepare(
+    `UPDATE waitlist_entries
+     SET tipo_id = coalesce(@tipo_id, tipo_id), duracao = @duracao, dias = @dias, periodos = @periodos,
+         prioridade = @prioridade, observacao = @observacao,
+         updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+     WHERE id = @id`
+  ).run({ ...toParams(parsed), id })
+  return getOpenEntry(db, id)
+}
+
+export function closeWaitlist(db: Db, id: number, close: WaitlistClose): void {
+  const parsed = waitlistCloseSchema.parse(close)
+  const entry = getOpenEntry(db, id)
+  const appointmentId = parsed.motivo === 'agendado' ? parsed.appointment_id : null
+  if (appointmentId !== null) {
+    const appointment = db
+      .prepare('SELECT patient_id FROM appointments WHERE id = ?')
+      .get(appointmentId) as { patient_id: number } | undefined
+    if (!appointment) throw new Error('Agendamento não encontrado')
+    if (appointment.patient_id !== entry.patient_id) {
+      throw new Error('Esse agendamento é de outro paciente')
+    }
+  }
+  db.prepare(
+    `UPDATE waitlist_entries
+     SET encerrado_em = strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), encerrado_motivo = @motivo,
+         appointment_id = @appointment_id, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+     WHERE id = @id`
+  ).run({ id, motivo: parsed.motivo, appointment_id: appointmentId })
+}

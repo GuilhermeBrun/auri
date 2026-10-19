@@ -75,16 +75,16 @@ export const DADO_DA_IDA = `auri/termo/${VERSAO}/ida`
 export const dadoDaVolta = (id: string): string => `auri/termo/${VERSAO}/volta/${id}`
 const leitor = new TextDecoder('utf-8', { fatal: true })
 
-type Campos = Record<string, unknown>
+export type Campos = Record<string, unknown>
 
-function campos(valor: unknown, nome: string): Campos {
+export function campos(valor: unknown, nome: string): Campos {
   if (typeof valor !== 'object' || valor === null || Array.isArray(valor)) {
     throw new TypeError(`${nome}: esperado um objeto`)
   }
   return valor as Campos
 }
 
-function texto(
+export function texto(
   valor: unknown,
   nome: string,
   maximo: number,
@@ -101,14 +101,14 @@ function texto(
   return valor
 }
 
-function inteiro(valor: unknown, nome: string, minimo: number, maximo: number): number {
+export function inteiro(valor: unknown, nome: string, minimo: number, maximo: number): number {
   if (typeof valor !== 'number' || !Number.isInteger(valor) || valor < minimo || valor > maximo) {
     throw new TypeError(`${nome} inválido`)
   }
   return valor
 }
 
-function idValido(valor: unknown): string {
+export function idValido(valor: unknown): string {
   const id = texto(valor, 'id', 22, { padrao: /^[\w-]{22}$/ })
   try {
     if (deBase64url(id).length === TAMANHO_DO_ID) return id
@@ -173,10 +173,10 @@ export function respostaValida(valor: unknown): Resposta {
   }
 }
 
-export function partes(fragmento: string): [string, string] {
+export function partes(fragmento: string, esperada: number = VERSAO): [string, string] {
   const conteudo = fragmento.startsWith('#') ? fragmento.slice(1) : fragmento
   const [versao, ...resto] = conteudo.split('.')
-  const atual = String(VERSAO)
+  const atual = String(esperada)
   if (/^\d+$/.test(versao) && versao !== atual) throw new LinkInvalido('versao')
   if (conteudo.length > MAXIMO_LIDO || versao !== atual || resto.length !== 2) {
     throw new LinkInvalido('incompleto')

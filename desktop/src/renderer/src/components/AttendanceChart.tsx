@@ -3,6 +3,7 @@ import { ptBR } from 'date-fns/locale/pt-BR'
 import { useMemo, useRef, useState } from 'react'
 import { formatTime, parseIsoLocalDateTime } from '@shared/dates'
 import type { Appointment, Presenca } from '@shared/schemas'
+import { contaNaFrequencia } from '@shared/tipos'
 import { PRESENCA_LABELS } from '@renderer/lib/session'
 import { cn } from '@renderer/lib/utils'
 
@@ -35,14 +36,15 @@ export function AttendanceChart({
   sessions: Appointment[]
   onOpen: (appointment: Appointment) => void
 }): React.JSX.Element {
-  const bars = useMemo(() => sessions.slice(0, MAX_BARS).reverse(), [sessions])
+  const terapias = useMemo(() => sessions.filter((a) => contaNaFrequencia(a.categoria)), [sessions])
+  const bars = useMemo(() => terapias.slice(0, MAX_BARS).reverse(), [terapias])
   const counts = useMemo(() => {
     const c: Record<Kind, number> = { presente: 0, falta: 0, desmarcou: 0, pendente: 0 }
-    for (const a of sessions) c[kindOf(a)]++
+    for (const a of terapias) c[kindOf(a)]++
     return c
-  }, [sessions])
-  const registered = sessions.length - counts.pendente
-  const signedCount = useMemo(() => sessions.filter((a) => a.assinatura).length, [sessions])
+  }, [terapias])
+  const registered = terapias.length - counts.pendente
+  const signedCount = useMemo(() => terapias.filter((a) => a.assinatura).length, [terapias])
   const frequency = registered > 0 ? Math.round((counts.presente / registered) * 100) : null
 
   const [active, setActive] = useState<number | null>(null)
@@ -164,12 +166,13 @@ export function AttendanceChart({
             </span>
             {' · '}
             {formatTime(parseIsoLocalDateTime(shown.inicio))} · {statusLabel(kindOf(shown))}
-            {shown.tipo === 'avaliacao' && ' · Avaliação'}
+            {' · '}
+            {shown.tipo_nome}
             {shown.evolucao && ` — ${shown.evolucao}`}
           </>
         ) : (
           <span className="text-ink-faint">
-            {sessions.length > MAX_BARS
+            {terapias.length > MAX_BARS
               ? `Últimas ${MAX_BARS} sessões. Passe o mouse para ver cada uma.`
               : 'Passe o mouse para ver cada sessão.'}
           </span>

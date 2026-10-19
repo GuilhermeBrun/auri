@@ -1,15 +1,22 @@
-import { endOfMonth, format, startOfMonth } from 'date-fns'
+import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale/pt-BR'
-import { logoDataUrl } from '../shared/clinic'
-import {
-  formatAge,
-  isoToBrDate,
-  parseIsoDate,
-  parseIsoLocalDateTime,
-  toIsoDate
-} from '../shared/dates'
+import { isoToBrDate, parseIsoDate, parseIsoLocalDateTime } from '../shared/dates'
 import type { AttendanceRecord, AttendanceReport, Presenca } from '../shared/schemas'
-import { DOCUMENT_CSP, esc, fontFace, signatureSvg, signedAt } from './document'
+import {
+  birthLabel,
+  capitalize,
+  documentFacts,
+  documentHeader,
+  documentHtml,
+  documentStyle,
+  esc,
+  fileName,
+  generatedAt,
+  periodLabel,
+  professionalLabel,
+  signatureSvg,
+  signedAt
+} from './document'
 
 const PRESENCA: Record<Presenca, string> = {
   presente: 'Presente',
@@ -17,29 +24,13 @@ const PRESENCA: Record<Presenca, string> = {
   desmarcou: 'Desmarcou'
 }
 
-const TIPO = { sessao: 'Sessão', avaliacao: 'Avaliação' } as const
-
-const capitalize = (text: string): string => text.charAt(0).toUpperCase() + text.slice(1)
-
 function localAt(iso: string): string {
   return format(new Date(iso), "dd/MM/yyyy 'às' HH:mm")
 }
 
-function isWholeMonth(de: string, ate: string): boolean {
-  const start = parseIsoDate(de)
-  return toIsoDate(startOfMonth(start)) === de && toIsoDate(endOfMonth(start)) === ate
-}
-
-export function periodLabel(de: string, ate: string): string {
-  if (isWholeMonth(de, ate)) return format(parseIsoDate(de), "MMMM 'de' yyyy", { locale: ptBR })
-  if (de === ate) return isoToBrDate(de)
-  return `${isoToBrDate(de)} a ${isoToBrDate(ate)}`
-}
-
 export function attendanceReportName(report: AttendanceReport): string {
   const periodo = periodLabel(report.de, report.ate).replaceAll('/', '-')
-  const nome = report.patient.nome.replace(/[\\/:*?"<>|]/g, '').trim()
-  return `Presença - ${nome} - ${periodo}.pdf`
+  return fileName('Presença', report.patient.nome, periodo)
 }
 
 type Totals = {
@@ -114,7 +105,7 @@ function sessionRow(s: AttendanceReport['sessions'][number]): string {
   return `<tr>
 <td class="date"><span class="day">${format(inicio, 'dd/MM')}</span><span class="soft">${format(inicio, 'EEE', { locale: ptBR }).replace('.', '')}</span></td>
 <td class="num">${format(inicio, 'HH:mm')}–${format(fim, 'HH:mm')}</td>
-<td>${TIPO[s.tipo]}</td>
+<td>${esc(s.tipo_nome)}</td>
 <td class="${s.presenca === 'presente' ? '' : 'soft'}">${presenca}</td>
 <td>${arrivalCell(s)}</td>
 </tr>`
@@ -131,23 +122,12 @@ function recordRow(r: AttendanceRecord): string {
 </tr>`
 }
 
-const STYLE = (font: string): string => `
-${fontFace(font)}
-@page{size:A4;margin:16mm 16mm 18mm}
-*{box-sizing:border-box}
-html{-webkit-print-color-adjust:exact;print-color-adjust:exact}
-body{margin:0;font-family:'Bricolage',-apple-system,'Segoe UI',sans-serif;font-optical-sizing:auto;font-size:9.5pt;line-height:1.4;color:#1d1d22}
-.soft{color:#5f5f68}.faint{color:#8e8e96}
-header{display:flex;justify-content:space-between;align-items:flex-start;gap:24px}
-.brand{display:flex;align-items:center;gap:14px;min-width:0}
-.brand img{max-height:52px;max-width:150px;object-fit:contain}
-.clinic{font-size:15pt;font-weight:600;letter-spacing:-.01em;margin:0}
-.contact{margin-top:2px;font-size:8pt;color:#5f5f68}
-.title{text-align:right;flex-shrink:0}
-.title h1{font-size:12pt;font-weight:600;margin:0}
-.title p{margin:2px 0 0;color:#5f5f68}
-.facts{display:grid;grid-template-columns:2fr 1fr 2fr;gap:16px;margin:22px 0 0;padding:12px 14px;background:#f4f4f6;border-radius:8px}
-.facts dt{font-size:7.5pt;color:#77777f}.facts dd{margin:1px 0 0;font-weight:500}
+const STYLE = (font: string): string => `${documentStyle(font, {
+  margin: '16mm 16mm 18mm',
+  fontSize: '9.5pt',
+  lineHeight: 1.4
+})}
+.facts{grid-template-columns:2fr 1fr 2fr}
 .summary{display:flex;flex-wrap:wrap;gap:6px 16px;margin:16px 0 10px;font-size:9pt;color:#5f5f68}
 .summary span:first-child{color:#1d1d22;font-weight:600}
 table{width:100%;border-collapse:collapse}
@@ -170,7 +150,6 @@ h2{font-size:10pt;font-weight:600;margin:28px 0 4px;break-after:avoid}
 .records .hash{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:6.8pt;word-break:break-all}
 .records .void td{color:#8e8e96}
 .records .status{display:block;font-family:'Bricolage',-apple-system,'Segoe UI',sans-serif;font-size:7.5pt}
-.note{margin-top:18px;font-size:7.5pt;color:#5f5f68;max-width:150mm}
 `
 
 export function attendanceReportHtml(
@@ -179,28 +158,20 @@ export function attendanceReportHtml(
 ): string {
   const { clinic, patient } = report
   const now = options.now ?? new Date()
-  const contact = [clinic.documento, clinic.endereco, clinic.telefone].filter(Boolean)
-  const profissional = [clinic.profissional, clinic.registro].filter(Boolean).join(' · ')
-  const idade = formatAge(patient.data_nascimento, parseIsoDate(report.ate))
-  const nascimento = patient.data_nascimento
-    ? `${isoToBrDate(patient.data_nascimento)}${idade ? ` (${idade})` : ''}`
-    : '—'
   const records = report.sessions.flatMap((s) => s.records)
 
-  return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
-${DOCUMENT_CSP}
-<title>Relatório de presença · ${esc(patient.nome)}</title><style>${STYLE(options.font)}</style></head><body>
-<header>
-<div class="brand">${clinic.logo ? `<img src="${logoDataUrl(clinic.logo)}" alt="">` : ''}<div>${
-    clinic.nome ? `<p class="clinic">${esc(clinic.nome)}</p>` : ''
-  }${contact.length ? `<div class="contact">${contact.map(esc).join(' · ')}</div>` : ''}</div></div>
-<div class="title"><h1>Relatório de presença</h1><p>${esc(capitalize(periodLabel(report.de, report.ate)))}</p></div>
-</header>
-<dl class="facts">
-<div><dt>Paciente</dt><dd>${esc(patient.nome)}</dd></div>
-<div><dt>Nascimento</dt><dd>${esc(nascimento)}</dd></div>
-<div><dt>Profissional</dt><dd>${profissional ? esc(profissional) : '—'}</dd></div>
-</dl>
+  return documentHtml(
+    `Relatório de presença · ${patient.nome}`,
+    STYLE(options.font),
+    `${documentHeader(clinic, {
+      titulo: 'Relatório de presença',
+      subtitulo: capitalize(periodLabel(report.de, report.ate))
+    })}
+${documentFacts([
+  ['Paciente', patient.nome],
+  ['Nascimento', birthLabel(patient.data_nascimento, parseIsoDate(report.ate))],
+  ['Profissional', professionalLabel(clinic.profissional, clinic.registro) || '—']
+])}
 ${
   report.sessions.length === 0
     ? '<p class="empty">Nenhuma sessão neste período.</p>'
@@ -215,6 +186,6 @@ ${
 <tbody>${records.map(recordRow).join('')}</tbody></table>`
     : ''
 }
-<p class="note">Assinaturas eletrônicas simples, feitas na tela do computador da recepção na chegada para a sessão. O código de cada registro é calculado no momento da assinatura a partir da sessão, do paciente, de quem assinou, do traço e da hora; qualquer alteração nesses dados muda o código. Gerado pelo Auri em ${format(now, "dd/MM/yyyy 'às' HH:mm")}.</p>
-</body></html>`
+<p class="note">Assinaturas eletrônicas simples, feitas na tela do computador da recepção na chegada para a sessão. O código de cada registro é calculado no momento da assinatura a partir da sessão, do paciente, de quem assinou, do traço e da hora; qualquer alteração nesses dados muda o código. ${generatedAt(now)}</p>`
+  )
 }

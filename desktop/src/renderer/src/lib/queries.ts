@@ -7,6 +7,11 @@ import type {
   TermModel,
   TermRequest
 } from '@shared/schemas'
+import type { Commitment } from '@shared/commitments'
+import type { Sugestao } from '@shared/encaixe'
+import type { EncaixeNaVaga, SugestaoPedido, Vaga, WaitlistEntry } from '@shared/waitlist'
+import type { FinanceCatalog, FinanceOverview, PatientFinance } from '@shared/finance'
+import type { Etiqueta, TipoAtendimento } from '@shared/tipos'
 
 type Query<T> = { queryKey: readonly unknown[]; queryFn: () => Promise<T> }
 
@@ -46,6 +51,14 @@ export function patientAttendanceQuery(patientId: number): Query<AttendanceRecor
   }
 }
 
+export function tiposQuery(): Query<TipoAtendimento[]> {
+  return { queryKey: ['tipos'], queryFn: () => window.api.tipos.list() }
+}
+
+export function etiquetasQuery(): Query<Etiqueta[]> {
+  return { queryKey: ['etiquetas'], queryFn: () => window.api.etiquetas.list() }
+}
+
 export function clinicQuery(): Query<Clinic> {
   return { queryKey: ['clinic'], queryFn: () => window.api.clinic.get() }
 }
@@ -54,9 +67,59 @@ export function termModelsQuery(): Query<TermModel[]> {
   return { queryKey: ['terms', 'models'], queryFn: () => window.api.terms.models() }
 }
 
+export function financeCatalogQuery(): Query<FinanceCatalog> {
+  return { queryKey: ['finance', 'catalog'], queryFn: () => window.api.finance.catalog() }
+}
+
+export function patientFinanceQuery(patientId: number): Query<PatientFinance> {
+  return {
+    queryKey: ['finance', 'patient', patientId],
+    queryFn: () => window.api.finance.patient(patientId)
+  }
+}
+
+export function financeOverviewQuery(de: string, ate: string): Query<FinanceOverview> {
+  return {
+    queryKey: ['finance', 'overview', de, ate],
+    queryFn: () => window.api.finance.overview(de, ate)
+  }
+}
+
 export function patientTermsQuery(patientId: number): Query<TermRequest[]> {
   return {
     queryKey: ['terms', 'patient', patientId],
     queryFn: () => window.api.terms.listByPatient(patientId)
+  }
+}
+
+export function waitlistQuery(): Query<WaitlistEntry[]> {
+  return { queryKey: ['waitlist'], queryFn: () => window.api.waitlist.list() }
+}
+
+export function patientWaitlistQuery(patientId: number): Query<WaitlistEntry | null> {
+  return {
+    queryKey: ['waitlist', 'patient', patientId],
+    queryFn: () => window.api.waitlist.getByPatient(patientId)
+  }
+}
+
+export function sugestoesQuery(pedido: SugestaoPedido): Query<Sugestao[]> {
+  return {
+    queryKey: ['encaixe', 'sugerir', pedido],
+    queryFn: () => window.api.encaixe.sugerir(pedido)
+  }
+}
+
+export function quemCabeQuery(vaga: Vaga): Query<EncaixeNaVaga[]> {
+  return {
+    queryKey: ['encaixe', 'quemCabe', vaga],
+    queryFn: () => window.api.encaixe.quemCabe(vaga)
+  }
+}
+
+export function commitmentsQuery({ de, ate }: { de: string; ate: string }): Query<Commitment[]> {
+  return {
+    queryKey: ['commitments', de, ate],
+    queryFn: () => window.api.commitments.listRange(de, ate)
   }
 }

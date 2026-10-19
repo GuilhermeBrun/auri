@@ -33,6 +33,24 @@ window.api.onChanged((topics) => {
   if (topics.includes('clinic')) {
     void queryClient.invalidateQueries({ queryKey: ['clinic'] })
   }
+  if (topics.includes('commitments')) {
+    void queryClient.invalidateQueries({ queryKey: ['commitments'] })
+  }
+  if (
+    topics.some(
+      (t) => t === 'waitlist' || t === 'appointments' || t === 'patients' || t === 'commitments'
+    )
+  ) {
+    void queryClient.invalidateQueries({ queryKey: ['waitlist'] })
+    void queryClient.invalidateQueries({ queryKey: ['encaixe'] })
+  }
+  if (topics.some((t) => t === 'finance' || t === 'appointments' || t === 'patients')) {
+    void queryClient.invalidateQueries({ queryKey: ['finance'] })
+  }
+  if (topics.includes('types')) {
+    void queryClient.invalidateQueries({ queryKey: ['tipos'] })
+    void queryClient.invalidateQueries({ queryKey: ['etiquetas'] })
+  }
   if (topics.includes('anamneses')) {
     void queryClient.invalidateQueries({ queryKey: ['anamnese'], refetchType: 'none' })
   }

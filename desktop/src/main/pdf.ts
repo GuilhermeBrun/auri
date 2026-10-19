@@ -3,6 +3,7 @@ import { mkdir, mkdtemp, readdir, readFile, rm, stat, writeFile } from 'node:fs/
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import fontFile from '../../resources/fonts/bricolage-grotesque.woff2?asset'
+import { PAGE_FOOTER } from './document'
 
 const allowed = new Set<string>()
 let pdfSession: Electron.Session | null = null
@@ -23,8 +24,6 @@ export function documentFont(): Promise<string> {
   return font
 }
 
-const FOOTER = `<div style="width:100%;padding:0 16mm;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:7.5px;color:#77777f;text-align:right"><span class="pageNumber"></span> de <span class="totalPages"></span></div>`
-
 export async function htmlToPdf(html: string): Promise<Buffer> {
   const folder = await mkdtemp(join(app.getPath('temp'), 'auri-pdf-'))
   const file = join(folder, 'documento.html')
@@ -43,7 +42,7 @@ export async function htmlToPdf(html: string): Promise<Buffer> {
       preferCSSPageSize: true,
       displayHeaderFooter: true,
       headerTemplate: '<span></span>',
-      footerTemplate: FOOTER
+      footerTemplate: PAGE_FOOTER
     })
   } finally {
     allowed.delete(url)

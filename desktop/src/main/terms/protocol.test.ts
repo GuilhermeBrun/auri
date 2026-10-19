@@ -1,5 +1,10 @@
 import { describe, expect, it, vi } from 'vite-plus/test'
-import { criarCaixa, enderecoNosArgumentos, respostaDoEndereco } from './protocol'
+import { criarCaixa, enderecoNosArgumentos, lerEndereco } from './protocol'
+
+const respostaDoEndereco = (endereco: string): string | null => {
+  const recebido = lerEndereco(endereco)
+  return recebido?.tipo === 'termo' ? recebido.fragmento : null
+}
 
 const F = '1.AAECAwQFBgcICQoLDA0ODw.abc-_123'
 
@@ -36,5 +41,29 @@ describe('endereço auri://', () => {
     expect(avisar).toHaveBeenCalledTimes(2)
     expect(caixa.retirar()).toEqual([F])
     expect(caixa.retirar()).toEqual([])
+  })
+
+  it('confirmação de sessão vai para outra fila, com as mesmas formas', () => {
+    for (const endereco of [
+      `auri://confirmacao#${F}`,
+      `auri://confirmacao?r=${F}`,
+      `auri://confirmacao/${F}`,
+      `AURI://Confirmacao/#${F}/`
+    ]) {
+      expect(lerEndereco(endereco)).toEqual({ tipo: 'confirmacao', fragmento: F })
+    }
+    expect(lerEndereco(`auri://confirmar#${F}`)).toBeNull()
+    expect(lerEndereco(`auri://confirmacao#${F}&x=1`)).toBeNull()
+    expect(lerEndereco(`https://auri.dev.br/resposta#${F}`)).toBeNull()
+
+    const avisar = vi.fn()
+    const caixa = criarCaixa(avisar)
+    expect(caixa.receber(`auri://confirmacao#${F}`)).toBe(true)
+    expect(caixa.receber(`auri://confirmacao/${F}`)).toBe(true)
+    expect(avisar).toHaveBeenCalledTimes(2)
+    expect(avisar).toHaveBeenLastCalledWith('confirmacao')
+    expect(caixa.retirar()).toEqual([])
+    expect(caixa.retirarConfirmacoes()).toEqual([F])
+    expect(caixa.retirarConfirmacoes()).toEqual([])
   })
 })

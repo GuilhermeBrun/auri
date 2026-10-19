@@ -19,6 +19,42 @@ import type {
   TermSendResult,
   UiPrefs
 } from './schemas'
+import type { Commitment, CommitmentInput } from './commitments'
+import type {
+  AvisosDaConfirmacao,
+  ConfirmacaoEnvio,
+  ConfirmacaoLista,
+  ConfirmacaoRecebida
+} from './confirmacao'
+import type { Intervalo, Sugestao } from './encaixe'
+import type {
+  EncaixeNaVaga,
+  SugestaoPedido,
+  Vaga,
+  WaitlistAdd,
+  WaitlistClose,
+  WaitlistEntry,
+  WaitlistInput
+} from './waitlist'
+import type { Etiqueta, EtiquetaInput, TipoAtendimento, TipoInput } from './tipos'
+import type {
+  Billing,
+  BillingInput,
+  ChargeInput,
+  FinanceCatalog,
+  FinanceInsurer,
+  FinanceOverview,
+  FinancePlan,
+  FinanceService,
+  InsurerInput,
+  Lancamento,
+  PackageInput,
+  PatientFinance,
+  PaymentInput,
+  PlanInput,
+  ServiceInput,
+  SessionPayStatus
+} from './finance'
 
 export interface AuriApi {
   patients: {
@@ -32,7 +68,25 @@ export interface AuriApi {
     listRange(de: string, ate: string): Promise<Appointment[]>
     listByPatient(patientId: number): Promise<Appointment[]>
     create(input: AppointmentInput): Promise<Appointment>
-    update(id: number, input: AppointmentInput, expected?: string): Promise<Appointment>
+    update(
+      id: number,
+      input: AppointmentInput,
+      expected: string | undefined,
+      computador: string
+    ): Promise<Appointment>
+    remove(id: number): Promise<void>
+    move(
+      id: number,
+      slot: Intervalo,
+      expected: string | undefined,
+      computador: string
+    ): Promise<Appointment>
+    scheduleOnReserve(reserveId: number, input: AppointmentInput): Promise<Appointment>
+  }
+  commitments: {
+    listRange(de: string, ate: string): Promise<Commitment[]>
+    create(input: CommitmentInput): Promise<Commitment>
+    update(id: number, input: CommitmentInput, expected?: string): Promise<Commitment>
     remove(id: number): Promise<void>
   }
   attendance: {
@@ -40,6 +94,11 @@ export interface AuriApi {
     void(signatureId: number, motivo: string, computador: string): Promise<Appointment>
     listByPatient(patientId: number): Promise<AttendanceRecord[]>
     reportPdf(patientId: number, de: string, ate: string): Promise<string | null>
+  }
+  documents: {
+    evolutionsPdf(patientId: number, de: string, ate: string): Promise<string | null>
+    patientPdf(patientId: number): Promise<void>
+    anamnesePdf(patientId: number): Promise<void>
   }
   clinic: {
     get(): Promise<Clinic>
@@ -62,9 +121,63 @@ export interface AuriApi {
     takeIncoming(): Promise<string[]>
     onIncoming(listener: () => void): () => void
   }
+  confirmacoes: {
+    lista(): Promise<ConfirmacaoLista>
+    enviar(appointmentId: number, computador: string): Promise<ConfirmacaoEnvio>
+    receber(texto: string, computador: string): Promise<ConfirmacaoRecebida>
+    aplicarOutra(requestId: number, computador: string): Promise<ConfirmacaoRecebida>
+    avisos(): Promise<AvisosDaConfirmacao>
+    dispensar(requestId: number, tipo: 'liberado' | 'outra'): Promise<void>
+    takeIncoming(): Promise<string[]>
+    onIncoming(listener: () => void): () => void
+  }
   anamneses: {
     get(patientId: number): Promise<Anamnese>
     save(patientId: number, input: AnamneseInput, expected?: string): Promise<Anamnese>
+  }
+  tipos: {
+    list(): Promise<TipoAtendimento[]>
+    save(id: number | null, input: TipoInput): Promise<TipoAtendimento>
+    archive(id: number, arquivado: boolean): Promise<TipoAtendimento>
+  }
+  etiquetas: {
+    list(): Promise<Etiqueta[]>
+    save(id: number | null, input: EtiquetaInput): Promise<Etiqueta>
+    archive(id: number, arquivado: boolean): Promise<Etiqueta>
+  }
+  waitlist: {
+    list(): Promise<WaitlistEntry[]>
+    getByPatient(patientId: number): Promise<WaitlistEntry | null>
+    add(input: WaitlistAdd): Promise<WaitlistEntry>
+    update(id: number, input: WaitlistInput, expected?: string): Promise<WaitlistEntry>
+    close(id: number, close: WaitlistClose): Promise<void>
+  }
+  encaixe: {
+    sugerir(input: SugestaoPedido): Promise<Sugestao[]>
+    quemCabe(vaga: Vaga): Promise<EncaixeNaVaga[]>
+  }
+  finance: {
+    catalog(): Promise<FinanceCatalog>
+    saveService(id: number | null, input: ServiceInput): Promise<FinanceService>
+    archiveService(id: number, arquivado: boolean): Promise<FinanceService>
+    savePlan(id: number | null, input: PlanInput): Promise<FinancePlan>
+    archivePlan(id: number, arquivado: boolean): Promise<FinancePlan>
+    saveInsurer(id: number | null, input: InsurerInput): Promise<FinanceInsurer>
+    archiveInsurer(id: number, arquivado: boolean): Promise<FinanceInsurer>
+    patient(patientId: number): Promise<PatientFinance>
+    setBilling(patientId: number, input: BillingInput, expected?: string): Promise<Billing>
+    contractPackage(patientId: number, input: PackageInput, computador: string): Promise<number>
+    charge(patientId: number, input: ChargeInput, computador: string): Promise<number>
+    pay(patientId: number, input: PaymentInput, computador: string): Promise<number>
+    launchSession(
+      appointmentId: number,
+      computador: string,
+      serviceId?: number | null
+    ): Promise<{ kind: 'charge' | 'use'; id: number }>
+    chargeAbsence(appointmentId: number, computador: string): Promise<number>
+    void(kind: Lancamento, id: number, motivo: string, computador: string): Promise<number>
+    sessionStatus(appointmentIds: number[]): Promise<SessionPayStatus[]>
+    overview(de: string, ate: string): Promise<FinanceOverview>
   }
   onChanged(listener: (topics: DataTopic[]) => void): () => void
 }
@@ -75,7 +188,11 @@ export const DATA_TOPICS = [
   'anamneses',
   'attendance',
   'clinic',
-  'terms'
+  'terms',
+  'waitlist',
+  'finance',
+  'types',
+  'commitments'
 ] as const
 export type DataTopic = (typeof DATA_TOPICS)[number]
 

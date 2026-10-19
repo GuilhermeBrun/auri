@@ -1,10 +1,19 @@
 import { describe, expect, it } from 'vite-plus/test'
+import { FUNCIONAMENTO_PADRAO } from '../shared/agenda'
 import {
   buildSettingsFile,
   describeChanges,
   parseSettingsFile,
   type SettingsSnapshot
 } from './settings-transfer'
+
+const TIPOS_SEMENTE: SettingsSnapshot['tipos'] = [
+  { nome: 'Sessão', categoria: 'sessao', cor: 'grafite', duracao: 30 },
+  { nome: 'Avaliação', categoria: 'avaliacao', cor: 'azul', duracao: 60 },
+  { nome: 'Exame', categoria: 'exame', cor: 'violeta', duracao: 60 }
+]
+
+const { 6: _, ...SEM_SABADO } = FUNCIONAMENTO_PADRAO
 
 const RECEPCAO: SettingsSnapshot = {
   appearance: { theme: 'dark', sidebarOpen: true },
@@ -25,12 +34,19 @@ const RECEPCAO: SettingsSnapshot = {
     whatsapp: '(65) 99999-1234',
     profissional: 'Ana Souza',
     registro: 'CRFa 1234',
-    logo: 'iVBORw0KGgo='
+    logo: 'iVBORw0KGgo=',
+    margem_deslocamento: 30,
+    funcionamento: FUNCIONAMENTO_PADRAO
   },
   termModels: [
     { titulo: 'Contrato', texto: '# Contrato\n\nTexto.' },
     { titulo: 'Uso de imagem', texto: '# Uso de imagem\n\nTexto.' }
-  ]
+  ],
+  tipos: [
+    ...TIPOS_SEMENTE,
+    { nome: 'Audiometria', categoria: 'exame', cor: 'ardosia', duracao: 45 }
+  ],
+  etiquetas: [{ nome: 'Convênio', cor: 'azul' }]
 }
 
 const NOVO: SettingsSnapshot = {
@@ -52,9 +68,13 @@ const NOVO: SettingsSnapshot = {
     whatsapp: '',
     profissional: '',
     registro: '',
-    logo: ''
+    logo: '',
+    margem_deslocamento: 30,
+    funcionamento: SEM_SABADO
   },
-  termModels: [{ titulo: 'contrato', texto: 'Outro texto.' }]
+  termModels: [{ titulo: 'contrato', texto: 'Outro texto.' }],
+  tipos: TIPOS_SEMENTE,
+  etiquetas: []
 }
 
 describe('arquivo de configurações', () => {
@@ -67,6 +87,23 @@ describe('arquivo de configurações', () => {
     expect(file.clinic).toEqual({ ...RECEPCAO.clinic, telefone: undefined })
     expect(file.clinic).not.toHaveProperty('telefone')
     expect(file.termModels).toEqual(RECEPCAO.termModels)
+    expect(file.clinic.funcionamento).toEqual(FUNCIONAMENTO_PADRAO)
+  })
+
+  it('leva a clínica fechada em todos os dias e recusa horário que fecha antes de abrir', () => {
+    const fechada = { ...RECEPCAO, clinic: { ...RECEPCAO.clinic, funcionamento: {} } }
+    const file = parseSettingsFile(buildSettingsFile(fechada))
+    expect(file.clinic.funcionamento).toEqual({})
+    expect(describeChanges(RECEPCAO, file)).toEqual([
+      {
+        label: 'Horário de funcionamento',
+        from: 'seg a sex 07:00–20:00, sáb 07:00–12:00',
+        to: 'Fechada todos os dias'
+      }
+    ])
+    const invertido = JSON.parse(buildSettingsFile(RECEPCAO))
+    invertido.clinic.funcionamento = { 1: { abre: '20:00', fecha: '07:00' } }
+    expect(() => parseSettingsFile(JSON.stringify(invertido))).toThrow('não é de configurações')
   })
 
   it('diz o que muda num computador novo, só o que é diferente', () => {
@@ -83,8 +120,19 @@ describe('arquivo de configurações', () => {
       { label: 'WhatsApp da clínica', from: 'Vazio', to: '(65) 99999-1234' },
       { label: 'Profissional responsável', from: 'Vazio', to: 'Ana Souza' },
       { label: 'Registro do profissional', from: 'Vazio', to: 'CRFa 1234' },
+      {
+        label: 'Horário de funcionamento',
+        from: 'seg a sex 07:00–20:00',
+        to: 'seg a sex 07:00–20:00, sáb 07:00–12:00'
+      },
       { label: 'Logo da clínica', from: 'Sem logo', to: 'O do arquivo' },
-      { label: 'Modelo de termo “Uso de imagem”', from: 'Não tem', to: 'Novo' }
+      { label: 'Modelo de termo “Uso de imagem”', from: 'Não tem', to: 'Novo' },
+      {
+        label: 'Tipo de atendimento “Audiometria”',
+        from: 'Não tem',
+        to: 'Novo (Exame, 45 min)'
+      },
+      { label: 'Etiqueta “Convênio”', from: 'Não tem', to: 'Nova' }
     ])
     expect(describeChanges(RECEPCAO, file)).toEqual([])
   })
