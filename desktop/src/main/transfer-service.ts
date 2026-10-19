@@ -4,6 +4,7 @@ import { existsSync, mkdirSync } from 'fs'
 import { readFile, stat, writeFile } from 'fs/promises'
 import { basename, join } from 'path'
 import type { AuriTransfer } from '../shared/api'
+import type { Clinic, TermModel } from '../shared/schemas'
 import type { BackupService } from './backup-service'
 import type { Connection } from './connection'
 import type { PrefsStore } from './prefs'
@@ -12,11 +13,14 @@ import {
   describeChanges,
   parseSettingsFile,
   SETTINGS_EXTENSION,
+  newTermModels,
   type SettingsFile,
   type SettingsSnapshot
 } from './settings-transfer'
 
-const MAX_SIZE = 256 * 1024
+const MAX_SIZE = 2 * 1024 * 1024
+
+const UNREACHABLE = 'Não foi possível ler os dados da clínica. Confira a conexão e tente de novo.'
 
 export function createTransferService(options: {
   prefs: PrefsStore
@@ -25,9 +29,27 @@ export function createTransferService(options: {
 }): AuriTransfer {
   const pending = new Map<string, SettingsFile>()
 
-  function snapshot(): SettingsSnapshot {
+  async function call<T>(channel: string, args: unknown[] = []): Promise<T> {
+    const result = await options.connection.call(channel, args)
+    if (!result.ok) throw new Error(result.error)
+    return result.data as T
+  }
+
+  async function clinicData(): Promise<{ clinic: Clinic; termModels: TermModel[] }> {
+    try {
+      const clinic = await call<Clinic>('clinic:get')
+      const models = await call<TermModel[]>('terms:models')
+      return { clinic, termModels: models.filter((model) => !model.arquivado) }
+    } catch {
+      throw new Error(UNREACHABLE)
+    }
+  }
+
+  async function snapshot(): Promise<SettingsSnapshot> {
     const c = options.connection.info()
     const b = options.backup.info()
+    const { clinic, termModels } = await clinicData()
+    const { updated_at: _, ...clinicFields } = clinic
     return {
       appearance: options.prefs.get(),
       connection: {
@@ -42,7 +64,9 @@ export function createTransferService(options: {
         kind: b.destination?.kind ?? b.suggested,
         frequency: b.frequency,
         dailyTime: b.dailyTime
-      }
+      },
+      clinic: clinicFields,
+      termModels
     }
   }
 
@@ -66,7 +90,7 @@ export function createTransferService(options: {
         ? await dialog.showSaveDialog(target, dialogOptions)
         : await dialog.showSaveDialog(dialogOptions)
       if (result.canceled || !result.filePath) return null
-      await writeFile(result.filePath, buildSettingsFile(snapshot()))
+      await writeFile(result.filePath, buildSettingsFile(await snapshot()))
       return result.filePath
     },
 
@@ -96,7 +120,7 @@ export function createTransferService(options: {
         token,
         name: basename(file),
         exportedAt: settings.exportedAt,
-        changes: describeChanges(snapshot(), settings)
+        changes: describeChanges(await snapshot(), settings)
       }
     },
 
@@ -120,6 +144,14 @@ export function createTransferService(options: {
         )
       }
       if (b.kind && !current.configured) options.backup.suggest(b.kind)
+      const { clinic, termModels } = await clinicData()
+      if (Object.keys(settings.clinic).length > 0) {
+        const { updated_at: expected, ...fields } = clinic
+        await call('clinic:save', [{ ...fields, ...settings.clinic }, expected])
+      }
+      for (const model of newTermModels(termModels, settings)) {
+        await call('terms:saveModel', [null, model])
+      }
     }
   }
 }

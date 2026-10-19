@@ -136,7 +136,7 @@ function Transfer(): React.JSX.Element {
       <SettingsGroup className="flex flex-col gap-5">
         <Row
           title="Exportar configurações"
-          description="Aparência, opções da conexão e escolhas da cópia de segurança. Não vão pacientes, senhas, chaves nem a lista de computadores conectados."
+          description="Aparência, conexão, cópia de segurança, dados da clínica e modelos de termo. Não vão pacientes, senhas, chaves nem a lista de computadores conectados."
         >
           <Button
             variant="secondary"

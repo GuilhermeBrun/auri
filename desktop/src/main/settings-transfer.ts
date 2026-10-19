@@ -1,6 +1,13 @@
 import { z } from 'zod'
 import type { SettingsChange } from '../shared/api'
-import { themeSchema, type UiPrefs } from '../shared/schemas'
+import {
+  clinicInputSchema,
+  termModelInputSchema,
+  themeSchema,
+  type ClinicInput,
+  type TermModelInput,
+  type UiPrefs
+} from '../shared/schemas'
 
 export const SETTINGS_EXTENSION = 'auriconfig'
 
@@ -30,7 +37,9 @@ const settingsFileSchema = z.object({
       dailyTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/)
     })
     .partial()
-    .default({})
+    .default({}),
+  clinic: clinicInputSchema.partial().default({}),
+  termModels: z.array(termModelInputSchema).max(200).default([])
 })
 
 export type SettingsFile = z.infer<typeof settingsFileSchema>
@@ -41,6 +50,8 @@ export type SettingsSnapshot = {
   backup: { kind: z.infer<typeof kindSchema> | null } & Required<
     Omit<SettingsFile['backup'], 'kind'>
   >
+  clinic: Required<ClinicInput>
+  termModels: TermModelInput[]
 }
 
 export function buildSettingsFile(snapshot: SettingsSnapshot, now: Date = new Date()): string {
@@ -55,7 +66,9 @@ export function buildSettingsFile(snapshot: SettingsSnapshot, now: Date = new Da
       frequency: snapshot.backup.frequency,
       dailyTime: snapshot.backup.dailyTime,
       ...(snapshot.backup.kind ? { kind: snapshot.backup.kind } : {})
-    }
+    },
+    clinic: Object.fromEntries(Object.entries(snapshot.clinic).filter(([, value]) => value !== '')),
+    termModels: snapshot.termModels.map(({ titulo, texto }) => ({ titulo, texto }))
   }
   return JSON.stringify(file, null, 2)
 }
@@ -93,6 +106,27 @@ const FREQUENCY = {
   manual: 'Só quando pedir'
 } as const
 const yesNo = (on: boolean): string => (on ? 'Ligado' : 'Desligado')
+const CLINIC = {
+  nome: 'Nome da clínica',
+  documento: 'CNPJ ou CPF da clínica',
+  endereco: 'Endereço da clínica',
+  telefone: 'Telefone da clínica',
+  whatsapp: 'WhatsApp da clínica',
+  profissional: 'Profissional responsável',
+  registro: 'Registro do profissional'
+} as const
+const filled = (value: string): string => value || 'Vazio'
+
+const sameTitle = (a: string, b: string): boolean =>
+  a.trim().toLocaleLowerCase('pt-BR') === b.trim().toLocaleLowerCase('pt-BR')
+
+export function newTermModels(current: TermModelInput[], file: SettingsFile): TermModelInput[] {
+  return file.termModels.filter(
+    (model, index) =>
+      !current.some((existing) => sameTitle(existing.titulo, model.titulo)) &&
+      file.termModels.findIndex((other) => sameTitle(other.titulo, model.titulo)) === index
+  )
+}
 
 export function describeChanges(current: SettingsSnapshot, file: SettingsFile): SettingsChange[] {
   const changes: SettingsChange[] = []
@@ -116,5 +150,19 @@ export function describeChanges(current: SettingsSnapshot, file: SettingsFile): 
   add('Nuvem da cópia de segurança', b.kind, file.backup.kind, (v) => (v ? KIND[v] : 'Nenhuma'))
   add('Quando copiar', b.frequency, file.backup.frequency, (v) => FREQUENCY[v])
   add('Horário da cópia', b.dailyTime, file.backup.dailyTime, (v) => v)
+  for (const field of Object.keys(CLINIC) as (keyof typeof CLINIC)[]) {
+    add(CLINIC[field], current.clinic[field], file.clinic[field], filled)
+  }
+  const logo = file.clinic.logo
+  if (logo && logo !== current.clinic.logo) {
+    changes.push({
+      label: 'Logo da clínica',
+      from: current.clinic.logo ? 'O atual' : 'Sem logo',
+      to: 'O do arquivo'
+    })
+  }
+  for (const model of newTermModels(current.termModels, file)) {
+    changes.push({ label: `Modelo de termo “${model.titulo}”`, from: 'Não tem', to: 'Novo' })
+  }
   return changes
 }
