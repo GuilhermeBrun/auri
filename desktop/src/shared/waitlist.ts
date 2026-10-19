@@ -2,7 +2,8 @@ import { z } from 'zod'
 import { differenceInCalendarDays } from 'date-fns'
 import { isIsoDate, isIsoLocalDateTime, parseIsoDate } from './dates'
 import { PERIODOS, type Intervalo, type Periodo, type Prioridade } from './encaixe'
-import { APPOINTMENT_TIPOS, idSchema, type AppointmentTipo } from './schemas'
+import { idSchema } from './schemas'
+import type { Categoria } from './tipos'
 
 export const PRIORIDADES = ['normal', 'alta'] as const satisfies readonly Prioridade[]
 
@@ -26,7 +27,7 @@ const periodosSchema = z
   .transform((periodos) => PERIODOS.filter((p) => periodos.includes(p)))
 
 export const waitlistInputSchema = z.object({
-  tipo: z.enum(APPOINTMENT_TIPOS).default('sessao'),
+  tipo_id: idSchema.optional(),
   duracao: duracaoSchema,
   dias: diasSchema.default([]),
   periodos: periodosSchema.default([]),
@@ -44,7 +45,9 @@ export type WaitlistEntry = {
   id: number
   patient_id: number
   patient_nome: string
-  tipo: AppointmentTipo
+  tipo_id: number
+  tipo_nome: string
+  categoria: Categoria
   duracao: number
   dias: number[]
   periodos: Periodo[]

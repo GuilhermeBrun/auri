@@ -10,6 +10,7 @@ import {
 } from '../../shared/waitlist'
 import { assertUnchanged } from './concurrency'
 import type { Db } from './connection'
+import { assertTipoUsavel, tipoPadrao } from './tipos'
 
 type WaitlistRow = Omit<WaitlistEntry, 'dias' | 'periodos' | 'observacao'> & {
   dias: string
@@ -19,10 +20,12 @@ type WaitlistRow = Omit<WaitlistEntry, 'dias' | 'periodos' | 'observacao'> & {
 }
 
 const SELECT = `
-  SELECT w.id, w.patient_id, p.nome AS patient_nome, w.tipo, w.duracao, w.dias, w.periodos,
-         w.prioridade, w.observacao, w.encerrado_em, w.created_at, w.updated_at
+  SELECT w.id, w.patient_id, p.nome AS patient_nome, w.tipo_id, t.nome AS tipo_nome,
+         t.categoria, w.duracao, w.dias, w.periodos, w.prioridade, w.observacao,
+         w.encerrado_em, w.created_at, w.updated_at
   FROM waitlist_entries w
-  JOIN patients p ON p.id = w.patient_id`
+  JOIN patients p ON p.id = w.patient_id
+  JOIN appointment_types t ON t.id = w.tipo_id`
 
 const ORDER = `ORDER BY w.prioridade = 'alta' DESC, w.created_at, w.id`
 
@@ -40,13 +43,18 @@ function fromRow({ encerrado_em: _, ...row }: WaitlistRow): WaitlistEntry {
 function toParams(input: WaitlistInput): Record<string, string | number | null> {
   const full = waitlistInputSchema.parse(input)
   return {
-    tipo: full.tipo,
+    tipo_id: full.tipo_id ?? null,
     duracao: full.duracao,
     dias: full.dias.join(','),
     periodos: full.periodos.join(','),
     prioridade: full.prioridade,
     observacao: full.observacao === '' ? null : full.observacao
   }
+}
+
+function tipoDaEspera(db: Db, id: number | undefined): number {
+  if (id === undefined) return tipoPadrao(db)
+  return assertTipoUsavel(db, id).id
 }
 
 function getOpenEntry(db: Db, id: number): WaitlistEntry {
@@ -82,10 +90,11 @@ export function addToWaitlist(db: Db, input: WaitlistAdd): WaitlistEntry {
   }
   const result = db
     .prepare(
-      `INSERT INTO waitlist_entries (patient_id, tipo, duracao, dias, periodos, prioridade, observacao)
-       VALUES (@patient_id, @tipo, @duracao, @dias, @periodos, @prioridade, @observacao)`
+      `INSERT INTO waitlist_entries
+         (patient_id, tipo_id, duracao, dias, periodos, prioridade, observacao)
+       VALUES (@patient_id, @tipo_id, @duracao, @dias, @periodos, @prioridade, @observacao)`
     )
-    .run({ ...toParams(input), patient_id })
+    .run({ ...toParams(input), patient_id, tipo_id: tipoDaEspera(db, input.tipo_id) })
   return getOpenEntry(db, Number(result.lastInsertRowid))
 }
 
@@ -95,10 +104,14 @@ export function updateWaitlist(
   input: WaitlistInput,
   expected?: string
 ): WaitlistEntry {
-  assertUnchanged(getOpenEntry(db, id).updated_at, expected)
+  const current = getOpenEntry(db, id)
+  assertUnchanged(current.updated_at, expected)
+  if (input.tipo_id !== undefined && input.tipo_id !== current.tipo_id) {
+    assertTipoUsavel(db, input.tipo_id)
+  }
   db.prepare(
     `UPDATE waitlist_entries
-     SET tipo = @tipo, duracao = @duracao, dias = @dias, periodos = @periodos,
+     SET tipo_id = coalesce(@tipo_id, tipo_id), duracao = @duracao, dias = @dias, periodos = @periodos,
          prioridade = @prioridade, observacao = @observacao,
          updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
      WHERE id = @id`

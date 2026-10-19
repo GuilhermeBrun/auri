@@ -1,5 +1,6 @@
 import { addDays, format } from 'date-fns'
 import { parseIsoDate, toIsoDate } from '../../shared/dates'
+import { consomePacote, mesmoNome } from '../../shared/tipos'
 import {
   FORMAS_PAGAMENTO,
   type Billing,
@@ -32,6 +33,7 @@ import { getAppointment } from './appointments'
 import { assertUnchanged } from './concurrency'
 import type { Db } from './connection'
 import { getPatient } from './patients'
+import { TIPO_JOIN } from './tipos'
 
 const NOW = "strftime('%Y-%m-%dT%H:%M:%fZ', 'now')"
 
@@ -434,15 +436,13 @@ function activeEntry(db: Db, appointmentId: number): { kind: 'charge' | 'use'; i
 
 const sessionDay = (inicio: string): string => inicio.slice(0, 10)
 
-function sessionLabel(tipo: 'sessao' | 'avaliacao', inicio: string): string {
+function sessionLabel(tipoNome: string, inicio: string): string {
   const dia = format(parseIsoDate(sessionDay(inicio)), 'dd/MM')
-  return `${tipo === 'avaliacao' ? 'Avaliação' : 'Sessão'} de ${dia}`
+  return `${tipoNome} de ${dia}`
 }
 
-function serviceSuffix(nome: string, tipo: 'sessao' | 'avaliacao'): string {
-  const same =
-    nome.trim().toLocaleLowerCase('pt-BR') === (tipo === 'avaliacao' ? 'avaliação' : 'sessão')
-  return same ? '' : ` · ${nome}`
+function serviceSuffix(nome: string, tipoNome: string): string {
+  return mesmoNome(nome, tipoNome) ? '' : ` · ${nome}`
 }
 
 function packageFor(db: Db, patientId: number, day: string): PackageRow | null {
@@ -472,7 +472,7 @@ export function lancarSessao(
     const billing = getBilling(db, a.patient_id)
     if (!billing) throw new Error('Defina a forma de cobrança do paciente antes de lançar.')
     const day = sessionDay(a.inicio)
-    const label = sessionLabel(a.tipo, a.inicio)
+    const label = sessionLabel(a.tipo_nome, a.inicio)
 
     if (billing.forma === 'convenio' && serviceId === null && billing.insurer) {
       const id = insertCharge(
@@ -492,7 +492,7 @@ export function lancarSessao(
     }
 
     let foraDoPacote = false
-    if (billing.forma === 'pacote' && serviceId === null && a.tipo === 'sessao') {
+    if (billing.forma === 'pacote' && serviceId === null && consomePacote(a.categoria)) {
       const pkg = packageFor(db, a.patient_id, day)
       if (pkg) {
         const result = db
@@ -513,7 +513,7 @@ export function lancarSessao(
       {
         patient_id: a.patient_id,
         data: day,
-        descricao: `${label}${serviceSuffix(service.nome, a.tipo)}${foraDoPacote ? ' · fora do pacote' : ''}`,
+        descricao: `${label}${serviceSuffix(service.nome, a.tipo_nome)}${foraDoPacote ? ' · fora do pacote' : ''}`,
         valor_centavos: service.valor_centavos,
         motivo: 'sessao',
         appointment_id: a.id
@@ -539,7 +539,7 @@ export function cobrarFalta(db: Db, appointmentId: number, computador: string): 
       {
         patient_id: a.patient_id,
         data: sessionDay(a.inicio),
-        descricao: `Falta de ${format(parseIsoDate(sessionDay(a.inicio)), 'dd/MM')}${serviceSuffix(billing.service.nome, 'sessao')}`,
+        descricao: `Falta de ${format(parseIsoDate(sessionDay(a.inicio)), 'dd/MM')}${serviceSuffix(billing.service.nome, a.tipo_nome)}`,
         valor_centavos: billing.service.valor_centavos,
         motivo: 'falta_cobrada',
         appointment_id: a.id
@@ -703,8 +703,9 @@ function packageUses(db: Db, patientId: number): PackageUseEntry[] {
 function pendingSessions(db: Db, patientId: number, desde: string): PendingSession[] {
   return db
     .prepare(
-      `SELECT a.id AS appointment_id, a.inicio, a.tipo
+      `SELECT a.id AS appointment_id, a.inicio, t.nome AS tipo_nome, t.categoria
        FROM appointments a
+       ${TIPO_JOIN}
        WHERE a.patient_id = ? AND a.presenca = 'presente' AND substr(a.inicio, 1, 10) >= ?
          AND NOT EXISTS (SELECT 1 FROM finance_charges c
                          WHERE c.appointment_id = a.id AND c.estornado_em IS NULL)

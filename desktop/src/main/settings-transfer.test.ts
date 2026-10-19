@@ -7,6 +7,12 @@ import {
   type SettingsSnapshot
 } from './settings-transfer'
 
+const TIPOS_SEMENTE: SettingsSnapshot['tipos'] = [
+  { nome: 'Sessão', categoria: 'sessao', cor: 'grafite', duracao: 30 },
+  { nome: 'Avaliação', categoria: 'avaliacao', cor: 'azul', duracao: 60 },
+  { nome: 'Exame', categoria: 'exame', cor: 'ambar', duracao: 60 }
+]
+
 const { 6: _, ...SEM_SABADO } = FUNCIONAMENTO_PADRAO
 
 const RECEPCAO: SettingsSnapshot = {
@@ -34,7 +40,12 @@ const RECEPCAO: SettingsSnapshot = {
   termModels: [
     { titulo: 'Contrato', texto: '# Contrato\n\nTexto.' },
     { titulo: 'Uso de imagem', texto: '# Uso de imagem\n\nTexto.' }
-  ]
+  ],
+  tipos: [
+    ...TIPOS_SEMENTE,
+    { nome: 'Audiometria', categoria: 'exame', cor: 'violeta', duracao: 45 }
+  ],
+  etiquetas: [{ nome: 'Convênio', cor: 'azul' }]
 }
 
 const NOVO: SettingsSnapshot = {
@@ -59,7 +70,9 @@ const NOVO: SettingsSnapshot = {
     logo: '',
     funcionamento: SEM_SABADO
   },
-  termModels: [{ titulo: 'contrato', texto: 'Outro texto.' }]
+  termModels: [{ titulo: 'contrato', texto: 'Outro texto.' }],
+  tipos: TIPOS_SEMENTE,
+  etiquetas: []
 }
 
 describe('arquivo de configurações', () => {
@@ -111,7 +124,13 @@ describe('arquivo de configurações', () => {
         to: 'seg a sex 07:00–20:00, sáb 07:00–12:00'
       },
       { label: 'Logo da clínica', from: 'Sem logo', to: 'O do arquivo' },
-      { label: 'Modelo de termo “Uso de imagem”', from: 'Não tem', to: 'Novo' }
+      { label: 'Modelo de termo “Uso de imagem”', from: 'Não tem', to: 'Novo' },
+      {
+        label: 'Tipo de atendimento “Audiometria”',
+        from: 'Não tem',
+        to: 'Novo (Exame, 45 min)'
+      },
+      { label: 'Etiqueta “Convênio”', from: 'Não tem', to: 'Nova' }
     ])
     expect(describeChanges(RECEPCAO, file)).toEqual([])
   })

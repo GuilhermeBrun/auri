@@ -13,6 +13,7 @@ import { getAppointment, listPatientAppointments } from './appointments'
 import { getClinic } from './clinic'
 import type { Db } from './connection'
 import { getPatient } from './patients'
+import { TIPO_JOIN } from './tipos'
 
 type RecordRow = Omit<AttendanceRecord, 'traco' | 'anulada'> & {
   traco: Buffer
@@ -22,12 +23,14 @@ type RecordRow = Omit<AttendanceRecord, 'traco' | 'anulada'> & {
 }
 
 const SELECT_RECORDS = `
-  SELECT s.id, s.appointment_id, a.inicio, a.fim, a.tipo, s.signer_nome, s.signer_papel,
+  SELECT s.id, s.appointment_id, a.inicio, a.fim, t.nome AS tipo_nome, t.categoria,
+         s.signer_nome, s.signer_papel,
          s.signer_parentesco, s.traco, s.assinado_em, s.fuso_minutos, s.computador,
          s.registro_sha256, v.motivo AS anulada_motivo, v.anulado_em AS anulada_em,
          v.computador AS anulada_computador
   FROM attendance_signatures s
   JOIN appointments a ON a.id = s.appointment_id
+  ${TIPO_JOIN}
   LEFT JOIN attendance_voids v ON v.signature_id = s.id`
 
 function fromRow(row: RecordRow): AttendanceRecord {
@@ -59,7 +62,10 @@ function readStroke(base64: string): Uint8Array {
 }
 
 export function canonicalRecord(record: {
-  appointment: Pick<Appointment, 'id' | 'patient_id' | 'patient_nome' | 'inicio' | 'fim' | 'tipo'>
+  appointment: Pick<
+    Appointment,
+    'id' | 'patient_id' | 'patient_nome' | 'inicio' | 'fim' | 'categoria'
+  >
   signer: { nome: string; papel: SignerPapel; parentesco: string }
   traco: string
   assinado_em: string
@@ -68,7 +74,7 @@ export function canonicalRecord(record: {
 }): string {
   const { appointment: a, signer } = record
   return JSON.stringify({
-    sessao: { id: a.id, inicio: a.inicio, fim: a.fim, tipo: a.tipo },
+    sessao: { id: a.id, inicio: a.inicio, fim: a.fim, tipo: a.categoria },
     paciente: { id: a.patient_id, nome: a.patient_nome },
     assinou: { nome: signer.nome, papel: signer.papel, parentesco: signer.parentesco },
     traco: record.traco,

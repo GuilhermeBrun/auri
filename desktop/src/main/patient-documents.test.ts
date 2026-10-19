@@ -45,7 +45,11 @@ function sessao(inicio: string, extra: Partial<Appointment> = {}): Appointment {
     inicio,
     fim: inicio.replace(':00', ':45'),
     observacao: '',
-    tipo: 'sessao',
+    tipo_id: 1,
+    tipo_nome: 'Sessão',
+    tipo_cor: 'grafite',
+    categoria: 'sessao',
+    etiquetas: [],
     presenca: '',
     evolucao: 'Treino de /r/.',
     assinatura: null,
@@ -70,7 +74,9 @@ describe('relatório de evolução', () => {
       sessions: [
         sessao('2026-10-05T14:00', {
           presenca: 'falta',
-          tipo: 'avaliacao',
+          tipo_id: 2,
+          tipo_nome: 'Avaliação',
+          categoria: 'avaliacao',
           evolucao: 'Mãe disse: <script>alert(1)</script>\nSegunda linha'
         }),
         sessao('2026-10-19T14:00')

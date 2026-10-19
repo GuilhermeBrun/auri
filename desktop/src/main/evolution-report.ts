@@ -22,8 +22,6 @@ const PRESENCA: Record<Presenca, string> = {
   desmarcou: 'Desmarcou'
 }
 
-const TIPO = { sessao: 'Sessão', avaliacao: 'Avaliação' } as const
-
 export function evolutionReportName(report: EvolutionReport): string {
   const periodo = periodLabel(report.de, report.ate).replaceAll('/', '-')
   return fileName('Evolução', report.patient.nome, periodo)
@@ -33,7 +31,7 @@ function entry(a: Appointment): string {
   const inicio = parseIsoLocalDateTime(a.inicio)
   const fim = parseIsoLocalDateTime(a.fim)
   const weekday = capitalize(format(inicio, 'EEEE', { locale: ptBR }).replace('-feira', ''))
-  const kind = [TIPO[a.tipo], a.presenca ? PRESENCA[a.presenca] : ''].filter(Boolean).join(' · ')
+  const kind = [a.tipo_nome, a.presenca ? PRESENCA[a.presenca] : ''].filter(Boolean).join(' · ')
   return `<article>
 <div class="when"><span class="day">${format(inicio, 'dd/MM/yyyy')}</span><span class="soft">${esc(weekday)} · ${format(inicio, 'HH:mm')}–${format(fim, 'HH:mm')}</span><span class="soft">${esc(kind)}</span></div>
 <div class="text">${esc(a.evolucao)}</div>

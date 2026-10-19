@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import type { Funcionamento } from './agenda'
+import type { Categoria, Cor, EtiquetaResumo } from './tipos'
 import { isValidCpf } from './cpf'
 import { isIsoDate, isIsoLocalDateTime } from './dates'
 import { isValidPhone } from './masks'
@@ -190,9 +191,6 @@ export const idSchema = z.number().int().positive()
 
 const localDateTime = z.string().refine(isIsoLocalDateTime, 'Data/hora inválida')
 
-export const APPOINTMENT_TIPOS = ['sessao', 'avaliacao'] as const
-export type AppointmentTipo = (typeof APPOINTMENT_TIPOS)[number]
-
 export const PRESENCAS = ['presente', 'falta', 'desmarcou'] as const
 export type Presenca = (typeof PRESENCAS)[number]
 
@@ -202,10 +200,11 @@ export const appointmentInputSchema = z
     inicio: localDateTime,
     fim: localDateTime,
     observacao: text(1000),
-    tipo: z.enum(APPOINTMENT_TIPOS).default('sessao'),
+    tipo_id: idSchema.optional(),
     presenca: z.enum([...PRESENCAS, '']).default(''),
     evolucao: text(10000).default(''),
-    confirmado: z.boolean().optional()
+    confirmado: z.boolean().optional(),
+    etiquetas: z.array(idSchema).max(10, 'Use no máximo 10 etiquetas').optional()
   })
   .refine((a) => a.fim > a.inicio, {
     message: 'O horário de término deve ser depois do início',
@@ -221,8 +220,16 @@ export type ArrivalSignature = {
   assinado_em: string
 }
 
-export type Appointment = Omit<z.output<typeof appointmentInputSchema>, 'confirmado'> & {
+export type Appointment = Omit<
+  z.output<typeof appointmentInputSchema>,
+  'confirmado' | 'tipo_id' | 'etiquetas'
+> & {
   id: number
+  tipo_id: number
+  tipo_nome: string
+  tipo_cor: Cor
+  categoria: Categoria
+  etiquetas: EtiquetaResumo[]
   confirmado_em: string | null
   patient_nome: string
   assinatura: ArrivalSignature | null
@@ -257,7 +264,8 @@ export type AttendanceRecord = {
   appointment_id: number
   inicio: string
   fim: string
-  tipo: AppointmentTipo
+  tipo_nome: string
+  categoria: Categoria
   signer_nome: string
   signer_papel: SignerPapel
   signer_parentesco: string

@@ -5,11 +5,23 @@ import {
   type Appointment,
   type AppointmentInput
 } from '../../shared/schemas'
+import type { EtiquetaResumo } from '../../shared/tipos'
 import { getFuncionamento } from './clinic'
 import { assertUnchanged } from './concurrency'
 import type { Db } from './connection'
+import {
+  assertTipoUsavel,
+  setAppointmentEtiquetas,
+  TIPO_COLUMNS,
+  TIPO_JOIN,
+  tipoPadrao
+} from './tipos'
 
-type AppointmentRow = Omit<Appointment, 'observacao' | 'presenca' | 'evolucao' | 'assinatura'> & {
+type AppointmentRow = Omit<
+  Appointment,
+  'observacao' | 'presenca' | 'evolucao' | 'assinatura' | 'etiquetas'
+> & {
+  etiquetas: string
   observacao: string | null
   presenca: Appointment['presenca'] | null
   evolucao: string | null
@@ -20,12 +32,17 @@ type AppointmentRow = Omit<Appointment, 'observacao' | 'presenca' | 'evolucao' |
 }
 
 const SELECT = `
-  SELECT a.id, a.patient_id, a.inicio, a.fim, a.observacao, a.tipo, a.presenca, a.evolucao,
-         a.confirmado_em, a.created_at, a.updated_at, p.nome AS patient_nome,
+  SELECT a.id, a.patient_id, a.inicio, a.fim, a.observacao, ${TIPO_COLUMNS}, a.presenca,
+         a.evolucao, a.confirmado_em, a.created_at, a.updated_at, p.nome AS patient_nome,
          s.id AS assinatura_id, s.signer_nome AS assinatura_nome,
-         s.signer_parentesco AS assinatura_parentesco, s.assinado_em AS assinatura_em
+         s.signer_parentesco AS assinatura_parentesco, s.assinado_em AS assinatura_em,
+         (SELECT json_group_array(json_object('id', g.id, 'nome', g.nome, 'cor', g.cor))
+            FROM (SELECT g.id, g.nome, g.cor FROM appointment_tags x
+                  JOIN tags g ON g.id = x.tag_id
+                  WHERE x.appointment_id = a.id ORDER BY g.nome COLLATE NOCASE) g) AS etiquetas
   FROM appointments a
   JOIN patients p ON p.id = a.patient_id
+  ${TIPO_JOIN}
   LEFT JOIN attendance_signatures s
     ON s.appointment_id = a.id AND s.id NOT IN (SELECT signature_id FROM attendance_voids)`
 
@@ -39,6 +56,7 @@ function fromRow(row: AppointmentRow): Appointment {
   } = row
   return {
     ...rest,
+    etiquetas: JSON.parse(row.etiquetas) as EtiquetaResumo[],
     observacao: row.observacao ?? '',
     presenca: row.presenca ?? '',
     evolucao: row.evolucao ?? '',
@@ -66,7 +84,7 @@ function toParams(input: AppointmentInput): Record<string, string | number | nul
     inicio: full.inicio,
     fim: full.fim,
     observacao: orNull(full.observacao),
-    tipo: full.tipo,
+    tipo_id: full.tipo_id ?? null,
     presenca: orNull(full.presenca),
     evolucao: orNull(full.evolucao)
   }
@@ -131,18 +149,24 @@ export const PRESENCA_SO_ASSINADA = 'A presença é marcada pela assinatura da c
 
 export function createAppointment(db: Db, input: AppointmentInput): Appointment {
   if (input.presenca === 'presente') throw new Error(PRESENCA_SO_ASSINADA)
-  assertPatientExists(db, input.patient_id)
-  assertWithinHours(db, input)
-  assertSlotFree(db, input, null)
-  const result = db
-    .prepare(
-      `INSERT INTO appointments
-         (patient_id, inicio, fim, observacao, tipo, presenca, evolucao, confirmado_em)
-       VALUES (@patient_id, @inicio, @fim, @observacao, @tipo, @presenca, @evolucao,
-         CASE WHEN @confirmado = 1 THEN ${NOW} END)`
-    )
-    .run(toParams(input))
-  return getAppointment(db, Number(result.lastInsertRowid))
+  return db.transaction(() => {
+    assertPatientExists(db, input.patient_id)
+    const tipoId = input.tipo_id ?? tipoPadrao(db)
+    assertTipoUsavel(db, tipoId)
+    assertWithinHours(db, input)
+    assertSlotFree(db, input, null)
+    const result = db
+      .prepare(
+        `INSERT INTO appointments
+           (patient_id, inicio, fim, observacao, tipo_id, presenca, evolucao, confirmado_em)
+         VALUES (@patient_id, @inicio, @fim, @observacao, @tipo_id, @presenca, @evolucao,
+           CASE WHEN @confirmado = 1 THEN ${NOW} END)`
+      )
+      .run({ ...toParams(input), tipo_id: tipoId })
+    const id = Number(result.lastInsertRowid)
+    if (input.etiquetas) setAppointmentEtiquetas(db, id, input.etiquetas)
+    return getAppointment(db, id)
+  })()
 }
 
 export function updateAppointment(
@@ -151,29 +175,42 @@ export function updateAppointment(
   input: AppointmentInput,
   expected?: string
 ): Appointment {
-  const current = getAppointment(db, id)
-  assertUnchanged(current.updated_at, expected)
-  if (input.presenca === 'presente' && current.presenca !== 'presente') {
-    throw new Error(PRESENCA_SO_ASSINADA)
-  }
-  assertPatientExists(db, input.patient_id)
-  if (input.inicio !== current.inicio || input.fim !== current.fim) assertWithinHours(db, input)
-  assertSlotFree(db, input, id)
-  const result = db
-    .prepare(
-      `UPDATE appointments
-       SET patient_id = @patient_id, inicio = @inicio, fim = @fim, observacao = @observacao,
-           tipo = @tipo, presenca = @presenca, evolucao = @evolucao,
-           confirmado_em = CASE
-             WHEN @confirmado IS NULL THEN confirmado_em
-             WHEN @confirmado = 1 THEN coalesce(confirmado_em, ${NOW})
-           END,
-           updated_at = ${NOW}
-       WHERE id = @id`
-    )
-    .run({ ...toParams(input), id })
-  if (result.changes === 0) throw new Error('Agendamento não encontrado')
-  return getAppointment(db, id)
+  return db.transaction(() => {
+    const current = getAppointment(db, id)
+    assertUnchanged(current.updated_at, expected)
+    if (input.presenca === 'presente' && current.presenca !== 'presente') {
+      throw new Error(PRESENCA_SO_ASSINADA)
+    }
+    assertPatientExists(db, input.patient_id)
+    if (input.tipo_id !== undefined && input.tipo_id !== current.tipo_id) {
+      assertTipoUsavel(db, input.tipo_id)
+    }
+    if (input.inicio !== current.inicio || input.fim !== current.fim) assertWithinHours(db, input)
+    assertSlotFree(db, input, id)
+    const result = db
+      .prepare(
+        `UPDATE appointments
+         SET patient_id = @patient_id, inicio = @inicio, fim = @fim, observacao = @observacao,
+             tipo_id = coalesce(@tipo_id, tipo_id), presenca = @presenca, evolucao = @evolucao,
+             confirmado_em = CASE
+               WHEN @confirmado IS NULL THEN confirmado_em
+               WHEN @confirmado = 1 THEN coalesce(confirmado_em, ${NOW})
+             END,
+             updated_at = ${NOW}
+         WHERE id = @id`
+      )
+      .run({ ...toParams(input), id })
+    if (result.changes === 0) throw new Error('Agendamento não encontrado')
+    if (input.etiquetas) {
+      setAppointmentEtiquetas(
+        db,
+        id,
+        input.etiquetas,
+        current.etiquetas.map((e) => e.id)
+      )
+    }
+    return getAppointment(db, id)
+  })()
 }
 
 export function removeAppointment(db: Db, id: number): void {

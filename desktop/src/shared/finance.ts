@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { isIsoDate } from './dates'
 import { CENTAVOS_MAX } from './money'
+import type { Categoria } from './tipos'
 
 const text = (max: number): z.ZodString =>
   z.string().trim().max(max, `Use no máximo ${max} caracteres`)
@@ -192,7 +193,8 @@ export type PackageUseEntry = {
 export type PendingSession = {
   appointment_id: number
   inicio: string
-  tipo: 'sessao' | 'avaliacao'
+  tipo_nome: string
+  categoria: Categoria
 }
 
 export type SaldoConvenio = { insurer_id: number; nome: string; saldo_centavos: number }
