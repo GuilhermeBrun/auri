@@ -10,6 +10,13 @@ import type {
   Patient,
   PatientFilter,
   PatientInput,
+  TermCheck,
+  TermLink,
+  TermModel,
+  TermModelInput,
+  TermRequest,
+  TermSendInput,
+  TermSendResult,
   UiPrefs
 } from './schemas'
 
@@ -39,6 +46,22 @@ export interface AuriApi {
     save(input: ClinicInput, expected?: string): Promise<Clinic>
     chooseLogo(): Promise<string | null>
   }
+  terms: {
+    models(): Promise<TermModel[]>
+    measureModel(input: TermModelInput): Promise<{ tamanho: number; limite: number }>
+    saveModel(id: number | null, input: TermModelInput): Promise<TermModel>
+    archiveModel(id: number, arquivado: boolean): Promise<TermModel>
+    listByPatient(patientId: number): Promise<TermRequest[]>
+    send(patientId: number, input: TermSendInput, computador: string): Promise<TermSendResult>
+    link(requestId: number): Promise<TermLink>
+    cancel(requestId: number): Promise<TermRequest>
+    check(texto: string): Promise<TermCheck>
+    accept(texto: string, computador: string): Promise<TermRequest>
+    openWhatsApp(numero: string, texto: string): Promise<void>
+    openPdf(signedId: number): Promise<void>
+    takeIncoming(): Promise<string[]>
+    onIncoming(listener: () => void): () => void
+  }
   anamneses: {
     get(patientId: number): Promise<Anamnese>
     save(patientId: number, input: AnamneseInput, expected?: string): Promise<Anamnese>
@@ -51,7 +74,8 @@ export const DATA_TOPICS = [
   'appointments',
   'anamneses',
   'attendance',
-  'clinic'
+  'clinic',
+  'terms'
 ] as const
 export type DataTopic = (typeof DATA_TOPICS)[number]
 

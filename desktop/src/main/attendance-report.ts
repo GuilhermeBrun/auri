@@ -9,8 +9,7 @@ import {
   toIsoDate
 } from '../shared/dates'
 import type { AttendanceRecord, AttendanceReport, Presenca } from '../shared/schemas'
-import { deBase64url } from '../../../web/contrato/assinatura/base64url'
-import { ALTURA, LARGURA, decodificar, tracoParaSvg } from '../../../web/contrato/assinatura/traco'
+import { DOCUMENT_CSP, esc, fontFace, signatureSvg, signedAt } from './document'
 
 const PRESENCA: Record<Presenca, string> = {
   presente: 'Presente',
@@ -20,44 +19,10 @@ const PRESENCA: Record<Presenca, string> = {
 
 const TIPO = { sessao: 'Sessão', avaliacao: 'Avaliação' } as const
 
-const ENTITIES: Record<string, string> = {
-  '&': '&amp;',
-  '<': '&lt;',
-  '>': '&gt;',
-  '"': '&quot;',
-  "'": '&#39;'
-}
-
-export function esc(text: string): string {
-  return text.replace(/[&<>"']/g, (c) => ENTITIES[c])
-}
-
 const capitalize = (text: string): string => text.charAt(0).toUpperCase() + text.slice(1)
-
-const pad = (n: number): string => String(n).padStart(2, '0')
-
-function signedAt(iso: string, fuso: number): { data: string; hora: string } {
-  const d = new Date(Date.parse(iso) + fuso * 60_000)
-  return {
-    data: `${pad(d.getUTCDate())}/${pad(d.getUTCMonth() + 1)}/${d.getUTCFullYear()}`,
-    hora: `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`
-  }
-}
 
 function localAt(iso: string): string {
   return format(new Date(iso), "dd/MM/yyyy 'às' HH:mm")
-}
-
-function signatureSvg(traco: string): string {
-  let paths: string[]
-  try {
-    paths = decodificar(deBase64url(traco)).map(tracoParaSvg)
-  } catch {
-    paths = []
-  }
-  return `<svg class="sig" viewBox="0 0 ${LARGURA} ${ALTURA}" preserveAspectRatio="xMidYMid meet" aria-hidden="true">${paths
-    .map((d) => `<path d="${esc(d)}"/>`)
-    .join('')}</svg>`
 }
 
 function isWholeMonth(de: string, ate: string): boolean {
@@ -129,7 +94,7 @@ function arrivalCell(s: AttendanceReport['sessions'][number]): string {
   const active = s.records.find((r) => r.anulada === null)
   const voided = s.records.filter((r) => r.anulada !== null)
   const main = active
-    ? `<div class="arrival">${signatureSvg(active.traco)}<div class="signer">${signer(active)}</div></div>`
+    ? `<div class="arrival">${signatureSvg(active.traco, 'sig')}<div class="signer">${signer(active)}</div></div>`
     : s.presenca === 'presente'
       ? '<span class="faint">sem assinatura</span>'
       : ''
@@ -167,7 +132,7 @@ function recordRow(r: AttendanceRecord): string {
 }
 
 const STYLE = (font: string): string => `
-@font-face{font-family:'Bricolage';src:url(data:font/woff2;base64,${font}) format('woff2-variations');font-weight:200 800}
+${fontFace(font)}
 @page{size:A4;margin:16mm 16mm 18mm}
 *{box-sizing:border-box}
 html{-webkit-print-color-adjust:exact;print-color-adjust:exact}
@@ -223,7 +188,7 @@ export function attendanceReportHtml(
   const records = report.sessions.flatMap((s) => s.records)
 
   return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; font-src data:; style-src 'unsafe-inline'">
+${DOCUMENT_CSP}
 <title>Relatório de presença · ${esc(patient.nome)}</title><style>${STYLE(options.font)}</style></head><body>
 <header>
 <div class="brand">${clinic.logo ? `<img src="${logoDataUrl(clinic.logo)}" alt="">` : ''}<div>${

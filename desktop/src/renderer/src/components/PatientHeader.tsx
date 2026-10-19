@@ -45,18 +45,20 @@ export function PatientHeader({
   )
 }
 
-export type PatientTab = 'ficha' | 'anamnese' | 'sessoes'
+export type PatientTab = 'ficha' | 'anamnese' | 'sessoes' | 'termos'
 
 const TABS: [PatientTab, string][] = [
   ['ficha', 'Ficha'],
   ['anamnese', 'Anamnese'],
-  ['sessoes', 'Sessões']
+  ['sessoes', 'Sessões'],
+  ['termos', 'Termos']
 ]
 
 const TAB_PATH: Record<PatientTab, string> = {
   ficha: '',
   anamnese: '/anamnese',
-  sessoes: '/sessoes'
+  sessoes: '/sessoes',
+  termos: '/termos'
 }
 
 function PatientTabs({

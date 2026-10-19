@@ -51,6 +51,22 @@ const api: AuriApi = {
     save: (input, expected) => invoke('clinic:save', input, expected),
     chooseLogo: () => invoke('clinic:chooseLogo')
   },
+  terms: {
+    models: () => invoke('terms:models'),
+    measureModel: (input) => invoke('terms:measureModel', input),
+    saveModel: (id, input) => invoke('terms:saveModel', id, input),
+    archiveModel: (id, arquivado) => invoke('terms:archiveModel', id, arquivado),
+    listByPatient: (patientId) => invoke('terms:listByPatient', patientId),
+    send: (patientId, input, computador) => invoke('terms:send', patientId, input, computador),
+    link: (requestId) => invoke('terms:link', requestId),
+    cancel: (requestId) => invoke('terms:cancel', requestId),
+    check: (texto) => invoke('terms:check', texto),
+    accept: (texto, computador) => invoke('terms:accept', texto, computador),
+    openWhatsApp: (numero, texto) => invoke('terms:openWhatsApp', numero, texto),
+    openPdf: (signedId) => invoke('pdf:term', signedId),
+    takeIncoming: () => invoke('terms:takeIncoming'),
+    onIncoming: (listener) => subscribe<void>('terms:incoming', listener)
+  },
   anamneses: {
     get: (patientId) => invoke('anamneses:get', patientId),
     save: (patientId, input, expected) => invoke('anamneses:save', patientId, input, expected)

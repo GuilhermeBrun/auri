@@ -3,10 +3,12 @@ import { Layout } from './components/Layout'
 import { AgendaPage } from './pages/AgendaPage'
 import { BackupPage } from './pages/BackupPage'
 import { ClinicPage } from './pages/ClinicPage'
+import { TermModelRoute } from './pages/TermModelPage'
 import { ConnectionPage } from './pages/ConnectionPage'
 import { PatientAnamneseRoute } from './pages/PatientAnamnesePage'
 import { PatientFormRoute } from './pages/PatientFormPage'
 import { PatientSessionsRoute } from './pages/PatientSessionsPage'
+import { PatientTermsRoute } from './pages/PatientTermsPage'
 import { PatientsPage } from './pages/PatientsPage'
 import { GeneralPage } from './pages/GeneralPage'
 import { AppearancePage } from './pages/SettingsPage'
@@ -23,7 +25,10 @@ function App(): React.JSX.Element {
         <Route path="pacientes/:id" element={<PatientFormRoute />} />
         <Route path="pacientes/:id/anamnese" element={<PatientAnamneseRoute />} />
         <Route path="pacientes/:id/sessoes" element={<PatientSessionsRoute />} />
+        <Route path="pacientes/:id/termos" element={<PatientTermsRoute />} />
         <Route path="clinica" element={<ClinicPage />} />
+        <Route path="clinica/termos/novo" element={<TermModelRoute />} />
+        <Route path="clinica/termos/:id" element={<TermModelRoute />} />
         <Route path="configuracoes" element={<Navigate to="geral" replace />} />
         <Route path="configuracoes/geral" element={<GeneralPage />} />
         <Route path="configuracoes/aparencia" element={<AppearancePage />} />

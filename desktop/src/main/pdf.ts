@@ -1,5 +1,5 @@
 import { app, BrowserWindow, dialog, session, shell, type SaveDialogOptions } from 'electron'
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import fontFile from '../../resources/fonts/bricolage-grotesque.woff2?asset'
@@ -50,6 +50,21 @@ export async function htmlToPdf(html: string): Promise<Buffer> {
     window.destroy()
     await rm(folder, { recursive: true, force: true })
   }
+}
+
+export async function openPdf(pdf: Buffer, name: string): Promise<void> {
+  const folder = join(app.getPath('temp'), 'auri-pdf')
+  await mkdir(folder, { recursive: true })
+  const now = Date.now()
+  for (const old of await readdir(folder).catch(() => [])) {
+    const path = join(folder, old)
+    const info = await stat(path).catch(() => null)
+    if (info && now - info.mtimeMs > 3_600_000) await rm(path, { force: true }).catch(() => {})
+  }
+  const file = join(folder, name)
+  await writeFile(file, pdf, { mode: 0o600 })
+  const error = await shell.openPath(file)
+  if (error) throw new Error(`Não foi possível abrir o PDF: ${error}`)
 }
 
 export async function savePdf(pdf: Buffer, name: string): Promise<string | null> {

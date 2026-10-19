@@ -1,8 +1,10 @@
-import { clipboard, ipcMain } from 'electron'
+import { app, clipboard, ipcMain, shell } from 'electron'
 import { z } from 'zod'
 import type { AuriTransfer, IpcResult } from '../shared/api'
-import type { AttendanceReport } from '../shared/schemas'
+import type { AttendanceReport, SignedTermRecord } from '../shared/schemas'
 import { attendanceReportHtml, attendanceReportName } from './attendance-report'
+import { termHtml, termPdfName } from './term-report'
+import type { Caixa } from './terms/protocol'
 import type { BackupService } from './backup-service'
 import type { Connection } from './connection'
 import type { ErrorReportService } from './error-reports'
@@ -11,7 +13,7 @@ import type { PrefsStore } from './prefs'
 import type { UpdateService } from './updates'
 import { assertTrustedSender } from './ipc-security'
 import { chooseLogo } from './logo'
-import { documentFont, htmlToPdf, savePdf } from './pdf'
+import { documentFont, htmlToPdf, openPdf, savePdf } from './pdf'
 
 export type IpcServices = {
   connection: Connection
@@ -20,6 +22,7 @@ export type IpcServices = {
   transfer: AuriTransfer
   updates: UpdateService
   reports: ErrorReportService
+  inbox: Caixa
 }
 
 const cut = (max: number) =>
@@ -46,7 +49,8 @@ export function registerIpc({
   backup,
   transfer,
   updates,
-  reports
+  reports,
+  inbox
 }: IpcServices): void {
   function handle<A extends unknown[], T>(
     channel: string,
@@ -116,6 +120,30 @@ export function registerIpc({
     const html = attendanceReportHtml(report, { font: await documentFont() })
     return savePdf(await htmlToPdf(html), attendanceReportName(report))
   })
+
+  handle('pdf:term', async (signedId: unknown) => {
+    const result = await connection.call('terms:record', [signedId])
+    if (!result.ok) throw new Error(result.error)
+    const record = result.data as SignedTermRecord
+    await openPdf(
+      await htmlToPdf(termHtml(record, { font: await documentFont() })),
+      termPdfName(record)
+    )
+  })
+  handle('terms:openWhatsApp', async (numero: unknown, texto: unknown) => {
+    const phone = z
+      .string()
+      .regex(/^\d{10,15}$/)
+      .parse(numero)
+    const text = encodeURIComponent(z.string().max(6000).parse(texto))
+    const desktop = app.getApplicationNameForProtocol('whatsapp://') !== ''
+    await shell.openExternal(
+      desktop
+        ? `whatsapp://send?phone=${phone}&text=${text}`
+        : `https://wa.me/${phone}?text=${text}`
+    )
+  })
+  handle('terms:takeIncoming', () => inbox.retirar())
 
   handle('backup:info', () => backup.info())
   handle('backup:providers', () => backup.providers())

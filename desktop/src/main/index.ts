@@ -14,6 +14,7 @@ import { trustRenderer } from './ipc-security'
 import { pathToFileURL } from 'node:url'
 import { createPrefsStore, type PrefsStore } from './prefs'
 import { createTransferService } from './transfer-service'
+import { ESQUEMA, criarCaixa, enderecoNosArgumentos } from './terms/protocol'
 import {
   channelFile,
   createUpdateService,
@@ -192,13 +193,28 @@ function syncTray(): void {
   })
 }
 
+const inbox = criarCaixa(() => {
+  sendToWindows('terms:incoming', null)
+  if (app.isReady()) showWindow()
+})
+
 const isFirstInstance = app.requestSingleInstanceLock()
 if (!isFirstInstance) {
   app.quit()
 } else {
-  app.on('second-instance', () => {
+  app.on('will-finish-launching', () => {
+    app.on('open-url', (event, url) => {
+      event.preventDefault()
+      inbox.receber(url)
+    })
+  })
+  app.on('second-instance', (_event, argv) => {
+    const endereco = enderecoNosArgumentos(argv)
+    if (endereco) inbox.receber(endereco)
     if (app.isReady()) showWindow()
   })
+  const inicial = enderecoNosArgumentos(process.argv)
+  if (inicial) inbox.receber(inicial)
   reports = startErrorReports()
   watchFailures()
 }
@@ -207,6 +223,7 @@ void app.whenReady().then(async () => {
   if (!isFirstInstance) return
 
   electronApp.setAppUserModelId('com.auri.app')
+  if (app.isPackaged && process.platform === 'win32') app.setAsDefaultProtocolClient(ESQUEMA)
 
   if (process.platform === 'darwin') app.dock?.setIcon(icon)
 
@@ -252,7 +269,8 @@ void app.whenReady().then(async () => {
     backup,
     transfer: createTransferService({ prefs, connection, backup }),
     updates,
-    reports: reports!
+    reports: reports!,
+    inbox
   })
   applyTheme(prefs.get().theme)
   nativeTheme.on('updated', syncWindowBackgrounds)

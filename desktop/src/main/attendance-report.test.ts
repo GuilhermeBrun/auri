@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vite-plus/test'
 import type { Appointment, AttendanceRecord, AttendanceReport } from '../shared/schemas'
 import { paraBase64url } from '../../../web/contrato/assinatura/base64url'
 import { codificar } from '../../../web/contrato/assinatura/traco'
-import { attendanceReportHtml, attendanceReportName, esc, periodLabel } from './attendance-report'
+import { attendanceReportHtml, attendanceReportName, periodLabel } from './attendance-report'
+import { esc } from './document'
 
 const TRACO = paraBase64url(
   codificar([

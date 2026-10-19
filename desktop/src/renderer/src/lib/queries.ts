@@ -1,4 +1,12 @@
-import type { Anamnese, Appointment, AttendanceRecord, Clinic, Patient } from '@shared/schemas'
+import type {
+  Anamnese,
+  Appointment,
+  AttendanceRecord,
+  Clinic,
+  Patient,
+  TermModel,
+  TermRequest
+} from '@shared/schemas'
 
 type Query<T> = { queryKey: readonly unknown[]; queryFn: () => Promise<T> }
 
@@ -40,4 +48,15 @@ export function patientAttendanceQuery(patientId: number): Query<AttendanceRecor
 
 export function clinicQuery(): Query<Clinic> {
   return { queryKey: ['clinic'], queryFn: () => window.api.clinic.get() }
+}
+
+export function termModelsQuery(): Query<TermModel[]> {
+  return { queryKey: ['terms', 'models'], queryFn: () => window.api.terms.models() }
+}
+
+export function patientTermsQuery(patientId: number): Query<TermRequest[]> {
+  return {
+    queryKey: ['terms', 'patient', patientId],
+    queryFn: () => window.api.terms.listByPatient(patientId)
+  }
 }

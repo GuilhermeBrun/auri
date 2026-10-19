@@ -16,7 +16,7 @@ export const ORIGEM = 'https://auri.dev.br'
 export const LIMITE_IDA = 4000
 export const LIMITE_VOLTA = 2000
 
-const MAXIMO_LIDO = 8192
+export const MAXIMO_LIDO = 8192
 const MAXIMO_DO_TEXTO = 16_000
 const TAMANHO_DO_ID = 16
 const MENOR_PACOTE = 28
@@ -71,8 +71,8 @@ export class LinkLongo extends RangeError {
   }
 }
 
-const DADO_DA_IDA = `auri/termo/${VERSAO}/ida`
-const dadoDaVolta = (id: string): string => `auri/termo/${VERSAO}/volta/${id}`
+export const DADO_DA_IDA = `auri/termo/${VERSAO}/ida`
+export const dadoDaVolta = (id: string): string => `auri/termo/${VERSAO}/volta/${id}`
 const leitor = new TextDecoder('utf-8', { fatal: true })
 
 type Campos = Record<string, unknown>
@@ -122,7 +122,7 @@ function papelValido(valor: unknown, nome: string): Papel {
   return papel
 }
 
-function termoValido(valor: unknown): Termo {
+export function termoValido(valor: unknown): Termo {
   const termo = campos(valor, 'termo')
   const cli = campos(termo.cli, 'cli')
   const pac = campos(termo.pac, 'pac')
@@ -156,7 +156,7 @@ function termoValido(valor: unknown): Termo {
   }
 }
 
-function respostaValida(valor: unknown): Resposta {
+export function respostaValida(valor: unknown): Resposta {
   const resposta = campos(valor, 'resposta')
   const rel = papelValido(resposta.rel, 'rel')
   if (resposta.ok !== true) throw new TypeError('ok inválido')
@@ -173,7 +173,7 @@ function respostaValida(valor: unknown): Resposta {
   }
 }
 
-function partes(fragmento: string): [string, string] {
+export function partes(fragmento: string): [string, string] {
   const conteudo = fragmento.startsWith('#') ? fragmento.slice(1) : fragmento
   const [versao, ...resto] = conteudo.split('.')
   const atual = String(VERSAO)
@@ -188,7 +188,7 @@ async function abrir(chave: Uint8Array, dadoAdicional: string, dados: string) {
   return descomprimir(await decifrar(chave, dadoAdicional, deBase64url(dados)))
 }
 
-const tamanhoNoSite = (caminho: string, fragmento: string): number =>
+export const tamanhoNoSite = (caminho: string, fragmento: string): number =>
   `${ORIGEM}/${caminho}#${fragmento}`.length
 
 export const novoId = (): string =>
@@ -246,6 +246,14 @@ export async function montarVolta(
   throw new LinkLongo(tamanho, limite)
 }
 
+export function lerCorpoDaVolta(corpo: Uint8Array, id: string): Volta {
+  const tamanho = new DataView(corpo.buffer, corpo.byteOffset, corpo.byteLength).getUint16(0)
+  if (corpo.length < 2 + tamanho) throw new RangeError('Cabeçalho incompleto')
+  const resposta = respostaValida(JSON.parse(leitor.decode(corpo.subarray(2, 2 + tamanho))))
+  if (resposta.id !== id) throw new TypeError('id diferente do de fora')
+  return { resposta, assinatura: decodificar(corpo.subarray(2 + tamanho)) }
+}
+
 export function idDaVolta(fragmento: string): string {
   const [id, dados] = partes(fragmento)
   try {
@@ -260,12 +268,7 @@ export async function lerVolta(fragmento: string, chave: Uint8Array): Promise<Vo
   const id = idDaVolta(fragmento)
   const [, dados] = partes(fragmento)
   try {
-    const corpo = await abrir(chave, dadoDaVolta(id), dados)
-    const tamanho = new DataView(corpo.buffer).getUint16(0)
-    if (corpo.length < 2 + tamanho) throw new RangeError('Cabeçalho incompleto')
-    const resposta = respostaValida(JSON.parse(leitor.decode(corpo.subarray(2, 2 + tamanho))))
-    if (resposta.id !== id) throw new TypeError('id diferente do de fora')
-    return { resposta, assinatura: decodificar(corpo.subarray(2 + tamanho)) }
+    return lerCorpoDaVolta(await abrir(chave, dadoDaVolta(id), dados), id)
   } catch (erro) {
     throw new LinkInvalido('incompleto', { cause: erro })
   }
