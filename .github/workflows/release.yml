@@ -14,6 +14,10 @@ on:
         description: 'Versão estável (ex.: 1.2.0). Vazio: a base do último alpha.'
         type: string
         default: ''
+      mac:
+        description: 'Alpha também no Mac (a estável sempre sai nos dois)'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -60,7 +64,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        platform: ${{ needs.resolve.outputs.prerelease == 'true' && fromJSON('["win32"]') || fromJSON('["win32","darwin"]') }}
+        platform: ${{ (needs.resolve.outputs.prerelease != 'true' || inputs.mac) && fromJSON('["win32","darwin"]') || fromJSON('["win32"]') }}
     runs-on: ${{ matrix.platform == 'win32' && 'windows-latest' || 'macos-latest' }}
     timeout-minutes: 45
     defaults:

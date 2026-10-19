@@ -70,6 +70,7 @@ minutos grátis do mês descontam 1 por minuto de Linux, 2 de Windows e 10 de Ma
 | -------------------------------- | --------------- | ------------ |
 | CI (PR pronto)                   | ~3              | ~US$ 0,02    |
 | Alpha (Windows)                  | ~28             | ~US$ 0,14    |
+| Alpha (Windows + Mac arm64)      | ~130            | ~US$ 0,80    |
 | Estável (Windows + Mac arm64)    | ~130            | ~US$ 0,80    |
 | Windows manual                   | ~60             | ~US$ 0,30    |
 | Referências visuais (só Windows) | ~20             | ~US$ 0,10    |
@@ -89,7 +90,7 @@ tinha escolhido o canal Beta passa para o Alpha sozinho.
   o que muda em `desktop/` ou `.github/`; documentação, arquivos `.md` e o site não contam).
   Sai como `X.Y.(Z+1)-alpha.AAAAMMDD.N`, só para
   Windows, numa prerelease do GitHub. Também pode ser disparado à mão:
-  `gh workflow run release.yml -f channel=alpha`.
+  `gh workflow run release.yml -f channel=alpha`; com `-f mac=true`, sai também para o Mac.
 - **Estável**: manual. Promove o commit do último alpha como `X.Y.Z` (a base do alpha ou a versão
   pedida), para Windows e Mac (só Apple Silicon). Antes, rodar `npm run ci:mac` no Mac e o
   workflow Windows: `gh workflow run release.yml -f channel=stable [-f version=1.2.0]`.
@@ -98,7 +99,8 @@ Os arquivos de atualização (no site, ver abaixo) são remontados das releases 
 publicação: `latest.yml` aponta para a última estável e `alpha.yml` para o alpha mais novo que
 ela. Quem escolhe o canal Alpha em Configurações › Geral segue o `alpha.yml`. O Mac se atualiza
 sozinho só quando a estável sai assinada com o Developer ID (abaixo); sem isso, instala-se pela
-página do site. No alpha, o Mac fica na estável (o alpha é só Windows).
+página do site. No alpha, o Mac fica na estável, a não ser no alpha disparado com `mac=true`: aí o `alpha-mac.yml`
+aponta para ele.
 
 ## Site e atualização
 
