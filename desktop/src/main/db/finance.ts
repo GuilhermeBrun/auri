@@ -434,6 +434,41 @@ function activeEntry(db: Db, appointmentId: number): { kind: 'charge' | 'use'; i
 
 const sessionDay = (inicio: string): string => inicio.slice(0, 10)
 
+function hasSignature(db: Db, appointmentId: number): boolean {
+  return (
+    db
+      .prepare('SELECT 1 FROM attendance_signatures WHERE appointment_id = ?')
+      .get(appointmentId) !== undefined
+  )
+}
+
+export function lancarNaChegada(
+  db: Db,
+  appointmentId: number,
+  computador: string
+): LancamentoSessao | null {
+  const { patient_id } = getAppointment(db, appointmentId)
+  if (!getBilling(db, patient_id) || activeEntry(db, appointmentId)) return null
+  try {
+    return lancarSessao(db, appointmentId, computador)
+  } catch (error) {
+    console.error(`[financeiro] sessão ${appointmentId} fica em "A lançar": ${String(error)}`)
+    return null
+  }
+}
+
+export function estornarSessao(
+  db: Db,
+  appointmentId: number,
+  motivo: string,
+  computador: string
+): boolean {
+  const entry = activeEntry(db, appointmentId)
+  if (!entry) return false
+  estornar(db, entry.kind, entry.id, motivo, computador)
+  return true
+}
+
 function sessionLabel(tipo: 'sessao' | 'avaliacao', inicio: string): string {
   const dia = format(parseIsoDate(sessionDay(inicio)), 'dd/MM')
   return `${tipo === 'avaliacao' ? 'Avaliação' : 'Sessão'} de ${dia}`
@@ -468,6 +503,8 @@ export function lancarSessao(
   return db.transaction((): LancamentoSessao => {
     const a = getAppointment(db, appointmentId)
     if (a.presenca !== 'presente') throw new Error('Só uma sessão com presença pode ser lançada.')
+    if (!a.assinatura && hasSignature(db, appointmentId))
+      throw new Error('A assinatura da chegada desta sessão foi anulada.')
     if (activeEntry(db, appointmentId)) throw new Error('Esta sessão já foi lançada.')
     const billing = getBilling(db, a.patient_id)
     if (!billing) throw new Error('Defina a forma de cobrança do paciente antes de lançar.')
@@ -710,6 +747,10 @@ function pendingSessions(db: Db, patientId: number, desde: string): PendingSessi
                          WHERE c.appointment_id = a.id AND c.estornado_em IS NULL)
          AND NOT EXISTS (SELECT 1 FROM finance_package_uses u
                          WHERE u.appointment_id = a.id AND u.estornado_em IS NULL)
+         AND (NOT EXISTS (SELECT 1 FROM attendance_signatures s WHERE s.appointment_id = a.id)
+              OR EXISTS (SELECT 1 FROM attendance_signatures s
+                         WHERE s.appointment_id = a.id
+                           AND s.id NOT IN (SELECT signature_id FROM attendance_voids)))
        ORDER BY a.inicio`
     )
     .all(patientId, desde) as PendingSession[]

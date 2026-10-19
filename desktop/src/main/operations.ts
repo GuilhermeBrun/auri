@@ -167,7 +167,7 @@ const OPERATIONS: Record<string, Operation> = {
         arrivalSignInputSchema.parse(input),
         computadorSchema.parse(computador)
       ),
-    changes: ['appointments', 'attendance']
+    changes: ['appointments', 'attendance', 'finance']
   },
   'attendance:void': {
     run: (db, [signatureId, motivo, computador]) =>
@@ -177,7 +177,7 @@ const OPERATIONS: Record<string, Operation> = {
         voidMotivoSchema.parse(motivo),
         computadorSchema.parse(computador)
       ),
-    changes: ['appointments', 'attendance']
+    changes: ['appointments', 'attendance', 'finance']
   },
   'attendance:listByPatient': {
     run: (db, [patientId]) => listPatientAttendance(db, idSchema.parse(patientId))
