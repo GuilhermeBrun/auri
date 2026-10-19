@@ -107,6 +107,8 @@ function hasStarted(data: string | undefined, hora: string | undefined, now: Dat
   return parseIsoLocalDateTime(`${data}T${hora}`) <= now
 }
 
+const AUSENCIA_OPTIONS = PRESENCA_OPTIONS.filter(([value]) => value !== 'presente')
+
 function toInput(values: ValidValues, now: Date, signed: boolean): AppointmentInput {
   const inicio = `${values.data}T${values.hora}`
   return {
@@ -283,7 +285,7 @@ function AppointmentForm({
                 fim: gone.fim,
                 observacao: gone.observacao,
                 tipo: gone.tipo,
-                presenca: gone.presenca,
+                presenca: gone.presenca === 'presente' ? '' : gone.presenca,
                 evolucao: gone.evolucao
               })
               .then(() => {
@@ -417,7 +419,7 @@ function AppointmentForm({
                   <Segmented
                     label="Presença"
                     value={field.value}
-                    options={PRESENCA_OPTIONS}
+                    options={editing?.presenca === 'presente' ? PRESENCA_OPTIONS : AUSENCIA_OPTIONS}
                     onChange={(v) => field.onChange(v === field.value ? '' : v)}
                   />
                 )}
@@ -425,12 +427,17 @@ function AppointmentForm({
             </SegmentedField>
           )}
         </div>
+        {!signed && started && !canSign && editing?.presenca !== 'presente' && (
+          <p className="-mt-2 text-xs text-ink-soft">
+            Presente só com a assinatura de quem trouxe o paciente, no dia da sessão.
+          </p>
+        )}
         {canSign && (
           <div className="flex items-center justify-between gap-3 rounded-control bg-canvas px-3 py-2.5">
             <span className="flex flex-col">
               <span className="text-[13px] font-medium">Chegada</span>
               <span className="text-xs text-ink-soft">
-                Quem trouxe o paciente assina na tela. A presença fica marcada e travada.
+                A presença só é marcada com a assinatura de quem trouxe o paciente, e fica travada.
               </span>
             </span>
             <Button variant="secondary" onClick={() => setSigning(true)}>

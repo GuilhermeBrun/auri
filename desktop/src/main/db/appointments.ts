@@ -117,7 +117,10 @@ export function listAppointments(db: Db, de: string, ate: string): Appointment[]
   return rows.map(fromRow)
 }
 
+export const PRESENCA_SO_ASSINADA = 'A presença é marcada pela assinatura da chegada.'
+
 export function createAppointment(db: Db, input: AppointmentInput): Appointment {
+  if (input.presenca === 'presente') throw new Error(PRESENCA_SO_ASSINADA)
   assertPatientExists(db, input.patient_id)
   assertSlotFree(db, input, null)
   const result = db
@@ -135,7 +138,11 @@ export function updateAppointment(
   input: AppointmentInput,
   expected?: string
 ): Appointment {
-  assertUnchanged(getAppointment(db, id).updated_at, expected)
+  const current = getAppointment(db, id)
+  assertUnchanged(current.updated_at, expected)
+  if (input.presenca === 'presente' && current.presenca !== 'presente') {
+    throw new Error(PRESENCA_SO_ASSINADA)
+  }
   assertPatientExists(db, input.patient_id)
   assertSlotFree(db, input, id)
   const result = db
