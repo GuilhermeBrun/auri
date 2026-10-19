@@ -41,6 +41,11 @@ export interface AuriApi {
     listByPatient(patientId: number): Promise<AttendanceRecord[]>
     reportPdf(patientId: number, de: string, ate: string): Promise<string | null>
   }
+  documents: {
+    evolutionsPdf(patientId: number, de: string, ate: string): Promise<string | null>
+    patientPdf(patientId: number): Promise<void>
+    anamnesePdf(patientId: number): Promise<void>
+  }
   clinic: {
     get(): Promise<Clinic>
     save(input: ClinicInput, expected?: string): Promise<Clinic>

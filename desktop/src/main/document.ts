@@ -101,7 +101,7 @@ export function documentHeader(
 <div class="brand">${clinic.logo ? `<img src="${logoDataUrl(clinic.logo)}" alt="">` : ''}<div>${
     clinic.nome ? `<p class="clinic">${esc(clinic.nome)}</p>` : ''
   }${contact.length ? `<div class="contact">${contact.map(esc).join(' · ')}</div>` : ''}</div></div>
-<div class="title"><h1>${esc(title.titulo)}</h1><p>${esc(title.subtitulo)}</p></div>
+<div class="title"><h1>${esc(title.titulo)}</h1>${title.subtitulo ? `<p>${esc(title.subtitulo)}</p>` : ''}</div>
 </header>`
 }
 
