@@ -112,7 +112,7 @@ describe('catálogo', () => {
     saveService(db, sessao, { nome: 'Sessão', valor_centavos: 25000 })
     expect(fin().charges[0]).toMatchObject({
       valor_centavos: 19000,
-      descricao: 'Sessão de 14/10 · Sessão'
+      descricao: 'Sessão de 14/10'
     })
   })
 })
@@ -178,7 +178,7 @@ describe('particular por sessão', () => {
     )
     expect(fin().charges.map((c) => [c.motivo, c.descricao, c.valor_centavos])).toEqual([
       ['avulsa', 'Relatório escolar', 15000],
-      ['sessao', 'Avaliação de 14/10 · Avaliação', 40000]
+      ['sessao', 'Avaliação de 14/10', 40000]
     ])
   })
 
@@ -191,7 +191,7 @@ describe('particular por sessão', () => {
     expect(() => cobrarFalta(db, f, PC)).toThrow('já foi lançada')
     expect(fin().charges[0]).toMatchObject({
       motivo: 'falta_cobrada',
-      descricao: 'Falta de 14/10 · Sessão',
+      descricao: 'Falta de 14/10',
       valor_centavos: 19000
     })
     expect(fin().pendentes.map((x) => x.appointment_id)).toEqual([p])
@@ -267,8 +267,8 @@ describe('pacote', () => {
       .map((c) => c.descricao)
     expect(descricoes).toEqual([
       'Avaliação de 06/10 · Sessão',
-      'Sessão de 05/10 · Sessão · fora do pacote',
-      'Sessão de 03/10 · Sessão · fora do pacote'
+      'Sessão de 05/10 · fora do pacote',
+      'Sessão de 03/10 · fora do pacote'
     ])
     expect(fin().packages.map((p) => [p.nome, p.usadas, p.em_vigor])).toEqual([
       ['1 sessão', 1, false],

@@ -171,7 +171,7 @@ describe('aba Financeiro da ficha', () => {
     expect(screen.getByRole('list', { name: '3 de 8 sessões usadas' })).toBeTruthy()
     expect(screen.getByText(/vale até 29\/11\/2026/)).toBeTruthy()
     expect(screen.getByText('Parcial · falta R$ 380,00')).toBeTruthy()
-    expect(screen.getByText('1/8 do pacote')).toBeTruthy()
+    expect(screen.getByText('1/8 do pacote 8 sessões')).toBeTruthy()
     expect(screen.getByText('Estornado em 03/10/2026: Lançado em dobro')).toBeTruthy()
     expect(screen.getByText('−R$ 1.140,00')).toBeTruthy()
   })

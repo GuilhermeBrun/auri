@@ -406,7 +406,7 @@ function rows(finance: PatientFinance): Row[] {
 
 function chargeDetail(c: ChargeEntry): string {
   if (!c.situacao) return ''
-  const quem = c.insurer_nome ? `${c.insurer_nome} · ` : ''
+  const quem = c.insurer_nome && !c.descricao.includes(c.insurer_nome) ? `${c.insurer_nome} · ` : ''
   if (c.situacao === 'parcial')
     return `${quem}Parcial · falta ${formatBRL(c.valor_centavos - c.pago_centavos)}`
   return `${quem}${SITUACAO_LABELS[c.situacao]}`
@@ -429,8 +429,10 @@ function rowText(row: Row): { title: string; detail: string; valor: string } {
   }
   const u = row.entry
   return {
-    title: `Sessão de ${formatShortDay(u.inicio.slice(0, 10))} · ${u.package_nome}`,
-    detail: u.numero ? `${u.numero}/${u.sessoes} do pacote` : '',
+    title: `Sessão de ${formatShortDay(u.inicio.slice(0, 10))}`,
+    detail: u.numero
+      ? `${u.numero}/${u.sessoes} do pacote ${u.package_nome}`
+      : `Pacote ${u.package_nome}`,
     valor: ''
   }
 }

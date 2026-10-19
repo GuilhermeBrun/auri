@@ -43,8 +43,8 @@ pelo estado vazio. Por quê:
 
 ### Catálogo
 
-- **Serviço** (`finance_services`): nome e valor. Ex.: Sessão R$ 190, Avaliação R$ 400,
-  Relatório R$ 150.
+- **Valor** (`finance_services`; na tela, "Valores"): nome e valor. Ex.: Sessão R$ 190,
+  Avaliação R$ 400, Relatório R$ 150.
 - **Modelo de pacote** (`finance_plans`): nome, número de sessões, valor total e validade opcional
   em dias. Ex.: "8 sessões" por R$ 1.520, válido por 60 dias.
 - **Convênio** (`finance_insurers`): nome e valor que o convênio paga por sessão.
@@ -115,7 +115,10 @@ O lançamento é feito por `lancarSessao(db, appointmentId, computador)` (`main/
 - no pacote, consome a vaga do **pacote mais antigo** que ainda tem sessões e vale na data da
   sessão. Sem pacote em vigor, a sessão é cobrada avulsa pelo serviço da forma de cobrança, com
   "fora do pacote" na descrição;
-- avaliação (`tipo = 'avaliacao'`) nunca consome pacote.
+- avaliação (`tipo = 'avaliacao'`) nunca consome pacote; em "A lançar", lançar uma avaliação
+  pergunta qual valor cobrar (sugere o que começa com "Avalia");
+- a descrição é "Sessão de 14/10", com o nome do valor só quando ele não é "Sessão"/"Avaliação"
+  ("Sessão de 14/10 · Sessão social"), e "fora do pacote" quando for o caso.
 
 Na F1, ninguém chama isso sozinho: a aba Financeiro da ficha mostra **A lançar**, as sessões com
 presença desde que a forma de cobrança foi definida e ainda sem lançamento, com "Lançar" e "Lançar
@@ -151,7 +154,8 @@ caso).
   arquivar.
 - **Aba Financeiro da ficha** (`/pacientes/:id/financeiro`): resumo (em aberto ou crédito, a
   receber do convênio), forma de cobrança com "Alterar", pacote em vigor com a contagem "3 de 8" e
-  a validade, **A lançar**, e o **Extrato**: cobranças e pagamentos juntos, do mais novo ao mais
+  a validade (um quadrado por sessão, cheio quando usada, como o 1/8, 2/8 do papel), **A lançar**,
+  e o **Extrato**: cobranças e pagamentos juntos, do mais novo ao mais
   velho, cada cobrança com a situação; o estornado fica riscado com o motivo. Ações: Registrar
   pagamento (principal), Cobrar (serviço avulso), Contratar pacote, Estornar (pede motivo).
 

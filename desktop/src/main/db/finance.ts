@@ -363,7 +363,9 @@ export function contractPackage(
       {
         patient_id: patientId,
         data: input.inicio,
-        descricao: `Pacote ${plan.nome} · ${plan.sessoes} ${plan.sessoes === 1 ? 'sessão' : 'sessões'}`,
+        descricao: plan.nome.includes(String(plan.sessoes))
+          ? `Pacote ${plan.nome}`
+          : `Pacote ${plan.nome} · ${plan.sessoes} ${plan.sessoes === 1 ? 'sessão' : 'sessões'}`,
         valor_centavos: plan.valor_centavos,
         motivo: 'pacote',
         package_id: packageId
@@ -437,6 +439,12 @@ function sessionLabel(tipo: 'sessao' | 'avaliacao', inicio: string): string {
   return `${tipo === 'avaliacao' ? 'Avaliação' : 'Sessão'} de ${dia}`
 }
 
+function serviceSuffix(nome: string, tipo: 'sessao' | 'avaliacao'): string {
+  const same =
+    nome.trim().toLocaleLowerCase('pt-BR') === (tipo === 'avaliacao' ? 'avaliação' : 'sessão')
+  return same ? '' : ` · ${nome}`
+}
+
 function packageFor(db: Db, patientId: number, day: string): PackageRow | null {
   return (
     packageRows(db, patientId).find(
@@ -505,7 +513,7 @@ export function lancarSessao(
       {
         patient_id: a.patient_id,
         data: day,
-        descricao: `${label} · ${service.nome}${foraDoPacote ? ' · fora do pacote' : ''}`,
+        descricao: `${label}${serviceSuffix(service.nome, a.tipo)}${foraDoPacote ? ' · fora do pacote' : ''}`,
         valor_centavos: service.valor_centavos,
         motivo: 'sessao',
         appointment_id: a.id
@@ -531,7 +539,7 @@ export function cobrarFalta(db: Db, appointmentId: number, computador: string): 
       {
         patient_id: a.patient_id,
         data: sessionDay(a.inicio),
-        descricao: `Falta de ${format(parseIsoDate(sessionDay(a.inicio)), 'dd/MM')} · ${billing.service.nome}`,
+        descricao: `Falta de ${format(parseIsoDate(sessionDay(a.inicio)), 'dd/MM')}${serviceSuffix(billing.service.nome, 'sessao')}`,
         valor_centavos: billing.service.valor_centavos,
         motivo: 'falta_cobrada',
         appointment_id: a.id
