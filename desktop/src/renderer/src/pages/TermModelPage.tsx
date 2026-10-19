@@ -210,12 +210,17 @@ function TermModelEditor({ model }: { model: TermModel | null }): React.JSX.Elem
             />
           </Field>
           <div className="flex flex-col gap-1.5">
-            <div className="flex items-end justify-between gap-3">
+            <div className="flex h-7 items-center justify-between gap-3">
               <label htmlFor={`${ids}-texto`} className="text-xs font-medium">
                 Texto
               </label>
               {!texto.trim() && (
-                <Button variant="ghost" size="sm" onClick={() => setTexto(ESTRUTURA)}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="-mr-2.5"
+                  onClick={() => setTexto(ESTRUTURA)}
+                >
                   Começar de uma estrutura
                 </Button>
               )}
