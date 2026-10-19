@@ -14,7 +14,6 @@ import {
   ErrorText,
   GroupText,
   PageSection,
-  SectionTitle,
   SettingsGroup,
   StatusDot
 } from '@renderer/components/ui/section'
@@ -59,10 +58,6 @@ function frequencyText(frequency: BackupFrequency, time: string): string {
   }
 }
 
-function Step({ n }: { n: number }): React.JSX.Element {
-  return <p className="mb-1 text-xs text-ink-faint">Passo {n} de 3</p>
-}
-
 function DestinationLine({ destination }: { destination: BackupDestination }): React.JSX.Element {
   return (
     <div className="min-w-0 flex-1">
@@ -102,30 +97,28 @@ function Setup({
 
   if (!destination) {
     return (
-      <section className="animate-fade-in">
-        <Step n={1} />
-        <SectionTitle title="Onde guardar as cópias">
+      <SettingsGroup label="Passo 1 de 3 · Onde guardar as cópias" className="animate-fade-in">
+        <GroupText>
           Numa nuvem, para a cópia sobreviver se este computador quebrar. O Auri grava na pasta que
           o app da nuvem cria neste computador, e ele manda para a internet.
-        </SectionTitle>
+        </GroupText>
         <div className="mt-4">
           <DestinationPicker onPick={setDestination} suggested={suggested} />
         </div>
-      </section>
+      </SettingsGroup>
     )
   }
 
   return (
-    <section className="animate-fade-in">
-      <Step n={2} />
-      <SectionTitle title="Crie uma senha para as cópias">
+    <SettingsGroup label="Passo 2 de 3 · Crie uma senha para as cópias" className="animate-fade-in">
+      <GroupText>
         As cópias saem cifradas: sem a senha, ninguém consegue ler, nem quem tiver acesso à nuvem.
         Neste computador as cópias são automáticas; a senha só é pedida para abrir uma cópia em
         outro computador.
-      </SectionTitle>
-      <div className="mt-4 flex items-center gap-3 rounded-card bg-fill px-4 py-3">
+      </GroupText>
+      <div className="mt-4 flex items-center gap-3 rounded-card bg-surface px-4 py-3">
         <DestinationLine destination={destination} />
-        <Button variant="secondary" size="sm" onClick={() => setDestination(null)}>
+        <Button variant="secondary" onClick={() => setDestination(null)}>
           Trocar
         </Button>
       </div>
@@ -143,21 +136,23 @@ function Setup({
         </Button>
         {setup.error && <ErrorText>{setup.error.message}</ErrorText>}
       </form>
-    </section>
+    </SettingsGroup>
   )
 }
 
 function RecoveryStep({ code, onDone }: { code: string; onDone: () => void }): React.JSX.Element {
   const [saved, setSaved] = useState(false)
   return (
-    <section className="animate-fade-in">
-      <Step n={3} />
-      <SectionTitle title="Guarde o código de recuperação">
+    <SettingsGroup
+      label="Passo 3 de 3 · Guarde o código de recuperação"
+      className="animate-fade-in"
+    >
+      <GroupText>
         Se a senha for esquecida, só este código abre as cópias. Imprima ou anote e guarde junto aos
         documentos da clínica. Ele não aparece de novo.
-      </SectionTitle>
+      </GroupText>
       <div className="mt-4">
-        <RecoveryCode code={code} />
+        <RecoveryCode code={code} className="bg-surface" />
       </div>
       <label className="mt-5 flex cursor-pointer items-center gap-2 text-[13px]">
         <input
@@ -171,7 +166,7 @@ function RecoveryStep({ code, onDone }: { code: string; onDone: () => void }): R
       <Button className="mt-4" disabled={!saved} onClick={onDone}>
         Concluir
       </Button>
-    </section>
+    </SettingsGroup>
   )
 }
 
@@ -200,8 +195,8 @@ function Status({ info }: { info: BackupInfo }): React.JSX.Element {
 
   return (
     <SettingsGroup label="Situação">
-      <div className="flex items-start gap-3">
-        <span className="mt-[5px] flex">
+      <div className="flex items-center gap-3">
+        <span className="flex self-start pt-[5px]">
           <StatusDot on={!failed && !info.stale && !problem} />
         </span>
         <div className="min-w-0 flex-1">
@@ -218,12 +213,11 @@ function Status({ info }: { info: BackupInfo }): React.JSX.Element {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="secondary" size="sm" onClick={() => open.mutate()}>
+          <Button variant="secondary" onClick={() => open.mutate()}>
             <FolderOpen /> Abrir pasta
           </Button>
           <Button
             variant="secondary"
-            size="sm"
             loading={run.isPending || info.running}
             onClick={() => run.mutate()}
           >
@@ -265,7 +259,7 @@ function Destination({ info }: { info: BackupInfo }): React.JSX.Element {
       <div className="flex items-center gap-3">
         <DestinationLine destination={destination} />
         {!changing && (
-          <Button variant="secondary" size="sm" onClick={() => setChanging(true)}>
+          <Button variant="secondary" onClick={() => setChanging(true)}>
             Trocar
           </Button>
         )}
@@ -284,9 +278,11 @@ function Destination({ info }: { info: BackupInfo }): React.JSX.Element {
             As próximas cópias vão para a pasta nova. As que já estão na pasta atual ficam lá.
           </p>
           <DestinationPicker onPick={(next) => change.mutate(next)} />
-          <Button variant="secondary" size="sm" className="mt-3" onClick={() => setChanging(false)}>
-            Cancelar
-          </Button>
+          <div className="mt-3 flex justify-end">
+            <Button variant="secondary" onClick={() => setChanging(false)}>
+              Cancelar
+            </Button>
+          </div>
           {change.error && <ErrorText>{change.error.message}</ErrorText>}
         </div>
       )}
@@ -318,6 +314,7 @@ function Frequency({ info }: { info: BackupInfo }): React.JSX.Element {
               value={info.dailyTime}
               onValueChange={(time) => change.mutate({ frequency: 'daily', time })}
               options={times}
+              compact
             />
           </div>
         )}
@@ -335,13 +332,13 @@ function Password(): React.JSX.Element {
     <SettingsGroup label="Senha das cópias">
       <GroupText>Pedida só para abrir uma cópia em outro computador.</GroupText>
       <div className="mt-3 flex flex-wrap gap-2">
-        <Button variant="secondary" size="sm" onClick={() => open('change')}>
+        <Button variant="secondary" onClick={() => open('change')}>
           Alterar senha
         </Button>
-        <Button variant="secondary" size="sm" onClick={() => open('reset')}>
+        <Button variant="secondary" onClick={() => open('reset')}>
           Esqueci a senha
         </Button>
-        <Button variant="secondary" size="sm" onClick={() => open('code')}>
+        <Button variant="secondary" onClick={() => open('code')}>
           Novo código de recuperação
         </Button>
       </div>
@@ -368,12 +365,7 @@ function Restore({ info }: { info: BackupInfo }): React.JSX.Element {
         Troca os pacientes e a agenda deste computador pelos de uma cópia. As configurações não
         mudam.
       </GroupText>
-      <Button
-        variant="secondary"
-        size="sm"
-        className="mt-3"
-        onClick={() => setRequest({ id: Date.now() })}
-      >
+      <Button variant="secondary" className="mt-3" onClick={() => setRequest({ id: Date.now() })}>
         Restaurar de uma cópia…
       </Button>
       {info.undo && (
@@ -385,15 +377,15 @@ function Restore({ info }: { info: BackupInfo }): React.JSX.Element {
           </p>
           {confirming ? (
             <>
-              <Button variant="secondary" size="sm" onClick={() => setConfirming(false)}>
+              <Button variant="secondary" onClick={() => setConfirming(false)}>
                 Cancelar
               </Button>
-              <Button size="sm" loading={undo.isPending} onClick={() => undo.mutate()}>
+              <Button loading={undo.isPending} onClick={() => undo.mutate()}>
                 Desfazer
               </Button>
             </>
           ) : (
-            <Button variant="secondary" size="sm" onClick={() => setConfirming(true)}>
+            <Button variant="secondary" onClick={() => setConfirming(true)}>
               <RotateCcw /> Desfazer restauração
             </Button>
           )}
@@ -420,26 +412,16 @@ function Disable(): React.JSX.Element {
             pasta continuam lá e abrem com a senha de agora.
           </p>
           <div className="mt-3 flex justify-end gap-2">
-            <Button variant="secondary" size="sm" onClick={() => setConfirming(false)}>
+            <Button variant="secondary" onClick={() => setConfirming(false)}>
               Cancelar
             </Button>
-            <Button
-              variant="danger"
-              size="sm"
-              loading={disable.isPending}
-              onClick={() => disable.mutate()}
-            >
+            <Button variant="danger" loading={disable.isPending} onClick={() => disable.mutate()}>
               Desligar
             </Button>
           </div>
         </div>
       ) : (
-        <Button
-          variant="danger-ghost"
-          size="sm"
-          className="-ml-2.5"
-          onClick={() => setConfirming(true)}
-        >
+        <Button variant="danger-ghost" className="-ml-3.5" onClick={() => setConfirming(true)}>
           Desligar a cópia de segurança
         </Button>
       )}
@@ -462,10 +444,15 @@ export function BackupSection(): React.JSX.Element {
         {!info ? (
           <Loading />
         ) : !info.available ? (
-          <SectionTitle title="As cópias são feitas no computador que guarda os dados">
-            Este computador usa os dados de outro. Ligue a cópia de segurança lá, em Configurações /
-            Armazenamento.
-          </SectionTitle>
+          <SettingsGroup>
+            <p className="text-[13px] font-medium">
+              As cópias são feitas no computador que guarda os dados
+            </p>
+            <p className="mt-0.5 text-xs text-ink-soft">
+              Este computador usa os dados de outro. Ligue a cópia de segurança lá, em Configurações
+              / Armazenamento.
+            </p>
+          </SettingsGroup>
         ) : code ? (
           <RecoveryStep code={code} onDone={() => setCode(null)} />
         ) : info.configured ? (

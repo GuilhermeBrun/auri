@@ -55,11 +55,11 @@ export function ImportPreview({
         </ul>
       )}
       <div className="mt-4 flex justify-end gap-2">
-        <Button variant="secondary" size="sm" onClick={cancel}>
+        <Button variant="secondary" onClick={cancel}>
           Cancelar
         </Button>
         {preview.changes.length > 0 && (
-          <Button size="sm" loading={apply.isPending} onClick={() => apply.mutate(preview.token)}>
+          <Button loading={apply.isPending} onClick={() => apply.mutate(preview.token)}>
             Aplicar
           </Button>
         )}

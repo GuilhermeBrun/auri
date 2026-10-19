@@ -238,6 +238,7 @@ export function GeneralPage(): React.JSX.Element {
                           state.status === 'ready'
                         }
                         onValueChange={(next) => channel.mutate(next as UpdateChannel)}
+                        compact
                       />
                     </div>
                   </Row>

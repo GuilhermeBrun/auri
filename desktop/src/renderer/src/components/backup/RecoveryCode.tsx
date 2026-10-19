@@ -4,8 +4,15 @@ import { useEffect, useState } from 'react'
 import { Button } from '@renderer/components/ui/button'
 import { ErrorText } from '@renderer/components/ui/section'
 import { Sensitive } from '@renderer/components/ui/sensitive'
+import { cn } from '@renderer/lib/utils'
 
-export function RecoveryCode({ code }: { code: string }): React.JSX.Element {
+export function RecoveryCode({
+  code,
+  className
+}: {
+  code: string
+  className?: string
+}): React.JSX.Element {
   const [copied, setCopied] = useState(false)
   const print = useMutation({ mutationFn: () => window.backup.printRecoveryCode(code) })
 
@@ -21,7 +28,7 @@ export function RecoveryCode({ code }: { code: string }): React.JSX.Element {
   }
 
   return (
-    <div className="rounded-card bg-fill p-5">
+    <div className={cn('rounded-card bg-fill p-5', className)}>
       <Sensitive
         label="Código de recuperação"
         what="o código"
@@ -30,16 +37,11 @@ export function RecoveryCode({ code }: { code: string }): React.JSX.Element {
         {code}
       </Sensitive>
       <div className="mt-4 flex gap-2">
-        <Button variant="secondary" size="sm" onClick={() => void copy()}>
+        <Button variant="secondary" onClick={() => void copy()}>
           {copied ? <Check className="animate-fade-in" /> : <Copy />}
           {copied ? 'Copiado' : 'Copiar'}
         </Button>
-        <Button
-          variant="secondary"
-          size="sm"
-          loading={print.isPending}
-          onClick={() => print.mutate()}
-        >
+        <Button variant="secondary" loading={print.isPending} onClick={() => print.mutate()}>
           <Printer /> Imprimir
         </Button>
       </div>

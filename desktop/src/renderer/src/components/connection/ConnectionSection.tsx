@@ -182,7 +182,7 @@ function PairingPanel({ devices }: { devices: PairedDevice[] }): React.JSX.Eleme
         <span className="text-xs text-ink-soft tabular-nums">
           Vale por {minutes}:{seconds} e uma vez só.
         </span>
-        <Button variant="secondary" size="sm" onClick={cancel}>
+        <Button variant="secondary" onClick={cancel}>
           Cancelar
         </Button>
       </div>
@@ -207,7 +207,9 @@ function DeviceList({ devices }: { devices: PairedDevice[] }): React.JSX.Element
         <ul className="flex flex-col gap-3">
           {devices.map((device) => (
             <li key={device.publicKey} className="flex min-h-8 items-center gap-3">
-              <StatusDot on={device.online} />
+              <span className="flex self-start pt-[5px]">
+                <StatusDot on={device.online} />
+              </span>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-[13px] font-medium">{device.name}</p>
                 <p className="text-xs text-ink-soft">
@@ -396,7 +398,9 @@ function LinkedServer({
     <>
       <SettingsGroup label="Usando os dados de">
         <div className="flex items-center gap-3">
-          <StatusDot on={info.status === 'connected'} />
+          <span className="flex self-start pt-[5px]">
+            <StatusDot on={info.status === 'connected'} />
+          </span>
           <div className="min-w-0 flex-1">
             <p className="truncate text-[13px] font-medium">{server.name}</p>
             <p className="text-xs text-ink-soft">
@@ -418,15 +422,11 @@ function LinkedServer({
           {!confirming && (
             <div className="flex items-center gap-2">
               {canRetry && (
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => void window.connection.retry()}
-                >
+                <Button variant="secondary" onClick={() => void window.connection.retry()}>
                   <RotateCw /> Tentar agora
                 </Button>
               )}
-              <Button variant="secondary" size="sm" onClick={() => setConfirming(true)}>
+              <Button variant="secondary" onClick={() => setConfirming(true)}>
                 Desconectar
               </Button>
             </div>
@@ -438,15 +438,10 @@ function LinkedServer({
               Para conectar de novo vai ser preciso gerar um código novo em {server.name}.
             </p>
             <div className="mt-3 flex justify-end gap-2">
-              <Button variant="secondary" size="sm" onClick={() => setConfirming(false)}>
+              <Button variant="secondary" onClick={() => setConfirming(false)}>
                 Cancelar
               </Button>
-              <Button
-                variant="danger"
-                size="sm"
-                loading={forget.isPending}
-                onClick={() => forget.mutate()}
-              >
+              <Button variant="danger" loading={forget.isPending} onClick={() => forget.mutate()}>
                 Desconectar
               </Button>
             </div>
@@ -536,16 +531,11 @@ function FindServer(): React.JSX.Element {
 
       <div className="mt-3 flex gap-2">
         {!manual && (
-          <Button
-            variant="secondary"
-            size="sm"
-            loading={search.isPending}
-            onClick={() => search.mutate()}
-          >
+          <Button variant="secondary" loading={search.isPending} onClick={() => search.mutate()}>
             <RotateCw /> Procurar de novo
           </Button>
         )}
-        <Button variant="secondary" size="sm" onClick={() => setManual((m) => !m)}>
+        <Button variant="secondary" onClick={() => setManual((m) => !m)}>
           {manual ? 'Escolher da lista' : 'Digitar o endereço'}
         </Button>
       </div>
