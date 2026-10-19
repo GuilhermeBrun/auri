@@ -16,7 +16,8 @@
     "lint": "vp lint",
     "test": "vp test run",
     "erros:servidor": "node scripts/servidor-erros.ts",
-    "erros:migrar": "node scripts/migrar-erros.ts"
+    "erros:migrar": "node scripts/migrar-erros.ts",
+    "termo:teste": "vp build --ssr scripts/link-de-teste.ts --outDir node_modules/.termo-teste --logLevel warn && node node_modules/.termo-teste/link-de-teste.js"
   },
   "dependencies": {
     "postgres": "^3.4.9",
