@@ -18,13 +18,10 @@ files:
   - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
   - '!node_modules/better-sqlite3/prebuilds/{linux,linuxmusl}-*'
   - '!node_modules/node-addon-api/**'
-  # criptografia da conexão entre computadores: só os binários de Mac e Windows
   - '!node_modules/sodium-native/prebuilds/{android,ios,linux}-*'
   - '!node_modules/udx-native/prebuilds/{android,ios,linux}-*'
 asarUnpack:
   - resources/**
-# O better-sqlite3 já vem com binários prontos (Node-API) para cada sistema em
-# prebuilds/, então não há nada a recompilar; isso também permite gerar o .exe no Mac.
 npmRebuild: false
 win:
   executableName: Auri
@@ -39,19 +36,8 @@ nsis:
 mac:
   category: public.app-category.medical
   entitlementsInherit: build/entitlements.mac.plist
-  # Sem certificado (build local, teste manual, fork), a assinatura é ad-hoc: o pacote fica
-  # íntegro (sem ela, um .dmg baixado abre como "danificado"), mas o macOS não troca o app
-  # sozinho. O Release, com os segredos da Apple, troca por `-c.mac.identity=<Team ID>` e
-  # `-c.mac.hardenedRuntime=true`, assina com o Developer ID e notariza (APPLE_ID,
-  # APPLE_APP_SPECIFIC_PASSWORD e APPLE_TEAM_ID). Sem essas variáveis, a notarização é pulada.
-  # Ver docs/ci.md.
   identity: '-'
-  # O hardened runtime é exigido para notarizar; com assinatura ad-hoc ele impediria o
-  # carregamento do binário do SQLite (validação de biblioteca), então só liga com o Developer ID.
   hardenedRuntime: false
-  # O .zip é o que o Auri instalado baixa para se atualizar (latest-mac.yml); o .dmg é para instalar.
-  # Só Apple Silicon: a clínica não tem Mac Intel, e cada arquitetura dobra o tempo (pago a 10x)
-  # do build do Mac no Release.
   target:
     - target: dmg
       arch: [arm64]
@@ -59,12 +45,7 @@ mac:
       arch: [arm64]
 dmg:
   artifactName: ${name}-${version}-${arch}.${ext}
-# Onde o Auri instalado procura versões novas: atualizacoes.auri.dev.br, o site da Vercel, que
-# monta os .yml a partir das releases do GitHub e aponta os instaladores para elas (ver docs/ci.md
-# e web/scripts/prerender.mjs). latest.yml é a estável e alpha.yml o canal alpha. As versões até
-# 0.0.x procuram em auri.dev.br, que serve os mesmos arquivos.
 publish:
   provider: generic
   url: https://atualizacoes.auri.dev.br/
-# A estável também escreve alpha.yml: quem está no alpha recebe a estável quando ela é mais nova.
 generateUpdatesFilesForAllChannels: true

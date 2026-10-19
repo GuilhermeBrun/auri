@@ -5,7 +5,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { emptyAnamneseInput, type Anamnese } from '@shared/schemas'
 import { fakePatient, renderRoute } from '@renderer/testing'
 
-// pontes do Electron que alguns módulos leem ao carregar
 vi.hoisted(() => {
   const bridge = (): unknown =>
     new Proxy({} as Record<string, unknown>, {
@@ -54,7 +53,6 @@ afterEach(cleanup)
 const open = (toast = vi.fn()): ReturnType<typeof renderRoute> =>
   renderRoute('/pacientes/7/anamnese', '/pacientes/:id/anamnese', <PatientAnamneseRoute />, toast)
 
-/** Abre um tema pela lista ao lado e devolve o campo dele. */
 async function topic(name: string): Promise<HTMLTextAreaElement> {
   const list = await screen.findByRole('navigation', { name: 'Temas da anamnese' })
   await userEvent.click(within(list).getByRole('button', { name: new RegExp(`^${name}`) }))
@@ -97,7 +95,6 @@ describe('anamnese do paciente', () => {
     await userEvent.type(await topic('Terapias'), 'Nenhuma.')
     first.unmount()
     open()
-    // volta no mesmo tema, com o texto
     expect(
       ((await screen.findByLabelText('Terapias', { selector: 'textarea' })) as HTMLTextAreaElement)
         .value
@@ -124,7 +121,6 @@ describe('anamnese do paciente', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Peso:' }))
     expect(gestacao.value).toBe('Semanas: 39\nPeso: ')
     expect(item.textContent).toContain('(escrito)')
-    // o próximo tema pelo botão de baixo; o texto do anterior continua lá
     await userEvent.click(screen.getByRole('button', { name: 'Alimentação' }))
     expect(await screen.findByLabelText('Alimentação', { selector: 'textarea' })).toBeTruthy()
     expect(screen.queryByLabelText('Gestação e nascimento', { selector: 'textarea' })).toBeNull()

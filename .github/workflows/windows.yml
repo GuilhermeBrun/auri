@@ -1,11 +1,5 @@
 name: Windows
 
-# Teste manual no sistema da clínica: o Auri aberto de verdade, a interface, o pacote, o instalador
-# e os instaladores oficiais das nuvens. Não roda sozinho: o PR é validado pelo CI e o uso real vem
-# do alpha. Os mesmos passos no Mac rodam na máquina de quem desenvolve (`npm run ci:mac`), não aqui,
-# onde o minuto do Mac custa 10x o do Linux.
-#
-#   gh workflow run windows.yml --ref <branch>
 on:
   workflow_dispatch:
 
@@ -44,7 +38,6 @@ jobs:
         run: |
           npm run build:win
           npm run test:installer
-      # Também baixa e roda o instalador oficial do Google Drive (máquina descartável).
       - name: E2E com instalação real
         run: node scripts/e2e.mjs e2e-saida
         env:

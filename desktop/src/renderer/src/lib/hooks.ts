@@ -1,11 +1,9 @@
 import { useLayoutEffect, useState, type RefObject } from 'react'
 
-/** As linhas entram e saem do DOM em blocos: rolar só redesenha a cada BLOCK linhas. */
 const BLOCK = 10
 
 type RowRange = { start: number; end: number }
 
-/** O ancestral mais próximo que rola (ex.: o conteúdo da `Page`). */
 function scrollParent(el: HTMLElement): HTMLElement {
   for (let parent = el.parentElement; parent; parent = parent.parentElement) {
     const { overflowY } = getComputedStyle(parent)
@@ -14,12 +12,6 @@ function scrollParent(el: HTMLElement): HTMLElement {
   return document.documentElement
 }
 
-/**
- * Rola a lista até a linha `index` se ela estiver fora da área visível, deixando-a no meio. Serve
- * para mostrar o paciente recém-salvo, que numa lista longa pode estar muito abaixo. `stickyTop` é a
- * altura do cabeçalho fixo, que cobre o topo da área de rolagem. Rola de uma vez, sem animar: a lista
- * é virtualizada e passar por centenas de linhas no caminho não ajuda.
- */
 export function revealRow(
   list: HTMLElement,
   index: number,
@@ -36,12 +28,6 @@ export function revealRow(
   if (!visible) scrollEl.scrollTop = Math.max(0, top - (scrollEl.clientHeight - rowHeight) / 2)
 }
 
-/**
- * Lista longa com linhas de altura fixa: devolve o trecho [start, end) que precisa estar no DOM (o
- * que aparece na área de rolagem, arredondado em blocos, mais um bloco de folga acima e abaixo). O
- * resto da lista vira espaço reservado, então a tela monta umas 40 linhas em vez de centenas.
- * `list` é o elemento onde as linhas começam (ex.: o <tbody>).
- */
 export function useVirtualRows(
   list: RefObject<HTMLElement | null>,
   count: number,
@@ -54,7 +40,6 @@ export function useVirtualRows(
     if (!listEl) return
     const scrollEl = scrollParent(listEl)
     const update = (): void => {
-      // onde a lista começa, medido a partir do topo do conteúdo rolável
       const offset =
         listEl.getBoundingClientRect().top -
         scrollEl.getBoundingClientRect().top +

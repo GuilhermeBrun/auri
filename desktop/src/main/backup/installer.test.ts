@@ -11,7 +11,6 @@ import {
   verifyPkg
 } from './installer'
 
-// Saídas reais (hdiutil e pkgutil no macOS, com o instalador oficial do Google Drive).
 const ATTACH = [
   '/dev/disk4          \tApple_partition_scheme         \t',
   '/dev/disk4s1        \tApple_partition_map            \t',
@@ -50,7 +49,6 @@ describe('instalador da nuvem', () => {
 
 describe.runIf(process.platform === 'win32')('assinatura no Windows de verdade', () => {
   it('aceita um executável assinado pela Microsoft e recusa um sem assinatura', async () => {
-    // dotnet.exe tem assinatura própria (o explorer.exe é assinado por catálogo)
     const dotnet = win32.join(
       process.env.ProgramFiles ?? 'C:\\Program Files',
       'dotnet',
@@ -65,7 +63,6 @@ describe.runIf(process.platform === 'win32')('assinatura no Windows de verdade',
     await expect(verifyExe(fake, 'onedrive')).rejects.toThrow()
   }, 60_000)
 
-  // Os instaladores oficiais de verdade (~440 MB): só quando pedido (no CI, AURI_TESTA_INSTALADORES).
   it.runIf(!!process.env.AURI_TESTA_INSTALADORES)(
     'os instaladores oficiais do OneDrive e do Google Drive passam na verificação',
     async () => {

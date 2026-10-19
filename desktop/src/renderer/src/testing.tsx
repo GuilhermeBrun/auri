@@ -1,5 +1,3 @@
-// Apoio aos testes de telas (só os testes importam este arquivo): fichas fictícias e a montagem com
-// cache de consultas, rotas e avisos, como no app.
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, type RenderResult } from '@testing-library/react'
 import type { ReactNode } from 'react'
@@ -59,7 +57,6 @@ export function fakeAppointment(over: Partial<Appointment> & { inicio: string })
   }
 }
 
-/** Monta uma tela numa rota, com cache sem novas tentativas e os avisos indo para `toast`. */
 export function renderRoute(
   path: string,
   pattern: string,

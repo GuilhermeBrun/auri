@@ -4,22 +4,12 @@ import { homedir } from 'os'
 import { posix, win32 } from 'path'
 import type { CloudProvider, CloudProviderId, CloudState } from '../../shared/api'
 
-/**
- * O que a detecção precisa do sistema. Separado para os testes simularem Mac e Windows; no app
- * vem de `systemProbe` (ver backup-service.ts).
- */
 export type Probe = {
   platform: NodeJS.Platform
   home: string
   env: Record<string, string | undefined>
-  /** O caminho existe. Nunca lança (unidade de rede fora do ar vira false). */
   exists(path: string): Promise<boolean>
-  /** Lista uma pasta; lança com `code` (ENOENT, EPERM…) como o `fs`. */
   readdir(this: void, path: string): Promise<string[]>
-  /**
-   * Saída de `reg query <key> /s` no Windows, só do valor `value` quando informado ('' se a chave
-   * não existir).
-   */
   registry(key: string, value?: string): Promise<string>
 }
 
@@ -29,9 +19,7 @@ export const PROVIDER_NAMES: Record<CloudProviderId, string> = {
   icloud: 'iCloud Drive'
 }
 
-/** Nome da pasta principal do Google Drive conforme o idioma da conta. */
 const MY_DRIVE = ['Meu Drive', 'My Drive', 'Mi unidad', 'Mon Drive', 'Meine Ablage']
-/** Outras pastas que o Google Drive põe ao lado do "Meu Drive". */
 const NOT_MY_DRIVE = [
   'Shared drives',
   'Drives compartilhados',
@@ -48,14 +36,8 @@ const denied = (error: unknown): boolean => {
   return code === 'EPERM' || code === 'EACCES'
 }
 
-/** Como a pasta de uma conta respondeu: abriu, o macOS bloqueou ou não respondeu (app fechado). */
 type Access = { blocked: boolean; closed: boolean }
 
-/**
- * Estado a partir do que foi achado: pasta que abre > app não instalado > sem permissão > fechado
- * > falta entrar na conta. Desinstalar o app deixa a pasta da conta para trás (sem responder):
- * sem o app, vale "não instalado".
- */
 function settle(folder: string | null, access: Access, installed: boolean): Found {
   if (folder) return { state: 'ready', folder }
   if (!installed) return { state: 'not-installed', folder: null }
@@ -64,10 +46,6 @@ function settle(folder: string | null, access: Access, installed: boolean): Foun
   return { state: 'signed-out', folder: null }
 }
 
-/**
- * Anota por que uma pasta da nuvem não abriu. Com o app da nuvem fechado, a pasta continua lá,
- * mas não responde (ETIMEDOUT): visto no Google Drive de verdade, em 13/10/2026.
- */
 function note(access: Access, error: unknown): void {
   if (denied(error)) access.blocked = true
   else access.closed = true
@@ -75,7 +53,6 @@ function note(access: Access, error: unknown): void {
 
 const OK: Access = { blocked: false, closed: false }
 
-/** Pastas de `~/Library/CloudStorage` que começam com `prefix` (uma por conta). */
 async function cloudStorage(probe: Probe, prefix: string): Promise<string[]> {
   const root = posix.join(probe.home, 'Library', 'CloudStorage')
   try {
@@ -88,7 +65,6 @@ async function cloudStorage(probe: Probe, prefix: string): Promise<string[]> {
   }
 }
 
-/** "Meu Drive" dentro da pasta de uma conta do Google Drive. */
 async function myDrive(probe: Probe, account: string): Promise<string | null> {
   const names = await probe.readdir(account)
   const known = MY_DRIVE.find((name) => names.includes(name))
@@ -97,7 +73,6 @@ async function myDrive(probe: Probe, account: string): Promise<string | null> {
   return chosen ? posix.join(account, chosen) : null
 }
 
-/** O app está em /Applications ou na pasta Aplicativos do usuário. */
 async function macApp(probe: Probe, name: string): Promise<boolean> {
   const places = ['/Applications', posix.join(probe.home, 'Applications')]
   return (await Promise.all(places.map((p) => probe.exists(posix.join(p, name))))).some(Boolean)
@@ -109,14 +84,12 @@ async function macGoogle(probe: Probe): Promise<Found> {
     try {
       const folder = await myDrive(probe, account)
       if (!folder) continue
-      // o "Meu Drive" tem de abrir de verdade, não só aparecer na lista
       await probe.readdir(folder)
       return settle(folder, OK, true)
     } catch (error) {
       note(access, error)
     }
   }
-  // versões antigas montavam um volume
   for (const name of MY_DRIVE) {
     const legacy = posix.join('/Volumes', 'GoogleDrive', name)
     if (await probe.exists(legacy)) return settle(legacy, OK, true)
@@ -127,7 +100,6 @@ async function macGoogle(probe: Probe): Promise<Found> {
 async function macOneDrive(probe: Probe): Promise<Found> {
   const access: Access = { blocked: false, closed: false }
   const accounts = await cloudStorage(probe, 'OneDrive')
-  // a conta pessoal primeiro ("OneDrive-Personal"), depois as de empresa
   accounts.sort((a, b) => Number(b.endsWith('-Personal')) - Number(a.endsWith('-Personal')))
   for (const account of accounts) {
     try {
@@ -148,12 +120,10 @@ async function macICloud(probe: Probe): Promise<Found> {
     await probe.readdir(folder)
     return { state: 'ready', folder }
   } catch (error) {
-    // vem com o macOS: sem a pasta, está desligado nos Ajustes
     return { state: denied(error) ? 'denied' : 'off', folder: null }
   }
 }
 
-/** Blocos de `reg query /s`: chave → valor, para preferir a conta pessoal do OneDrive. */
 export function parseRegistry(output: string, value: string): { key: string; data: string }[] {
   const found: { key: string; data: string }[] = []
   let key = ''
@@ -165,7 +135,6 @@ export function parseRegistry(output: string, value: string): { key: string; dat
   return found
 }
 
-/** Valores de cada chave numa saída de `reg query /s`: chave → nome → dado. */
 export function parseRegistryValues(output: string): Map<string, Map<string, string>> {
   const keys = new Map<string, Map<string, string>>()
   let current: Map<string, string> | null = null
@@ -181,18 +150,12 @@ export function parseRegistryValues(output: string): Map<string, Map<string, str
   return keys
 }
 
-/**
- * OneDrive no Windows: pronto só com uma conta conectada (com e-mail no registro) e a pasta
- * dela no disco. O instalador cria a pasta antes do login (visto no CI em 14/10/2026), e copiar
- * ali gravaria numa pasta que não sobe para lugar nenhum.
- */
 async function winOneDrive(probe: Probe): Promise<Found> {
   const registry = parseRegistryValues(
     await probe.registry('HKCU\\Software\\Microsoft\\OneDrive\\Accounts')
   )
   const accounts = [...registry]
     .filter(([, values]) => values.get('UserFolder') && values.get('UserEmail'))
-    // a conta pessoal primeiro, depois as de empresa
     .sort(([a], [b]) => Number(/\\Personal$/i.test(b)) - Number(/\\Personal$/i.test(a)))
   for (const [, values] of accounts) {
     const folder = values.get('UserFolder')!
@@ -210,13 +173,11 @@ async function winOneDrive(probe: Probe): Promise<Found> {
   return settle(null, OK, installed)
 }
 
-/** Letras de unidade em que o Google Drive costuma montar (G: é o padrão). */
 const DRIVE_LETTERS = 'GHIJKLMNOPQRSTUVWXYZDEF'.split('')
 
 async function winGoogle(probe: Probe): Promise<Found> {
   const candidates = [
     ...DRIVE_LETTERS.flatMap((letter) => MY_DRIVE.map((name) => `${letter}:\\${name}`)),
-    // modo "espelhar arquivos": uma pasta comum dentro do usuário
     ...MY_DRIVE.map((name) => win32.join(probe.home, name))
   ]
   const hits = await Promise.all(candidates.map((c) => probe.exists(c)))
@@ -226,11 +187,6 @@ async function winGoogle(probe: Probe): Promise<Found> {
   return settle(folder, OK, installed)
 }
 
-/**
- * Google Drive, OneDrive e (só no Mac) iCloud Drive, com a situação de cada um e a pasta, pelo
- * que o app de cada nuvem cria no computador. Nada de API nem login: se a pasta existe, as cópias
- * gravadas nela sobem sozinhas.
- */
 export async function detectProviders(probe: Probe): Promise<CloudProvider[]> {
   const make = (id: CloudProviderId, found: Found): CloudProvider => ({
     id,
@@ -252,7 +208,6 @@ export async function detectProviders(probe: Probe): Promise<CloudProvider[]> {
   return []
 }
 
-/** Espera no máximo `ms`: uma unidade de rede fora do ar pode travar o `access` por segundos. */
 function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
   return Promise.race([
     promise,
@@ -260,7 +215,6 @@ function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T
   ])
 }
 
-/** O sistema de verdade, para `detectProviders`. */
 export function systemProbe(): Probe {
   return {
     platform: process.platform,
@@ -275,7 +229,6 @@ export function systemProbe(): Probe {
         1500,
         false
       ),
-    // a pasta de uma nuvem com o app travado pode não responder: desiste em 3 s
     readdir: (path) =>
       Promise.race([
         readdir(path),

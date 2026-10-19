@@ -22,7 +22,6 @@ const { updates, emit } = vi.hoisted(() => {
       return () => {}
     }
   }
-  // o Select do Radix usa captura do ponteiro e rolagem, que o jsdom não tem
   Object.assign(Element.prototype, {
     hasPointerCapture: () => false,
     releasePointerCapture: () => {},

@@ -13,7 +13,6 @@ runs:
       with:
         node-version: 24.15.0
         package-manager-cache: false
-    # Chave sem o campo version do app: a release grava a versão só no build.
     - id: lockfile
       shell: bash
       working-directory: ${{ inputs.directory }}
@@ -25,7 +24,6 @@ runs:
       with:
         path: ${{ inputs.directory }}/node_modules
         key: modules-${{ inputs.directory }}-${{ runner.os }}-${{ runner.arch }}-node24.15.0-${{ steps.lockfile.outputs.hash }}
-    # Uma nova tentativa: o download do Electron às vezes cai no meio.
     - if: steps.modules.outputs.cache-hit != 'true'
       shell: bash
       working-directory: ${{ inputs.directory }}

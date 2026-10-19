@@ -21,7 +21,6 @@ describe('compatibilidade do banco', () => {
     const file = join(dir, 'v1.db')
     const legacy = new Database(file)
     opened.push(legacy)
-    // Fixture independente: nunca gerar usando as migrations da versão candidata.
     legacy.exec(readFileSync('docs/qualidade/fixtures/v1.sql', 'utf8'))
     legacy.close()
 

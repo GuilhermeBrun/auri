@@ -1,7 +1,6 @@
 import { Field, Input } from '@renderer/components/ui/input'
 import { MIN_PASSWORD } from '@renderer/lib/backup'
 
-/** Senha nova e a confirmação. */
 export function NewPasswordFields({
   password,
   confirm,
@@ -15,7 +14,6 @@ export function NewPasswordFields({
   confirm: string
   onPassword: (value: string) => void
   onConfirm: (value: string) => void
-  /** Erro a mostrar (depois de tentar continuar). */
   error?: string | null
   autoFocus?: boolean
   label?: string

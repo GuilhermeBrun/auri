@@ -4,7 +4,6 @@ import { cn } from '@renderer/lib/utils'
 
 type SwitchFieldProps = {
   label: string
-  /** Segunda linha em cinza: o que acontece quando está ligado. */
   description?: ReactNode
   checked: boolean
   disabled?: boolean
@@ -12,12 +11,6 @@ type SwitchFieldProps = {
   className?: string
 }
 
-/**
- * Liga/desliga com o texto à esquerda, para ajustes que valem na hora (sem botão de salvar).
- * Clicar no texto também alterna. Ligado, o trilho fica na cor do texto (grafite no claro, quase
- * branco no escuro), para "ligado" e "desligado" não dependerem de um cinza sutil; a bolinha
- * desliza (instantânea em "Reduzir movimento", ver main.css).
- */
 export function SwitchField({
   label,
   description,

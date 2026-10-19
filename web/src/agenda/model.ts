@@ -1,13 +1,6 @@
-// Dados da prévia da agenda do Auri na página de download: a mesma janela do app (barra lateral,
-// cabeçalho, grade do react-big-calendar com o CSS de desktop/src/renderer/src/assets/main.css),
-// com pacientes fictícios. Tudo é determinístico: o HTML pré-renderizado e o do navegador batem.
-
-/** Domingo da semana mostrada primeiro: a agenda do app começa a semana no domingo. */
 const BASE = Date.UTC(2026, 9, 18)
-/** "Hoje" (quarta-feira, 21 de outubro) e "agora" (10:12), em dias desde BASE e em horas. */
 export const TODAY = 3
 export const NOW = 10.2
-/** Horas visíveis na janela da prévia; o expediente do app vai das 7h às 20h e rola. */
 export const FIRST = 7
 export const VISIBLE = 8
 export const DAY_END = 20
@@ -38,8 +31,6 @@ export const WEEKDAYS = [
 ]
 export const SHORT = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
 
-// Semana de 18 a 24 de outubro: dia da semana (1 = segunda), início em horas, duração em minutos.
-// A última é a que "acabou de ser agendada" e entra com o destaque.
 const SESSIONS: [number, number, number, string][] = [
   [1, 8, 45, 'Ana Beatriz Souza'],
   [1, 9, 45, 'Pedro Souza Lima'],
@@ -57,7 +48,6 @@ const SESSIONS: [number, number, number, string][] = [
   [5, 12, 45, 'Júlia Fontes Lima'],
   [3, 10.5, 45, 'Alice Costa Martins']
 ]
-/** Pacientes das sessões criadas na prévia e das outras semanas. */
 export const NAMES = [
   'Maria Eduarda',
   'Mike',
@@ -90,12 +80,10 @@ export type State = {
   selected: number | null
   arrived: number | null
 }
-/** Como a grade entra: tudo de novo ('all'), só a sessão recém-criada (id) ou parada. */
 export type Enter = 'all' | number | undefined
 
 export const dateOf = (day: number) => new Date(BASE + day * 86400000)
 export const weekOf = (day: number) => Math.floor(day / 7)
-/** Dois primeiros nomes, como o `shortName` do app (Semana e Mês). */
 export const shortName = (name: string) => name.split(' ').slice(0, 2).join(' ')
 export const clock = (hours: number) =>
   `${String(Math.floor(hours)).padStart(2, '0')}:${String(Math.round((hours % 1) * 60)).padStart(2, '0')}`
@@ -105,13 +93,11 @@ export const overlaps = (session: Session, start: number, length: number) =>
   start < session.start + session.len && start + length > session.start
 export const isWeekend = (day: number) => [0, 6].includes(dateOf(day).getUTCDay())
 
-/** Data por extenso do cartão da sessão: "quarta-feira, 21 de outubro". */
 export function longDay(day: number) {
   const date = dateOf(day)
   return `${WEEKDAYS[date.getUTCDay()]}, ${date.getUTCDate()} de ${MONTHS[date.getUTCMonth()]}`
 }
 
-/** Data curta dos avisos do app: "qua, 21 de out". */
 export function shortDate(day: number) {
   const date = dateOf(day)
   return `${SHORT[date.getUTCDay()].toLowerCase()}, ${date.getUTCDate()} de ${MONTHS[date.getUTCMonth()].slice(0, 3)}`
@@ -119,10 +105,6 @@ export function shortDate(day: number) {
 
 export type Store = ReturnType<typeof createStore>
 
-/**
- * Sessões por semana. A de 18 a 24 de outubro é a fixa; as outras são sorteadas, sempre iguais
- * para a mesma semana. `day` é o número do dia desde BASE (pode ser negativo).
- */
 export function createStore() {
   let nextId = SESSIONS.length
   const weeks = new Map<number, Session[]>([
@@ -169,7 +151,6 @@ export function createStore() {
     return weeks.get(number)!
   }
   return {
-    /** Sessões de um dia, em ordem de horário. */
     day: (day: number) =>
       week(weekOf(day))
         .filter((session) => session.day === day)
@@ -193,7 +174,6 @@ export function createStore() {
       }
       return null
     },
-    /** Pacientes conhecidos, com a próxima sessão já vista. */
     patients() {
       const names = new Set([...SESSIONS.map((session) => session[3]), ...NAMES])
       for (const sessions of weeks.values()) for (const session of sessions) names.add(session.name)
@@ -210,7 +190,6 @@ export const initialState = (): State => ({
   arrived: ARRIVED
 })
 
-/** Período no cabeçalho, como o `periodLabel` do app ("18 a 24 de outubro 2026"). */
 export function period(state: State) {
   const date = dateOf(state.focus)
   if (state.mode === 'month') return `${MONTHS[date.getUTCMonth()]} ${date.getUTCFullYear()}`
@@ -222,7 +201,6 @@ export function period(state: State) {
     : `${start.getUTCDate()} de ${MONTHS[start.getUTCMonth()].slice(0, 3)} a ${end.getUTCDate()} de ${MONTHS[end.getUTCMonth()].slice(0, 3)} ${end.getUTCFullYear()}`
 }
 
-/** Linha da lista de pacientes, com dados fictícios tirados do nome (sempre os mesmos). */
 export function patientRow(name: string) {
   const parts = name.split(' ')
   const last = parts[parts.length - 1]

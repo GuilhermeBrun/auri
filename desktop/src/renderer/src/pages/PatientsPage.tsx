@@ -29,14 +29,10 @@ const COLUMNS: { label: string; className?: string }[] = [
   { label: 'Entrada', className: 'w-[13%]' }
 ]
 
-/** Altura de cada linha da tabela. Fixa, para a lista montar só as linhas visíveis. */
 const ROW_HEIGHT = 56
-/** Altura do cabeçalho da tabela, que fica fixo no topo da área de rolagem (`h-9`). */
 const HEAD_HEIGHT = 36
-/** Quanto tempo o paciente recém-salvo fica marcado na lista; o destaque (1,8s) dura menos que isso. */
 const SAVED_MS = 2500
 
-/** Valor vazio: um traço, que o leitor de tela anuncia como "não informado". */
 function Blank(): React.JSX.Element {
   return (
     <span className="text-ink-faint" aria-label="não informado">
@@ -45,7 +41,6 @@ function Blank(): React.JSX.Element {
   )
 }
 
-/** Texto principal e, embaixo, o complemento em cinza (a célula tem duas linhas). */
 function TwoLines({
   main,
   sub
@@ -63,7 +58,6 @@ function TwoLines({
   )
 }
 
-/** Espaço das linhas que não estão no DOM, acima ou abaixo das visíveis. */
 function Spacer({ rows }: { rows: number }): React.JSX.Element {
   return (
     <tr aria-hidden="true">
@@ -79,7 +73,6 @@ const PatientRow = memo(function PatientRow({
 }: {
   patient: Patient
   index: number
-  /** Acabou de ser cadastrado ou editado: o fundo da linha se apaga aos poucos. */
   justSaved: boolean
 }): React.JSX.Element {
   const navigate = useNavigate()
@@ -88,7 +81,6 @@ const PatientRow = memo(function PatientRow({
       aria-rowindex={index + 2}
       onClick={() => navigate(`/pacientes/${p.id}`)}
       style={{ height: ROW_HEIGHT }}
-      // hover: fundo arredondado na linha inteira; ao clicar, um tom mais escuro
       className={cn(
         'group cursor-pointer [&>td]:transition-colors [&>td:first-child]:rounded-l-card [&>td:last-child]:rounded-r-card hover:[&>td]:bg-canvas active:[&>td]:bg-accent-soft',
         justSaved && '[&>td]:animate-row-flash'
@@ -128,23 +120,16 @@ const PatientRow = memo(function PatientRow({
   )
 })
 
-/**
- * Tabela de pacientes. Só as linhas visíveis (e uma folga) vão para o DOM, então abrir a tela,
- * buscar e recolher a barra lateral custam o mesmo com 50 ou 2.000 pacientes. Com `memo`, digitar
- * na busca só redesenha a tabela quando o resultado muda, e cada linha só quando o paciente muda.
- */
 const PatientTable = memo(function PatientTable({
   patients,
   savedId
 }: {
   patients: Patient[]
-  /** Paciente recém-salvo: a lista rola até ele (se preciso) e a linha é destacada. */
   savedId: number | undefined
 }): React.JSX.Element {
   const bodyRef = useRef<HTMLTableSectionElement>(null)
   const { start, end } = useVirtualRows(bodyRef, patients.length, ROW_HEIGHT)
 
-  // O paciente novo chega com a lista atualizada, uma fração depois de a tela abrir: rola uma vez só
   const revealed = useRef<number | undefined>(undefined)
   useEffect(() => {
     if (savedId === undefined || revealed.current === savedId || !bodyRef.current) return
@@ -154,7 +139,6 @@ const PatientTable = memo(function PatientTable({
     revealRow(bodyRef.current, index, ROW_HEIGHT, HEAD_HEIGHT)
   }, [patients, savedId])
   return (
-    // pb-20: folga no fim para a última linha subir acima do aviso, que fica no rodapé da janela
     <div className="px-4 pb-20">
       <table
         aria-rowcount={patients.length + 1}
@@ -184,8 +168,6 @@ const PatientTable = memo(function PatientTable({
 export function PatientsPage(): React.JSX.Element {
   const navigate = useNavigate()
   const [busca, setBusca] = useState('')
-  // A ficha manda o id do paciente salvo na navegação; ele fica marcado por um instante e a marca sai
-  // do histórico (senão voltar a esta tela repetiria o destaque)
   const savedId = (useLocation().state as { saved?: number } | null)?.saved
   useEffect(() => {
     if (savedId === undefined) return
@@ -198,7 +180,6 @@ export function PatientsPage(): React.JSX.Element {
     ...patientsQuery(incluirInativos),
     placeholderData: (previous) => previous
   })
-  // A busca filtra a lista em memória: o resultado aparece na mesma tecla, sem esperar o banco
   const search = useMemo(() => createPatientSearch(data ?? []), [data])
   const patients = useMemo(() => search(busca), [search, busca])
 
@@ -238,7 +219,6 @@ export function PatientsPage(): React.JSX.Element {
             size="icon"
             aria-label="Mostrar inativos"
             title={incluirInativos ? 'Mostrando inativos' : 'Mostrar inativos'}
-            // ligado: o fundo do item ativo do menu lateral
             aria-pressed={incluirInativos}
             onClick={() => setIncluirInativos((v) => !v)}
           >

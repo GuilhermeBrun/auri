@@ -1,7 +1,6 @@
 import { useEffect, useState, useSyncExternalStore } from 'react'
 import type { BackupDestination, BackupInfo, InstallProgress } from '@shared/api'
 
-/** null até a primeira resposta do main (uma fração de segundo na abertura). */
 let snapshot: BackupInfo | null = null
 const listeners = new Set<() => void>()
 
@@ -18,17 +17,14 @@ function subscribe(listener: () => void): () => void {
   return () => listeners.delete(listener)
 }
 
-/** Estado da cópia de segurança (Configurações / Cópia de segurança), atualizado pelo main. */
 export function useBackup(): BackupInfo | null {
   return useSyncExternalStore(subscribe, () => snapshot)
 }
 
-/** Atualiza já com a resposta de uma ação, sem esperar o aviso do main. */
 export function setBackupInfo(info: BackupInfo): void {
   set(info)
 }
 
-/** "hoje às 19:02", "ontem às 19:02", "12/10 às 19:02". */
 export function formatWhen(iso: string, now: Date = new Date()): string {
   const date = new Date(iso)
   const time = date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
@@ -54,7 +50,6 @@ export const DESTINATION_LABEL: Record<BackupDestination['kind'], string> = {
 
 export const MIN_PASSWORD = 8
 
-/** Erro da senha nova, ou null se está boa. Mostrado só depois de tentar continuar. */
 export function passwordProblem(password: string, confirm: string): string | null {
   if (password.length < MIN_PASSWORD) {
     return `A senha precisa ter pelo menos ${MIN_PASSWORD} caracteres.`
@@ -63,7 +58,6 @@ export function passwordProblem(password: string, confirm: string): string | nul
   return null
 }
 
-/** Andamento de "Instalar" de cada nuvem, que chega do main por aviso. */
 export function useInstallProgress(): Partial<Record<string, InstallProgress>> {
   const [progress, setProgress] = useState<Partial<Record<string, InstallProgress>>>({})
   useEffect(
@@ -76,10 +70,6 @@ export function useInstallProgress(): Partial<Record<string, InstallProgress>> {
   return progress
 }
 
-/**
- * A cópia ligada precisa de atenção: a nuvem deixou de funcionar, a pasta sumiu ou a última
- * tentativa falhou. Vira marca em Configurações e aviso ao abrir o Auri.
- */
 export function needsAttention(info: BackupInfo | null): boolean {
   if (!info?.available || !info.configured) return false
   const failed =

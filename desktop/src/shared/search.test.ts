@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test'
 import { createPatientSearch } from './search'
 
-// Somente dados fictícios.
 const patients = [
   { nome: 'Beatriz Teste', mae_nome: 'Conceição Exemplo', cpf: '', mae_cpf: '' },
   { nome: 'Carlos Demo', mae_nome: '', cpf: '', mae_cpf: '111.444.777-35' },

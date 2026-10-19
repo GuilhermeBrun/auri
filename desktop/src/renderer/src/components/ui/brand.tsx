@@ -1,16 +1,13 @@
 import { cn } from '@renderer/lib/utils'
 
-/** Silhueta da marca aprovada: um “a” orgânico que sugere a escuta. */
 const SYMBOL_PATH =
   'M10 51C3 52 0 46 1 37C5 16 29 0 52 0C84 0 105 19 106 47L106 66C106 76 109 80 113 84C123 96 116 110 102 110C90 110 82 103 74 92L63 77C56 67 49 67 41 73C31 80 27 89 31 96C35 103 44 106 48 109C34 114 15 111 7 101C-1 92-2 77 5 66C13 55 27 49 39 49C58 49 68 58 78 70C82 75 85 80 88 77C90 75 89 70 89 64L88 53C87 40 82 32 73 30C61 25 52 31 40 39L20 49C16 51 12 52 10 51Z'
 
 type SymbolProps = {
   className?: string
-  /** Pulso de opacidade para carregamento, desativado com movimento reduzido. */
   animated?: boolean
 }
 
-/** Símbolo decorativo: a cor acompanha o texto, e o rótulo do estado fica ao lado. */
 export function AuriSymbol({ className, animated }: SymbolProps): React.JSX.Element {
   return (
     <svg
@@ -25,7 +22,6 @@ export function AuriSymbol({ className, animated }: SymbolProps): React.JSX.Elem
   )
 }
 
-/** O símbolo forma a primeira letra de Auri, seguido de “uri” em vetor. */
 export function AuriLogo({ className }: { className?: string }): React.JSX.Element {
   return (
     <svg

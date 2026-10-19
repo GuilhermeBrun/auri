@@ -21,7 +21,6 @@ type Props = {
 
 const MAX_RESULTS = 8
 
-/** Campo de busca de paciente ativo: digita, escolhe com mouse ou setas + Enter. */
 export function PatientCombobox({ value, onChange, invalid, autoFocus }: Props): React.JSX.Element {
   const listId = useId()
   const [query, setQuery] = useState('')
@@ -29,8 +28,6 @@ export function PatientCombobox({ value, onChange, invalid, autoFocus }: Props):
   const [highlight, setHighlight] = useState(0)
   const chipRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
-  // Escolher ou trocar o paciente troca o campo de busca pelo "Trocar" (ou o contrário) com o foco
-  // dentro dele: o foco segue para o que aparece, em vez de cair no diálogo.
   const refocus = useRef<'chip' | 'input' | null>(null)
   useLayoutEffect(() => {
     const target = refocus.current
@@ -38,16 +35,12 @@ export function PatientCombobox({ value, onChange, invalid, autoFocus }: Props):
     if (target === 'chip') chipRef.current?.querySelector('button')?.focus()
     if (target === 'input') inputRef.current?.focus()
   }, [value])
-  // Filtra em memória a lista de pacientes ativos (a mesma da tela Pacientes, já em cache): o
-  // resultado sai na mesma tecla, sem piscar "Buscando…", e nunca é de um texto anterior (o Enter
-  // escolheria o paciente errado).
   const { data, isPending } = useQuery({ ...patientsQuery(false), enabled: value === null })
   const search = useMemo(() => createPatientSearch(data ?? []), [data])
   const results = useMemo(() => search(query).slice(0, MAX_RESULTS), [search, query])
 
   if (value) {
     return (
-      // o mesmo contorno dos outros campos: escolhido, ele continua sendo um campo
       <div
         ref={chipRef}
         className="flex h-9 animate-fade-in items-center justify-between gap-2 rounded-control border border-control bg-surface pr-1 pl-2.5 pointer-coarse:h-11"
@@ -123,13 +116,10 @@ export function PatientCombobox({ value, onChange, invalid, autoFocus }: Props):
           }
         }}
       />
-      {/* Sempre montada, só escondida: tirar a lista do DOM durante o blur (Tab) faz o diálogo, que
-          vigia remoções, puxar o foco para ele em vez de deixá-lo seguir para o campo seguinte. */}
       <ul
         hidden={!open}
         id={listId}
         role="listbox"
-        // uma lista que rola é parada do Tab no Chromium: o foco fica sempre no campo
         tabIndex={-1}
         onMouseDown={(e) => e.preventDefault()}
         className={cn(
@@ -148,7 +138,6 @@ export function PatientCombobox({ value, onChange, invalid, autoFocus }: Props):
               role="option"
               aria-selected={i === highlight}
               data-highlighted={i === highlight || undefined}
-              // mousedown para escolher antes do blur fechar a lista
               onMouseDown={(e) => {
                 e.preventDefault()
                 select(p)

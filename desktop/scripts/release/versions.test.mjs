@@ -16,9 +16,7 @@ await test('o alpha fica acima da estável e numera os do mesmo dia', () => {
     nextAlpha({ tagNames: ['v1.1.0', 'v1.1.1-alpha.20261016.1'], date }),
     '1.1.1-alpha.20261016.2'
   )
-  // Sem nenhuma estável, os alphas são da primeira versão, que a estável depois promove.
   assert.equal(nextAlpha({ tagNames: [], firstVersion: '0.0.1', date }), '0.0.1-alpha.20261016.1')
-  // as tags do tempo em que o canal se chamava beta contam como alpha
   assert.deepEqual(latestTags(['v0.0.1-beta.20261017.1']), {
     stable: null,
     alpha: 'v0.0.1-beta.20261017.1'

@@ -2,17 +2,12 @@ import type { ReactNode } from 'react'
 import { AuriSymbol } from '@renderer/components/ui/brand'
 
 type EmptyStateProps = {
-  /** Ícone num quadrado arredondado; sem ele, o símbolo da Auri. */
   icon?: ReactNode
   title: string
   children?: ReactNode
   action?: ReactNode
 }
 
-/**
- * Lista vazia: diz o que está acontecendo, ensina o que fazer e oferece o próximo passo.
- * Primeiro uso e "nada encontrado" são telas diferentes e não devem se parecer.
- */
 export function EmptyState({ icon, title, children, action }: EmptyStateProps): React.JSX.Element {
   return (
     <div className="flex h-full min-h-80 animate-fade-in flex-col items-center justify-center px-6 text-center">

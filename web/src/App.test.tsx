@@ -23,7 +23,6 @@ const alpha = release('v1.1.1-alpha.20261021.3', [
 const files = (...releases: (Release | null)[]) =>
   releases.flatMap((r) => (r ? r.assets.map(({ name }) => ({ name, tag: r.tag })) : []))
 
-/** HTML pré-renderizado, como o scripts/prerender.mjs grava. */
 const page = (s: Release | null, a: Release | null) =>
   renderToString(<App info={downloadInfo({ stable: s, alpha: a, files: files(s, a) })} />)
 

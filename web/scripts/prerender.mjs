@@ -1,10 +1,3 @@
-// Depois do `vp build` (cliente) e do `vp build --ssr` (servidor): grava o HTML da página em
-// dist/index.html, para ela aparecer inteira antes do script (e sem ele).
-//
-// As releases vêm, nesta ordem, de:
-//   `node scripts/prerender.mjs exemplo` ou AURI_RELEASES=exemplo | <arquivo> | <url>
-//   as GitHub Releases (repositório público): o build grava em dist/ o feed de atualização
-//   (latest.yml, alpha.yml…) com os instaladores apontando para o GitHub, e o releases.json
 import { readFile, rm, writeFile } from 'node:fs/promises'
 
 const server = await import(new URL('../dist-ssr/entry-server.js', import.meta.url).href)
@@ -18,7 +11,6 @@ async function fetchOk(url, init) {
   return response
 }
 
-/** A última estável: o GitHub redireciona /releases/latest para a tag dela. */
 async function latestStable() {
   const response = await fetch(`${REPO}/releases/latest`, { redirect: 'manual', signal: timeout() })
   const location = response.headers.get('location') ?? ''
@@ -26,7 +18,6 @@ async function latestStable() {
   return tag ? decodeURIComponent(tag) : null
 }
 
-/** Um .yml da release `tag`, ou nada se ela não tiver esse arquivo. */
 async function yml(tag, name) {
   const response = await fetch(downloadUrl(tag, name), { signal: timeout() })
   if (response.status === 404) return null
@@ -50,7 +41,6 @@ async function fromGitHub() {
       break
     }
   }
-  // Sem as releases de verdade, o build para: melhor que publicar a página com outra versão.
   if (!feed.some((file) => file.name === 'latest.yml' || file.name === 'alpha.yml')) {
     throw new Error(
       `Nenhum latest.yml ou alpha.yml nas releases (estável ${stable}, alpha ${alpha}).`
@@ -70,14 +60,12 @@ async function releases() {
   return fromGitHub()
 }
 
-/** Troca o marcador (que precisa existir) pelo texto, sem os padrões especiais do replace. */
 function fill(html, marker, value) {
   if (!html.includes(marker)) throw new Error(`dist/index.html sem o marcador ${marker}.`)
   return html.replace(marker, () => value)
 }
 
 const { info, html } = render(await releases())
-// `<` escapado: o JSON vai dentro de um <script>
 const data = JSON.stringify(info).replaceAll('<', '\\u003c')
 let page = await readFile('dist/index.html', 'utf8')
 page = fill(page, '<title>Baixar o Auri</title>', `<title>Baixar o Auri ${info.version}</title>`)

@@ -38,17 +38,7 @@ type FieldProps = {
   error?: string
   hint?: ReactNode
   className?: string
-  /**
-   * 'label' (padrão): o <label> envolve o controle, então clicar no texto foca o campo.
-   * 'group': para controles compostos (com botões ou listas dentro), que não podem ficar
-   * dentro de um <label>; o controle deve receber aria-label próprio.
-   */
   as?: 'label' | 'group'
-  /**
-   * Controle composto com um campo principal (data, hora, duração): o <label> fica ao lado e
-   * aponta para o `id` desse campo, então clicar no texto o foca e ele já ganha o nome.
-   * Tem prioridade sobre `as`.
-   */
   htmlFor?: string
   children: ReactNode
 }
@@ -89,7 +79,6 @@ export function Field({
           {children}
         </div>
       )}
-      {/* fora do <label> para não virar parte do nome do campo; ícone + texto, nunca só cor */}
       {error && (
         <span className="flex animate-error-in items-start gap-1.5 text-xs text-danger">
           <CircleAlert className="mt-0.5 size-3.5 shrink-0 stroke-[2]" aria-hidden="true" />

@@ -5,7 +5,6 @@ import { PROTOCOL_VERSION } from './protocol'
 
 const TYPE = 'auri'
 
-/** Endereços IPv4 deste computador na rede local (sem o 127.0.0.1). */
 export function localAddresses(): string[] {
   return Object.values(networkInterfaces())
     .flat()
@@ -28,14 +27,9 @@ function toFound(service: Service): FoundServer | null {
   }
 }
 
-/**
- * Anúncio e busca na rede local (Bonjour/mDNS, o mesmo de impressoras e AirPlay). O anúncio leva só
- * o nome, a porta e a chave pública: nenhum dado. Funciona sem internet.
- */
 export function createDiscovery(): {
   publish(options: { name: string; port: number; publicKey: string }): void
   unpublish(): void
-  /** Procura por `ms` e devolve o que achou (sem repetir a mesma chave). */
   find(ms: number): Promise<FoundServer[]>
   destroy(): void
 } {
@@ -46,7 +40,6 @@ export function createDiscovery(): {
   return {
     publish({ name, port, publicKey }) {
       published?.stop?.()
-      // o nome do serviço precisa ser único na rede; o que aparece na tela vem do `nome`
       published = instance().publish({
         name: `Auri ${publicKey.slice(0, 8)}`,
         type: TYPE,

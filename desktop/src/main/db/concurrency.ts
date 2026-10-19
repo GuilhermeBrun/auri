@@ -1,7 +1,3 @@
-/**
- * Recusa a gravação se o registro mudou desde que foi aberto na tela. Sem `expected` (chamadas que
- * não sabem quando abriram), grava como antes.
- */
 export function assertUnchanged(current: string, expected: string | undefined): void {
   if (expected !== undefined && current !== expected) {
     throw new Error(

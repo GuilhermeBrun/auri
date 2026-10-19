@@ -13,7 +13,7 @@ import {
   parseIsoLocalDateTime
 } from './dates'
 
-const today = new Date(2025, 8, 7) // 07/09/2025
+const today = new Date(2025, 8, 7)
 
 describe('formatAge', () => {
   it('mostra dias no primeiro mês', () => {

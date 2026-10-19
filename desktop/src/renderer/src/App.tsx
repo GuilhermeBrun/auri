@@ -22,7 +22,6 @@ function App(): React.JSX.Element {
         <Route path="pacientes/:id" element={<PatientFormRoute />} />
         <Route path="pacientes/:id/anamnese" element={<PatientAnamneseRoute />} />
         <Route path="pacientes/:id/sessoes" element={<PatientSessionsRoute />} />
-        {/* cada seção das Configurações tem o seu endereço; a raiz abre a primeira */}
         <Route path="configuracoes" element={<Navigate to="geral" replace />} />
         <Route path="configuracoes/geral" element={<GeneralPage />} />
         <Route path="configuracoes/aparencia" element={<AppearancePage />} />

@@ -12,7 +12,6 @@ function checkDigit(digits: string, length: number): number {
 export function isValidCpf(value: string): boolean {
   const d = onlyDigits(value)
   if (d.length !== 11) return false
-  // 000.000.000-00, 111.111.111-11... passam no cálculo mas não são CPFs válidos
   if (/^(\d)\1{10}$/.test(d)) return false
   return checkDigit(d, 9) === Number(d[9]) && checkDigit(d, 10) === Number(d[10])
 }

@@ -3,15 +3,6 @@ import type { ButtonHTMLAttributes } from 'react'
 import { AuriSymbol } from '@renderer/components/ui/brand'
 import { cn } from '@renderer/lib/utils'
 
-// Botões retangulares de cantos arredondados (`rounded-control`), nenhum com contorno. Ao pressionar
-// encolhem 3% (150ms, interrompível) e ao habilitar/desabilitar o preenchimento se desfaz aos poucos.
-// Um padrão só (docs/identidade-visual.md, "Botões e ferramentas"):
-// - `ghost`: só o ícone, sem fundo (fundo no hover), como os ícones da barra lateral. Toda ação do
-//   cabeçalho e os controles da janela. Ligado (`aria-pressed`) fica com o fundo do item ativo do menu.
-// - `primary`: bloco cheio, a ação que conclui um formulário ou diálogo (Salvar, Agendar).
-// - `secondary`: preenchimento neutro, botões com texto ao lado do principal (Cancelar, Inativar).
-// - `danger`/`danger-ghost`: vermelho no texto, nunca como botão principal.
-// Em tela de toque (`pointer-coarse`) os alvos crescem para 44px.
 const buttonVariants = cva(
   'inline-flex items-center justify-center gap-1.5 rounded-control font-medium whitespace-nowrap transition-[background-color,color,box-shadow,opacity,scale] duration-150 active:scale-[0.97] disabled:pointer-events-none disabled:opacity-40 data-[loading=true]:disabled:opacity-100 [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:stroke-[1.75]',
   {
@@ -38,7 +29,6 @@ const buttonVariants = cva(
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> &
   VariantProps<typeof buttonVariants> & {
-    /** Ação em andamento: mostra o símbolo da marca à esquerda do rótulo e bloqueia o clique. */
     loading?: boolean
   }
 

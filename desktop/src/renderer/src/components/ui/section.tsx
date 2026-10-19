@@ -2,7 +2,6 @@ import { CircleAlert } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { cn } from '@renderer/lib/utils'
 
-/** Erro de uma ação da página: ícone + texto, nunca só cor (como o erro dos campos). */
 export function ErrorText({
   children,
   className
@@ -24,7 +23,6 @@ export function ErrorText({
   )
 }
 
-/** Título de um grupo da página, com a explicação embaixo. */
 export function SectionTitle({
   title,
   children
@@ -40,7 +38,6 @@ export function SectionTitle({
   )
 }
 
-/** Bolinha de estado: grafite cheio quando ligado/conectado, apagada quando não (sem verde). */
 export function StatusDot({ on }: { on: boolean }): React.JSX.Element {
   return (
     <span

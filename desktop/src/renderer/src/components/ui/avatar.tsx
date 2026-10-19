@@ -1,6 +1,5 @@
 import { cn } from '@renderer/lib/utils'
 
-/** Primeira letra do primeiro e do último nome: "João Fictício da Silva" → "JS". */
 function initials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean)
   if (parts.length === 0) return '?'
@@ -18,7 +17,6 @@ const SIZES = {
 
 type AvatarProps = { name: string; size?: keyof typeof SIZES; className?: string }
 
-/** Monograma num quadrado arredondado, como o ícone do app. O raio cresce com o tamanho. */
 export function Avatar({ name, size = 'sm', className }: AvatarProps): React.JSX.Element {
   return (
     <span

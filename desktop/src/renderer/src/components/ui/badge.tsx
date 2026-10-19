@@ -3,9 +3,7 @@ import { cn } from '@renderer/lib/utils'
 
 const TONES = {
   neutral: 'bg-fill text-ink-soft',
-  /** Ainda sem dado ("Sem registro"). */
   outline: 'text-ink-soft shadow-[inset_0_0_0_1px_var(--color-line-strong)]',
-  /** Raro: "Hoje", "Agora". */
   strong: 'bg-solid text-on-solid',
   warning: 'bg-warning-soft text-warning',
   danger: 'bg-danger-soft text-danger'
@@ -13,16 +11,11 @@ const TONES = {
 
 type BadgeProps = {
   tone?: keyof typeof TONES
-  /** Ícone de 12px (em `warning` e `danger`). */
   icon?: ReactNode
   className?: string
   children: ReactNode
 }
 
-/**
- * Selo de uma ou duas palavras ao lado de um nome ("Inativo", "Faltou"). Sempre com texto: a cor
- * só reforça. 20px, `radius-chip`.
- */
 export function Badge({
   tone = 'neutral',
   icon,

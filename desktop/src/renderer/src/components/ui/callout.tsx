@@ -9,21 +9,13 @@ const TONES = {
 }
 
 type CalloutProps = {
-  /** neutral: explicação · warning: algo parou, não é erro · danger: uma ação falhou. */
   tone?: keyof typeof TONES
   title: ReactNode
-  /** O que fazer; pode trazer botões e outros controles embaixo do texto. */
   children?: ReactNode
-  /** Um botão `secondary` `sm` à direita. */
   action?: ReactNode
   className?: string
 }
 
-/**
- * Aviso que fica na página até ser resolvido: ícone, título, texto e, se houver, uma ação. Fundo
- * suave inteiro, nunca barra lateral colorida. Erro de gravação fica aqui (ou no campo), nunca num
- * aviso que some sozinho.
- */
 export function Callout({
   tone = 'neutral',
   title,

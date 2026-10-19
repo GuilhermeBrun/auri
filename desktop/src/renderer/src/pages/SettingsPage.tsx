@@ -7,11 +7,6 @@ import { setTheme, useTheme } from '@renderer/lib/theme'
 import { cn } from '@renderer/lib/utils'
 import type { Theme } from '@shared/schemas'
 
-/**
- * Cores da miniatura de cada tema. São fixas de propósito: a miniatura do claro tem de parecer clara
- * mesmo com o app no escuro, e vice-versa. Copiam os tokens de main.css. Sem bloco cheio: as ações
- * do cabeçalho não têm fundo, então o botão da miniatura é neutro como o resto.
- */
 const PREVIEW_COLORS = {
   light: {
     sidebar: '#f4f4f7',
@@ -33,7 +28,6 @@ const PREVIEW_COLORS = {
 
 type Scheme = keyof typeof PREVIEW_COLORS
 
-/** Sessões da miniatura da agenda: coluna (0–4), início e altura em % da grade. */
 const PREVIEW_SESSIONS = [
   [0, 8, 22],
   [1, 30, 18],
@@ -43,7 +37,6 @@ const PREVIEW_SESSIONS = [
   [4, 62, 18]
 ] as const
 
-/** Miniatura do Auri num tema: barra lateral com o menu, cabeçalho e a semana com algumas sessões. */
 function Miniature({
   scheme,
   style
@@ -91,11 +84,6 @@ const THEME_OPTIONS: { value: Theme; label: string }[] = [
   { value: 'dark', label: 'Escuro' }
 ]
 
-/**
- * Escolha do tema em cartões com a miniatura do app. São botões de rádio de verdade (escondidos),
- * então as setas trocam a opção e o leitor de tela lê "Tema, Sistema, 1 de 3". "Sistema" mostra as
- * duas metades, como o sistema faz ao longo do dia. A troca vale na hora, sem botão de salvar.
- */
 function ThemePicker(): React.JSX.Element {
   const theme = useTheme()
   return (
@@ -158,11 +146,6 @@ function ThemePicker(): React.JSX.Element {
   )
 }
 
-/**
- * Configurações → Aparência. Página comum, de uma coluna: o título fica na trilha do cabeçalho
- * (Configurações / Aparência), como nas outras telas; aqui vêm a descrição e o conteúdo. Seções
- * novas das Configurações ganham rota própria e item na barra lateral (`SETTINGS_ITEMS`).
- */
 export function AppearancePage(): React.JSX.Element {
   return (
     <Page trail={[SETTINGS_CRUMB, { label: 'Aparência' }]}>

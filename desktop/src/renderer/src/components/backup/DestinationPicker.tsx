@@ -18,7 +18,6 @@ const STATE_TEXT: Record<CloudState, string> = {
   'not-installed': 'Não instalado'
 }
 
-/** O que o botão do cartão faz e o que dizer depois de clicar, por situação. */
 const ACTION: Record<
   Exclude<CloudState, 'ready'>,
   { label: (name: string) => string; after: (name: string) => string }
@@ -46,7 +45,6 @@ const ACTION: Record<
   }
 }
 
-/** "Baixando… 42%". */
 function progressText(progress: InstallProgress): string {
   if (progress.stage === 'downloading') {
     return progress.progress === null
@@ -56,11 +54,6 @@ function progressText(progress: InstallProgress): string {
   return 'Abrindo o instalador…'
 }
 
-/**
- * Botão do cartão que leva a nuvem até "pronta": instalar (baixa o instalador oficial e abre),
- * abrir o app para entrar na conta ou abrir os Ajustes. Depois do clique, diz o que fazer na
- * outra janela; a lista se atualiza sozinha.
- */
 export function ProviderAction({
   provider,
   progress,
@@ -126,7 +119,6 @@ export function ProviderAction({
         loading={action.isPending}
         onClick={() => action.mutate()}
       >
-        {/* o rótulo segue o estado de agora: instalou, vira "Abrir o Google Drive" */}
         {started && state === 'not-installed'
           ? 'Tentar de novo'
           : ACTION[state].label(provider.name)}
@@ -135,13 +127,11 @@ export function ProviderAction({
   )
 }
 
-/** Páginas oficiais, se baixar daqui não der certo. */
 const OFFICIAL_PAGE = {
   google: 'https://www.google.com/drive/download/',
   onedrive: 'https://www.microsoft.com/microsoft-365/onedrive/download'
 } as const
 
-/** Nuvem recomendada: a sugerida (configurações importadas) se pronta, senão a primeira pronta. */
 function recommended(
   providers: CloudProvider[],
   suggested: BackupDestination['kind'] | null
@@ -150,7 +140,6 @@ function recommended(
   return ready.find((p) => p.id === suggested) ?? ready[0]
 }
 
-/** Cartão de uma nuvem: pronta, é um botão que a escolhe; senão, mostra o que falta. */
 function ProviderCard({
   provider,
   recommended: isRecommended,
@@ -207,12 +196,6 @@ function ProviderCard({
   )
 }
 
-/**
- * Onde guardar as cópias: um cartão por nuvem (Google Drive, OneDrive e, no Mac, iCloud Drive)
- * com a situação dela neste computador, e "Outra pasta…" para pendrive ou HD. Enquanto está na
- * tela, procura de novo a cada 3 segundos: instalou ou entrou na conta, o cartão fica pronto; se
- * foi a nuvem em que o usuário mexeu aqui, o Auri já a escolhe e segue.
- */
 export function DestinationPicker({
   onPick,
   suggested = null
@@ -224,8 +207,6 @@ export function DestinationPicker({
     queryKey: ['cloud-providers'],
     queryFn: () => window.backup.providers(),
     refetchInterval: 3000,
-    // o usuário está na janela do instalador ou do login, com o Auri escondido atrás: continua
-    // procurando, para já ter seguido quando ele voltar
     refetchIntervalInBackground: true,
     refetchOnWindowFocus: true
   })
@@ -239,14 +220,12 @@ export function DestinationPicker({
 
   const progress = useInstallProgress()
 
-  // a nuvem que o usuário está preparando: quando ficar pronta, segue com ela
   const [started, setStarted] = useState<CloudProvider['id'] | null>(null)
   const pickRef = useRef(onPick)
   useEffect(() => {
     pickRef.current = onPick
   })
   const readyStarted = list.find((p) => p.id === started && p.state === 'ready' && p.folder)
-  // valores simples nas dependências: a lista chega como objetos novos a cada 3 segundos
   const readyId = readyStarted?.id ?? null
   const readyFolder = readyStarted?.folder ?? null
   const readyName = readyStarted?.name ?? ''

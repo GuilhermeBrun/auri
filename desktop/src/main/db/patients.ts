@@ -23,7 +23,6 @@ function fromRow(row: PatientRow): Patient {
   return patient
 }
 
-/** Campos vazios viram NULL no banco. */
 function toParams(input: PatientInput): Record<string, string | null> {
   const params: Record<string, string | null> = {}
   for (const field of PATIENT_FIELDS) {
@@ -38,7 +37,6 @@ export function getPatient(db: Db, id: number): Patient {
   return fromRow(row)
 }
 
-/** A busca é a mesma que as telas usam para filtrar a lista em memória (shared/search). */
 export function listPatients(db: Db, filter: Required<PatientFilter>): Patient[] {
   const rows = db
     .prepare(
@@ -59,10 +57,6 @@ export function createPatient(db: Db, input: PatientInput): Patient {
   return getPatient(db, Number(result.lastInsertRowid))
 }
 
-/**
- * `expected` é o `updated_at` de quando a ficha foi aberta: se outra pessoa (em outro computador)
- * salvou depois disso, a gravação é recusada em vez de apagar a alteração dela sem aviso.
- */
 export function updatePatient(db: Db, id: number, input: PatientInput, expected?: string): Patient {
   assertUnchanged(getPatient(db, id).updated_at, expected)
   const assignments = PATIENT_FIELDS.map((f) => `${f} = @${f}`).join(', ')

@@ -7,7 +7,6 @@ import { Button } from '@renderer/components/ui/button'
 import { Dialog, DialogBody, DialogFooter } from '@renderer/components/ui/dialog'
 import { setBackupInfo, useBackup } from '@renderer/lib/backup'
 
-/** Uma das partes que dá para trazer de outro computador, com o seu botão. */
 function Part({
   icon,
   title,
@@ -38,14 +37,8 @@ function Part({
   )
 }
 
-/**
- * "Já usa o Auri?": na primeira abertura (banco vazio, cópia ainda desligada), oferece trazer os
- * dados de uma cópia e as configurações de um arquivo, em passos separados e opcionais. Aparece
- * uma vez; "Começar do zero" ou "Concluir" não mostram de novo.
- */
 export function WelcomeDialog(): React.JSX.Element {
   const info = useBackup()
-  // abre uma vez quando o main diz que é a primeira abertura; fechar é decisão do usuário
   const [started, setStarted] = useState(false)
   if (info?.welcome && !started) setStarted(true)
   const [closed, setClosed] = useState(false)

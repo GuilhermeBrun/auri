@@ -8,8 +8,6 @@ import { PointerTrail } from './components/PointerTrail'
 import { ThemeToggle } from './components/ThemeToggle'
 import { longDate, type DownloadInfo } from './releases'
 
-// Recursos: tela do app (public/telas, capturadas do app real com pacientes fictícios), com o zoom
-// e a parte da tela que aparece no canto do quadro, título e texto.
 const FEATURES = [
   {
     image: 'agenda',
@@ -50,7 +48,6 @@ const FEATURES = [
 
 const HEADLINE = ['A clínica inteira,', 'sem papel.']
 
-/** Título com cada palavra numa caixa própria, para entrarem uma depois da outra. */
 function Words({ lines }: { lines: string[] }) {
   let index = 0
   return lines.map((line, row) => (
@@ -105,7 +102,6 @@ function Feature({ image, zoom, focus, title, text }: (typeof FEATURES)[number])
   )
 }
 
-/** "Baixar o Auri" no fim da página: rola até o download do topo e põe o foco no botão. */
 function toDownload(event: MouseEvent) {
   event.preventDefault()
   document

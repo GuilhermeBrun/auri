@@ -29,22 +29,12 @@ let backup: BackupService | null = null
 let prefs: PrefsStore | null = null
 let tray: Tray | null = null
 let updates: UpdateService | null = null
-/** O usuário já confirmou sair mesmo com outro computador conectado. */
 let quitConfirmed = false
 
-/**
- * Fundo da janela antes da interface desenhar (abrir, redimensionar): o mesmo `--color-surface` do
- * tema em uso, para não piscar branco no escuro nem preto no claro.
- */
 function windowBackground(): string {
   return nativeTheme.shouldUseDarkColors ? '#17171c' : '#ffffff'
 }
 
-/**
- * O tema vale para o app todo: o `themeSource` decide o `prefers-color-scheme` que o CSS lê (ver
- * main.css) e os controles nativos. Em "system" ele acompanha o sistema, inclusive quando o sistema
- * troca sozinho ao anoitecer.
- */
 function applyTheme(theme: Theme): void {
   nativeTheme.themeSource = theme
   syncWindowBackgrounds()
@@ -63,17 +53,13 @@ function createWindow(prefs: UiPrefs): void {
     title: 'Auri',
     show: false,
     autoHideMenuBar: true,
-    // O conteúdo vai até a borda; a barra lateral é desenhada pela interface.
     backgroundColor: windowBackground(),
-    // Mac: barra de título integrada (os botões da janela ficam sobre a barra lateral).
-    // O y centraliza os botões (14px) na altura do cabeçalho da página (48px).
     ...(process.platform === 'darwin'
       ? { titleBarStyle: 'hiddenInset' as const, trafficLightPosition: { x: 22, y: 17 } }
       : {}),
     ...(process.platform !== 'darwin' ? { icon } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
-      // preferências da interface prontas para o preload, sem a janela esperar o disco
       additionalArguments: [`${PREFS_ARG}${JSON.stringify(prefs)}`],
       contextIsolation: true,
       nodeIntegration: false,
@@ -90,7 +76,6 @@ function createWindow(prefs: UiPrefs): void {
     return { action: 'deny' }
   })
 
-  // HMR do renderer em desenvolvimento; arquivo local em produção.
   if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
     const url = process.env['ELECTRON_RENDERER_URL']
     trustRenderer(mainWindow.webContents, url)
@@ -109,12 +94,10 @@ function createWindow(prefs: UiPrefs): void {
   }
 }
 
-/** Manda um aviso do main para todas as janelas abertas. */
 function sendToWindows(channel: string, value: unknown): void {
   for (const window of BrowserWindow.getAllWindows()) window.webContents.send(channel, value)
 }
 
-/** O Auri instalado no Mac (o pacote `.app`, três pastas acima do executável) tem Team ID. */
 async function signedByDeveloper(): Promise<boolean> {
   const bundle = resolve(process.execPath, '../../..')
   try {
@@ -125,11 +108,6 @@ async function signedByDeveloper(): Promise<boolean> {
   }
 }
 
-/**
- * O instalado sai com `app-update.yml` quando o Build recebe o repositório de atualizações. No Mac
- * a troca automática exige app assinado com um Developer ID (o Release com os segredos da Apple);
- * no ad-hoc (build local, sem certificado) a versão nova vai por cima, pela página do site.
- */
 async function loadUpdater(): Promise<Updater | null> {
   if (!app.isPackaged || !['win32', 'darwin'].includes(process.platform)) return null
   if (!existsSync(join(process.resourcesPath, 'app-update.yml'))) return null
@@ -138,7 +116,6 @@ async function loadUpdater(): Promise<Updater | null> {
   return autoUpdater as unknown as Updater
 }
 
-/** Mostra a janela que já existe ou abre uma nova (bandeja, segunda abertura do app). */
 function showWindow(): void {
   const [window] = BrowserWindow.getAllWindows()
   if (!window) return createWindow(prefs!.get())
@@ -147,10 +124,6 @@ function showWindow(): void {
   window.focus()
 }
 
-/**
- * Ícone na bandeja (Windows) ou na barra de menus (Mac) enquanto este computador compartilha os
- * dados e continua rodando ao fechar a janela: é por ele que se abre de novo ou se sai de vez.
- */
 function syncTray(): void {
   const wanted = connection?.keepsRunning() ?? false
   if (!wanted) {
@@ -173,14 +146,11 @@ function syncTray(): void {
       { label: 'Sair do Auri', click: () => app.quit() }
     ])
   )
-  // Windows: clique no ícone abre a janela (no Mac o clique abre o menu)
   tray.on('click', () => {
     if (process.platform !== 'darwin') showWindow()
   })
 }
 
-// Uma instância só: duas abririam o mesmo banco e disputariam a porta da rede. Abrir de novo
-// (atalho, ou o app já rodando na bandeja) só mostra a janela.
 const isFirstInstance = app.requestSingleInstanceLock()
 if (!isFirstInstance) {
   app.quit()
@@ -191,15 +161,12 @@ if (!isFirstInstance) {
 }
 
 void app.whenReady().then(async () => {
-  // a segunda instância só existe para acordar a primeira (`second-instance`) e sair
   if (!isFirstInstance) return
 
   electronApp.setAppUserModelId('com.auri.app')
 
-  // Em desenvolvimento o executável ainda é o Electron; a marca também aparece no Dock.
   if (process.platform === 'darwin') app.dock?.setIcon(icon)
 
-  // F12 abre o DevTools em desenvolvimento; Ctrl/Cmd+R fica desativado em produção.
   app.on('browser-window-created', (_, window) => {
     optimizer.watchWindowShortcuts(window)
   })
@@ -210,7 +177,6 @@ void app.whenReady().then(async () => {
     onInfoChanged: (info) => {
       sendToWindows('connection:changed', info)
       syncTray()
-      // trocar de papel liga ou desliga as cópias (só quem guarda os dados copia)
       backup?.refresh()
     },
     onWrite: () => backup?.dataWritten()
@@ -226,7 +192,6 @@ void app.whenReady().then(async () => {
   syncTray()
   prefs = createPrefsStore(join(app.getPath('userData'), 'preferencias.json'), (next) => {
     applyTheme(next.theme)
-    // configurações importadas: as telas abertas acompanham (tema marcado, barra lateral)
     sendToWindows('prefs:changed', next)
   })
   const channel = channelFile(join(app.getPath('userData'), 'atualizacoes.json'))
@@ -245,7 +210,6 @@ void app.whenReady().then(async () => {
     updates
   )
   applyTheme(prefs.get().theme)
-  // o sistema trocou de tema (com "system" escolhido)
   nativeTheme.on('updated', syncWindowBackgrounds)
 
   createWindow(prefs.get())
@@ -256,7 +220,6 @@ void app.whenReady().then(async () => {
 })
 
 app.on('window-all-closed', () => {
-  // compartilhando: continua rodando na bandeja para o outro computador não perder o acesso
   if (process.platform !== 'darwin' && !connection?.keepsRunning()) {
     app.quit()
   }

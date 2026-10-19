@@ -1,7 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { closeSync, fsyncSync, openSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 
-/** Grava no mesmo volume e só substitui o arquivo completo, depois de persistir os bytes. */
 export function writeAtomicJson(file: string, value: unknown): void {
   const temporary = `${file}.${randomUUID()}.tmp`
   let handle: number | undefined

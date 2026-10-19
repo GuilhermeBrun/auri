@@ -30,10 +30,6 @@ function toInput(patient: Patient): PatientInput {
   return Object.fromEntries(PATIENT_FIELDS.map((f) => [f, patient[f]])) as PatientInput
 }
 
-/**
- * Uma seção da ficha: título e descrição à esquerda (fixos enquanto a seção rola), campos à
- * direita. Sem cartões: um filete separa as seções e o espaço faz o agrupamento.
- */
 function Section({
   id,
   title,
@@ -91,7 +87,6 @@ function MaskedInput({
 export function PatientFormRoute(): React.JSX.Element {
   const { id } = useParams()
   const patientId = id ? Number(id) : null
-  // key: trocar de paciente recria o formulário do zero
   return <PatientFormPage key={patientId ?? 'novo'} patientId={patientId} />
 }
 
@@ -121,7 +116,6 @@ function PatientFormPage({ patientId }: { patientId: number | null }): React.JSX
     defaultValues: { ...emptyPatientInput(), data_entrada: entryDate }
   })
 
-  // o que foi digitado e não salvo volta ao trocar de aba (anamnese, sessões) e retornar
   const draft = useDraft<PatientInput>(
     isNew ? null : `patient:${patientId}`,
     patient?.updated_at,
@@ -140,15 +134,13 @@ function PatientFormPage({ patientId }: { patientId: number | null }): React.JSX
     mutationFn: (input: PatientInput) =>
       isNew
         ? window.api.patients.create(input)
-        : // recusa se a ficha foi salva em outro computador depois de aberta aqui
-          window.api.patients.update(patientId, input, patient?.updated_at),
+        : window.api.patients.update(patientId, input, patient?.updated_at),
     onSuccess: (saved) => {
       draft.discard()
       queryClient.setQueryData(['patient', saved.id], saved)
       void queryClient.invalidateQueries({ queryKey: ['patients'] })
       void queryClient.invalidateQueries({ queryKey: ['appointments'] })
       toast({ title: isNew ? 'Paciente cadastrado' : 'Alterações salvas', description: saved.nome })
-      // `saved`: a lista destaca (e rola até) a linha deste paciente
       void navigate('/pacientes', { state: { saved: saved.id } })
     }
   })
@@ -186,8 +178,6 @@ function PatientFormPage({ patientId }: { patientId: number | null }): React.JSX
   const nascimento = useWatch({ control, name: 'data_nascimento' })
   const idade = formatAge(nascimento)
 
-  // Ficha existente ainda não carregada (ou com falha): só o cabeçalho e o estado, nunca o
-  // formulário vazio com o título "Novo paciente".
   if (!isNew && !patient) {
     return (
       <Page trail={[PATIENTS_CRUMB, { label: 'Ficha do paciente' }]}>
@@ -216,7 +206,6 @@ function PatientFormPage({ patientId }: { patientId: number | null }): React.JSX
       <Page
         trail={[
           PATIENTS_CRUMB,
-          // o nome salvo, não o que está sendo digitado (esse aparece grande no corpo)
           { label: isNew ? 'Novo paciente' : (patient?.nome ?? 'Ficha do paciente') }
         ]}
         actions={

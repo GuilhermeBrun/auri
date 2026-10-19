@@ -1,12 +1,10 @@
 import type { IpcMainEvent, IpcMainInvokeEvent, WebContents } from 'electron'
 
-// Só o frame principal da janela registrada pode chamar a API. A identidade do
-// WebContents também impede uma segunda janela local de herdar essa permissão.
 const renderers = new Map<number, { contents: WebContents; url: string }>()
 
 function documentUrl(value: string): string {
   const url = new URL(value)
-  url.hash = '' // As rotas do HashRouter continuam no mesmo documento autorizado.
+  url.hash = ''
   return url.href
 }
 

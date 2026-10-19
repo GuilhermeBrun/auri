@@ -12,12 +12,6 @@ type DialogProps = {
   children: ReactNode
 }
 
-/**
- * Folha sólida: fundo `raised` (branco no claro, um tom acima do conteúdo no escuro), sombra única e o resto da janela escurecido. Sem transparência,
- * então fica igual em qualquer sistema e o texto de trás nunca vaza. Entra em 140ms e sai em 110ms
- * (o Radix espera a animação de saída acabar antes de tirar a folha da tela), por isso quem
- * fecha o diálogo deve manter o conteúdo montado até lá.
- */
 export function Dialog({
   open,
   onOpenChange,
@@ -31,7 +25,6 @@ export function Dialog({
         <DialogPrimitive.Overlay className="fixed inset-0 z-40 bg-scrim data-[state=closed]:animate-fade-out data-[state=open]:animate-fade-in" />
         <DialogPrimitive.Content
           onEscapeKeyDown={(e) => {
-            // Esc com uma lista de sugestões aberta fecha só a lista, não o diálogo
             const active = document.activeElement
             if (
               active?.getAttribute('role') === 'combobox' &&
@@ -70,7 +63,6 @@ export function Dialog({
   )
 }
 
-/** Conteúdo do diálogo. */
 export function DialogBody({
   children,
   className
@@ -81,7 +73,6 @@ export function DialogBody({
   return <div className={cn('px-5 pt-4 pb-5', className)}>{children}</div>
 }
 
-/** Rodapé: atalhos e ação secundária à esquerda, botões à direita. Faixa cinza, sem filete: o fundo já separa. */
 export function DialogFooter({ children }: { children: ReactNode }): React.JSX.Element {
   return (
     <div className="flex items-center justify-between gap-2 rounded-b-sheet bg-canvas px-5 py-3">

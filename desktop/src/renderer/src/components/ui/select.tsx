@@ -9,7 +9,6 @@ import {
 import { cn } from '@renderer/lib/utils'
 
 type SelectProps = {
-  /** Mesmo `id` do `htmlFor` do `Field`: clicar no rótulo abre a lista. */
   id?: string
   value: string
   onValueChange: (value: string) => void
@@ -18,11 +17,6 @@ type SelectProps = {
   disabled?: boolean
 }
 
-/**
- * Seletor de uma opção entre poucas. No lugar do <select> nativo, que abre o menu do sistema (outro
- * visual em cada Mac e Windows): o campo é igual ao `Input` e a lista é a mesma do campo de
- * paciente. Setas, Home/End, digitar a inicial e Esc vêm do Radix.
- */
 export function Select({
   id,
   value,
@@ -39,7 +33,6 @@ export function Select({
         className={cn(
           controlClass,
           'flex h-9 items-center justify-between gap-2 pr-2.5 text-left pointer-coarse:h-11',
-          // aberto, o campo fica com o contorno do foco (o foco já está na lista)
           'data-[state=open]:border-ink data-[state=open]:ring-[3px] data-[state=open]:ring-ink/10'
         )}
       >

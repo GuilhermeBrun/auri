@@ -8,7 +8,6 @@ import type { PrefsStore } from './prefs'
 import type { UpdateService } from './updates'
 import { assertTrustedSender } from './ipc-security'
 
-/** Todo handler valida a entrada no main: o renderer nunca é tratado como confiável. */
 function handle<A extends unknown[], T>(channel: string, fn: (...args: A) => T | Promise<T>): void {
   ipcMain.handle(channel, async (event, ...args): Promise<IpcResult<T>> => {
     try {
@@ -38,7 +37,6 @@ export function registerIpc(
   transfer: AuriTransfer,
   updates: UpdateService
 ): void {
-  // Dados: no banco deste computador ou no outro, conforme o papel (ver main/connection.ts).
   for (const channel of DATA_CHANNELS) {
     ipcMain.handle(channel, (event, ...args) => {
       try {
@@ -50,7 +48,6 @@ export function registerIpc(
     })
   }
 
-  // Configurações / Conexão
   const bool = z.boolean()
   handle('connection:info', () => connection.info())
   handle('connection:setRole', (role: unknown) =>
@@ -84,7 +81,6 @@ export function registerIpc(
   handle('connection:forget', () => connection.forget())
   handle('connection:retry', () => connection.retry())
 
-  // Configurações / Cópia de segurança
   handle('backup:info', () => backup.info())
   handle('backup:providers', () => backup.providers())
   handle('backup:check', () => backup.check())
@@ -130,14 +126,12 @@ export function registerIpc(
   handle('backup:undoRestore', () => backup.undoRestore())
   handle('backup:dismissWelcome', () => backup.dismissWelcome())
 
-  // Configurações / Importar e exportar
   handle('transfer:export', () => transfer.exportSettings())
   handle('transfer:pick', () => transfer.pickSettings())
   handle('transfer:apply', (token: unknown) =>
     transfer.applySettings(z.string().uuid().parse(token))
   )
 
-  // Atualizações (Configurações › Geral)
   handle('updates:info', () => updates.info())
   handle('updates:check', () => updates.check())
   handle('updates:install', () => updates.install())
@@ -145,7 +139,6 @@ export function registerIpc(
     updates.setChannel(z.enum(['latest', 'alpha']).parse(channel))
   )
 
-  // Sem resposta: a janela manda gravar e segue (ver main/prefs.ts)
   ipcMain.on('prefs:save', (event, value: unknown) => {
     try {
       assertTrustedSender(event)

@@ -4,16 +4,9 @@ import { useToast } from '@renderer/lib/toast'
 import { setUpdateState, useUpdates } from '@renderer/lib/updates'
 import { cn } from '@renderer/lib/utils'
 
-/** Ação só ícone, sem fundo, como as do cabeçalho. */
 const iconButtonClass =
   'flex size-[34px] shrink-0 cursor-pointer items-center justify-center rounded-control text-ink-soft transition-colors hover:text-ink focus-visible:outline-2 focus-visible:outline-accent [&_svg]:size-4 [&_svg]:stroke-[1.75]'
 
-/**
- * Atalho de atualização no canto direito do rodapé das Configurações, ao lado de "Voltar": a seta
- * de download procura a versão nova na hora (e avisa quando já é a mais nova); com a nova já
- * baixada, vira "reiniciar e atualizar". A versão e o canal ficam em Configurações → Geral. Sem
- * atualização automática (Mac), não aparece.
- */
 export function UpdateCorner(): React.JSX.Element | null {
   const state = useUpdates()
   const toast = useToast()

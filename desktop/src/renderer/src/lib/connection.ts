@@ -2,12 +2,7 @@ import { useSyncExternalStore } from 'react'
 import type { ConnectionInfo } from '@shared/api'
 
 type Snapshot = {
-  /** null até a primeira resposta do main (uma fração de segundo na abertura). */
   info: ConnectionInfo | null
-  /**
-   * Já conectou ao outro computador desde que o app abriu (ou desde que trocou de computador).
-   * Separa "nunca conectou" (a tela inteira avisa) de "caiu" (os dados ficam, com um aviso).
-   */
   everConnected: boolean
 }
 
@@ -32,7 +27,6 @@ function subscribe(listener: () => void): () => void {
   return () => listeners.delete(listener)
 }
 
-/** Papel deste computador e estado da conexão com o outro (Configurações / Conexão). */
 export function useConnection(): Snapshot {
   return useSyncExternalStore(subscribe, () => snapshot)
 }

@@ -6,7 +6,6 @@ import { openDatabase, type Db } from './connection'
 import { SCHEMA_VERSION } from './migrations'
 import { PATIENT_FIELDS } from '../../shared/schemas'
 
-/** Validação anterior à migração: uma base vazia não pode tomar o lugar dos dados. */
 function inspect(file: string): void {
   const candidate = new Database(file, { readonly: true, fileMustExist: true })
   try {
@@ -15,7 +14,6 @@ function inspect(file: string): void {
       throw new Error('Versão do banco incompatível com esta versão do Auri.')
     if (candidate.pragma('integrity_check', { simple: true }) !== 'ok')
       throw new Error('O banco de recuperação está danificado.')
-    // Verifica também o contrato das tabelas, e não somente a integridade do arquivo SQLite.
     candidate.prepare('SELECT id FROM patients LIMIT 0').all()
     candidate.prepare('SELECT id, patient_id FROM appointments LIMIT 0').all()
     if ((candidate.pragma('foreign_key_check') as unknown[]).length !== 0)
@@ -25,10 +23,6 @@ function inspect(file: string): void {
   }
 }
 
-/**
- * Prepara e migra uma cópia no mesmo volume antes de fechar o banco atual. A troca é por rename;
- * falha ao promover ou abrir a cópia repõe o arquivo anterior. O chamador reabre o banco após erro.
- */
 export function restoreDatabase(current: Db, file: string, source: string): Db {
   if (resolve(source) === resolve(file)) throw new Error('Escolha outro arquivo para restaurar.')
   const stage = `${file}.restore-${randomUUID()}`

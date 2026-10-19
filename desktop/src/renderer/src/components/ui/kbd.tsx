@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react'
 import { cn } from '@renderer/lib/utils'
 
-/** Tecla de atalho, como em "⌘ ↵". */
 export function Kbd({
   children,
   className

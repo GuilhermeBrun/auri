@@ -1,12 +1,3 @@
-// Teste de ponta a ponta do Auri aberto de verdade (janela, IPC, banco, disco), dirigido pelo
-// protocolo do DevTools. Roda no CI (Windows e Mac) depois do `npm run build`:
-//
-//   node scripts/e2e.mjs [pasta-de-saída]
-//
-// Usa uma pasta de dados temporária e só dados fictícios. As janelas nativas de salvar/abrir são
-// trocadas por respostas prontas no processo main (são do Electron, não do Auri). Com
-// AURI_E2E_INSTALAR=1 também baixa e roda o instalador oficial do Google Drive (só em máquina
-// descartável, como o CI). Salva capturas de tela na pasta de saída.
 import { execFileSync, spawn } from 'node:child_process'
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
@@ -47,7 +38,6 @@ const app = spawn(
 app.stdout.on('data', (d) => process.stdout.write(`[app] ${d}`))
 app.stderr.on('data', (d) => process.stdout.write(`[app] ${d}`))
 
-/** Conexão CDP com a janela (`page`) ou com o processo main (`node`). */
 async function connect(port, type) {
   for (let i = 0; i < 60; i++) {
     try {
@@ -91,9 +81,7 @@ async function connect(port, type) {
           }
         }
       }
-    } catch {
-      // ainda abrindo
-    }
+    } catch {}
     await sleep(1000)
   }
   throw new Error(`não conectou na porta ${port}`)
@@ -105,7 +93,6 @@ async function shot(page, name) {
   writeFileSync(join(out, `${name}.png`), Buffer.from(res.result.data, 'base64'))
 }
 
-/** Tela inteira do Windows (para ver janelas fora do Auri, como o instalador). */
 function desktopShot(name) {
   if (process.platform !== 'win32') return
   const file = join(out, `${name}.png`).replace(/'/g, "''")
@@ -124,11 +111,6 @@ function desktopShot(name) {
   }
 }
 
-/**
- * Windows: aceita o instalador do Google Drive como o usuário faria. A janela dele não expõe os
- * botões à automação de interface, então: acha a janela "Google Drive", traz para a frente e
- * aperta Enter ("Install" é o botão padrão); se ela continuar lá, clica na posição do botão.
- */
 function acceptGoogleInstaller(seconds) {
   if (process.platform !== 'win32') return false
   const script = `
@@ -167,7 +149,6 @@ for ($i = 0; $i -lt ${seconds}; $i++) {
 }
 'nao achou'
 `
-  // PowerShell 5.1 pelo caminho do sistema e sem o PSModulePath do PowerShell 7 do CI
   const env = Object.fromEntries(
     Object.entries(process.env).filter(([key]) => key.toLowerCase() !== 'psmodulepath')
   )
@@ -203,7 +184,6 @@ async function run() {
   await sleep(2000)
   console.log(`plataforma: ${await page.eval('window.platform')}`)
 
-  // Primeira abertura: "Já usa o Auri?"
   const welcome = await page.eval(`document.body.textContent.includes('Já usa o Auri?')`)
   check('primeira abertura mostra "Já usa o Auri?"', welcome)
   await shot(page, '01-boas-vindas')
@@ -211,7 +191,6 @@ async function run() {
     `[...document.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Começar do zero')?.click()`
   )
 
-  // Janelas nativas: respostas prontas no main
   await main.eval(`(() => {
     const { dialog } = require('electron')
     globalThis.__open = null
@@ -221,7 +200,6 @@ async function run() {
     return true
   })()`)
 
-  // Dados fictícios
   const count = await page.eval(`(async () => {
     const blank = Object.fromEntries('${FIELDS}'.split(',').map((f) => [f, '']))
     for (const nome of ['Ana Teste', 'Bruno Teste', 'Carla Teste']) {
@@ -233,7 +211,6 @@ async function run() {
   })()`)
   check('cadastra pacientes fictícios', count === 3)
 
-  // Nuvens detectadas neste sistema
   const providers = await page.eval(`window.backup.providers()`)
   console.log(`nuvens: ${providers.map((p) => `${p.id}=${p.state}`).join(', ')}`)
   check('detecta as nuvens do sistema', providers.length >= 2)
@@ -241,7 +218,6 @@ async function run() {
   await sleep(3500)
   await shot(page, '02-assistente-nuvens')
 
-  // Liga a cópia numa pasta (como se fosse a da nuvem)
   const code = await page.eval(`(async () => {
     const r = await window.backup.setup({ kind: 'folder', folder: ${JSON.stringify(cloud)} }, 'senha-boa-123')
     for (let i = 0; i < 40 && !(await window.backup.info()).lastSuccessAt; i++) await new Promise((r) => setTimeout(r, 250))
@@ -252,7 +228,6 @@ async function run() {
   check('liga a cópia e grava a primeira cópia cifrada', files.length === 1, files[0])
   await shot(page, '03-copia-ligada')
 
-  // Senha
   const password = await page.eval(`(async () => {
     const r = {}
     try { await window.backup.changePassword('errada', 'outra-senha-1') } catch (e) { r.wrong = e.message }
@@ -268,7 +243,6 @@ async function run() {
     JSON.stringify(password)
   )
 
-  // Restaurar e desfazer
   const restore = await page.eval(`(async () => {
     const blank = Object.fromEntries('${FIELDS}'.split(',').map((f) => [f, '']))
     await window.api.patients.create({ ...blank, nome: 'Depois Teste' })
@@ -286,15 +260,12 @@ async function run() {
     JSON.stringify(restore)
   )
 
-  // Escolher arquivo (janela de abrir) e restaurar com a senha num "outro computador" não dá aqui;
-  // a cópia escolhida por arquivo, sim
   await main.eval(`globalThis.__open = ${JSON.stringify(join(copies, files[0] ?? 'x'))}`)
   const picked = await page.eval(
     `window.backup.pickFile().then((e) => e && { own: e.own, n: e.counts.patients })`
   )
   check('escolhe uma cópia pela janela de abrir', picked?.own === true && picked.n === 3)
 
-  // Configurações: exportar, importar (prévia) e aplicar
   const settingsFile = join(work, 'Auri - configurações.auriconfig')
   await main.eval(`globalThis.__save = ${JSON.stringify(settingsFile)}`)
   await page.eval(`(async () => {
@@ -325,7 +296,6 @@ async function run() {
   await page.eval(`location.hash = '#/configuracoes/copia'`)
   await shot(page, '05-copia-de-seguranca')
 
-  // Instalação real do Google Drive (só em máquina descartável)
   if (process.env.AURI_E2E_INSTALAR) {
     await page.eval(`window.backup.disable()`)
     await sleep(1500)
@@ -335,7 +305,6 @@ async function run() {
       return !!button
     })()`)
     check('clica em "Instalar" no cartão do Google Drive', clicked)
-    // o instalador baixa (~300 MB) e abre a janela "Install Google Drive?": o usuário clica em Install
     const confirmed = acceptGoogleInstaller(300)
     check('a janela do instalador do Google aparece e aceita "Install"', confirmed)
     desktopShot('06-depois-do-install')
@@ -366,8 +335,6 @@ async function run() {
     const screen = await page.eval(`document.body.textContent.includes('Abrir o Google Drive')`)
     check('o cartão oferece "Abrir o Google Drive"', screen)
 
-    // OneDrive: no Windows ele pode já vir instalado; senão, "Instalar" (o instalador da
-    // Microsoft não pede clique)
     if (process.platform === 'win32') {
       const onedrive = async () =>
         (await page.eval(`window.backup.providers()`)).find((p) => p.id === 'onedrive').state
@@ -387,7 +354,6 @@ async function run() {
           od = await onedrive()
         }
       }
-      // o que o OneDrive grava antes do login (para a detecção não confundir com conta conectada)
       try {
         const reg = execFileSync(
           'reg',
@@ -401,8 +367,6 @@ async function run() {
         console.log('registro do OneDrive: (sem contas)')
       }
       check('o OneDrive fica instalado (falta entrar na conta)', od === 'signed-out', od)
-      // O registro e o OneDrive.exe aparecem antes do fim da instalação, que às vezes leva quase
-      // um minuto: abrir antes disso não mostra nada (como quem clica com o instalador na tela).
       const running = (image) =>
         new RegExp(image.replace('.', '\\.'), 'i').test(
           execFileSync('tasklist', ['/FI', `IMAGENAME eq ${image}`], { encoding: 'utf8' })

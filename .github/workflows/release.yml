@@ -1,17 +1,7 @@
 name: Release
 
-# Alpha: todo dia, se o app mudou no main (desktop/ ou .github/, sem contar documentação nem o
-# site), sai `X.Y.Z-alpha.AAAAMMDD.N` só para Windows (quem escolhe o canal Alpha em Configurações ›
-# Geral). Estável: manual, promove o commit do último alpha, que já foi usado, para Windows e Mac
-# (Apple Silicon). A versão é gravada só no build: não há PR de versão.
-#
-#   gh workflow run release.yml -f channel=alpha
-#   gh workflow run release.yml -f channel=stable            # versão = base do último alpha
-#   gh workflow run release.yml -f channel=stable -f version=1.2.0
-#   gh workflow run release.yml -f channel=site              # só remonta o site, sem release
 on:
   schedule:
-    # 06:17 UTC (02:17 em Cuiabá), fora do minuto zero, quando o Actions fica mais cheio.
     - cron: '17 6 * * *'
   workflow_dispatch:
     inputs:
@@ -28,7 +18,6 @@ on:
 permissions:
   contents: read
 
-# Uma release por vez, sem cancelar uma que já está publicando.
 concurrency:
   group: release
   cancel-in-progress: false
@@ -36,7 +25,6 @@ concurrency:
 jobs:
   resolve:
     name: Resolver versão
-    # `site` não publica release: só o job Atualização roda.
     if: inputs.channel != 'site'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -72,8 +60,6 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # O alpha é só Windows: o minuto do Mac custa 10x. No alpha, o Mac recebe a estável
-        # (o alpha-mac.yml que a estável também escreve).
         platform: ${{ needs.resolve.outputs.prerelease == 'true' && fromJSON('["win32"]') || fromJSON('["win32","darwin"]') }}
     runs-on: ${{ matrix.platform == 'win32' && 'windows-latest' || 'macos-latest' }}
     timeout-minutes: 45
@@ -88,10 +74,6 @@ jobs:
       - uses: ./.github/actions/setup-deps
       - name: Gravar a versão
         run: npm version ${{ needs.resolve.outputs.version }} --no-git-tag-version --allow-same-version
-      # `--publish never`: o instalador sai com o endereço de atualização (electron-builder.yml),
-      # mas quem publica são os jobs abaixo. No Mac, com os segredos da Apple, assina com o
-      # Developer ID e notariza (sem eles, sai ad-hoc e não se atualiza sozinho; ver docs/ci.md).
-      # Os segredos só vão para o job do Mac: no Windows o CSC_LINK seria usado para assinar o .exe.
       - name: Gerar o instalador
         shell: bash
         env:
@@ -102,8 +84,6 @@ jobs:
           APPLE_APP_SPECIFIC_PASSWORD: ${{ matrix.platform == 'darwin' && secrets.APPLE_APP_SPECIFIC_PASSWORD || '' }}
           APPLE_TEAM_ID: ${{ matrix.platform == 'darwin' && secrets.APPLE_TEAM_ID || '' }}
         run: |
-          # Segredo ausente chega como texto vazio, e o electron-builder lê um CSC_LINK vazio como a
-          # pasta do projeto ("not a file"): sem valor, a variável nem existe.
           for name in CSC_LINK CSC_KEY_PASSWORD APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID; do
             [ -n "${!name}" ] || unset "$name"
           done
@@ -127,8 +107,6 @@ jobs:
             !desktop/dist/builder-debug.yml
             !desktop/dist/builder-effective-config.yaml
           if-no-files-found: error
-          # O job Publicar baixa logo em seguida e a release guarda os arquivos (sem custo):
-          # o artefato só ocupa o armazenamento pago do Actions.
           retention-days: 1
 
   publish:
@@ -157,11 +135,6 @@ jobs:
           if [ "$PRERELEASE" = true ]; then flags+=(--prerelease); else flags+=(--latest); fi
           gh release create "$TAG" "${flags[@]}" entrega/*
 
-  # O repositório é público: os instaladores e os latest/alpha.yml ficam nas releases do GitHub.
-  # O Auri instalado procura versões em atualizacoes.auri.dev.br (Vercel), cujo build lê as
-  # releases e grava no site os .yml com os instaladores apontando para o GitHub
-  # (web/scripts/prerender.mjs). Este job só pede esse build. Com `channel=site`, roda sozinho (os
-  # jobs de cima ficam de fora), para refazer o site sem release.
   atualizacao:
     name: Atualização
     needs: publish

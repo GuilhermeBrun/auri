@@ -1,5 +1,3 @@
-// Dados da página de download, montados no build a partir das GitHub Releases (feed.ts).
-
 import { downloadUrl } from './feed'
 
 export type Release = {
@@ -8,7 +6,6 @@ export type Release = {
   assets: { name: string; size?: number }[]
 }
 
-/** Releases publicadas: a última estável, o alpha mais novo e os arquivos que o site oferece. */
 export type Releases = {
   stable: Release | null
   alpha: Release | null
@@ -35,7 +32,6 @@ export const longDate = (iso: string) =>
     timeZone: 'America/Sao_Paulo'
   }).format(new Date(iso))
 
-/** Instalador de `os` de `release`, com o endereço no GitHub e o tamanho, ou nada. */
 function installer(release: Release, files: Releases['files'], os: Os): Installer | null {
   const file = files.find((file) => file.tag === release.tag && SYSTEMS[os].pattern.test(file.name))
   if (!file) return null
@@ -43,7 +39,6 @@ function installer(release: Release, files: Releases['files'], os: Os): Installe
   return { os, name: file.name, url: downloadUrl(release.tag, file.name), size: asset?.size }
 }
 
-/** O que a página mostra: a estável, ou o alpha enquanto ainda não houver estável. */
 export function downloadInfo({ stable, alpha, files }: Releases) {
   const main = stable ?? alpha
   if (!main) throw new Error('releases.json sem estável nem alpha.')

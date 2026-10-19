@@ -27,23 +27,15 @@ import {
 
 type Operation = {
   run: (db: Db, args: unknown[]) => unknown
-  /** O que muda quando a operação dá certo: vira aviso para as telas abertas (aqui e na rede). */
   changes?: DataTopic[]
 }
 
-/** `updated_at` de quando o registro foi aberto na tela (ver `assertUnchanged`). */
 const expectedSchema = z
   .string()
   .max(40)
   .nullish()
   .transform((v) => v ?? undefined)
 
-/**
- * Tudo o que as telas podem pedir ao banco. O IPC local e o servidor de rede usam este mesmo
- * registro, então a validação, as regras (ex.: horário ocupado) e as mensagens são as mesmas pelos
- * dois caminhos. Cada entrada valida os argumentos no main: quem chama nunca é tratado como
- * confiável.
- */
 const OPERATIONS: Record<string, Operation> = {
   'patients:list': {
     run: (db, [filter]) => listPatients(db, patientFilterSchema.parse(filter ?? {}))
@@ -61,7 +53,6 @@ const OPERATIONS: Record<string, Operation> = {
         patientInputSchema.parse(input),
         expectedSchema.parse(expected)
       ),
-    // o nome do paciente aparece nas sessões da agenda
     changes: ['patients', 'appointments']
   },
   'patients:setAtivo': {
@@ -125,10 +116,6 @@ export function errorMessage(error: unknown): string {
   return 'Erro inesperado'
 }
 
-/**
- * Executa uma operação e devolve o resultado como `IpcResult` (erros viram mensagem legível).
- * `onChange` recebe o que mudou quando uma gravação dá certo.
- */
 export function runOperation(
   db: Db,
   channel: string,
@@ -142,8 +129,6 @@ export function runOperation(
     if (operation.changes) onChange?.(operation.changes)
     return { ok: true, data }
   } catch (error) {
-    // Nunca os argumentos nem as mensagens das regras ("Esse horário já está ocupado: <nome>"),
-    // que têm dados de pacientes; só o texto de erros do banco (ex.: "database is locked").
     const name = error instanceof Error ? error.name : typeof error
     console.error(`[operação] ${channel}: ${name === 'SqliteError' ? errorMessage(error) : name}`)
     return { ok: false, error: errorMessage(error) }

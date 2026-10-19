@@ -2,10 +2,6 @@ import type Database from 'better-sqlite3'
 
 const NOW = `(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`
 
-/**
- * Cada item é uma versão do banco. Nunca altere uma migration já publicada:
- * acrescente uma nova no final. A versão atual fica em PRAGMA user_version.
- */
 const MIGRATIONS: string[] = [
   `
   CREATE TABLE patients (
@@ -50,7 +46,6 @@ const MIGRATIONS: string[] = [
   CREATE INDEX appointments_inicio ON appointments (inicio);
   CREATE INDEX appointments_patient ON appointments (patient_id);
   `,
-  // Registro da sessão (tipo, presença e evolução) e anamnese
   `
   ALTER TABLE appointments ADD COLUMN tipo TEXT NOT NULL DEFAULT 'sessao'
     CHECK (tipo IN ('sessao', 'avaliacao'));

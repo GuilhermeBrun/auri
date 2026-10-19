@@ -5,10 +5,6 @@ import { Button } from '@renderer/components/ui/button'
 import { ErrorText } from '@renderer/components/ui/section'
 import { Sensitive } from '@renderer/components/ui/sensitive'
 
-/**
- * Código de recuperação recém-gerado: borrado até clicar (como o código de pareamento), com
- * Copiar e Imprimir. É a única vez que ele aparece; o Auri não guarda o código.
- */
 export function RecoveryCode({ code }: { code: string }): React.JSX.Element {
   const [copied, setCopied] = useState(false)
   const print = useMutation({ mutationFn: () => window.backup.printRecoveryCode(code) })

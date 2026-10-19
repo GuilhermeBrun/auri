@@ -31,7 +31,6 @@ function fromRow(row: AppointmentRow): Appointment {
 const orNull = (value: string): string | null => (value === '' ? null : value)
 
 function toParams(input: AppointmentInput): Record<string, string | number | null> {
-  // os campos do registro são opcionais na entrada: o schema completa com os padrões
   const full = appointmentInputSchema.parse(input)
   return {
     patient_id: full.patient_id,
@@ -49,12 +48,6 @@ function assertPatientExists(db: Db, patientId: number): void {
   if (!row) throw new Error('Paciente não encontrado')
 }
 
-/**
- * Só há um profissional, então dois pacientes não podem ocupar o mesmo horário. Sessões encostadas
- * (uma termina às 14:30, a outra começa às 14:30) não se sobrepõem. `ignoreId` é a própria sessão
- * ao editar. Fica aqui, e não só no formulário, para valer para qualquer chamada da API; o driver é
- * síncrono, então nada entra entre esta checagem e a gravação.
- */
 function assertSlotFree(
   db: Db,
   input: Pick<AppointmentInput, 'inicio' | 'fim'>,
@@ -86,7 +79,6 @@ export function getAppointment(db: Db, id: number): Appointment {
   return fromRow(row)
 }
 
-/** Todas as sessões do paciente, da mais nova para a mais antiga (o histórico da ficha). */
 export function listPatientAppointments(db: Db, patientId: number): Appointment[] {
   const rows = db
     .prepare(`${SELECT} WHERE a.patient_id = ? ORDER BY a.inicio DESC, a.id DESC`)
@@ -94,7 +86,6 @@ export function listPatientAppointments(db: Db, patientId: number): Appointment[
   return rows.map(fromRow)
 }
 
-/** Agendamentos que se sobrepõem a [de, ate). Datas locais em texto ISO comparam em ordem. */
 export function listAppointments(db: Db, de: string, ate: string): Appointment[] {
   const rows = db
     .prepare(`${SELECT} WHERE a.inicio < @ate AND a.fim > @de ORDER BY a.inicio, p.nome`)
@@ -114,7 +105,6 @@ export function createAppointment(db: Db, input: AppointmentInput): Appointment 
   return getAppointment(db, Number(result.lastInsertRowid))
 }
 
-/** `expected`: ver `updatePatient`. */
 export function updateAppointment(
   db: Db,
   id: number,

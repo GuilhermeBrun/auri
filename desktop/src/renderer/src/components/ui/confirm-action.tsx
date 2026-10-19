@@ -2,26 +2,17 @@ import { useState, type ReactNode } from 'react'
 import { Button } from '@renderer/components/ui/button'
 
 type ConfirmActionProps = {
-  /** Primeiro botão (`danger-ghost`), com ícone se houver: "Excluir agendamento". */
   children: ReactNode
-  /** A pergunta do segundo passo ("Excluir este agendamento?"). */
   question: string
-  /** O verbo de novo, nunca "Sim" ("Excluir", "Remover"). */
   confirmLabel: ReactNode
-  /** Desiste e volta ao primeiro botão. "Cancelar" por padrão; num rodapé que já tem Cancelar, "Manter". */
   cancelLabel?: string
   onConfirm: () => void
   loading?: boolean
   size?: 'sm' | 'md'
-  /** Controlado por fora, quando o resto da tela muda durante a confirmação. */
   confirming?: boolean
   onConfirmingChange?: (confirming: boolean) => void
 }
 
-/**
- * Confirmação em dois passos no próprio lugar, para apagar sem abrir outro diálogo: o botão vira
- * a pergunta, com desistir e confirmar, num fade. Depois, um aviso com "Desfazer" quando der.
- */
 export function ConfirmAction({
   children,
   question,

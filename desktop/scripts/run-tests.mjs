@@ -1,5 +1,3 @@
-// Roda o Vitest com o Node embutido no Electron: o better-sqlite3 é compilado
-// para o Electron e não carrega no Node do sistema.
 import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import electron from 'electron'

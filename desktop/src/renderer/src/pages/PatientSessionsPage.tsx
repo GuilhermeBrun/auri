@@ -78,7 +78,6 @@ function PatientSessionsPage({ patientId }: { patientId: number }): React.JSX.El
           onSchedule={schedule}
         />
       ) : patient.data ? (
-        // com o paciente já em mãos, nome e abas ficam no lugar enquanto as sessões chegam
         <div className={PATIENT_COLUMN}>
           <PatientHeader
             nome={patient.data.nome}
@@ -100,7 +99,6 @@ function capitalize(text: string): string {
   return text.charAt(0).toUpperCase() + text.slice(1)
 }
 
-/** "sáb", sem o ponto que o date-fns põe na abreviação. */
 function weekdayShort(date: Date): string {
   return format(date, 'EEE', { locale: ptBR }).replace('.', '').slice(0, 3)
 }
@@ -109,7 +107,6 @@ function timeRange(a: Appointment): string {
   return `${formatTime(parseIsoLocalDateTime(a.inicio))}–${formatTime(parseIsoLocalDateTime(a.fim))}`
 }
 
-/** Nome completo da data, para quem ouve a tela: o bloco visível só mostra o dia e a semana. */
 function spokenDate(date: Date): string {
   return format(date, "EEEE, d 'de' MMMM 'de' yyyy", { locale: ptBR })
 }
@@ -125,8 +122,6 @@ function SessionList({
   onOpen: (appointment: Appointment) => void
   onSchedule: () => void
 }): React.JSX.Element {
-  // a lista vem da mais nova para a mais antiga; as próximas aparecem da mais perto para a mais longe
-  // "agora" de quando a lista abriu: uma sessão não muda de grupo enquanto se olha para ela
   const [now] = useState(() => new Date())
   const { upcoming, past } = useMemo(() => {
     const started = (a: Appointment): boolean => parseIsoLocalDateTime(a.inicio) <= now
@@ -169,7 +164,6 @@ function SessionList({
   )
 }
 
-/** "hoje", "amanhã", "em 3 dias". */
 function relativeDay(date: Date, now: Date): string {
   const days = differenceInCalendarDays(date, now)
   if (days === 0) return 'hoje'
@@ -177,7 +171,6 @@ function relativeDay(date: Date, now: Date): string {
   return `em ${days} dias`
 }
 
-/** As próximas, em blocos lado a lado: ainda não têm presença nem evolução para mostrar. */
 function Upcoming({
   sessions,
   now,
@@ -220,7 +213,6 @@ function Upcoming({
   )
 }
 
-/** Dia grande e dia da semana pequeno, como no cabeçalho da agenda. */
 function DateBlock({
   date,
   muted,
@@ -249,7 +241,6 @@ function DateBlock({
   )
 }
 
-/** As anteriores agrupadas por mês, como as folhas de papel; a mais nova primeiro. */
 function Past({
   sessions,
   now,
@@ -307,7 +298,6 @@ const PRESENCA_ICONS: Record<Presenca, React.ReactNode> = {
   desmarcou: <Undo2 />
 }
 
-/** Uma linha da tabela DATA / PRESENÇA da folha: quando, o tipo, a evolução e a presença. */
 function SessionRow({
   appointment: a,
   onOpen
