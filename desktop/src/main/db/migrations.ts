@@ -2,6 +2,31 @@ import type Database from 'better-sqlite3'
 
 const NOW = `(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`
 
+function onlyVoid(table: string, columns: string[]): string {
+  const changed = columns.map((c) => `NEW.${c} IS NOT OLD.${c}`).join(' OR ')
+  return `
+  CREATE TRIGGER ${table}_only_void
+  BEFORE UPDATE ON ${table}
+  WHEN OLD.estornado_em IS NOT NULL OR NEW.estornado_em IS NULL
+    OR length(trim(coalesce(NEW.estorno_motivo, ''))) = 0
+    OR length(trim(coalesce(NEW.estorno_computador, ''))) = 0
+    OR ${changed}
+  BEGIN
+    SELECT RAISE(ABORT, 'Um lançamento não muda: só pode ser estornado, uma vez.');
+  END;
+
+  CREATE TRIGGER ${table}_no_delete
+  BEFORE DELETE ON ${table}
+  BEGIN
+    SELECT RAISE(ABORT, 'Um lançamento não pode ser apagado: estorne.');
+  END;`
+}
+
+const VOID_COLUMNS = `
+    estornado_em       TEXT,
+    estorno_motivo     TEXT,
+    estorno_computador TEXT`
+
 const MIGRATIONS: string[] = [
   `
   CREATE TABLE patients (
@@ -290,6 +315,115 @@ const MIGRATIONS: string[] = [
   BEGIN
     SELECT RAISE(ABORT, 'Um termo assinado não pode ser apagado.');
   END;
+  `,
+  `
+  CREATE TABLE finance_services (
+    id             INTEGER PRIMARY KEY,
+    nome           TEXT NOT NULL CHECK (length(trim(nome)) > 0),
+    valor_centavos INTEGER NOT NULL CHECK (valor_centavos >= 0),
+    arquivado_em   TEXT,
+    created_at     TEXT NOT NULL DEFAULT ${NOW},
+    updated_at     TEXT NOT NULL DEFAULT ${NOW}
+  );
+
+  CREATE TABLE finance_plans (
+    id             INTEGER PRIMARY KEY,
+    nome           TEXT NOT NULL CHECK (length(trim(nome)) > 0),
+    sessoes        INTEGER NOT NULL CHECK (sessoes BETWEEN 1 AND 100),
+    valor_centavos INTEGER NOT NULL CHECK (valor_centavos > 0),
+    validade_dias  INTEGER CHECK (validade_dias BETWEEN 1 AND 730),
+    arquivado_em   TEXT,
+    created_at     TEXT NOT NULL DEFAULT ${NOW},
+    updated_at     TEXT NOT NULL DEFAULT ${NOW}
+  );
+
+  CREATE TABLE finance_insurers (
+    id                    INTEGER PRIMARY KEY,
+    nome                  TEXT NOT NULL CHECK (length(trim(nome)) > 0),
+    valor_sessao_centavos INTEGER NOT NULL CHECK (valor_sessao_centavos >= 0),
+    arquivado_em          TEXT,
+    created_at            TEXT NOT NULL DEFAULT ${NOW},
+    updated_at            TEXT NOT NULL DEFAULT ${NOW}
+  );
+
+  CREATE TABLE finance_billing (
+    patient_id  INTEGER PRIMARY KEY REFERENCES patients (id) ON DELETE RESTRICT,
+    forma       TEXT NOT NULL CHECK (forma IN ('particular', 'pacote', 'convenio')),
+    service_id  INTEGER REFERENCES finance_services (id) ON DELETE RESTRICT,
+    insurer_id  INTEGER REFERENCES finance_insurers (id) ON DELETE RESTRICT,
+    carteirinha TEXT,
+    desde       TEXT NOT NULL,
+    created_at  TEXT NOT NULL DEFAULT ${NOW},
+    updated_at  TEXT NOT NULL DEFAULT ${NOW},
+    CHECK (forma = 'convenio' OR service_id IS NOT NULL),
+    CHECK (forma <> 'convenio' OR insurer_id IS NOT NULL)
+  );
+
+  CREATE TABLE finance_packages (
+    id             INTEGER PRIMARY KEY,
+    patient_id     INTEGER NOT NULL REFERENCES patients (id) ON DELETE RESTRICT,
+    plan_id        INTEGER REFERENCES finance_plans (id) ON DELETE RESTRICT,
+    nome           TEXT NOT NULL CHECK (length(trim(nome)) > 0),
+    sessoes        INTEGER NOT NULL CHECK (sessoes >= 1),
+    valor_centavos INTEGER NOT NULL CHECK (valor_centavos >= 0),
+    inicio         TEXT NOT NULL,
+    validade       TEXT CHECK (validade >= inicio),
+    computador     TEXT NOT NULL,
+    created_at     TEXT NOT NULL DEFAULT ${NOW},${VOID_COLUMNS}
+  );
+
+  CREATE INDEX finance_packages_patient ON finance_packages (patient_id);
+
+  CREATE TABLE finance_charges (
+    id             INTEGER PRIMARY KEY,
+    patient_id     INTEGER NOT NULL REFERENCES patients (id) ON DELETE RESTRICT,
+    data           TEXT NOT NULL,
+    descricao      TEXT NOT NULL CHECK (length(trim(descricao)) > 0),
+    valor_centavos INTEGER NOT NULL CHECK (valor_centavos >= 0),
+    motivo         TEXT NOT NULL CHECK (motivo IN ('sessao', 'falta_cobrada', 'pacote', 'avulsa')),
+    appointment_id INTEGER REFERENCES appointments (id) ON DELETE RESTRICT,
+    package_id     INTEGER REFERENCES finance_packages (id) ON DELETE RESTRICT,
+    insurer_id     INTEGER REFERENCES finance_insurers (id) ON DELETE RESTRICT,
+    computador     TEXT NOT NULL,
+    created_at     TEXT NOT NULL DEFAULT ${NOW},${VOID_COLUMNS},
+    CHECK ((motivo IN ('sessao', 'falta_cobrada')) = (appointment_id IS NOT NULL)),
+    CHECK ((motivo = 'pacote') = (package_id IS NOT NULL))
+  );
+
+  CREATE INDEX finance_charges_patient ON finance_charges (patient_id);
+  CREATE UNIQUE INDEX finance_charges_one_per_session ON finance_charges (appointment_id)
+    WHERE appointment_id IS NOT NULL AND estornado_em IS NULL;
+
+  CREATE TABLE finance_package_uses (
+    id             INTEGER PRIMARY KEY,
+    package_id     INTEGER NOT NULL REFERENCES finance_packages (id) ON DELETE RESTRICT,
+    appointment_id INTEGER NOT NULL REFERENCES appointments (id) ON DELETE RESTRICT,
+    computador     TEXT NOT NULL,
+    created_at     TEXT NOT NULL DEFAULT ${NOW},${VOID_COLUMNS}
+  );
+
+  CREATE INDEX finance_package_uses_package ON finance_package_uses (package_id);
+  CREATE UNIQUE INDEX finance_package_uses_one_per_session ON finance_package_uses (appointment_id)
+    WHERE estornado_em IS NULL;
+
+  CREATE TABLE finance_payments (
+    id             INTEGER PRIMARY KEY,
+    patient_id     INTEGER NOT NULL REFERENCES patients (id) ON DELETE RESTRICT,
+    data           TEXT NOT NULL,
+    valor_centavos INTEGER NOT NULL CHECK (valor_centavos > 0),
+    forma          TEXT NOT NULL CHECK (forma IN ('pix', 'dinheiro', 'cartao', 'transferencia')),
+    insurer_id     INTEGER REFERENCES finance_insurers (id) ON DELETE RESTRICT,
+    observacao     TEXT,
+    computador     TEXT NOT NULL,
+    created_at     TEXT NOT NULL DEFAULT ${NOW},${VOID_COLUMNS}
+  );
+
+  CREATE INDEX finance_payments_patient ON finance_payments (patient_id);
+  CREATE INDEX finance_payments_data ON finance_payments (data);
+${onlyVoid('finance_packages', ['id', 'patient_id', 'plan_id', 'nome', 'sessoes', 'valor_centavos', 'inicio', 'validade', 'computador', 'created_at'])}
+${onlyVoid('finance_charges', ['id', 'patient_id', 'data', 'descricao', 'valor_centavos', 'motivo', 'appointment_id', 'package_id', 'insurer_id', 'computador', 'created_at'])}
+${onlyVoid('finance_package_uses', ['id', 'package_id', 'appointment_id', 'computador', 'created_at'])}
+${onlyVoid('finance_payments', ['id', 'patient_id', 'data', 'valor_centavos', 'forma', 'insurer_id', 'observacao', 'computador', 'created_at'])}
   `
 ]
 

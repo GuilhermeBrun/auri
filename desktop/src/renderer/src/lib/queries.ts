@@ -7,6 +7,7 @@ import type {
   TermModel,
   TermRequest
 } from '@shared/schemas'
+import type { FinanceCatalog, FinanceOverview, PatientFinance } from '@shared/finance'
 
 type Query<T> = { queryKey: readonly unknown[]; queryFn: () => Promise<T> }
 
@@ -52,6 +53,24 @@ export function clinicQuery(): Query<Clinic> {
 
 export function termModelsQuery(): Query<TermModel[]> {
   return { queryKey: ['terms', 'models'], queryFn: () => window.api.terms.models() }
+}
+
+export function financeCatalogQuery(): Query<FinanceCatalog> {
+  return { queryKey: ['finance', 'catalog'], queryFn: () => window.api.finance.catalog() }
+}
+
+export function patientFinanceQuery(patientId: number): Query<PatientFinance> {
+  return {
+    queryKey: ['finance', 'patient', patientId],
+    queryFn: () => window.api.finance.patient(patientId)
+  }
+}
+
+export function financeOverviewQuery(de: string, ate: string): Query<FinanceOverview> {
+  return {
+    queryKey: ['finance', 'overview', de, ate],
+    queryFn: () => window.api.finance.overview(de, ate)
+  }
 }
 
 export function patientTermsQuery(patientId: number): Query<TermRequest[]> {

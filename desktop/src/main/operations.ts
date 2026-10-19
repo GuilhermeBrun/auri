@@ -15,6 +15,18 @@ import {
   reportRangeSchema,
   voidMotivoSchema
 } from '../shared/schemas'
+import {
+  billingInputSchema,
+  chargeInputSchema,
+  estornoMotivoSchema,
+  financeRangeSchema,
+  insurerInputSchema,
+  lancamentoSchema,
+  packageInputSchema,
+  paymentInputSchema,
+  planInputSchema,
+  serviceInputSchema
+} from '../shared/finance'
 import { getAnamnese, saveAnamnese } from './db/anamneses'
 import { attendanceReport, listPatientAttendance, signArrival, voidArrival } from './db/attendance'
 import { getClinic, saveClinic } from './db/clinic'
@@ -39,6 +51,25 @@ import {
   updateAppointment
 } from './db/appointments'
 import type { Db } from './db/connection'
+import {
+  addCharge,
+  addPayment,
+  archiveInsurer,
+  archivePlan,
+  archiveService,
+  cobrarFalta,
+  contractPackage,
+  estornar,
+  getCatalog,
+  getOverview,
+  getPatientFinance,
+  lancarSessao,
+  saveInsurer,
+  savePlan,
+  saveService,
+  setBilling,
+  situacaoSessoes
+} from './db/finance'
 import {
   createPatient,
   getPatient,
@@ -199,6 +230,115 @@ const OPERATIONS: Record<string, Operation> = {
         expectedSchema.parse(expected)
       ),
     changes: ['anamneses']
+  },
+
+  'finance:catalog': { run: (db) => getCatalog(db) },
+  'finance:saveService': {
+    run: (db, [id, input]) =>
+      saveService(db, idSchema.nullable().parse(id), serviceInputSchema.parse(input)),
+    changes: ['finance']
+  },
+  'finance:archiveService': {
+    run: (db, [id, arquivado]) =>
+      archiveService(db, idSchema.parse(id), z.boolean().parse(arquivado)),
+    changes: ['finance']
+  },
+  'finance:savePlan': {
+    run: (db, [id, input]) =>
+      savePlan(db, idSchema.nullable().parse(id), planInputSchema.parse(input)),
+    changes: ['finance']
+  },
+  'finance:archivePlan': {
+    run: (db, [id, arquivado]) => archivePlan(db, idSchema.parse(id), z.boolean().parse(arquivado)),
+    changes: ['finance']
+  },
+  'finance:saveInsurer': {
+    run: (db, [id, input]) =>
+      saveInsurer(db, idSchema.nullable().parse(id), insurerInputSchema.parse(input)),
+    changes: ['finance']
+  },
+  'finance:archiveInsurer': {
+    run: (db, [id, arquivado]) =>
+      archiveInsurer(db, idSchema.parse(id), z.boolean().parse(arquivado)),
+    changes: ['finance']
+  },
+  'finance:patient': {
+    run: (db, [patientId]) => getPatientFinance(db, idSchema.parse(patientId))
+  },
+  'finance:setBilling': {
+    run: (db, [patientId, input, expected]) =>
+      setBilling(
+        db,
+        idSchema.parse(patientId),
+        billingInputSchema.parse(input),
+        expectedSchema.parse(expected)
+      ),
+    changes: ['finance']
+  },
+  'finance:contractPackage': {
+    run: (db, [patientId, input, computador]) =>
+      contractPackage(
+        db,
+        idSchema.parse(patientId),
+        packageInputSchema.parse(input),
+        computadorSchema.parse(computador)
+      ),
+    changes: ['finance']
+  },
+  'finance:charge': {
+    run: (db, [patientId, input, computador]) =>
+      addCharge(
+        db,
+        idSchema.parse(patientId),
+        chargeInputSchema.parse(input),
+        computadorSchema.parse(computador)
+      ),
+    changes: ['finance']
+  },
+  'finance:pay': {
+    run: (db, [patientId, input, computador]) =>
+      addPayment(
+        db,
+        idSchema.parse(patientId),
+        paymentInputSchema.parse(input),
+        computadorSchema.parse(computador)
+      ),
+    changes: ['finance']
+  },
+  'finance:launchSession': {
+    run: (db, [appointmentId, computador, serviceId]) =>
+      lancarSessao(
+        db,
+        idSchema.parse(appointmentId),
+        computadorSchema.parse(computador),
+        idSchema.nullish().parse(serviceId) ?? null
+      ),
+    changes: ['finance']
+  },
+  'finance:chargeAbsence': {
+    run: (db, [appointmentId, computador]) =>
+      cobrarFalta(db, idSchema.parse(appointmentId), computadorSchema.parse(computador)),
+    changes: ['finance']
+  },
+  'finance:void': {
+    run: (db, [kind, id, motivo, computador]) =>
+      estornar(
+        db,
+        lancamentoSchema.parse(kind),
+        idSchema.parse(id),
+        estornoMotivoSchema.parse(motivo),
+        computadorSchema.parse(computador)
+      ),
+    changes: ['finance']
+  },
+  'finance:sessionStatus': {
+    run: (db, [ids]) => situacaoSessoes(db, z.array(idSchema).max(500).parse(ids))
+  },
+  'finance:overview': {
+    run: (db, [de, ate]) => {
+      const range = financeRangeSchema.parse({ de, ate })
+      return getOverview(db, range.de, range.ate)
+    }
   }
 }
 

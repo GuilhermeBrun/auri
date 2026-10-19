@@ -19,6 +19,24 @@ import type {
   TermSendResult,
   UiPrefs
 } from './schemas'
+import type {
+  Billing,
+  BillingInput,
+  ChargeInput,
+  FinanceCatalog,
+  FinanceInsurer,
+  FinanceOverview,
+  FinancePlan,
+  FinanceService,
+  InsurerInput,
+  Lancamento,
+  PackageInput,
+  PatientFinance,
+  PaymentInput,
+  PlanInput,
+  ServiceInput,
+  SessionPayStatus
+} from './finance'
 
 export interface AuriApi {
   patients: {
@@ -66,6 +84,29 @@ export interface AuriApi {
     get(patientId: number): Promise<Anamnese>
     save(patientId: number, input: AnamneseInput, expected?: string): Promise<Anamnese>
   }
+  finance: {
+    catalog(): Promise<FinanceCatalog>
+    saveService(id: number | null, input: ServiceInput): Promise<FinanceService>
+    archiveService(id: number, arquivado: boolean): Promise<FinanceService>
+    savePlan(id: number | null, input: PlanInput): Promise<FinancePlan>
+    archivePlan(id: number, arquivado: boolean): Promise<FinancePlan>
+    saveInsurer(id: number | null, input: InsurerInput): Promise<FinanceInsurer>
+    archiveInsurer(id: number, arquivado: boolean): Promise<FinanceInsurer>
+    patient(patientId: number): Promise<PatientFinance>
+    setBilling(patientId: number, input: BillingInput, expected?: string): Promise<Billing>
+    contractPackage(patientId: number, input: PackageInput, computador: string): Promise<number>
+    charge(patientId: number, input: ChargeInput, computador: string): Promise<number>
+    pay(patientId: number, input: PaymentInput, computador: string): Promise<number>
+    launchSession(
+      appointmentId: number,
+      computador: string,
+      serviceId?: number | null
+    ): Promise<{ kind: 'charge' | 'use'; id: number }>
+    chargeAbsence(appointmentId: number, computador: string): Promise<number>
+    void(kind: Lancamento, id: number, motivo: string, computador: string): Promise<number>
+    sessionStatus(appointmentIds: number[]): Promise<SessionPayStatus[]>
+    overview(de: string, ate: string): Promise<FinanceOverview>
+  }
   onChanged(listener: (topics: DataTopic[]) => void): () => void
 }
 
@@ -75,7 +116,8 @@ export const DATA_TOPICS = [
   'anamneses',
   'attendance',
   'clinic',
-  'terms'
+  'terms',
+  'finance'
 ] as const
 export type DataTopic = (typeof DATA_TOPICS)[number]
 

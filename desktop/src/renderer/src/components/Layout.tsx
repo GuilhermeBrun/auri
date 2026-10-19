@@ -11,6 +11,7 @@ import {
   SunMoon,
   TriangleAlert,
   Users,
+  Wallet,
   WifiOff
 } from 'lucide-react'
 import { Fragment, useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
@@ -58,6 +59,7 @@ function AlertDot(): React.JSX.Element {
 const NAV_ITEMS: NavItem[] = [
   { to: '/agenda', label: 'Agenda', icon: <CalendarDays /> },
   { to: '/pacientes', label: 'Pacientes', icon: <Users /> },
+  { to: '/financeiro', label: 'Financeiro', icon: <Wallet /> },
   { to: '/clinica', label: 'Clínica', icon: <Building2 /> }
 ]
 
