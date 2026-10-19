@@ -18,27 +18,14 @@ import {
 import type { Db } from './connection'
 import { listWaitlist } from './waitlist'
 
-const FUNCIONAMENTO_PADRAO: Funcionamento[] = [1, 2, 3, 4, 5, 6].map((dia_semana) => ({
-  dia_semana,
-  abre: '07:00',
-  fecha: '20:00'
-}))
-
-function hasTable(db: Db, name: string): boolean {
-  return Boolean(
-    db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?").get(name)
-  )
-}
-
 export function readFuncionamento(db: Db): Funcionamento[] {
-  if (!hasTable(db, 'clinic_hours')) return FUNCIONAMENTO_PADRAO
   return db
     .prepare('SELECT dia_semana, abre, fecha FROM clinic_hours ORDER BY dia_semana, abre')
     .all() as Funcionamento[]
 }
 
 export function readAtividades(db: Db, patientIds: number[]): AtividadeDoPaciente[] {
-  if (patientIds.length === 0 || !hasTable(db, 'patient_activities')) return []
+  if (patientIds.length === 0) return []
   return db
     .prepare(
       `SELECT patient_id, atividade, dia_semana, inicio, fim FROM patient_activities

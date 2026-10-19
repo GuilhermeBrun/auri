@@ -179,19 +179,15 @@ describe('operações do encaixe', () => {
     expect(runOperation(db, 'waitlist:close', [1, { motivo: 'sumiu' }]).ok).toBe(false)
   })
 
-  it('sem as tabelas das outras partes usa o funcionamento padrão e nenhuma atividade', () => {
+  it('usa o funcionamento padrão da clínica e nenhuma atividade', () => {
     expect(readFuncionamento(db).map((f) => f.dia_semana)).toEqual([1, 2, 3, 4, 5, 6])
     expect(readAtividades(db, [ana])).toEqual([])
   })
 
-  it('lê funcionamento e atividades quando as tabelas existem', () => {
+  it('lê o funcionamento e as atividades do banco', () => {
     db.exec(`
-      CREATE TABLE clinic_hours (dia_semana INTEGER, abre TEXT, fecha TEXT);
-      INSERT INTO clinic_hours VALUES (6, '08:00', '12:00');
-      CREATE TABLE patient_activities (
-        id INTEGER PRIMARY KEY, patient_id INTEGER, atividade TEXT, dia_semana INTEGER,
-        inicio TEXT, fim TEXT
-      );
+      DELETE FROM clinic_hours;
+      INSERT INTO clinic_hours (dia_semana, abre, fecha) VALUES (6, '08:00', '12:00');
     `)
     db.prepare(
       "INSERT INTO patient_activities (patient_id, atividade, dia_semana, inicio, fim) VALUES (?, 'Futebol', 6, '09:00', '10:00')"
@@ -227,14 +223,9 @@ describe('operações do encaixe', () => {
   })
 
   it('diz quem da lista cabe num horário vago', () => {
-    db.exec(`
-      CREATE TABLE patient_activities (
-        patient_id INTEGER, atividade TEXT, dia_semana INTEGER, inicio TEXT, fim TEXT
-      );
-    `)
-    db.prepare("INSERT INTO patient_activities VALUES (?, 'Natação', 3, '13:00', '14:00')").run(
-      bruno
-    )
+    db.prepare(
+      "INSERT INTO patient_activities (patient_id, atividade, dia_semana, inicio, fim) VALUES (?, 'Natação', 3, '13:00', '14:00')"
+    ).run(bruno)
     addToWaitlist(db, { patient_id: ana, duracao: 60 })
     addToWaitlist(db, { patient_id: bruno, duracao: 30, prioridade: 'alta' })
     const cabem = whoFits(db, { inicio: '2026-10-21T14:00', fim: '2026-10-21T15:00' })

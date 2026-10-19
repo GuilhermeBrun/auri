@@ -1,7 +1,9 @@
+import { DIAS_DA_SEMANA_NOMES, type DiaSemana } from '../shared/agenda'
 import { isoToBrDate } from '../shared/dates'
 import { formatCpf, formatPhone } from '../shared/masks'
-import { responsavelDe } from '../shared/responsavel'
-import type { Patient, PatientDocument, PatientInput } from '../shared/schemas'
+import { contatoPrincipal, responsavelDe } from '../shared/responsavel'
+import type { Patient, PatientDocument, PatientField } from '../shared/schemas'
+import { formatSerie } from '../shared/serie'
 import {
   birthLabel,
   documentHeader,
@@ -18,7 +20,7 @@ type Secao = { titulo: string; campos: Campo[] }
 
 const campo = (
   rotulo: string,
-  field: keyof PatientInput,
+  field: PatientField,
   formato: (value: string) => string = (value) => value,
   largo?: boolean
 ): Campo => ({ rotulo, valor: (p) => (p[field] ? formato(p[field]) : ''), largo })
@@ -32,11 +34,7 @@ const pessoa = (prefixo: 'mae' | 'pai', nome: string): Campo[] => [
   campo('Profissão', `${prefixo}_profissao`)
 ]
 
-const outro = (
-  rotulo: string,
-  field: keyof PatientInput,
-  formato?: (value: string) => string
-): Campo => {
+const outro = (rotulo: string, field: PatientField, formato?: (value: string) => string): Campo => {
   const base = campo(rotulo, field, formato)
   return { rotulo, valor: (p, now) => (p.resp_tipo === 'outro' ? base.valor(p, now) : '') }
 }
@@ -51,13 +49,18 @@ export const FICHA: Secao[] = [
         valor: (p, now) => (p.data_nascimento ? birthLabel(p.data_nascimento, now) : '')
       },
       campo('CPF', 'cpf', formatCpf),
+      campo('RG', 'rg'),
       campo('Celular', 'celular', formatPhone),
       campo('E-mail', 'email')
     ]
   },
   {
     titulo: 'Escola',
-    campos: [campo('Escola', 'escola'), campo('Série', 'serie'), campo('Professora', 'professora')]
+    campos: [
+      campo('Escola', 'escola'),
+      { rotulo: 'Série', valor: (p) => formatSerie(p) },
+      campo('Professora', 'professora')
+    ]
   },
   { titulo: 'Mãe', campos: pessoa('mae', 'Nome da mãe') },
   { titulo: 'Pai', campos: pessoa('pai', 'Nome do pai') },
@@ -69,7 +72,17 @@ export const FICHA: Secao[] = [
       outro('CPF', 'resp_cpf', formatCpf),
       outro('RG', 'resp_rg'),
       outro('Celular', 'resp_celular', formatPhone),
-      outro('E-mail', 'resp_email')
+      outro('E-mail', 'resp_email'),
+      {
+        rotulo: 'Contato principal',
+        valor: (p, now) => {
+          const contato = contatoPrincipal(p, now)
+          if (!contato) return ''
+          const celular = contato.celular ? ` · ${formatPhone(contato.celular)}` : ''
+          return `${contato.nome} (${contato.parentesco})${celular}`
+        },
+        largo: true
+      }
     ]
   },
   {
@@ -77,7 +90,24 @@ export const FICHA: Secao[] = [
     campos: [
       campo('Rua e número', 'endereco', undefined, true),
       campo('Bairro', 'bairro'),
-      campo('Cidade', 'cidade')
+      campo('Cidade', 'cidade'),
+      campo('UF', 'uf')
+    ]
+  },
+  {
+    titulo: 'Atividades',
+    campos: [
+      {
+        rotulo: 'Atividades extracurriculares',
+        valor: (p) =>
+          p.atividades
+            .map(
+              (a) =>
+                `${a.atividade}, ${DIAS_DA_SEMANA_NOMES[a.dia_semana as DiaSemana].toLowerCase()} ${a.inicio}–${a.fim}`
+            )
+            .join('; '),
+        largo: true
+      }
     ]
   },
   {

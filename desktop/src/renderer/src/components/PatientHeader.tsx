@@ -51,13 +51,7 @@ export function PatientHeader({
   )
 }
 
-export type PatientTab =
-  | 'ficha'
-  | 'anamnese'
-  | 'sessoes'
-  | 'evolucoes'
-  | 'termos'
-  | 'financeiro'
+export type PatientTab = 'ficha' | 'anamnese' | 'sessoes' | 'evolucoes' | 'termos' | 'financeiro'
 
 const TABS: [PatientTab, string][] = [
   ['ficha', 'Ficha'],

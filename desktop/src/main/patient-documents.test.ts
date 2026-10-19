@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vite-plus/test'
+import { FUNCIONAMENTO_PADRAO } from '../shared/agenda'
 import {
   emptyAnamneseInput,
   emptyPatientInput,
@@ -21,11 +22,13 @@ const clinic: Clinic = {
   profissional: 'Lara Fictícia',
   registro: 'CRFa 0-0000',
   logo: '',
+  funcionamento: FUNCIONAMENTO_PADRAO,
   updated_at: ''
 }
 
 const patient: Patient = {
   ...emptyPatientInput(),
+  atividades: [],
   id: 7,
   nome: 'Helena <Fictícia>',
   data_nascimento: '2019-03-12',
@@ -46,6 +49,7 @@ function sessao(inicio: string, extra: Partial<Appointment> = {}): Appointment {
     presenca: '',
     evolucao: 'Treino de /r/.',
     assinatura: null,
+    confirmado_em: null,
     created_at: '',
     updated_at: '',
     ...extra
@@ -167,7 +171,7 @@ describe('ficha impressa', () => {
     expect(html).toContain('<dt>CPF</dt><dd>123.456.789-09</dd>')
     expect(html).toContain('<dt>Celular</dt><dd>(65) 99999-1234</dd>')
     expect(html).toContain('<dt>RG</dt><dd>1234567 SSP/MT</dd>')
-    expect(html).toContain('<dt>Data de nascimento</dt><dd>12/03/2019 (7 anos)</dd>')
+    expect(html).toContain('<dt>Data de nascimento</dt><dd>12/03/2019 (7 anos e 7 meses)</dd>')
     expect(html).toContain('<dd>Usa óculos\n&lt;i&gt;alergia&lt;/i&gt;</dd>')
     expect(html).toContain('Helena &lt;Fictícia&gt;')
   })
@@ -200,6 +204,42 @@ describe('ficha impressa', () => {
     expect(mae).not.toContain('(65) 3333-4444')
   })
 
+  it('campos novos da ficha: RG, série, UF, contato principal e atividades', () => {
+    const html = patientHtml(
+      {
+        clinic,
+        patient: {
+          ...patient,
+          rg: '12.345.678-9',
+          serie_numero: '3',
+          serie_tipo: 'ano',
+          serie_etapa: 'fundamental',
+          cidade: 'Cuiabá',
+          uf: 'MT',
+          mae_nome: 'Marina Fictícia',
+          mae_celular: '(65) 99999-0000',
+          contato_principal: 'mae',
+          atividades: [
+            {
+              id: 1,
+              patient_id: 7,
+              atividade: 'Natação',
+              dia_semana: 2,
+              inicio: '14:00',
+              fim: '15:00'
+            }
+          ]
+        }
+      },
+      { font: '', now: NOW }
+    )
+    expect(html).toContain('<dt>RG</dt><dd>12.345.678-9</dd>')
+    expect(html).toContain('<dt>Série</dt><dd>3º ano do Fundamental</dd>')
+    expect(html).toContain('<dt>UF</dt><dd>MT</dd>')
+    expect(html).toContain('<dd>Marina Fictícia (Mãe) · (65) 99999-0000</dd>')
+    expect(html).toContain('<dd>Natação, terça 14:00–15:00</dd>')
+  })
+
   it('lista de campos e nome do arquivo', () => {
     expect(FICHA.map((s) => s.titulo)).toEqual([
       'Paciente',
@@ -208,6 +248,7 @@ describe('ficha impressa', () => {
       'Pai',
       'Responsável',
       'Endereço',
+      'Atividades',
       'Outros'
     ])
     expect(patientName({ clinic, patient })).toBe('Ficha - Helena Fictícia.pdf')
