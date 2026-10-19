@@ -348,6 +348,27 @@ const MIGRATIONS: Migration[] = [
     (6, '07:00', '12:00');
 
   ALTER TABLE appointments ADD COLUMN confirmado_em TEXT;
+  `,
+  `
+  CREATE TABLE waitlist_entries (
+    id               INTEGER PRIMARY KEY,
+    patient_id       INTEGER NOT NULL REFERENCES patients (id) ON DELETE RESTRICT,
+    tipo             TEXT NOT NULL DEFAULT 'sessao',
+    duracao          INTEGER NOT NULL CHECK (duracao BETWEEN 15 AND 240 AND duracao % 15 = 0),
+    dias             TEXT NOT NULL DEFAULT '' CHECK (dias NOT GLOB '*[^0-6,]*'),
+    periodos         TEXT NOT NULL DEFAULT '',
+    prioridade       TEXT NOT NULL DEFAULT 'normal' CHECK (prioridade IN ('normal', 'alta')),
+    observacao       TEXT,
+    encerrado_em     TEXT,
+    encerrado_motivo TEXT CHECK (encerrado_motivo IN ('agendado', 'removido')),
+    appointment_id   INTEGER REFERENCES appointments (id) ON DELETE SET NULL,
+    created_at       TEXT NOT NULL DEFAULT ${NOW},
+    updated_at       TEXT NOT NULL DEFAULT ${NOW},
+    CHECK ((encerrado_em IS NULL) = (encerrado_motivo IS NULL))
+  );
+
+  CREATE UNIQUE INDEX waitlist_entries_open ON waitlist_entries (patient_id)
+    WHERE encerrado_em IS NULL;
   `
 ]
 

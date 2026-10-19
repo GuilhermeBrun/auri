@@ -19,6 +19,16 @@ import type {
   TermSendResult,
   UiPrefs
 } from './schemas'
+import type { Sugestao } from './encaixe'
+import type {
+  EncaixeNaVaga,
+  SugestaoPedido,
+  Vaga,
+  WaitlistAdd,
+  WaitlistClose,
+  WaitlistEntry,
+  WaitlistInput
+} from './waitlist'
 
 export interface AuriApi {
   patients: {
@@ -71,6 +81,17 @@ export interface AuriApi {
     get(patientId: number): Promise<Anamnese>
     save(patientId: number, input: AnamneseInput, expected?: string): Promise<Anamnese>
   }
+  waitlist: {
+    list(): Promise<WaitlistEntry[]>
+    getByPatient(patientId: number): Promise<WaitlistEntry | null>
+    add(input: WaitlistAdd): Promise<WaitlistEntry>
+    update(id: number, input: WaitlistInput, expected?: string): Promise<WaitlistEntry>
+    close(id: number, close: WaitlistClose): Promise<void>
+  }
+  encaixe: {
+    sugerir(input: SugestaoPedido): Promise<Sugestao[]>
+    quemCabe(vaga: Vaga): Promise<EncaixeNaVaga[]>
+  }
   onChanged(listener: (topics: DataTopic[]) => void): () => void
 }
 
@@ -80,7 +101,8 @@ export const DATA_TOPICS = [
   'anamneses',
   'attendance',
   'clinic',
-  'terms'
+  'terms',
+  'waitlist'
 ] as const
 export type DataTopic = (typeof DATA_TOPICS)[number]
 

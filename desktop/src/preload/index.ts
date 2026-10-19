@@ -76,6 +76,17 @@ const api: AuriApi = {
     get: (patientId) => invoke('anamneses:get', patientId),
     save: (patientId, input, expected) => invoke('anamneses:save', patientId, input, expected)
   },
+  waitlist: {
+    list: () => invoke('waitlist:list'),
+    getByPatient: (patientId) => invoke('waitlist:getByPatient', patientId),
+    add: (input) => invoke('waitlist:add', input),
+    update: (id, input, expected) => invoke('waitlist:update', id, input, expected),
+    close: (id, close) => invoke('waitlist:close', id, close)
+  },
+  encaixe: {
+    sugerir: (input) => invoke('encaixe:sugerir', input),
+    quemCabe: (vaga) => invoke('encaixe:quemCabe', vaga)
+  },
   onChanged: (listener) => subscribe<DataTopic[]>('data:changed', listener)
 }
 
