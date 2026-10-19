@@ -1,6 +1,8 @@
-import { addDays, differenceInMinutes, setHours, setMinutes, startOfDay } from 'date-fns'
+import { addDays, differenceInMinutes, format, setHours, setMinutes, startOfDay } from 'date-fns'
+import { ptBR } from 'date-fns/locale/pt-BR'
 import { DAY_END_HOUR, DAY_START_HOUR } from '@shared/agenda'
-import type { AppointmentTipo, Presenca } from '@shared/schemas'
+import { formatTime, parseIsoLocalDateTime } from '@shared/dates'
+import type { Appointment, AppointmentTipo, Presenca } from '@shared/schemas'
 
 export const TIPO_LABELS: Record<AppointmentTipo, string> = {
   sessao: 'Sessão',
@@ -29,3 +31,11 @@ export function nextSlot(now: Date): Date {
 }
 
 export const PATIENTS_CRUMB = { label: 'Pacientes', to: '/pacientes' }
+
+export function timeRange(a: Pick<Appointment, 'inicio' | 'fim'>): string {
+  return `${formatTime(parseIsoLocalDateTime(a.inicio))}–${formatTime(parseIsoLocalDateTime(a.fim))}`
+}
+
+export function spokenDate(date: Date): string {
+  return format(date, "EEEE, d 'de' MMMM 'de' yyyy", { locale: ptBR })
+}

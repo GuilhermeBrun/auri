@@ -3,6 +3,7 @@ import { Layout } from './components/Layout'
 import { AgendaPage } from './pages/AgendaPage'
 import { ClinicPage } from './pages/ClinicPage'
 import { PatientAnamneseRoute } from './pages/PatientAnamnesePage'
+import { PatientEvolutionsRoute } from './pages/PatientEvolutionsPage'
 import { PatientFormRoute } from './pages/PatientFormPage'
 import { PatientSessionsRoute } from './pages/PatientSessionsPage'
 import { PatientTermsRoute } from './pages/PatientTermsPage'
@@ -23,6 +24,7 @@ function App(): React.JSX.Element {
         <Route path="pacientes/:id" element={<PatientFormRoute />} />
         <Route path="pacientes/:id/anamnese" element={<PatientAnamneseRoute />} />
         <Route path="pacientes/:id/sessoes" element={<PatientSessionsRoute />} />
+        <Route path="pacientes/:id/evolucoes" element={<PatientEvolutionsRoute />} />
         <Route path="pacientes/:id/termos" element={<PatientTermsRoute />} />
         <Route path="clinica" element={<ClinicPage />} />
         <Route path="clinica/termos/novo" element={<TermModelRoute />} />
