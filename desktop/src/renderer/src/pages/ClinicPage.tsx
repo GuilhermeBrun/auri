@@ -2,33 +2,126 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { format } from 'date-fns'
 import { ChevronRight, FileSignature, ImagePlus, Plus } from 'lucide-react'
-import { useEffect } from 'react'
-import { Controller, useForm, type Control } from 'react-hook-form'
+import { useEffect, useRef } from 'react'
+import { Controller, useForm, type Control, type FieldErrors } from 'react-hook-form'
 import { useNavigate } from 'react-router'
+import { z } from 'zod'
+import {
+  DIAS_DA_SEMANA_NOMES,
+  horarios,
+  NO_DIA,
+  type DiaSemana,
+  type Funcionamento,
+  type Horario
+} from '@shared/agenda'
 import { logoDataUrl } from '@shared/clinic'
 import { formatPhone } from '@shared/masks'
-import { clinicInputSchema, type Clinic, type ClinicInput } from '@shared/schemas'
+import { clinicInputSchema, funcionamentoSchema, type Clinic } from '@shared/schemas'
 import { Page } from '@renderer/components/Layout'
 import { Button } from '@renderer/components/ui/button'
 import { Callout } from '@renderer/components/ui/callout'
 import { ErrorState } from '@renderer/components/ui/error'
 import { Field, Input } from '@renderer/components/ui/input'
 import { Loading } from '@renderer/components/ui/loading'
-import { FormSection } from '@renderer/components/ui/section'
+import { ErrorText, FormSection } from '@renderer/components/ui/section'
+import { Switch } from '@renderer/components/ui/switch'
+import { TimeField } from '@renderer/components/ui/time-field'
 import { clinicQuery, termModelsQuery } from '@renderer/lib/queries'
 import { useToast } from '@renderer/lib/toast'
 
 const TRAIL = [{ label: 'Clínica' }]
 
-function toInput({ updated_at: _, ...input }: Clinic): Required<ClinicInput> {
+const formSchema = clinicInputSchema.extend({ funcionamento: funcionamentoSchema })
+
+type ClinicValues = z.input<typeof formSchema>
+
+function toInput({ updated_at: _, ...input }: Clinic): ClinicValues {
   return input
+}
+
+const ORDEM: DiaSemana[] = [1, 2, 3, 4, 5, 6, 0]
+const HORAS = horarios('05:00', '23:59', 30)
+const HORARIO_NOVO: Horario = { abre: '07:00', fecha: '20:00' }
+
+function HoursField({
+  value,
+  onChange,
+  errors
+}: {
+  value: Funcionamento
+  onChange: (value: Funcionamento) => void
+  errors?: FieldErrors<Record<string, Horario>>
+}): React.JSX.Element {
+  const remembered = useRef<Funcionamento>({})
+  const set = (dia: DiaSemana, horario: Horario | undefined): void => {
+    const next = { ...value }
+    if (horario) next[dia] = horario
+    else delete next[dia]
+    onChange(next)
+  }
+  return (
+    <div className="col-span-6 flex flex-col">
+      {ORDEM.map((dia) => {
+        const horario = value[dia]
+        const nome = DIAS_DA_SEMANA_NOMES[dia]
+        const erro = errors?.[dia]?.fecha?.message ?? errors?.[dia]?.abre?.message
+        return (
+          <div key={dia} className="flex flex-col py-1">
+            <div className="flex h-9 items-center gap-3">
+              <Switch
+                aria-label={`Abre ${NO_DIA[dia]}`}
+                checked={horario !== undefined}
+                onCheckedChange={(on) => {
+                  if (!on && horario) remembered.current[dia] = horario
+                  set(dia, on ? (remembered.current[dia] ?? HORARIO_NOVO) : undefined)
+                }}
+              />
+              <span
+                className={
+                  horario ? 'w-20 text-[13px] font-medium' : 'w-20 text-[13px] text-ink-soft'
+                }
+              >
+                {nome}
+              </span>
+              {horario ? (
+                <div className="flex items-center gap-2">
+                  <div className="w-28">
+                    <TimeField
+                      aria-label={`${nome}, abre às`}
+                      value={horario.abre}
+                      onChange={(abre) => set(dia, { ...horario, abre })}
+                      slots={HORAS}
+                      invalid={Boolean(errors?.[dia]?.abre)}
+                    />
+                  </div>
+                  <span className="text-xs text-ink-soft">às</span>
+                  <div className="w-28">
+                    <TimeField
+                      aria-label={`${nome}, fecha às`}
+                      value={horario.fecha}
+                      onChange={(fecha) => set(dia, { ...horario, fecha })}
+                      slots={HORAS}
+                      invalid={Boolean(errors?.[dia]?.fecha)}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <span className="text-[13px] text-ink-faint">Fechado</span>
+              )}
+            </div>
+            {erro && <ErrorText className="mt-1 ml-[136px]">{erro}</ErrorText>}
+          </div>
+        )
+      })}
+    </div>
+  )
 }
 
 function PhoneInput({
   control,
   name
 }: {
-  control: Control<Required<ClinicInput>>
+  control: Control<ClinicValues>
   name: 'telefone' | 'whatsapp'
 }): React.JSX.Element {
   return (
@@ -109,23 +202,23 @@ function ClinicForm({ clinic }: { clinic: Clinic }): React.JSX.Element {
     handleSubmit,
     reset,
     formState: { errors, isDirty }
-  } = useForm<Required<ClinicInput>>({
-    resolver: zodResolver(clinicInputSchema),
+  } = useForm<ClinicValues>({
+    resolver: zodResolver(formSchema),
     defaultValues: toInput(clinic)
   })
 
   useEffect(() => reset(toInput(clinic)), [clinic, reset])
 
   const save = useMutation({
-    mutationFn: (input: ClinicInput) => window.api.clinic.save(input, clinic.updated_at),
+    mutationFn: (input: ClinicValues) => window.api.clinic.save(input, clinic.updated_at),
     onSuccess: (saved) => {
       queryClient.setQueryData(['clinic'], saved)
       toast({ title: 'Dados da clínica salvos', description: saved.nome || undefined })
     }
   })
 
-  const err = (field: keyof ClinicInput): string | undefined => errors[field]?.message
-  const invalid = (field: keyof ClinicInput): boolean => Boolean(errors[field])
+  const err = (field: keyof ClinicValues): string | undefined => errors[field]?.message
+  const invalid = (field: keyof ClinicValues): boolean => Boolean(errors[field])
 
   return (
     <form onSubmit={handleSubmit((values) => save.mutate(values))} noValidate className="h-full">
@@ -145,7 +238,7 @@ function ClinicForm({ clinic }: { clinic: Clinic }): React.JSX.Element {
           )}
 
           <p className="text-[13px] text-ink-soft">
-            Como a clínica aparece nos documentos que o Auri gera.
+            Como a clínica aparece nos documentos e quando ela atende.
           </p>
           <div className="mt-8 flex flex-col">
             <FormSection
@@ -187,6 +280,25 @@ function ClinicForm({ clinic }: { clinic: Clinic }): React.JSX.Element {
               </Field>
             </FormSection>
 
+            <FormSection
+              id="funcionamento"
+              title="Horário de funcionamento"
+              description="A agenda mostra só os dias abertos e não deixa marcar fora deste horário."
+            >
+              <Controller
+                control={control}
+                name="funcionamento"
+                render={({ field }) => (
+                  <HoursField
+                    value={field.value}
+                    onChange={field.onChange}
+                    errors={
+                      errors.funcionamento as FieldErrors<Record<string, Horario>> | undefined
+                    }
+                  />
+                )}
+              />
+            </FormSection>
             <FormSection
               id="termos"
               title="Termos assinados pelo celular"

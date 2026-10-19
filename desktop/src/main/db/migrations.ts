@@ -330,7 +330,25 @@ const MIGRATIONS: Migration[] = [
       const parsed = parseSerie(row.serie)
       if (parsed) update.run({ ...parsed, serie_etapa: parsed.serie_etapa || null, id: row.id })
     }
-  }
+  },
+  `
+  CREATE TABLE clinic_hours (
+    dia_semana INTEGER PRIMARY KEY CHECK (dia_semana BETWEEN 0 AND 6),
+    abre       TEXT NOT NULL CHECK (abre GLOB '[0-2][0-9]:[0-5][0-9]'),
+    fecha      TEXT NOT NULL CHECK (fecha GLOB '[0-2][0-9]:[0-5][0-9]'),
+    CHECK (fecha > abre)
+  );
+
+  INSERT INTO clinic_hours (dia_semana, abre, fecha) VALUES
+    (1, '07:00', '20:00'),
+    (2, '07:00', '20:00'),
+    (3, '07:00', '20:00'),
+    (4, '07:00', '20:00'),
+    (5, '07:00', '20:00'),
+    (6, '07:00', '12:00');
+
+  ALTER TABLE appointments ADD COLUMN confirmado_em TEXT;
+  `
 ]
 
 export class DatabaseTooNewError extends Error {

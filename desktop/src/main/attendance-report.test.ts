@@ -24,6 +24,7 @@ const clinic: AttendanceReport['clinic'] = {
   profissional: 'Lara Fictícia',
   registro: 'CRFa 0-0000',
   logo: '',
+  funcionamento: {},
   updated_at: '2026-10-01T00:00:00.000Z'
 }
 
@@ -43,6 +44,7 @@ function session(
     tipo: 'sessao',
     presenca,
     evolucao: '',
+    confirmado_em: null,
     assinatura: null,
     created_at: '',
     updated_at: '',

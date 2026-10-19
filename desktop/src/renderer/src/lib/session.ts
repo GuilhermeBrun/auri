@@ -1,6 +1,6 @@
-import { addDays, differenceInMinutes, format, setHours, setMinutes, startOfDay } from 'date-fns'
+import { addDays, addMinutes, format, startOfDay } from 'date-fns'
 import { ptBR } from 'date-fns/locale/pt-BR'
-import { DAY_END_HOUR, DAY_START_HOUR } from '@shared/agenda'
+import { FUNCIONAMENTO_PADRAO, horarioDoDia, minutesOf, type Funcionamento } from '@shared/agenda'
 import { formatTime, parseIsoLocalDateTime } from '@shared/dates'
 import type { Appointment, AppointmentTipo, Presenca } from '@shared/schemas'
 
@@ -15,19 +15,26 @@ export const PRESENCA_LABELS: Record<Presenca, string> = {
   desmarcou: 'Desmarcou'
 }
 
+export function tipoLabel(tipo: AppointmentTipo): string {
+  return TIPO_LABELS[tipo]
+}
+
 export const TIPO_OPTIONS = Object.entries(TIPO_LABELS) as [AppointmentTipo, string][]
 export const PRESENCA_OPTIONS = Object.entries(PRESENCA_LABELS) as [Presenca, string][]
 
 export const DEFAULT_DURATION = 30
 
-export function nextSlot(now: Date): Date {
-  const minutes = now.getMinutes() < 30 ? 30 : 60
-  const slot = setMinutes(setHours(startOfDay(now), now.getHours()), minutes)
-  if (slot.getHours() < DAY_START_HOUR) return setHours(startOfDay(now), DAY_START_HOUR)
-  if (differenceInMinutes(setHours(startOfDay(now), DAY_END_HOUR), slot) < DEFAULT_DURATION) {
-    return setHours(startOfDay(addDays(now, 1)), DAY_START_HOUR)
+export function nextSlot(now: Date, funcionamento: Funcionamento = FUNCIONAMENTO_PADRAO): Date {
+  const minutes = now.getHours() * 60 + (now.getMinutes() < 30 ? 30 : 60)
+  for (let offset = 0; offset < 8; offset++) {
+    const day = addDays(startOfDay(now), offset)
+    const horario = horarioDoDia(funcionamento, day)
+    if (!horario) continue
+    const abre = minutesOf(horario.abre)
+    const start = offset === 0 ? Math.max(minutes, abre) : abre
+    if (start + DEFAULT_DURATION <= minutesOf(horario.fecha)) return addMinutes(day, start)
   }
-  return slot
+  return addMinutes(startOfDay(now), minutes)
 }
 
 export const PATIENTS_CRUMB = { label: 'Pacientes', to: '/pacientes' }

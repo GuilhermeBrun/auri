@@ -172,7 +172,7 @@ describe('relatório de presença', () => {
   })
 
   it('inclui o último dia do período', () => {
-    const ultima = sessao('2026-10-31T18:00', '2026-10-31T18:45')
+    const ultima = sessao('2026-10-31T10:00', '2026-10-31T10:45')
     const report = attendanceReport(db, patientId, '2026-10-01', '2026-10-31')
     expect(report.sessions.map((s) => s.id)).toEqual([ultima])
   })

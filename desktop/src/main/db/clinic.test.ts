@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vite-plus/test'
+import { FUNCIONAMENTO_PADRAO } from '../../shared/agenda'
 import type { ClinicInput } from '../../shared/schemas'
-import { getClinic, saveClinic } from './clinic'
+import { getClinic, getFuncionamento, saveClinic } from './clinic'
 import { openDatabase, type Db } from './connection'
 
 let db: Db
@@ -15,7 +16,8 @@ const dados: Required<ClinicInput> = {
   whatsapp: '(65) 99999-0000',
   profissional: 'Lara Fictícia',
   registro: 'CRFa 0-0000',
-  logo: LOGO
+  logo: LOGO,
+  funcionamento: { 1: { abre: '08:00', fecha: '18:00' }, 6: { abre: '08:00', fecha: '12:00' } }
 }
 
 beforeEach(() => {
@@ -53,5 +55,47 @@ describe('dados da clínica', () => {
   it('tem uma linha só', () => {
     expect(() => db.prepare('INSERT INTO clinic (id) VALUES (2)').run()).toThrow()
     expect(db.prepare('SELECT count(*) AS n FROM clinic').get()).toEqual({ n: 1 })
+  })
+})
+
+describe('horário de funcionamento', () => {
+  it('começa de segunda a sexta das 7h às 20h, sábado até o meio-dia e domingo fechado', () => {
+    expect(getFuncionamento(db)).toEqual(FUNCIONAMENTO_PADRAO)
+    expect(getClinic(db).funcionamento).toEqual(FUNCIONAMENTO_PADRAO)
+    expect(db.prepare('SELECT * FROM clinic_hours WHERE dia_semana = 0').get()).toBeUndefined()
+  })
+
+  it('salva com os dados da clínica: dia ausente é fechado', () => {
+    const saved = saveClinic(db, dados)
+    expect(saved.funcionamento).toEqual(dados.funcionamento)
+    expect(db.prepare('SELECT * FROM clinic_hours ORDER BY dia_semana').all()).toEqual([
+      { dia_semana: 1, abre: '08:00', fecha: '18:00' },
+      { dia_semana: 6, abre: '08:00', fecha: '12:00' }
+    ])
+  })
+
+  it('mantém o horário quando quem salva não manda o funcionamento', () => {
+    const { funcionamento: _, ...semHorario } = dados
+    saveClinic(db, semHorario)
+    expect(getFuncionamento(db)).toEqual(FUNCIONAMENTO_PADRAO)
+  })
+
+  it('não guarda horário que fecha antes de abrir nem dia fora da semana', () => {
+    expect(() => db.prepare("INSERT INTO clinic_hours VALUES (0, '12:00', '08:00')").run()).toThrow(
+      /CHECK/
+    )
+    expect(() => db.prepare("INSERT INTO clinic_hours VALUES (7, '08:00', '12:00')").run()).toThrow(
+      /CHECK/
+    )
+    expect(() => db.prepare("INSERT INTO clinic_hours VALUES (0, '8h', '12:00')").run()).toThrow(
+      /CHECK/
+    )
+  })
+
+  it('desfaz o horário junto quando os dados da clínica não podem ser salvos', () => {
+    const stale = getClinic(db).updated_at
+    db.prepare("UPDATE clinic SET updated_at = '2000-01-01T00:00:00.000Z'").run()
+    expect(() => saveClinic(db, dados, stale)).toThrow(/outro computador/)
+    expect(getFuncionamento(db)).toEqual(FUNCIONAMENTO_PADRAO)
   })
 })

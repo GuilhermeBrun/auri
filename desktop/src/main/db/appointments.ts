@@ -1,9 +1,11 @@
+import { foraDoFuncionamentoIso } from '../../shared/agenda'
 import { formatTime, parseIsoLocalDateTime } from '../../shared/dates'
 import {
   appointmentInputSchema,
   type Appointment,
   type AppointmentInput
 } from '../../shared/schemas'
+import { getFuncionamento } from './clinic'
 import { assertUnchanged } from './concurrency'
 import type { Db } from './connection'
 
@@ -19,7 +21,7 @@ type AppointmentRow = Omit<Appointment, 'observacao' | 'presenca' | 'evolucao' |
 
 const SELECT = `
   SELECT a.id, a.patient_id, a.inicio, a.fim, a.observacao, a.tipo, a.presenca, a.evolucao,
-         a.created_at, a.updated_at, p.nome AS patient_nome,
+         a.confirmado_em, a.created_at, a.updated_at, p.nome AS patient_nome,
          s.id AS assinatura_id, s.signer_nome AS assinatura_nome,
          s.signer_parentesco AS assinatura_parentesco, s.assinado_em AS assinatura_em
   FROM appointments a
@@ -52,11 +54,14 @@ function fromRow(row: AppointmentRow): Appointment {
   }
 }
 
+const NOW = `strftime('%Y-%m-%dT%H:%M:%fZ', 'now')`
+
 const orNull = (value: string): string | null => (value === '' ? null : value)
 
 function toParams(input: AppointmentInput): Record<string, string | number | null> {
   const full = appointmentInputSchema.parse(input)
   return {
+    confirmado: full.confirmado === undefined ? null : Number(full.confirmado),
     patient_id: full.patient_id,
     inicio: full.inicio,
     fim: full.fim,
@@ -70,6 +75,11 @@ function toParams(input: AppointmentInput): Record<string, string | number | nul
 function assertPatientExists(db: Db, patientId: number): void {
   const row = db.prepare('SELECT 1 FROM patients WHERE id = ?').get(patientId)
   if (!row) throw new Error('Paciente não encontrado')
+}
+
+function assertWithinHours(db: Db, input: Pick<AppointmentInput, 'inicio' | 'fim'>): void {
+  const problem = foraDoFuncionamentoIso(getFuncionamento(db), input.inicio, input.fim)
+  if (problem) throw new Error(problem)
 }
 
 function assertSlotFree(
@@ -122,11 +132,14 @@ export const PRESENCA_SO_ASSINADA = 'A presença é marcada pela assinatura da c
 export function createAppointment(db: Db, input: AppointmentInput): Appointment {
   if (input.presenca === 'presente') throw new Error(PRESENCA_SO_ASSINADA)
   assertPatientExists(db, input.patient_id)
+  assertWithinHours(db, input)
   assertSlotFree(db, input, null)
   const result = db
     .prepare(
-      `INSERT INTO appointments (patient_id, inicio, fim, observacao, tipo, presenca, evolucao)
-       VALUES (@patient_id, @inicio, @fim, @observacao, @tipo, @presenca, @evolucao)`
+      `INSERT INTO appointments
+         (patient_id, inicio, fim, observacao, tipo, presenca, evolucao, confirmado_em)
+       VALUES (@patient_id, @inicio, @fim, @observacao, @tipo, @presenca, @evolucao,
+         CASE WHEN @confirmado = 1 THEN ${NOW} END)`
     )
     .run(toParams(input))
   return getAppointment(db, Number(result.lastInsertRowid))
@@ -144,13 +157,18 @@ export function updateAppointment(
     throw new Error(PRESENCA_SO_ASSINADA)
   }
   assertPatientExists(db, input.patient_id)
+  if (input.inicio !== current.inicio || input.fim !== current.fim) assertWithinHours(db, input)
   assertSlotFree(db, input, id)
   const result = db
     .prepare(
       `UPDATE appointments
        SET patient_id = @patient_id, inicio = @inicio, fim = @fim, observacao = @observacao,
            tipo = @tipo, presenca = @presenca, evolucao = @evolucao,
-           updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+           confirmado_em = CASE
+             WHEN @confirmado IS NULL THEN confirmado_em
+             WHEN @confirmado = 1 THEN coalesce(confirmado_em, ${NOW})
+           END,
+           updated_at = ${NOW}
        WHERE id = @id`
     )
     .run({ ...toParams(input), id })

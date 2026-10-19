@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { resumoFuncionamento } from '../shared/agenda'
 import type { SettingsChange } from '../shared/api'
 import {
   clinicInputSchema,
@@ -153,6 +154,12 @@ export function describeChanges(current: SettingsSnapshot, file: SettingsFile): 
   for (const field of Object.keys(CLINIC) as (keyof typeof CLINIC)[]) {
     add(CLINIC[field], current.clinic[field], file.clinic[field], filled)
   }
+  add(
+    'Horário de funcionamento',
+    resumoFuncionamento(current.clinic.funcionamento),
+    file.clinic.funcionamento && resumoFuncionamento(file.clinic.funcionamento),
+    (v) => v
+  )
   const logo = file.clinic.logo
   if (logo && logo !== current.clinic.logo) {
     changes.push({

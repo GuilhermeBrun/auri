@@ -11,6 +11,7 @@ type TimeFieldProps = {
   onChange: (value: string) => void
   slots: readonly string[]
   invalid?: boolean
+  'aria-label'?: string
 }
 
 export function TimeField({
@@ -18,7 +19,8 @@ export function TimeField({
   value,
   onChange,
   slots,
-  invalid
+  invalid,
+  'aria-label': ariaLabel
 }: TimeFieldProps): React.JSX.Element {
   const listId = useId()
   const listRef = useRef<HTMLUListElement>(null)
@@ -82,6 +84,7 @@ export function TimeField({
     <div className="relative">
       <Input
         id={id}
+        aria-label={ariaLabel}
         role="combobox"
         aria-expanded={open}
         aria-controls={listId}
