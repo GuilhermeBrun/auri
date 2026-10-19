@@ -260,7 +260,7 @@ export function DestinationPicker({
       )}
       <Button
         variant="ghost"
-        className="mt-3 -ml-3.5"
+        className="mt-3"
         loading={choose.isPending}
         onClick={() => choose.mutate()}
       >
