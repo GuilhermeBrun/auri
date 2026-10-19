@@ -1,8 +1,8 @@
 # Encaixe, lista de espera e compromissos — design
 
-Data: 19/10/2026. Estado: a lista de espera e o motor de sugestão estão implementados (trilha G0);
-os compromissos sem paciente e o painel no lugar do domingo ficam descritos aqui para a próxima
-trilha.
+Data: 19/10/2026. Estado: implementado. A trilha G0 fez a lista de espera e o motor de sugestão; a
+G1 fez os compromissos sem paciente, o painel de encaixe ao lado da semana, o remarcar com
+sugestão, a margem de deslocamento na tela Clínica e a sessão desmarcada que libera o horário.
 
 ## Pedidos da clínica
 
@@ -108,81 +108,114 @@ de 15 em 15 min dentro da vaga sem bater na margem das atividades do paciente na
 resposta traz o início e o fim propostos (o primeiro que serve) e se bate com as preferências.
 Ordem: prioridade alta, depois quem bate com dia e período, depois quem espera há mais tempo.
 
+### `vagaEm`
+
+Dado um clique na grade, o funcionamento e o que está ocupado, devolve o buraco livre inteiro em
+volta do clique, dentro do turno: do fim do último horário ocupado antes do clique (ou da abertura)
+ao começo do próximo (ou do fechamento). Clique em horário ocupado ou fechado não é vaga.
+
 ### Ponte com o banco (`desktop/src/main/db/encaixe.ts`)
 
-Lê os ocupados de `appointments` e, enquanto as tabelas `clinic_hours` e `patient_activities` não
-existem neste branch, usa um funcionamento padrão (segunda a sábado, 07:00 às 20:00) e nenhuma
-atividade. As duas leituras já consultam as tabelas dos contratos quando elas existem, então a
-integração só precisa conferir os nomes das colunas e depois tirar a reserva (`hasTable`).
+Lê o funcionamento de `clinic_hours`, as atividades de `patient_activities` e a margem de
+`clinic.margem_deslocamento`. Os ocupados vêm de `busyIn` (`main/db/busy.ts`), a mesma consulta
+que barra conflitos: agendamentos que não estão desmarcados mais os compromissos.
 
-## Interface desta trilha
+## Lista de espera na interface
 
-- **`WaitlistPanel`** (`components/waitlist/WaitlistPanel.tsx`): autocontido, sem depender da
-  página. Lista quem espera (nome, tipo e duração, preferências, há quanto tempo, observação), com
-  editar e tirar da lista. Cada linha abre as sugestões das próximas duas semanas. Props:
-  - `vaga?: {inicio, fim}`: em vez da lista toda, mostra "Cabem neste horário" (`encaixe:quemCabe`);
-  - `onPick?: (entrada, horario)`: com ele, cada sugestão vira botão. A página provisória abre o
-    `AppointmentDialog` já preenchido e, quando a sessão é salva, encerra a espera como `agendado`.
+- **`WaitlistPanel`** (`components/waitlist/WaitlistPanel.tsx`): não depende da página. Lista quem
+  espera (nome, tipo e duração, preferências, há quanto tempo, observação), com editar. Cada linha
+  abre as 6 melhores sugestões das próximas duas semanas, em ordem de data. Props: `vaga` (mostra
+  quem cabe nela), `onPick(entrada, horario)` (as sugestões viram botões) e `vagaActions` (botões
+  no cabeçalho da vaga).
 - **`WaitlistDialog`**: põe na lista ou edita (tipo, duração, dias, períodos, prioridade,
-  observação) e tira da lista.
-- **Ponto de entrada na ficha:** o botão "Pôr na lista de espera" ao lado das abas do paciente
-  (`PatientHeader`); quando o paciente já está na lista, o mesmo lugar mostra "Na lista de espera"
-  e abre a edição.
-- **Página provisória `/lista-de-espera`** no menu principal, só até o painel ir para a agenda.
-- O painel mostra as 6 melhores sugestões de cada paciente em ordem de data.
-- O formulário do diálogo para a propagação do `submit`: ele mora dentro do `<form>` da ficha na
-  árvore do React (o portal não muda isso), e sem isso salvar a espera salvava a ficha junto.
+  observação) e tira da lista. O formulário para a propagação do `submit`: na árvore do React ele
+  mora dentro do `<form>` da ficha (o portal não muda isso).
+- **Na ficha:** "Pôr na lista de espera" ao lado das abas do paciente (`PatientHeader`); quem já
+  está na lista vê "Na lista de espera", que abre a edição.
 
-## Próxima trilha
+## Compromissos sem paciente
 
-### Painel no lugar do domingo
-
-A trilha de ajustes da agenda tira o domingo da semana. A coluna que sobra vira a lateral da semana
-com o `WaitlistPanel` (≈ 280 px). Com um horário vago selecionado na grade, o painel recebe `vaga`
-e mostra quem cabe; `onPick` abre o `AppointmentDialog` preenchido. Quando o painel morar na
-agenda, a página `/lista-de-espera` e o item do menu saem.
-
-### Compromissos sem paciente
-
-Palestra, curso, atendimento no hospital, reunião, reserva: ocupam a agenda e bloqueiam horários,
+Palestra, curso, atendimento no hospital, reunião e reserva ocupam a agenda e bloqueiam horários,
 mas não têm paciente.
 
-**Recomendação: tabela própria `commitments`**, não `patient_id` nulo em `appointments`. O código
-da agenda pressupõe paciente em todo agendamento (`JOIN patients`, nome no aviso, presença,
-assinatura da chegada, evolução, relatório de presença, gatilhos de assinatura). Um `patient_id`
-nulo obrigaria a revisar cada um desses pontos e a recriar a tabela (o SQLite não muda `NOT NULL`
-com `ALTER`).
+**Tabela própria `commitments`**, não `patient_id` nulo em `appointments`. O código da agenda
+pressupõe paciente em todo agendamento (`JOIN patients`, nome no aviso, presença, assinatura da
+chegada, evolução, relatório de presença, financeiro, gatilhos de assinatura). Um `patient_id` nulo
+obrigaria a revisar cada um desses pontos e a recriar a tabela (o SQLite não muda `NOT NULL` com
+`ALTER`).
 
-```sql
-CREATE TABLE commitments (
-  id         INTEGER PRIMARY KEY,
-  tipo       TEXT NOT NULL CHECK (tipo IN ('palestra', 'curso', 'hospital', 'reuniao', 'reserva')),
-  titulo     TEXT,
-  inicio     TEXT NOT NULL,
-  fim        TEXT NOT NULL,
-  observacao TEXT,
-  created_at TEXT NOT NULL DEFAULT (...),
-  updated_at TEXT NOT NULL DEFAULT (...),
-  CHECK (fim > inicio)
-);
-```
+| Coluna       | Notas                                                      |
+| ------------ | ---------------------------------------------------------- |
+| `tipo`       | `palestra`, `curso`, `hospital`, `reuniao` ou `reserva`    |
+| `titulo`     | opcional (ex.: "Escola Fictícia", "Hospital Fictício")     |
+| `inicio/fim` | data e hora local, `fim > inicio`                          |
+| `observacao` | opcional                                                   |
+| `updated_at` | controle de edição concorrente (`expected`)                |
 
-- `assertSlotFree` dos agendamentos passa a olhar também `commitments`, e o compromisso olha os
-  agendamentos e os outros compromissos.
-- A agenda lista os dois juntos; o compromisso aparece com outro desenho (sem paciente, só o tipo
-  e o título).
-- No motor, os compromissos entram em `ocupados` sem mudança: a ponte soma as duas tabelas.
-- "Reserva" segura um horário para um encaixe futuro; a secretária pode trocá-la por um
-  agendamento.
+A mesma migração acrescenta `clinic.margem_deslocamento` (0 a 120 min, padrão 30).
 
-### Ligar o que ficou de fora
+### Regras
 
-- Encerrar a espera como `agendado` quando um agendamento é criado para o paciente em qualquer
-  lugar (hoje só a página provisória faz isso).
-- Margem de deslocamento: hoje é o padrão de 30 min do motor; virar um ajuste da clínica (ex.:
-  na página Clínica, junto do funcionamento).
-- Horário que vagou: o agendamento `desmarcou` ainda ocupa o horário (`assertSlotFree` olha todos).
-  Para a confirmação automática liberar o horário, decidir se `desmarcou` deixa de bloquear ou se a
-  sessão é apagada; o motor segue o que a ponte mandar como ocupado.
+- **Conflito dos dois lados** (`assertAgendaFree`, em `main/db/busy.ts`): o agendamento não entra
+  sobre outro agendamento nem sobre um compromisso; o compromisso não entra sobre agendamento nem
+  sobre outro compromisso. A mensagem diz o primeiro que bate ("Esse horário está bloqueado:
+  Hospital: Hospital Fictício, das 14:00 às 15:00") e quantos mais.
+- **Funcionamento:** o compromisso respeita o horário da clínica, como o agendamento. Mudar só o
+  tipo ou o título de um compromisso fora do horário (de antes de o horário mudar) continua
+  permitido.
+- **Reserva vira agendamento** (`appointments:scheduleOnReserve`): numa transação, apaga a reserva
+  e cria o agendamento. Se o agendamento não puder ser criado, a reserva fica.
+- Compromisso não tem presença, assinatura, evolução nem cobrança.
+
+### Interface
+
+- **Na grade:** o compromisso aparece listrado em cinza, só com o tipo e o título; clicar abre o
+  `CommitmentDialog` (tipo, título, data, hora, duração até 8 h, observação, resumo, excluir em
+  dois passos). Na reserva, uma linha "Usar a reserva · Agendar paciente" abre o
+  `AppointmentDialog` no mesmo horário.
+- **Horário novo** (clique na grade, `N` ou `+`): o `SlotDialog` abre com "Paciente" escolhido e
+  um seletor "Paciente | Compromisso" no alto. O caminho mais comum continua com um clique só.
+
+## Painel de encaixe ao lado da semana
+
+- Nas visões Semana e Dia, o `WaitlistPanel` fica numa coluna de 288 px à direita da grade, onde
+  ficava o domingo. O botão com a ampulheta no cabeçalho recolhe e mostra o painel; a escolha
+  fica no `localStorage` do computador (`auri.agenda.listaDeEspera`). Na visão Mês, não há painel.
+- **Com o painel aberto, um clique num horário vazio seleciona a vaga** (`vagaEm`) em vez de abrir
+  o agendamento: a grade marca a vaga e o painel mostra "Cabem neste horário" (`encaixe:quemCabe`),
+  com "+" para marcar ali mesmo e "×" (ou Esc) para voltar à lista toda. Arrastar ou dar dois
+  cliques continua abrindo o horário novo. Com o painel fechado, o clique abre o horário novo,
+  como antes.
+- Escolher alguém (da vaga ou dos "Horários livres" de cada um) abre o `AppointmentDialog` já com
+  o paciente, o horário e a duração da espera.
+- A página provisória `/lista-de-espera` e o item do menu saíram. O botão na ficha continua.
+
+## Remarcar com sugestão
+
+No agendamento futuro, "Remarcar" (ao lado de Excluir) abre o `RescheduleDialog`: horários livres
+das próximas 3 semanas (`encaixe:sugerir` com `ignorar_appointment_id`), sem bater nas atividades
+do paciente, os do mesmo período da sessão primeiro, em ordem de data; "Mais adiante" anda mais 3
+semanas. Escolhido o horário, `appointments:move` muda só o início e o fim, **limpa a confirmação**
+(o horário novo precisa ser confirmado de novo) e a presença. Sessão com a chegada assinada não é
+remarcada.
+
+## Decisões da G1
+
+- **Sessão desmarcada deixa de bloquear o horário.** `busyIn` ignora `presenca = 'desmarcou'`:
+  outro paciente ou um compromisso pode ocupar o horário, e o motor o oferece como livre. A sessão
+  desmarcada continua na agenda, riscada, como registro. Voltar uma sessão desmarcada para "sem
+  presença" passa pela checagem de conflito de novo. É o que a confirmação automática vai usar:
+  sem resposta em 2 horas, a sessão vira desmarcada e o horário fica livre para o encaixe.
+- **Agendar tira da lista de espera.** `createAppointment` encerra a espera aberta do paciente como
+  `agendado` (com o agendamento) quando a sessão é de agora em diante, em qualquer lugar do app.
+  Lançar uma sessão passada (ficha de papel) não mexe na lista.
+- **Margem de deslocamento** é um ajuste da clínica, na tela Clínica, junto do funcionamento. Os
+  canais `encaixe:*` ainda aceitam `margem` para sobrescrever.
+- A seleção de vaga por clique só vale com o painel aberto, para não mudar o clique de quem não usa
+  o encaixe.
+
+## Depois
+
 - Tipos cadastráveis: quando existirem, `tipo` da espera passa a apontar para eles e a duração
-  padrão vem do tipo.
+  padrão vem do tipo; o agendamento aberto pelo painel pode já vir com o tipo da espera.
+- Confirmação automática: marcar como `desmarcou` a sessão sem resposta e mostrar a vaga no painel.
