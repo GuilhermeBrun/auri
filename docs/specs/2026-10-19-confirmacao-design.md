@@ -19,9 +19,9 @@ WhatsApp e o `auri://` no app instalado. As decisões em aberto seguem as propos
   atendimento, envio (ou reenvio do mesmo link), verificador do prazo, resposta e avisos. O
   verificador roda no main da recepção (quem tem o banco) ao abrir e a cada minuto; o consultório
   não roda. Cancela o pedido de sessão remarcada ou desmarcada, conclui o confirmado à mão e vence o
-  resto: libera o horário, chama `cobrarFalta` e, se a cobrança não puder ser lançada (paciente sem
-  forma de cobrança), guarda o motivo no aviso. A chave fica até a sessão passar, para ler resposta
-  atrasada e repetida.
+  resto: libera o horário e, se o link avisou a cobrança (`cob`), chama `cobrarFalta`; se a cobrança
+  não puder ser lançada, guarda o motivo no aviso. A chave fica até a sessão passar, para ler
+  resposta atrasada e repetida.
 - **Telas:** botão "Confirmações" no cabeçalho da agenda (lista do próximo dia com contato
   principal e celular, "Enviar a próxima", copiar ou abrir no WhatsApp, "Colar resposta"); bloco
   "Confirmação pelo celular" no registro da sessão; marcas no cartão (relógio = aguardando, `✓` =
@@ -30,7 +30,11 @@ WhatsApp e o `auri://` no app instalado. As decisões em aberto seguem as propos
   ("Desmarcar"/"Confirmar"). A resposta que chega por `auri://confirmacao` ou "Colar resposta" é
   aplicada na hora e mostrada num aviso com "Encaixar" quando libera o horário.
 - **Cobra ou não (`cob`):** o link avisa a cobrança quando o paciente tem forma de cobrança com
-  valor de sessão, que é quando `cobrarFalta` consegue lançar.
+  valor de sessão, que é quando `cobrarFalta` consegue lançar. O vencimento só cobra quando o envio
+  avisou: valor definido depois do envio não vale para esse pedido.
+- **Remarcar desfaz a falta:** remarcar a sessão, trocar o paciente ou tirar a falta/desmarcou na
+  agenda estorna a cobrança `falta_cobrada` dela. Sessão que já passou pelo financeiro não é
+  excluída: fica no histórico, marcada como desmarcada.
 
 ## Pedido da clínica
 
@@ -130,9 +134,13 @@ o aviso. Outra diferente depois (confirmou e depois desmarcou) não muda nada so
 - O Auri da recepção confere os envios aguardando ao abrir e a cada minuto. O que venceu com o app
   fechado é processado quando ele abre, com a hora do vencimento (não a da abertura) no registro.
 - **Resposta que chega depois do vencimento mas foi dada no prazo:** a secretária pode demorar a
-  clicar. Se o `em` da resposta (hora do celular) é anterior ao prazo, com 5 minutos de tolerância,
-  o Auri aceita e desfaz a liberação: devolve o horário se ainda está livre (senão avisa o
-  conflito) e cancela a cobrança. Uma resposta dada depois do prazo é recusada, com aviso.
+  clicar. O `em` da resposta é a hora do celular e quem tem o link pode escrever qualquer hora nele,
+  então o Auri não desfaz nada sozinho: se o `em` é anterior ao prazo, com 5 minutos de tolerância,
+  mostra "respondeu depois do vencimento" e pede para conferir na conversa do WhatsApp a hora em
+  que a mensagem chegou. Ao aplicar, devolve o horário se ainda está livre (senão avisa o conflito)
+  e estorna a cobrança. Uma resposta com `em` depois do prazo é recusada, com aviso.
+- **Sessão que mudou depois do pedido:** resposta de um pedido cuja sessão foi remarcada, ou cuja
+  presença já foi marcada, não muda a agenda; o aviso some e a secretária combina com a família.
 - O consultório não processa prazos: só a recepção, que guarda os dados, para não processar duas
   vezes.
 

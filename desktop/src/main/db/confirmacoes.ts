@@ -218,6 +218,7 @@ type Pendente = {
   appointment_id: number
   inicio: string
   prazo: string
+  confirmacao: string
   a_inicio: string | null
   presenca: string | null
   confirmado_em: string | null
@@ -234,10 +235,12 @@ function vencer(db: Db, pendente: Pendente, computador: string): void {
   liberar(db, pendente.appointment_id)
   let chargeId: number | null = null
   let erro: string | null = null
-  try {
-    chargeId = cobrarFalta(db, pendente.appointment_id, computador)
-  } catch (falha) {
-    erro = falha instanceof Error ? falha.message : 'A cobrança não foi lançada.'
+  if ((JSON.parse(pendente.confirmacao) as Confirmacao).cob) {
+    try {
+      chargeId = cobrarFalta(db, pendente.appointment_id, computador)
+    } catch (falha) {
+      erro = falha instanceof Error ? falha.message : 'A cobrança não foi lançada.'
+    }
   }
   db.prepare(
     `UPDATE confirmation_requests
@@ -250,8 +253,8 @@ export function processarPrazos(db: Db, computador: string, agora: Date = new Da
   return db.transaction(() => {
     const pendentes = db
       .prepare(
-        `SELECT r.id, r.appointment_id, r.inicio, r.prazo, a.inicio AS a_inicio, a.presenca,
-                a.confirmado_em
+        `SELECT r.id, r.appointment_id, r.inicio, r.prazo, r.confirmacao, a.inicio AS a_inicio,
+                a.presenca, a.confirmado_em
          FROM confirmation_requests r LEFT JOIN appointments a ON a.id = r.appointment_id
          WHERE r.estado = 'aguardando'`
       )
@@ -294,6 +297,11 @@ type Recebida = RequestRow & { patient_nome: string; a_inicio: string; a_fim: st
 function horarioLivre(db: Db, row: Recebida): boolean {
   return busyIn(db, row.a_inicio, row.a_fim, { appointment: row.appointment_id }).length === 0
 }
+
+const MUDOU_DE_HORARIO =
+  'A sessão mudou de horário depois do pedido. A resposta não muda mais nada: combine com a família.'
+const PRESENCA_MARCADA =
+  'A presença desta sessão já foi marcada. A resposta não muda mais nada: combine com a família.'
 
 function confirmar(db: Db, appointmentId: number): void {
   db.prepare(
@@ -354,6 +362,7 @@ export function receberConfirmacao(
     if (row.estado === 'cancelado')
       return fail('Este pedido foi cancelado: a sessão mudou de horário ou já foi desmarcada.')
     if (!row.chave) return fail('Esta sessão já passou. A resposta não muda mais nada.')
+    if (row.inicio !== row.a_inicio) return fail(MUDOU_DE_HORARIO)
     let res: Decisao
     let em: number
     try {
@@ -426,32 +435,27 @@ export function receberConfirmacao(
       return fail(
         `A resposta foi dada depois do prazo (${hora(confirmacao.ate, confirmacao.tz)}). O horário já tinha sido liberado.`
       )
-    const estornou = estornarFalta(db, row.charge_id, computador)
-    const cobranca = estornou ? ' A cobrança da falta foi estornada.' : ''
-    let detalhe: string
-    let livre: Vaga | null = null
-    if (res === 'confirmada' && horarioLivre(db, row)) {
-      confirmar(db, row.appointment_id)
-      detalhe = `A sessão de ${sessao} voltou para a agenda.${cobranca}`
-    } else if (res === 'confirmada') {
-      detalhe = `O horário de ${sessao} já foi ocupado: remarque a sessão.${cobranca}`
-    } else {
-      livre = vaga
-      detalhe = `Desmarcou a sessão de ${sessao} dentro do prazo.${cobranca}`
-    }
-    registrar()
+    db.prepare(
+      'UPDATE confirmation_requests SET outra_resposta = ?, respondido_em = ? WHERE id = ?'
+    ).run(res, em, row.id)
+    const limite = hora(confirmacao.ate + TOLERANCIA_DA_RESPOSTA_MS / 1000, confirmacao.tz)
     return {
       ok: true,
-      tipo: 'no_prazo',
-      titulo: `${quem} respondeu no prazo`,
-      detalhe,
-      vaga: livre,
+      tipo: 'conferir',
+      titulo: `${quem} respondeu depois do vencimento`,
+      detalhe: `Pelo relógio do celular, a resposta saiu às ${hora(em, confirmacao.tz)}, dentro do prazo. Confira na conversa do WhatsApp se a mensagem chegou até as ${limite} antes de ${ACAO[res]} a sessão de ${sessao}.`,
+      vaga: null,
       ...base
     }
   })()
 }
 
-export function aplicarOutraResposta(db: Db, requestId: number): ConfirmacaoRecebida {
+export function aplicarOutraResposta(
+  db: Db,
+  requestId: number,
+  computador: string,
+  agora: Date = new Date()
+): ConfirmacaoRecebida {
   return db.transaction((): ConfirmacaoRecebida => {
     const row = db
       .prepare(
@@ -464,31 +468,40 @@ export function aplicarOutraResposta(db: Db, requestId: number): ConfirmacaoRece
       )
       .get(requestId) as (Recebida & { presenca: string | null }) | undefined
     if (!row?.outra_resposta) throw new Error('Não há outra resposta para aplicar.')
+    if (row.inicio !== row.a_inicio) throw new Error(MUDOU_DE_HORARIO)
+    if (row.presenca !== null && row.presenca !== 'desmarcou') throw new Error(PRESENCA_MARCADA)
     const outra = row.outra_resposta
     const sessao = quando(JSON.parse(row.confirmacao) as Confirmacao)
+    const vencido = row.estado === 'vencido'
+    const livre = row.presenca === null || horarioLivre(db, row)
+    if (outra === 'confirmada' && !livre && !vencido)
+      throw new Error('O horário já foi ocupado. Remarque a sessão.')
+    const estornou = vencido && estornarFalta(db, row.charge_id, computador)
+    const cobranca = estornou ? ' A cobrança da falta foi estornada.' : ''
     let vaga: Vaga | null = null
+    let detalhe: string
     if (outra === 'desmarcada') {
       if (row.presenca === null) liberar(db, row.appointment_id)
       vaga = { inicio: row.a_inicio, fim: row.a_fim }
-    } else {
-      if (row.presenca === 'desmarcou' && !horarioLivre(db, row))
-        throw new Error('O horário já foi ocupado. Remarque a sessão.')
+      detalhe = `O horário de ${sessao} ficou livre.${cobranca}`
+    } else if (livre) {
       confirmar(db, row.appointment_id)
+      detalhe = `A sessão de ${sessao} está confirmada.${cobranca}`
+    } else {
+      detalhe = `O horário de ${sessao} já foi ocupado: remarque a sessão.${cobranca}`
     }
     db.prepare(
       `UPDATE confirmation_requests
-       SET resposta = outra_resposta, outra_resposta = NULL, aviso_visto_em = NULL
+       SET estado = 'respondido', resposta = outra_resposta, outra_resposta = NULL,
+           recebido_em = coalesce(recebido_em, ?), link = NULL, aviso_visto_em = NULL
        WHERE id = ?`
-    ).run(requestId)
+    ).run(agora.toISOString(), requestId)
     return {
       ok: true,
       tipo: outra,
       resposta: outra,
       titulo: outra === 'desmarcada' ? 'Sessão desmarcada' : 'Sessão confirmada',
-      detalhe:
-        outra === 'desmarcada'
-          ? `O horário de ${sessao} ficou livre.`
-          : `A sessão de ${sessao} está confirmada.`,
+      detalhe,
       request_id: row.id,
       appointment_id: row.appointment_id,
       vaga
@@ -505,6 +518,7 @@ type AvisoRow = {
   estado: 'respondido' | 'vencido'
   resposta: Decisao | null
   outra_resposta: Decisao | null
+  charge_id: number | null
   cobranca_erro: string | null
   aviso_visto_em: string | null
   presenca: string | null
@@ -514,12 +528,12 @@ export function avisosDaConfirmacao(db: Db, agora: Date = new Date()): AvisosDaC
   const rows = db
     .prepare(
       `SELECT r.id AS request_id, r.appointment_id, p.nome AS patient_nome, a.inicio, a.fim,
-              r.estado, r.resposta, r.outra_resposta, r.cobranca_erro, r.aviso_visto_em,
-              a.presenca
+              r.estado, r.resposta, r.outra_resposta, r.charge_id, r.cobranca_erro,
+              r.aviso_visto_em, a.presenca
        FROM confirmation_requests r
        JOIN appointments a ON a.id = r.appointment_id
        JOIN patients p ON p.id = a.patient_id
-       WHERE r.estado IN ('respondido', 'vencido') AND a.fim > ?
+       WHERE r.estado IN ('respondido', 'vencido') AND a.inicio = r.inicio AND a.fim > ?
        ORDER BY a.inicio, r.id`
     )
     .all(toIsoLocalDateTime(agora)) as AvisoRow[]
@@ -533,13 +547,15 @@ export function avisosDaConfirmacao(db: Db, agora: Date = new Date()): AvisosDaC
       inicio: row.inicio,
       fim: row.fim
     }
-    if (row.outra_resposta) outras.push({ ...base, resposta: row.outra_resposta })
+    if (row.outra_resposta)
+      outras.push({ ...base, resposta: row.outra_resposta, vencido: row.estado === 'vencido' })
     const liberado =
       row.presenca === 'desmarcou' && (row.estado === 'vencido' || row.resposta === 'desmarcada')
     if (liberado && row.aviso_visto_em === null)
       liberados.push({
         ...base,
         motivo: row.estado === 'vencido' ? 'sem_resposta' : 'desmarcou',
+        falta_cobrada: row.charge_id !== null,
         cobranca_erro: row.cobranca_erro
       })
   }

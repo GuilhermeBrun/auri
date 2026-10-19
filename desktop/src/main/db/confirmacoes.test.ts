@@ -2,7 +2,12 @@ import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { runOperation } from '../operations'
 import { emptyPatientInput } from '../../shared/schemas'
 import { lerIda, montarVolta, type Decisao } from '../../../../web/contrato/confirmacao/formato'
-import { createAppointment, getAppointment, updateAppointment } from './appointments'
+import {
+  createAppointment,
+  getAppointment,
+  moveAppointment,
+  updateAppointment
+} from './appointments'
 import { saveClinic } from './clinic'
 import {
   aplicarOutraResposta,
@@ -223,10 +228,38 @@ describe('resposta', () => {
     expect(avisosDaConfirmacao(db, minutos(22)).outras).toMatchObject([
       { appointment_id: sessaoId, resposta: 'desmarcada' }
     ])
-    const aplicada = aplicarOutraResposta(db, outra.ok ? outra.request_id : 0)
+    const aplicada = aplicarOutraResposta(db, outra.ok ? outra.request_id : 0, PC)
     expect(aplicada).toMatchObject({ ok: true, tipo: 'desmarcada' })
     expect(getAppointment(db, sessaoId).presenca).toBe('desmarcou')
     expect(avisosDaConfirmacao(db, minutos(22)).outras).toEqual([])
+  })
+
+  it('outra resposta não mexe numa sessão remarcada nem com presença marcada', async () => {
+    const { link } = enviarConfirmacao(db, sessaoId, PC, AGORA)
+    receberConfirmacao(db, await responder(link, 'confirmada', minutos(10)), PC, minutos(11))
+    const nao = await responder(link, 'desmarcada', minutos(20))
+    const outra = receberConfirmacao(db, nao, PC, minutos(21))
+    const requestId = outra.ok ? outra.request_id : 0
+    const sessao = { patient_id: patientId, observacao: '' }
+    updateAppointment(db, sessaoId, {
+      ...sessao,
+      inicio: '2026-10-20T14:00',
+      fim: '2026-10-20T14:50',
+      presenca: 'falta'
+    })
+    expect(() => aplicarOutraResposta(db, requestId, PC)).toThrow('presença desta sessão')
+    updateAppointment(db, sessaoId, {
+      ...sessao,
+      inicio: '2026-10-20T16:00',
+      fim: '2026-10-20T16:50'
+    })
+    expect(avisosDaConfirmacao(db, minutos(22)).outras).toEqual([])
+    expect(() => aplicarOutraResposta(db, requestId, PC)).toThrow('mudou de horário')
+    expect(receberConfirmacao(db, nao, PC, minutos(23))).toMatchObject({
+      ok: false,
+      erro: expect.stringContaining('mudou de horário')
+    })
+    expect(getAppointment(db, sessaoId).presenca).toBe('')
   })
 
   it('recusa resposta incompleta, de outro Auri ou de pedido cancelado', async () => {
@@ -258,18 +291,50 @@ describe('prazo de 2 horas', () => {
     expect(a.pedido?.estado).toBe('sem_resposta')
     expect(cobrancas()).toHaveLength(1)
     expect(avisosDaConfirmacao(db, minutos(122)).liberados).toMatchObject([
-      { motivo: 'sem_resposta', cobranca_erro: null }
+      { motivo: 'sem_resposta', falta_cobrada: true, cobranca_erro: null }
     ])
     expect(processarPrazos(db, PC, minutos(180))).toBe(0)
   })
 
-  it('sem forma de cobrança, libera e avisa que não cobrou', () => {
+  it('sem cobrança avisada na mensagem, libera e não cobra', () => {
     enviarConfirmacao(db, sessaoId, PC, AGORA)
+    cobrar()
     processarPrazos(db, PC, minutos(130))
     expect(getAppointment(db, sessaoId).presenca).toBe('desmarcou')
-    expect(avisosDaConfirmacao(db, minutos(131)).liberados[0].cobranca_erro).toMatch(
-      /forma de cobrança/
+    expect(cobrancas()).toEqual([])
+    expect(avisosDaConfirmacao(db, minutos(131)).liberados).toMatchObject([
+      { falta_cobrada: false, cobranca_erro: null }
+    ])
+  })
+
+  it('remarcar ou desfazer a falta estorna a cobrança dela', () => {
+    cobrar()
+    enviarConfirmacao(db, sessaoId, PC, AGORA)
+    processarPrazos(db, PC, minutos(130))
+    expect(cobrancas().filter((c) => c.estorno === null)).toHaveLength(1)
+    moveAppointment(
+      db,
+      sessaoId,
+      { inicio: '2026-10-21T14:00', fim: '2026-10-21T14:50' },
+      undefined,
+      PC
     )
+    expect(cobrancas().filter((c) => c.estorno === null)).toEqual([])
+    expect(cobrancas()[0].estorno).toMatchObject({ motivo: 'Sessão remarcada.', computador: PC })
+
+    const outraId = marcar('2026-10-22T14:00', '2026-10-22T14:50')
+    const sessao = {
+      patient_id: patientId,
+      inicio: '2026-10-22T14:00',
+      fim: '2026-10-22T14:50',
+      observacao: ''
+    }
+    updateAppointment(db, outraId, { ...sessao, presenca: 'falta' })
+    runOperation(db, 'finance:chargeAbsence', [outraId, PC])
+    updateAppointment(db, outraId, { ...sessao, presenca: 'desmarcou' }, undefined, PC)
+    expect(cobrancas().filter((c) => c.estorno === null)).toHaveLength(1)
+    updateAppointment(db, outraId, { ...sessao, presenca: '' }, undefined, PC)
+    expect(cobrancas().filter((c) => c.estorno === null)).toEqual([])
   })
 
   it('o que venceu com o app fechado é processado ao abrir', () => {
@@ -306,8 +371,15 @@ describe('prazo de 2 horas', () => {
     processarPrazos(db, PC, minutos(125))
     expect(cobrancas()).toHaveLength(1)
     const recebida = receberConfirmacao(db, texto, PC, minutos(140))
-    expect(recebida).toMatchObject({ ok: true, tipo: 'no_prazo' })
-    expect(recebida.ok && recebida.detalhe).toContain('estornada')
+    expect(recebida).toMatchObject({ ok: true, tipo: 'conferir', resposta: 'confirmada' })
+    expect(recebida.ok && recebida.detalhe).toContain('Confira na conversa do WhatsApp')
+    expect(getAppointment(db, sessaoId).presenca).toBe('desmarcou')
+    expect(cobrancas().every((c) => c.estorno === null)).toBe(true)
+    expect(avisosDaConfirmacao(db, minutos(141)).outras).toMatchObject([
+      { resposta: 'confirmada', vencido: true }
+    ])
+    const aplicada = aplicarOutraResposta(db, recebida.ok ? recebida.request_id : 0, PC)
+    expect(aplicada.ok && aplicada.detalhe).toContain('estornada')
     expect(getAppointment(db, sessaoId)).toMatchObject({
       presenca: '',
       pedido: { estado: 'confirmado' }
@@ -321,7 +393,9 @@ describe('prazo de 2 horas', () => {
     processarPrazos(db, PC, minutos(125))
     marcar('2026-10-20T14:00', '2026-10-20T14:50', paciente('Duda'))
     const recebida = receberConfirmacao(db, texto, PC, minutos(140))
-    expect(recebida.ok && recebida.detalhe).toContain('remarque')
+    expect(recebida).toMatchObject({ ok: true, tipo: 'conferir' })
+    const aplicada = aplicarOutraResposta(db, recebida.ok ? recebida.request_id : 0, PC)
+    expect(aplicada.ok && aplicada.detalhe).toContain('remarque')
     expect(getAppointment(db, sessaoId).presenca).toBe('desmarcou')
   })
 

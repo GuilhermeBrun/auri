@@ -281,7 +281,12 @@ export function AppointmentForm({
   const save = useMutation({
     mutationFn: (input: AppointmentInput) =>
       editing
-        ? window.api.appointments.update(editing.id, input, editing.updated_at)
+        ? window.api.appointments.update(
+            editing.id,
+            input,
+            editing.updated_at,
+            info?.name || 'Este computador'
+          )
         : draft.mode === 'create' && draft.reserveId
           ? window.api.appointments.scheduleOnReserve(draft.reserveId, input)
           : window.api.appointments.create(input),

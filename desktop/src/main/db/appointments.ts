@@ -11,6 +11,7 @@ import { getFuncionamento } from './clinic'
 import { assertAgendaFree } from './busy'
 import { assertUnchanged } from './concurrency'
 import type { Db } from './connection'
+import { estornarFalta } from './finance'
 import {
   assertTipoUsavel,
   setAppointmentEtiquetas,
@@ -176,11 +177,16 @@ export function createAppointment(
   })()
 }
 
+const COMPUTADOR = 'Este computador'
+
+const FALTAS: readonly string[] = ['falta', 'desmarcou']
+
 export function updateAppointment(
   db: Db,
   id: number,
   input: AppointmentInput,
-  expected?: string
+  expected?: string,
+  computador: string = COMPUTADOR
 ): Appointment {
   return db.transaction(() => {
     const current = getAppointment(db, id)
@@ -208,6 +214,17 @@ export function updateAppointment(
       )
       .run({ ...toParams(input), id })
     if (result.changes === 0) throw new Error('Agendamento não encontrado')
+    const remarcou =
+      input.inicio !== current.inicio ||
+      input.fim !== current.fim ||
+      input.patient_id !== current.patient_id
+    if (FALTAS.includes(current.presenca) && (remarcou || !FALTAS.includes(input.presenca ?? '')))
+      estornarFalta(
+        db,
+        id,
+        remarcou ? 'Sessão remarcada na agenda.' : 'Falta desfeita na agenda.',
+        computador
+      )
     if (input.etiquetas) {
       setAppointmentEtiquetas(
         db,
@@ -224,24 +241,39 @@ export function moveAppointment(
   db: Db,
   id: number,
   slot: { inicio: string; fim: string },
-  expected?: string
+  expected?: string,
+  computador: string = COMPUTADOR
 ): Appointment {
-  const current = getAppointment(db, id)
-  assertUnchanged(current.updated_at, expected)
-  if (current.assinatura) {
-    throw new Error('A chegada desta sessão foi assinada: o horário não muda mais.')
-  }
-  assertWithinHours(db, slot)
-  assertAgendaFree(db, slot, { appointment: id })
-  db.prepare(
-    `UPDATE appointments
-     SET inicio = @inicio, fim = @fim, presenca = NULL, confirmado_em = NULL, updated_at = ${NOW}
-     WHERE id = @id`
-  ).run({ ...slot, id })
-  return getAppointment(db, id)
+  return db.transaction(() => {
+    const current = getAppointment(db, id)
+    assertUnchanged(current.updated_at, expected)
+    if (current.assinatura) {
+      throw new Error('A chegada desta sessão foi assinada: o horário não muda mais.')
+    }
+    assertWithinHours(db, slot)
+    assertAgendaFree(db, slot, { appointment: id })
+    db.prepare(
+      `UPDATE appointments
+       SET inicio = @inicio, fim = @fim, presenca = NULL, confirmado_em = NULL, updated_at = ${NOW}
+       WHERE id = @id`
+    ).run({ ...slot, id })
+    estornarFalta(db, id, 'Sessão remarcada.', computador)
+    return getAppointment(db, id)
+  })()
 }
 
 export function removeAppointment(db: Db, id: number): void {
+  const lancada = db
+    .prepare(
+      `SELECT 1 FROM finance_charges WHERE appointment_id = @id
+       UNION ALL SELECT 1 FROM finance_package_uses WHERE appointment_id = @id`
+    )
+    .get({ id })
+  if (lancada) {
+    throw new Error(
+      'Esta sessão já passou pelo financeiro e fica no histórico. Em vez de excluir, marque como desmarcada.'
+    )
+  }
   const result = db.prepare('DELETE FROM appointments WHERE id = ?').run(id)
   if (result.changes === 0) throw new Error('Agendamento não encontrado')
 }

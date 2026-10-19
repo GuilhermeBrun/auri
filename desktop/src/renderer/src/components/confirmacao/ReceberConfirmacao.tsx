@@ -89,7 +89,7 @@ function Aplicada({ texto, onOutra }: { texto: string; onOutra?: () => void }) {
     gcTime: 0
   })
   const outra = useMutation({
-    mutationFn: (requestId: number) => window.api.confirmacoes.aplicarOutra(requestId)
+    mutationFn: (requestId: number) => window.api.confirmacoes.aplicarOutra(requestId, computador)
   })
   const resultado: ConfirmacaoRecebida | undefined = outra.data ?? recebida.data
 
@@ -127,8 +127,9 @@ function Aplicada({ texto, onOutra }: { texto: string; onOutra?: () => void }) {
     return <DialogBody className="py-10 text-center text-ink-soft">Aplicando…</DialogBody>
 
   const encaixar = resultado.vaga
+  const pendente = resultado.tipo === 'outra' || resultado.tipo === 'conferir'
   const acao =
-    resultado.tipo === 'outra' && !outra.data ? (
+    pendente && !outra.data ? (
       <Button loading={outra.isPending} onClick={() => outra.mutate(resultado.request_id)}>
         {resultado.resposta === 'desmarcada' ? 'Desmarcar a sessão' : 'Confirmar a sessão'}
       </Button>
@@ -147,7 +148,7 @@ function Aplicada({ texto, onOutra }: { texto: string; onOutra?: () => void }) {
   return (
     <>
       <DialogBody className="flex flex-col gap-2">
-        <Callout tone={resultado.tipo === 'outra' ? 'warning' : 'neutral'} title={resultado.titulo}>
+        <Callout tone={pendente ? 'warning' : 'neutral'} title={resultado.titulo}>
           {resultado.detalhe}
         </Callout>
         {outra.error && <p className="text-xs text-danger">{outra.error.message}</p>}

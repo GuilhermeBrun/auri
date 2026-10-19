@@ -57,6 +57,13 @@ export function decifrar(chave: Uint8Array, dadoAdicional: string, pacote: Uint8
   ])
 }
 
+export function abrirPacote(chave: Uint8Array, dadoAdicional: string, dados: string): Uint8Array {
+  const corpo = inflateRawSync(decifrar(chave, dadoAdicional, deBase64url(dados)), {
+    maxOutputLength: MAXIMO_DESCOMPRIMIDO
+  })
+  return new Uint8Array(corpo)
+}
+
 export function montarIda(termo: Termo, chave: Uint8Array, limite: number = LIMITE_IDA): string {
   const json = Buffer.from(JSON.stringify(termoValido(termo)))
   const dados = cifrar(chave, DADO_DA_IDA, deflateRawSync(json))
@@ -70,10 +77,7 @@ export function lerVolta(fragmento: string, chave: Uint8Array): Volta {
   const id = idDaVolta(fragmento)
   const [, dados] = partes(fragmento)
   try {
-    const corpo = inflateRawSync(decifrar(chave, dadoDaVolta(id), deBase64url(dados)), {
-      maxOutputLength: MAXIMO_DESCOMPRIMIDO
-    })
-    return lerCorpoDaVolta(new Uint8Array(corpo), id)
+    return lerCorpoDaVolta(abrirPacote(chave, dadoDaVolta(id), dados), id)
   } catch (erro) {
     throw new LinkInvalido('incompleto', { cause: erro })
   }

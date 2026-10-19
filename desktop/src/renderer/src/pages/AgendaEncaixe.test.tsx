@@ -294,7 +294,8 @@ describe('remarcar', () => {
       expect(api.appointments.move).toHaveBeenCalledWith(
         futura.id,
         { inicio: '2026-10-16T14:00', fim: '2026-10-16T14:45' },
-        futura.updated_at
+        futura.updated_at,
+        'Este computador'
       )
     )
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())

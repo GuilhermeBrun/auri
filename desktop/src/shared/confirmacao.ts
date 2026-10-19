@@ -67,7 +67,7 @@ export type Vaga = { inicio: string; fim: string }
 export type ConfirmacaoRecebida =
   | {
       ok: true
-      tipo: 'confirmada' | 'desmarcada' | 'repetida' | 'outra' | 'no_prazo'
+      tipo: 'confirmada' | 'desmarcada' | 'repetida' | 'outra' | 'conferir'
       resposta: 'confirmada' | 'desmarcada'
       titulo: string
       detalhe: string
@@ -87,9 +87,13 @@ type AvisoBase = {
 
 export type HorarioLiberado = AvisoBase & {
   motivo: 'sem_resposta' | 'desmarcou'
+  falta_cobrada: boolean
   cobranca_erro: string | null
 }
 
-export type OutraResposta = AvisoBase & { resposta: 'confirmada' | 'desmarcada' }
+export type OutraResposta = AvisoBase & {
+  resposta: 'confirmada' | 'desmarcada'
+  vencido: boolean
+}
 
 export type AvisosDaConfirmacao = { liberados: HorarioLiberado[]; outras: OutraResposta[] }

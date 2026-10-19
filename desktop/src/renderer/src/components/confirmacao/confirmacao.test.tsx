@@ -178,7 +178,7 @@ describe('resposta que chega', () => {
     renderRoute('/', '/', <ReceberConfirmacao />)
     act(() => abrirResposta('https://auri.dev.br/resposta#1.x.y'))
     await userEvent.click(await screen.findByRole('button', { name: 'Desmarcar a sessão' }))
-    expect(confirmacoes.aplicarOutra).toHaveBeenCalledWith(9)
+    expect(confirmacoes.aplicarOutra).toHaveBeenCalledWith(9, expect.any(String))
     expect(await screen.findByText('Sessão desmarcada')).toBeTruthy()
   })
 
@@ -213,6 +213,7 @@ describe('avisos na agenda', () => {
           inicio: '2026-10-20T09:00',
           fim: '2026-10-20T09:30',
           motivo: 'sem_resposta',
+          falta_cobrada: true,
           cobranca_erro: null
         }
       ],
@@ -223,7 +224,8 @@ describe('avisos na agenda', () => {
           patient_nome: 'Bruno Fictício',
           inicio: '2026-10-20T10:00',
           fim: '2026-10-20T10:30',
-          resposta: 'desmarcada'
+          resposta: 'desmarcada',
+          vencido: false
         }
       ]
     }

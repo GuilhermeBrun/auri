@@ -262,15 +262,17 @@ export function setBilling(
   return getBilling(db, patientId)!
 }
 
-type PackageRow = Omit<PatientPackage, 'usadas' | 'em_vigor' | 'estorno'> &
+type PackageRow = Omit<PatientPackage, 'em_vigor' | 'estorno'> &
   VoidColumns & { patient_id: number }
 
 function packageRows(db: Db, patientId: number): PackageRow[] {
   return db
     .prepare(
-      `SELECT id, patient_id, nome, sessoes, valor_centavos, inicio, validade,
-              estornado_em, estorno_motivo, estorno_computador
-       FROM finance_packages WHERE patient_id = ? ORDER BY inicio, id`
+      `SELECT k.id, k.patient_id, k.nome, k.sessoes, k.valor_centavos, k.inicio, k.validade,
+              k.estornado_em, k.estorno_motivo, k.estorno_computador,
+              (SELECT count(*) FROM finance_package_uses u
+               WHERE u.package_id = k.id AND u.estornado_em IS NULL) AS usadas
+       FROM finance_packages k WHERE k.patient_id = ? ORDER BY k.inicio, k.id`
     )
     .all(patientId) as PackageRow[]
 }
@@ -284,15 +286,13 @@ function usedCount(db: Db, packageId: number): number {
   return row.n
 }
 
-function toPackage(db: Db, row: PackageRow, today: string): PatientPackage {
-  const usadas = usedCount(db, row.id)
+function toPackage(row: PackageRow, today: string): PatientPackage {
   const { patient_id: _, ...rest } = withoutVoid(row)
   return {
     ...rest,
-    usadas,
     em_vigor:
       row.estornado_em === null &&
-      usadas < row.sessoes &&
+      row.usadas < row.sessoes &&
       (row.validade === null || row.validade >= today),
     estorno: estorno(row)
   }
@@ -459,6 +459,23 @@ export function lancarNaChegada(
   }
 }
 
+export function estornarFalta(
+  db: Db,
+  appointmentId: number,
+  motivo: string,
+  computador: string
+): boolean {
+  const charge = db
+    .prepare(
+      `SELECT id FROM finance_charges
+       WHERE appointment_id = ? AND motivo = 'falta_cobrada' AND estornado_em IS NULL`
+    )
+    .get(appointmentId) as { id: number } | undefined
+  if (!charge) return false
+  estornar(db, 'charge', charge.id, motivo, computador)
+  return true
+}
+
 export function estornarSessao(
   db: Db,
   appointmentId: number,
@@ -487,7 +504,7 @@ function packageFor(db: Db, patientId: number, day: string): PackageRow | null {
         p.estornado_em === null &&
         p.inicio <= day &&
         (p.validade === null || p.validade >= day) &&
-        usedCount(db, p.id) < p.sessoes
+        p.usadas < p.sessoes
     ) ?? null
   )
 }
@@ -786,7 +803,7 @@ export function getPatientFinance(
     saldo_centavos: saldo.familia,
     convenios: saldo.convenios.filter((c) => c.saldo_centavos !== 0),
     packages: packageRows(db, patientId)
-      .map((row) => toPackage(db, row, today))
+      .map((row) => toPackage(row, today))
       .reverse(),
     charges: allocate(charges, payments),
     payments: payments.map(paymentFromRow),
@@ -831,54 +848,73 @@ export function situacaoSessoes(db: Db, appointmentIds: number[]): SessionPaySta
   })
 }
 
+type SaldoRow = { patient_id: number; insurer_id: number | null; saldo: number }
+
+function nomesDos(db: Db, ids: number[]): Map<number, string> {
+  const rows = db
+    .prepare('SELECT id, nome FROM patients WHERE id IN (SELECT value FROM json_each(?))')
+    .all(JSON.stringify([...new Set(ids)])) as { id: number; nome: string }[]
+  return new Map(rows.map((p) => [p.id, p.nome]))
+}
+
 export function getOverview(db: Db, de: string, ate: string): FinanceOverview {
-  const charges = db.prepare(`${SELECT_CHARGES} WHERE c.estornado_em IS NULL`).all() as ChargeRow[]
-  const payments = db
-    .prepare(`${SELECT_PAYMENTS} WHERE p.estornado_em IS NULL`)
-    .all() as PaymentRow[]
-  const names = new Map(
-    (db.prepare('SELECT id, nome FROM patients').all() as { id: number; nome: string }[]).map(
-      (p) => [p.id, p.nome]
+  const saldosRows = db
+    .prepare(
+      `SELECT patient_id, insurer_id, sum(valor) AS saldo
+       FROM (SELECT patient_id, insurer_id, valor_centavos AS valor
+             FROM finance_charges WHERE estornado_em IS NULL
+             UNION ALL
+             SELECT patient_id, insurer_id, -valor_centavos
+             FROM finance_payments WHERE estornado_em IS NULL)
+       GROUP BY patient_id, insurer_id`
     )
+    .all() as SaldoRow[]
+  const insurerNames = new Map(
+    (
+      db.prepare('SELECT id, nome FROM finance_insurers').all() as { id: number; nome: string }[]
+    ).map((i) => [i.id, i.nome])
   )
 
-  const byPatient = new Map<number, { charges: ChargeRow[]; payments: PaymentRow[] }>()
-  const group = (patientId: number): { charges: ChargeRow[]; payments: PaymentRow[] } => {
-    let g = byPatient.get(patientId)
-    if (!g) {
-      g = { charges: [], payments: [] }
-      byPatient.set(patientId, g)
-    }
-    return g
-  }
-  for (const c of charges) group(c.patient_id).charges.push(c)
-  for (const p of payments) group(p.patient_id).payments.push(p)
-
-  const abertos: FinanceOverview['abertos'] = []
   const convenios = new Map<number, SaldoConvenio>()
-  for (const [patientId, g] of byPatient) {
-    const s = saldos(g.charges, g.payments)
-    for (const c of s.convenios) {
-      const current = convenios.get(c.insurer_id) ?? { ...c, saldo_centavos: 0 }
-      current.saldo_centavos += c.saldo_centavos
-      convenios.set(c.insurer_id, current)
+  const devedores: { patient_id: number; saldo: number }[] = []
+  for (const row of saldosRows) {
+    if (row.insurer_id === null) {
+      if (row.saldo > 0) devedores.push({ patient_id: row.patient_id, saldo: row.saldo })
+      continue
     }
-    if (s.familia <= 0) continue
-    const open = allocate(g.charges, g.payments)
-      .filter((c) => c.insurer_id === null && c.situacao !== 'pago')
+    const current = convenios.get(row.insurer_id) ?? {
+      insurer_id: row.insurer_id,
+      nome: insurerNames.get(row.insurer_id) ?? '',
+      saldo_centavos: 0
+    }
+    current.saldo_centavos += row.saldo
+    convenios.set(row.insurer_id, current)
+  }
+
+  const recebidos = db
+    .prepare(`${SELECT_PAYMENTS} WHERE p.estornado_em IS NULL AND p.data >= ? AND p.data <= ?`)
+    .all(de, ate) as PaymentRow[]
+  const names = nomesDos(db, [
+    ...devedores.map((d) => d.patient_id),
+    ...recebidos.map((p) => p.patient_id)
+  ])
+
+  const abertos: FinanceOverview['abertos'] = devedores.map(({ patient_id, saldo }) => {
+    const { charges, payments } = patientLedger(db, patient_id)
+    const open = allocate(charges, payments)
+      .filter((c) => c.estorno === null && c.insurer_id === null && c.situacao !== 'pago')
       .map((c) => c.data)
       .sort()
-    abertos.push({
-      patient_id: patientId,
-      nome: names.get(patientId) ?? '',
-      saldo_centavos: s.familia,
+    return {
+      patient_id,
+      nome: names.get(patient_id) ?? '',
+      saldo_centavos: saldo,
       desde: open[0] ?? ''
-    })
-  }
+    }
+  })
   abertos.sort((a, b) => b.saldo_centavos - a.saldo_centavos || a.nome.localeCompare(b.nome))
 
-  const recebimentos = payments
-    .filter((p) => p.data >= de && p.data <= ate)
+  const recebimentos = recebidos
     .sort((a, b) => (a.data === b.data ? b.id - a.id : a.data < b.data ? 1 : -1))
     .map((p) => ({
       ...paymentFromRow(p),

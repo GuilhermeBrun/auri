@@ -358,7 +358,7 @@ describe('estorno', () => {
     expect(() =>
       db.prepare("UPDATE finance_charges SET estorno_motivo = 'outro' WHERE id = ?").run(id)
     ).toThrow('só pode ser estornado')
-    expect(() => removeAppointment(db, a)).toThrow(/FOREIGN KEY/)
+    expect(() => removeAppointment(db, a)).toThrow('fica no histórico')
   })
 })
 

@@ -4,6 +4,7 @@ import type { Vaga } from '@shared/confirmacao'
 import { shortName } from '@shared/names'
 import { Button } from '@renderer/components/ui/button'
 import { quandoCurto } from '@renderer/lib/confirmacoes'
+import { useComputador } from '@renderer/lib/finance'
 
 export function AvisosDaConfirmacao({
   onEncaixar
@@ -18,8 +19,9 @@ export function AvisosDaConfirmacao({
     mutationFn: ({ id, tipo }: { id: number; tipo: 'liberado' | 'outra' }) =>
       window.api.confirmacoes.dispensar(id, tipo)
   })
+  const computador = useComputador()
   const aplicar = useMutation({
-    mutationFn: (id: number) => window.api.confirmacoes.aplicarOutra(id)
+    mutationFn: (id: number) => window.api.confirmacoes.aplicarOutra(id, computador)
   })
   const { liberados = [], outras = [] } = avisos.data ?? {}
   if (liberados.length === 0 && outras.length === 0) return null
@@ -52,10 +54,9 @@ export function AvisosDaConfirmacao({
                 {l.motivo === 'sem_resposta'
                   ? `${quem} não respondeu à confirmação`
                   : `${quem} desmarcou pelo link`}
-                {l.motivo === 'sem_resposta' &&
-                  (l.cobranca_erro
-                    ? ` · falta não cobrada: ${l.cobranca_erro}`
-                    : ' · falta cobrada')}
+                {l.cobranca_erro
+                  ? ` · falta não cobrada: ${l.cobranca_erro}`
+                  : l.falta_cobrada && ' · falta cobrada'}
               </span>
             </span>
             <Button
@@ -77,11 +78,16 @@ export function AvisosDaConfirmacao({
             className="flex animate-fade-in items-center gap-3 rounded-card bg-fill py-1.5 pr-1.5 pl-4"
           >
             <span className="min-w-0 flex-1 text-[13px]">
-              <span className="font-medium">{quem} mandou outra resposta</span>
+              <span className="font-medium">
+                {o.vencido
+                  ? `${quem} respondeu depois do vencimento`
+                  : `${quem} mandou outra resposta`}
+              </span>
               <span className="text-ink-soft">
-                {' · agora quer '}
+                {o.vencido ? ' · quer ' : ' · agora quer '}
                 {o.resposta === 'desmarcada' ? 'desmarcar' : 'confirmar'} a sessão de{' '}
                 {quandoCurto(o.inicio)}
+                {o.vencido && ' · confira a hora da mensagem no WhatsApp'}
               </span>
             </span>
             <Button

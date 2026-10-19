@@ -343,7 +343,7 @@ describe('operações', () => {
       runOperation(
         db,
         'appointments:move',
-        [1, { inicio: `${QUA}T15:00`, fim: `${QUA}T16:00` }],
+        [1, { inicio: `${QUA}T15:00`, fim: `${QUA}T16:00` }, undefined, 'Recepção'],
         on
       )
     ).toMatchObject({ ok: true, data: { inicio: `${QUA}T15:00` } })
@@ -351,7 +351,7 @@ describe('operações', () => {
     expect(topics).toEqual([
       ['commitments'],
       ['appointments', 'commitments', 'waitlist'],
-      ['appointments']
+      ['appointments', 'finance']
     ])
   })
 })

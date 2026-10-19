@@ -1,3 +1,4 @@
+import type { z } from 'zod'
 import { PERIODOS, type Periodo } from '../../shared/encaixe'
 import {
   waitlistAddSchema,
@@ -40,8 +41,9 @@ function fromRow({ encerrado_em: _, ...row }: WaitlistRow): WaitlistEntry {
   }
 }
 
-function toParams(input: WaitlistInput): Record<string, string | number | null> {
-  const full = waitlistInputSchema.parse(input)
+function toParams(
+  full: z.output<typeof waitlistInputSchema>
+): Record<string, string | number | null> {
   return {
     tipo_id: full.tipo_id ?? null,
     duracao: full.duracao,
@@ -79,7 +81,8 @@ export function getPatientWaitlist(db: Db, patientId: number): WaitlistEntry | n
 }
 
 export function addToWaitlist(db: Db, input: WaitlistAdd): WaitlistEntry {
-  const { patient_id } = waitlistAddSchema.parse(input)
+  const parsed = waitlistAddSchema.parse(input)
+  const { patient_id } = parsed
   const patient = db.prepare('SELECT ativo FROM patients WHERE id = ?').get(patient_id) as
     | { ativo: number }
     | undefined
@@ -94,7 +97,7 @@ export function addToWaitlist(db: Db, input: WaitlistAdd): WaitlistEntry {
          (patient_id, tipo_id, duracao, dias, periodos, prioridade, observacao)
        VALUES (@patient_id, @tipo_id, @duracao, @dias, @periodos, @prioridade, @observacao)`
     )
-    .run({ ...toParams(input), patient_id, tipo_id: tipoDaEspera(db, input.tipo_id) })
+    .run({ ...toParams(parsed), patient_id, tipo_id: tipoDaEspera(db, parsed.tipo_id) })
   return getOpenEntry(db, Number(result.lastInsertRowid))
 }
 
@@ -104,10 +107,11 @@ export function updateWaitlist(
   input: WaitlistInput,
   expected?: string
 ): WaitlistEntry {
+  const parsed = waitlistInputSchema.parse(input)
   const current = getOpenEntry(db, id)
   assertUnchanged(current.updated_at, expected)
-  if (input.tipo_id !== undefined && input.tipo_id !== current.tipo_id) {
-    assertTipoUsavel(db, input.tipo_id)
+  if (parsed.tipo_id !== undefined && parsed.tipo_id !== current.tipo_id) {
+    assertTipoUsavel(db, parsed.tipo_id)
   }
   db.prepare(
     `UPDATE waitlist_entries
@@ -115,7 +119,7 @@ export function updateWaitlist(
          prioridade = @prioridade, observacao = @observacao,
          updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
      WHERE id = @id`
-  ).run({ ...toParams(input), id })
+  ).run({ ...toParams(parsed), id })
   return getOpenEntry(db, id)
 }
 

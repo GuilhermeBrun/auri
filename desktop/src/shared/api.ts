@@ -68,9 +68,19 @@ export interface AuriApi {
     listRange(de: string, ate: string): Promise<Appointment[]>
     listByPatient(patientId: number): Promise<Appointment[]>
     create(input: AppointmentInput): Promise<Appointment>
-    update(id: number, input: AppointmentInput, expected?: string): Promise<Appointment>
+    update(
+      id: number,
+      input: AppointmentInput,
+      expected: string | undefined,
+      computador: string
+    ): Promise<Appointment>
     remove(id: number): Promise<void>
-    move(id: number, slot: Intervalo, expected?: string): Promise<Appointment>
+    move(
+      id: number,
+      slot: Intervalo,
+      expected: string | undefined,
+      computador: string
+    ): Promise<Appointment>
     scheduleOnReserve(reserveId: number, input: AppointmentInput): Promise<Appointment>
   }
   commitments: {
@@ -115,7 +125,7 @@ export interface AuriApi {
     lista(): Promise<ConfirmacaoLista>
     enviar(appointmentId: number, computador: string): Promise<ConfirmacaoEnvio>
     receber(texto: string, computador: string): Promise<ConfirmacaoRecebida>
-    aplicarOutra(requestId: number): Promise<ConfirmacaoRecebida>
+    aplicarOutra(requestId: number, computador: string): Promise<ConfirmacaoRecebida>
     avisos(): Promise<AvisosDaConfirmacao>
     dispensar(requestId: number, tipo: 'liberado' | 'outra'): Promise<void>
     takeIncoming(): Promise<string[]>

@@ -345,7 +345,8 @@ describe('agendamento e funcionamento', () => {
       expect(api.appointments.update).toHaveBeenCalledWith(
         amanha.id,
         expect.objectContaining({ confirmado: true }),
-        amanha.updated_at
+        amanha.updated_at,
+        'Este computador'
       )
     )
   })

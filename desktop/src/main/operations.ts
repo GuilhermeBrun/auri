@@ -179,9 +179,15 @@ const OPERATIONS: Record<string, Operation> = {
     changes: ['appointments', 'waitlist']
   },
   'appointments:move': {
-    run: (db, [id, slot, expected]) =>
-      moveAppointment(db, idSchema.parse(id), pickSlot(slot), expectedSchema.parse(expected)),
-    changes: ['appointments']
+    run: (db, [id, slot, expected, computador]) =>
+      moveAppointment(
+        db,
+        idSchema.parse(id),
+        pickSlot(slot),
+        expectedSchema.parse(expected),
+        computadorSchema.parse(computador)
+      ),
+    changes: ['appointments', 'finance']
   },
   'appointments:scheduleOnReserve': {
     run: (db, [reserveId, input]) =>
@@ -214,14 +220,15 @@ const OPERATIONS: Record<string, Operation> = {
     changes: ['commitments']
   },
   'appointments:update': {
-    run: (db, [id, input, expected]) =>
+    run: (db, [id, input, expected, computador]) =>
       updateAppointment(
         db,
         idSchema.parse(id),
         appointmentInputSchema.parse(input),
-        expectedSchema.parse(expected)
+        expectedSchema.parse(expected),
+        computadorSchema.parse(computador)
       ),
-    changes: ['appointments']
+    changes: ['appointments', 'finance']
   },
   'appointments:remove': {
     run: (db, [id]) => removeAppointment(db, idSchema.parse(id)),
@@ -350,8 +357,9 @@ const OPERATIONS: Record<string, Operation> = {
     changes: ['appointments', 'finance']
   },
   'confirmacoes:aplicarOutra': {
-    run: (db, [requestId]) => aplicarOutraResposta(db, idSchema.parse(requestId)),
-    changes: ['appointments']
+    run: (db, [requestId, computador]) =>
+      aplicarOutraResposta(db, idSchema.parse(requestId), computadorSchema.parse(computador)),
+    changes: ['appointments', 'finance']
   },
   'confirmacoes:avisos': { run: (db) => avisosDaConfirmacao(db) },
   'confirmacoes:dispensar': {

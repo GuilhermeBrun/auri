@@ -1,6 +1,5 @@
-import { deflateRawSync, inflateRawSync } from 'node:zlib'
-import { deBase64url, paraBase64url } from '../../../../web/contrato/assinatura/base64url'
-import { MAXIMO_DESCOMPRIMIDO } from '../../../../web/contrato/assinatura/compressao'
+import { deflateRawSync } from 'node:zlib'
+import { paraBase64url } from '../../../../web/contrato/assinatura/base64url'
 import { LinkInvalido, ORIGEM } from '../../../../web/contrato/assinatura/formato'
 import {
   DADO_DA_IDA,
@@ -16,7 +15,7 @@ import {
   type Confirmacao,
   type Resposta
 } from '../../../../web/contrato/confirmacao/formato'
-import { cifrar, decifrar } from '../terms/link'
+import { abrirPacote, cifrar } from '../terms/link'
 
 export function montarIda(
   confirmacao: Confirmacao,
@@ -32,10 +31,7 @@ export function lerVolta(fragmento: string, chave: Uint8Array): Resposta {
   const id = idDaVolta(fragmento)
   const [, dados] = partes(fragmento)
   try {
-    const corpo = inflateRawSync(decifrar(chave, dadoDaVolta(id), deBase64url(dados)), {
-      maxOutputLength: MAXIMO_DESCOMPRIMIDO
-    })
-    return respostaDoEnvio(lerJson(new Uint8Array(corpo)), id)
+    return respostaDoEnvio(lerJson(abrirPacote(chave, dadoDaVolta(id), dados)), id)
   } catch (erro) {
     throw new LinkInvalido('incompleto', { cause: erro })
   }

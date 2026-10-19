@@ -9,6 +9,7 @@ import type { Appointment } from '@shared/schemas'
 import { Button } from '@renderer/components/ui/button'
 import { Callout } from '@renderer/components/ui/callout'
 import { Dialog, DialogBody, DialogFooter } from '@renderer/components/ui/dialog'
+import { useComputador } from '@renderer/lib/finance'
 import { sugestoesQuery } from '@renderer/lib/queries'
 import { useToast } from '@renderer/lib/toast'
 import { cn } from '@renderer/lib/utils'
@@ -74,9 +75,10 @@ function RescheduleBody({
     })
   )
 
+  const computador = useComputador()
   const move = useMutation({
     mutationFn: (slot: Intervalo) =>
-      window.api.appointments.move(appointment.id, slot, appointment.updated_at),
+      window.api.appointments.move(appointment.id, slot, appointment.updated_at, computador),
     onSuccess: (moved) => {
       toast({
         title: 'Sessão remarcada',

@@ -35,9 +35,11 @@ const api: AuriApi = {
     listRange: (de, ate) => invoke('appointments:listRange', de, ate),
     listByPatient: (patientId) => invoke('appointments:listByPatient', patientId),
     create: (input) => invoke('appointments:create', input),
-    update: (id, input, expected) => invoke('appointments:update', id, input, expected),
+    update: (id, input, expected, computador) =>
+      invoke('appointments:update', id, input, expected, computador),
     remove: (id) => invoke('appointments:remove', id),
-    move: (id, slot, expected) => invoke('appointments:move', id, slot, expected),
+    move: (id, slot, expected, computador) =>
+      invoke('appointments:move', id, slot, expected, computador),
     scheduleOnReserve: (reserveId, input) =>
       invoke('appointments:scheduleOnReserve', reserveId, input)
   },
@@ -85,7 +87,8 @@ const api: AuriApi = {
     lista: () => invoke('confirmacoes:lista'),
     enviar: (appointmentId, computador) => invoke('confirmacoes:enviar', appointmentId, computador),
     receber: (texto, computador) => invoke('confirmacoes:receber', texto, computador),
-    aplicarOutra: (requestId) => invoke('confirmacoes:aplicarOutra', requestId),
+    aplicarOutra: (requestId, computador) =>
+      invoke('confirmacoes:aplicarOutra', requestId, computador),
     avisos: () => invoke('confirmacoes:avisos'),
     dispensar: (requestId, tipo) => invoke('confirmacoes:dispensar', requestId, tipo),
     takeIncoming: () => invoke('confirmacoes:takeIncoming'),
