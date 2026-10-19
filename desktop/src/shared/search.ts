@@ -8,13 +8,26 @@ export function normalizeText(value: string | null): string {
     .toLowerCase()
 }
 
-type Searchable = { nome: string; mae_nome: string; cpf: string; mae_cpf: string }
+type Searchable = {
+  nome: string
+  mae_nome: string
+  cpf: string
+  mae_cpf: string
+  pai_nome?: string
+  pai_cpf?: string
+  resp_nome?: string
+  resp_cpf?: string
+}
 
 export function createPatientSearch<T extends Searchable>(patients: T[]): (busca: string) => T[] {
   const index = patients.map((patient) => ({
     patient,
-    text: `${normalizeText(patient.nome)}\n${normalizeText(patient.mae_nome)}`,
-    digits: `${onlyDigits(patient.cpf)}\n${onlyDigits(patient.mae_cpf)}`
+    text: [patient.nome, patient.mae_nome, patient.pai_nome, patient.resp_nome]
+      .map((value) => normalizeText(value ?? ''))
+      .join('\n'),
+    digits: [patient.cpf, patient.mae_cpf, patient.pai_cpf, patient.resp_cpf]
+      .map((value) => onlyDigits(value ?? ''))
+      .join('\n')
   }))
   return (busca) => {
     const term = normalizeText(busca.trim())

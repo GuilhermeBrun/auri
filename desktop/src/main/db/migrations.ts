@@ -68,6 +68,24 @@ const MIGRATIONS: string[] = [
     created_at      TEXT NOT NULL DEFAULT ${NOW},
     updated_at      TEXT NOT NULL DEFAULT ${NOW}
   );
+  `,
+  `
+  ALTER TABLE patients ADD COLUMN celular TEXT;
+  ALTER TABLE patients ADD COLUMN email TEXT;
+  ALTER TABLE patients ADD COLUMN pai_cpf TEXT;
+  ALTER TABLE patients ADD COLUMN pai_rg TEXT;
+  ALTER TABLE patients ADD COLUMN pai_celular TEXT;
+  ALTER TABLE patients ADD COLUMN pai_email TEXT;
+  ALTER TABLE patients ADD COLUMN resp_tipo TEXT
+    CHECK (resp_tipo IN ('mae', 'pai', 'outro'));
+  ALTER TABLE patients ADD COLUMN resp_nome TEXT;
+  ALTER TABLE patients ADD COLUMN resp_parentesco TEXT
+    CHECK (resp_parentesco IN ('avo_f', 'avo_m', 'tia', 'tio', 'outro'));
+  ALTER TABLE patients ADD COLUMN resp_parentesco_outro TEXT;
+  ALTER TABLE patients ADD COLUMN resp_cpf TEXT;
+  ALTER TABLE patients ADD COLUMN resp_rg TEXT;
+  ALTER TABLE patients ADD COLUMN resp_celular TEXT;
+  ALTER TABLE patients ADD COLUMN resp_email TEXT;
   `
 ]
 

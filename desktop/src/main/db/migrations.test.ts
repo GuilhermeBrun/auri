@@ -41,6 +41,10 @@ describe('compatibilidade do banco', () => {
         observacao: 'Fixture v1'
       }
     ])
+    expect(db.prepare('SELECT celular, pai_cpf, resp_tipo, resp_nome FROM patients').get()).toEqual(
+      { celular: null, pai_cpf: null, resp_tipo: null, resp_nome: null }
+    )
+    expect(() => db.prepare("UPDATE patients SET resp_tipo = 'avo'").run()).toThrow(/CHECK/)
     expect(db.pragma('integrity_check', { simple: true })).toBe('ok')
     expect(db.pragma('foreign_key_check')).toEqual([])
     db.close()

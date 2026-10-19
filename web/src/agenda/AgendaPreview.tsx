@@ -83,7 +83,7 @@ function Tools({ state }: { state: State }) {
       <>
         <span className="search">
           <Search />
-          <span>Nome, mãe ou CPF</span>
+          <span>Nome, família ou CPF</span>
         </span>
         <button type="button" className="ghost-icon" aria-label="Mostrar inativos">
           <Archive />

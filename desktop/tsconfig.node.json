@@ -6,8 +6,10 @@
     "src/main/**/*",
     "src/preload/**/*",
     "src/shared/**/*",
-    "../web/contrato/*.json"
+    "../web/contrato/*.json",
+    "../web/contrato/assinatura/*.ts"
   ],
+  "exclude": ["../web/contrato/**/*.test.ts"],
   "compilerOptions": {
     "composite": true,
     "types": ["electron-vite/node"]

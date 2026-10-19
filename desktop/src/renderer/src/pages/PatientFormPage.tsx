@@ -2,16 +2,19 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Archive, Undo2 } from 'lucide-react'
 import { useEffect, useId, useState, type ReactNode } from 'react'
-import { Controller, useForm, useWatch, type Control } from 'react-hook-form'
+import { Controller, useForm, useWatch, type Control, type UseFormRegister } from 'react-hook-form'
 import { useNavigate, useParams } from 'react-router'
 import { formatAge, toIsoDate } from '@shared/dates'
 import { formatCpf, formatPhone } from '@shared/masks'
+import { isAdult, PARENTESCO_LABEL } from '@shared/responsavel'
 import {
   emptyPatientInput,
+  PARENTESCOS,
   PATIENT_FIELDS,
   patientInputSchema,
   type Patient,
-  type PatientInput
+  type PatientInput,
+  type ResponsavelTipo
 } from '@shared/schemas'
 import { Page } from '@renderer/components/Layout'
 import { PATIENT_COLUMN, PatientHeader } from '@renderer/components/PatientHeader'
@@ -21,6 +24,8 @@ import { Callout } from '@renderer/components/ui/callout'
 import { ErrorState } from '@renderer/components/ui/error'
 import { DateField } from '@renderer/components/ui/date-field'
 import { Field, Input, Textarea } from '@renderer/components/ui/input'
+import { Segmented } from '@renderer/components/ui/segmented'
+import { Select } from '@renderer/components/ui/select'
 import { useDraft } from '@renderer/lib/drafts'
 import { patientQuery } from '@renderer/lib/queries'
 import { PATIENTS_CRUMB } from '@renderer/lib/session'
@@ -81,6 +86,144 @@ function MaskedInput({
         />
       )}
     />
+  )
+}
+
+const RESPONSAVEL_OPCOES = [
+  ['mae', 'Mãe'],
+  ['pai', 'Pai'],
+  ['outro', 'Outra pessoa']
+] as const satisfies readonly (readonly [ResponsavelTipo, string])[]
+
+const PARENTESCO_OPCOES = PARENTESCOS.map((value) => ({ value, label: PARENTESCO_LABEL[value] }))
+
+function ResponsavelFields({
+  control,
+  register,
+  err,
+  invalid,
+  adulto
+}: {
+  control: Control<PatientInput>
+  register: UseFormRegister<PatientInput>
+  err: (field: keyof PatientInput) => string | undefined
+  invalid: (field: keyof PatientInput) => boolean
+  adulto: boolean
+}): React.JSX.Element {
+  const ids = useId()
+  const [tipo, maeNome, paiNome, parentesco] = useWatch({
+    control,
+    name: ['resp_tipo', 'mae_nome', 'pai_nome', 'resp_parentesco']
+  })
+
+  if (adulto) {
+    return (
+      <p className="col-span-6 text-[13px] text-ink-soft">
+        Paciente maior de idade: ele mesmo assina os termos e a presença. O celular dele fica nos
+        dados do paciente.
+      </p>
+    )
+  }
+
+  const efetivo: ResponsavelTipo | '' =
+    tipo || (maeNome.trim() ? 'mae' : paiNome.trim() ? 'pai' : '')
+  const escolhido = efetivo === 'mae' ? maeNome.trim() : efetivo === 'pai' ? paiNome.trim() : ''
+
+  return (
+    <>
+      <div className="col-span-6 flex flex-wrap items-center gap-3">
+        <Controller
+          control={control}
+          name="resp_tipo"
+          render={({ field }) => (
+            <Segmented
+              label="Responsável pelo paciente"
+              value={efetivo}
+              options={RESPONSAVEL_OPCOES}
+              onChange={field.onChange}
+            />
+          )}
+        />
+        {efetivo === 'mae' || efetivo === 'pai' ? (
+          <span className="text-[13px] text-ink-soft">
+            {escolhido
+              ? `Assina: ${escolhido}`
+              : `Preencha o nome ${efetivo === 'mae' ? 'da mãe' : 'do pai'} acima.`}
+          </span>
+        ) : (
+          efetivo === '' && (
+            <span className="text-[13px] text-ink-soft">Escolha quem assina pelo paciente.</span>
+          )
+        )}
+      </div>
+
+      {efetivo === 'outro' && (
+        <>
+          <Field label="Nome do responsável" error={err('resp_nome')} className="col-span-4">
+            <Input {...register('resp_nome')} aria-invalid={invalid('resp_nome')} />
+          </Field>
+          <Field
+            label="Parentesco"
+            htmlFor={`${ids}-parentesco`}
+            error={err('resp_parentesco')}
+            className="col-span-2"
+          >
+            <Controller
+              control={control}
+              name="resp_parentesco"
+              render={({ field, fieldState }) => (
+                <Select
+                  id={`${ids}-parentesco`}
+                  value={field.value}
+                  onValueChange={field.onChange}
+                  options={PARENTESCO_OPCOES}
+                  invalid={fieldState.invalid}
+                />
+              )}
+            />
+          </Field>
+          {parentesco === 'outro' && (
+            <Field
+              label="Qual parentesco?"
+              error={err('resp_parentesco_outro')}
+              className="col-span-6"
+            >
+              <Input
+                {...register('resp_parentesco_outro')}
+                aria-invalid={invalid('resp_parentesco_outro')}
+                placeholder="Madrinha, padrasto, tutora…"
+              />
+            </Field>
+          )}
+          <Field label="Celular" error={err('resp_celular')} className="col-span-3">
+            <MaskedInput
+              control={control}
+              name="resp_celular"
+              mask={formatPhone}
+              placeholder="(00) 00000-0000"
+            />
+          </Field>
+          <Field label="E-mail" error={err('resp_email')} className="col-span-3">
+            <Input type="email" {...register('resp_email')} aria-invalid={invalid('resp_email')} />
+          </Field>
+          <Field label="CPF" error={err('resp_cpf')} className="col-span-3">
+            <MaskedInput
+              control={control}
+              name="resp_cpf"
+              mask={formatCpf}
+              placeholder="000.000.000-00"
+            />
+          </Field>
+          <Field label="RG" error={err('resp_rg')} className="col-span-3">
+            <Input {...register('resp_rg')} />
+          </Field>
+          <Callout title="Guarda ou tutela" className="col-span-6">
+            Avó, avô, tios e outras pessoas só respondem pelo paciente menor de idade quando têm a
+            guarda ou a tutela dele.
+          </Callout>
+        </>
+      )}
+    </>
   )
 }
 
@@ -176,7 +319,10 @@ function PatientFormPage({ patientId }: { patientId: number | null }): React.JSX
 
   const nome = useWatch({ control, name: 'nome' })
   const nascimento = useWatch({ control, name: 'data_nascimento' })
+  const [celularPaciente, emailPaciente] = useWatch({ control, name: ['celular', 'email'] })
   const idade = formatAge(nascimento)
+  const adulto = isAdult(nascimento)
+  const contatoPaciente = celularPaciente !== '' || emailPaciente !== ''
 
   if (!isNew && !patient) {
     return (
@@ -285,6 +431,21 @@ function PatientFormPage({ patientId }: { patientId: number | null }): React.JSX
                   placeholder="000.000.000-00"
                 />
               </Field>
+              {(adulto || contatoPaciente) && (
+                <>
+                  <Field label="Celular" error={err('celular')} className="col-span-3">
+                    <MaskedInput
+                      control={control}
+                      name="celular"
+                      mask={formatPhone}
+                      placeholder="(00) 00000-0000"
+                    />
+                  </Field>
+                  <Field label="E-mail" error={err('email')} className="col-span-3">
+                    <Input type="email" {...register('email')} aria-invalid={invalid('email')} />
+                  </Field>
+                </>
+              )}
             </Section>
 
             <Section id="secao-escola" title="Escola" description="Onde estuda e com quem.">
@@ -335,12 +496,52 @@ function PatientFormPage({ patientId }: { patientId: number | null }): React.JSX
             </Section>
 
             <Section id="secao-pai" title="Pai">
-              <Field label="Nome do pai" error={err('pai_nome')} className="col-span-4">
-                <Input {...register('pai_nome')} />
+              <Field label="Nome do pai" error={err('pai_nome')} className="col-span-6">
+                <Input {...register('pai_nome')} aria-invalid={invalid('pai_nome')} />
+              </Field>
+              <Field label="Celular" error={err('pai_celular')} className="col-span-3">
+                <MaskedInput
+                  control={control}
+                  name="pai_celular"
+                  mask={formatPhone}
+                  placeholder="(00) 00000-0000"
+                />
+              </Field>
+              <Field label="E-mail" error={err('pai_email')} className="col-span-3">
+                <Input
+                  type="email"
+                  {...register('pai_email')}
+                  aria-invalid={invalid('pai_email')}
+                />
+              </Field>
+              <Field label="CPF" error={err('pai_cpf')} className="col-span-2">
+                <MaskedInput
+                  control={control}
+                  name="pai_cpf"
+                  mask={formatCpf}
+                  placeholder="000.000.000-00"
+                />
+              </Field>
+              <Field label="RG" error={err('pai_rg')} className="col-span-2">
+                <Input {...register('pai_rg')} />
               </Field>
               <Field label="Profissão" error={err('pai_profissao')} className="col-span-2">
                 <Input {...register('pai_profissao')} />
               </Field>
+            </Section>
+
+            <Section
+              id="secao-responsavel"
+              title="Responsável"
+              description="Quem assina os termos e a presença nas sessões."
+            >
+              <ResponsavelFields
+                control={control}
+                register={register}
+                err={err}
+                invalid={invalid}
+                adulto={adulto}
+              />
             </Section>
 
             <Section id="secao-endereco" title="Endereço">

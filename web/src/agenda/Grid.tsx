@@ -214,7 +214,7 @@ function PatientsTable({ store, enter }: { store: Store; enter: Enter }) {
     <div className="pt">
       <div className="pt-head">
         <span>Paciente</span>
-        <span>Mãe</span>
+        <span>Responsável</span>
         <span>Escola</span>
         <span>Entrada</span>
       </div>

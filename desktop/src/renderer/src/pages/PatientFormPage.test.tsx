@@ -64,3 +64,46 @@ describe('inativar paciente na ficha', () => {
     expect(alert.textContent).toContain('database is locked')
   })
 })
+
+describe('responsável na ficha', () => {
+  let nextId = 40
+  const abrir = async (
+    over: Parameters<typeof fakePatient>[0]
+  ): Promise<ReturnType<typeof vi.fn>> => {
+    const id = nextId++
+    const update = vi.fn(async (_id: number, input: unknown) => ({
+      ...patient,
+      ...(input as object)
+    }))
+    const atual = fakePatient({ id, nome: 'Pedro Fictício Souza', ...over })
+    Object.assign(window, {
+      api: { patients: { get: vi.fn(async () => atual), update, setAtivo } }
+    })
+    renderRoute(`/pacientes/${id}`, '/pacientes/:id', <PatientFormRoute />)
+    await screen.findByDisplayValue(atual.nome)
+    return update
+  }
+
+  it('sem escolha, a mãe aparece como responsável', async () => {
+    await abrir({})
+    expect(screen.getByRole('button', { name: 'Mãe', pressed: true })).toBeTruthy()
+    expect(screen.getByText('Assina: Marina Fictícia Andrade')).toBeTruthy()
+  })
+
+  it('outra pessoa pede nome e parentesco antes de salvar', async () => {
+    const update = await abrir({})
+    await userEvent.click(screen.getByRole('button', { name: 'Outra pessoa' }))
+    expect(screen.getByText(/só respondem pelo paciente menor de idade/)).toBeTruthy()
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
+    expect(await screen.findByText('Informe o nome do responsável')).toBeTruthy()
+    expect(screen.getByText('Escolha o parentesco')).toBeTruthy()
+    expect(update).not.toHaveBeenCalled()
+  })
+
+  it('paciente maior de idade assina ele mesmo e tem celular próprio', async () => {
+    await abrir({ data_nascimento: '1990-03-02' })
+    expect(await screen.findByText(/Paciente maior de idade/)).toBeTruthy()
+    expect(screen.queryByRole('group', { name: 'Responsável pelo paciente' })).toBeNull()
+    expect(screen.getAllByText('Celular')).toHaveLength(3)
+  })
+})

@@ -2,33 +2,17 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, type RenderResult } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { MemoryRouter, Route, Routes } from 'react-router'
-import type { Appointment, Patient } from '@shared/schemas'
+import { emptyPatientInput, type Appointment, type Patient } from '@shared/schemas'
 import { ToastContext, type ToastInput } from '@renderer/lib/toast'
 
 export function fakePatient(over: Partial<Patient> = {}): Patient {
   return {
+    ...emptyPatientInput(),
     id: 1,
     nome: 'Helena Fictícia Andrade',
     data_nascimento: '2019-08-17',
-    cpf: '',
-    escola: '',
-    serie: '',
-    professora: '',
     mae_nome: 'Marina Fictícia Andrade',
-    mae_cpf: '',
-    mae_rg: '',
-    mae_celular: '',
-    mae_email: '',
-    mae_profissao: '',
-    pai_nome: '',
-    pai_profissao: '',
-    endereco: '',
-    bairro: '',
-    cidade: '',
-    indicacao: '',
-    pediatra: '',
     data_entrada: '2026-08-29',
-    observacoes: '',
     ativo: true,
     created_at: '2026-08-29T12:00:00.000Z',
     updated_at: '2026-08-29T12:00:00.000Z',
