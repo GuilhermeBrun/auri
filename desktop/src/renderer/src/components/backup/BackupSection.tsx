@@ -1,7 +1,6 @@
 import { useMutation } from '@tanstack/react-query'
 import { FolderOpen, RotateCcw } from 'lucide-react'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
-import { Page } from '@renderer/components/Layout'
 import { DestinationPicker } from '@renderer/components/backup/DestinationPicker'
 import { DestinationRepair } from '@renderer/components/backup/DestinationRepair'
 import { PasswordDialog, type PasswordMode } from '@renderer/components/backup/PasswordDialog'
@@ -11,7 +10,7 @@ import { RestoreDialog } from '@renderer/components/backup/RestoreDialog'
 import { Button } from '@renderer/components/ui/button'
 import { Callout } from '@renderer/components/ui/callout'
 import { Loading } from '@renderer/components/ui/loading'
-import { ErrorText, SectionTitle, StatusDot } from '@renderer/components/ui/section'
+import { ErrorText, PageSection, SectionTitle, StatusDot } from '@renderer/components/ui/section'
 import { Segmented } from '@renderer/components/ui/segmented'
 import { Select } from '@renderer/components/ui/select'
 import { Sensitive } from '@renderer/components/ui/sensitive'
@@ -22,7 +21,6 @@ import {
   setBackupInfo,
   useBackup
 } from '@renderer/lib/backup'
-import { SETTINGS_CRUMB } from '@renderer/lib/settings'
 import { useToast } from '@renderer/lib/toast'
 import type { BackupDestination, BackupFrequency, BackupInfo } from '@shared/api'
 
@@ -447,44 +445,42 @@ function Disable(): React.JSX.Element {
   )
 }
 
-export function BackupPage(): React.JSX.Element {
+export function BackupSection(): React.JSX.Element {
   const info = useBackup()
   const [code, setCode] = useState<string | null>(null)
 
   return (
-    <Page trail={[SETTINGS_CRUMB, { label: 'Cópia de segurança' }]}>
-      <div className="mx-auto max-w-[720px] px-8 pt-8 pb-16">
-        <p className="text-[13px] text-ink-soft">
-          Uma cópia cifrada dos pacientes e da agenda, numa pasta da nuvem, para não perder nada se
-          este computador quebrar.
-        </p>
-        <div className="mt-8">
-          {!info ? (
-            <Loading />
-          ) : !info.available ? (
-            <SectionTitle title="As cópias são feitas no computador que guarda os dados">
-              Este computador usa os dados de outro. Ligue a cópia de segurança lá, em Configurações
-              / Cópia de segurança.
-            </SectionTitle>
-          ) : code ? (
-            <RecoveryStep code={code} onDone={() => setCode(null)} />
-          ) : info.configured ? (
-            <>
-              <Status info={info} />
-              <Destination info={info} />
-              <Frequency info={info} />
-              <Password />
-              <Restore info={info} />
-              <Disable />
-            </>
-          ) : (
-            <>
-              <Setup suggested={info.suggested} onCode={setCode} />
-              <Restore info={info} />
-            </>
-          )}
-        </div>
+    <PageSection
+      id="copia"
+      title="Cópia de segurança"
+      description="Uma cópia cifrada dos pacientes e da agenda, numa pasta da nuvem, para não perder nada se este computador quebrar."
+    >
+      <div className="mt-8">
+        {!info ? (
+          <Loading />
+        ) : !info.available ? (
+          <SectionTitle title="As cópias são feitas no computador que guarda os dados">
+            Este computador usa os dados de outro. Ligue a cópia de segurança lá, em Configurações /
+            Armazenamento.
+          </SectionTitle>
+        ) : code ? (
+          <RecoveryStep code={code} onDone={() => setCode(null)} />
+        ) : info.configured ? (
+          <>
+            <Status info={info} />
+            <Destination info={info} />
+            <Frequency info={info} />
+            <Password />
+            <Restore info={info} />
+            <Disable />
+          </>
+        ) : (
+          <>
+            <Setup suggested={info.suggested} onCode={setCode} />
+            <Restore info={info} />
+          </>
+        )}
       </div>
-    </Page>
+    </PageSection>
   )
 }

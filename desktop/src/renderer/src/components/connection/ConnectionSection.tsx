@@ -1,12 +1,11 @@
 import { useMutation } from '@tanstack/react-query'
 import { Check, HardDrive, Laptop, Plus, RotateCw } from 'lucide-react'
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
-import { Page } from '@renderer/components/Layout'
 import { Button } from '@renderer/components/ui/button'
 import { ConfirmAction } from '@renderer/components/ui/confirm-action'
 import { Field, Input } from '@renderer/components/ui/input'
 import { Loading } from '@renderer/components/ui/loading'
-import { ErrorText, SectionTitle, StatusDot } from '@renderer/components/ui/section'
+import { ErrorText, PageSection, SectionTitle, StatusDot } from '@renderer/components/ui/section'
 import { Sensitive } from '@renderer/components/ui/sensitive'
 import { SwitchField } from '@renderer/components/ui/switch'
 import { useConnection } from '@renderer/lib/connection'
@@ -22,7 +21,6 @@ import type {
   PairingCode,
   RemoteReach
 } from '@shared/api'
-import { SETTINGS_CRUMB } from '@renderer/lib/settings'
 
 function useNow(active: boolean): number {
   const [now, setNow] = useState(Date.now)
@@ -164,7 +162,7 @@ function PairingPanel({ devices }: { devices: PairedDevice[] }): React.JSX.Eleme
   return (
     <div className="mt-4 animate-fade-in rounded-card bg-fill p-5">
       <p className="text-xs text-ink-soft">
-        No outro computador, abra Configurações / Conexão, escolha “Usar os dados de outro
+        No outro computador, abra Configurações / Armazenamento, escolha “Usar os dados de outro
         computador” e digite o código abaixo (clique nele para mostrar):
       </p>
       <Sensitive
@@ -548,7 +546,7 @@ function FindServer(): React.JSX.Element {
 
       <form onSubmit={submit} className="mt-8 flex flex-col gap-4">
         {manual && (
-          <Field label="Endereço" hint="aparece na aba Conexão do outro computador">
+          <Field label="Endereço" hint="aparece em Armazenamento, no outro computador">
             <Input
               value={address}
               onChange={(e) => setAddress(e.target.value)}
@@ -614,40 +612,39 @@ function NameField({ name }: { name: string }): React.JSX.Element {
   )
 }
 
-export function ConnectionPage(): React.JSX.Element {
+export function ConnectionSection(): React.JSX.Element {
   const { info } = useConnection()
   return (
-    <Page trail={[SETTINGS_CRUMB, { label: 'Conexão' }]}>
-      <div className="mx-auto max-w-[720px] px-8 pt-8 pb-16">
-        <p className="text-[13px] text-ink-soft">
-          Onde ficam os pacientes e a agenda, e quais computadores podem usá-los.
-        </p>
-        {info ? (
-          <>
-            <div className="mt-6">
-              <RolePicker role={info.role} />
-              {info.role === 'client' && (
-                <p className="mt-3 text-xs text-ink-soft">
-                  Os dados que já estavam neste computador continuam guardados aqui e voltam a
-                  aparecer se você escolher “Este computador guarda os dados”.
-                </p>
-              )}
-            </div>
-            <div className="mt-10">
-              {info.role === 'server' ? (
-                <ServerSection info={info} />
-              ) : info.server ? (
-                <LinkedServer info={info} server={info.server} />
-              ) : (
-                <FindServer />
-              )}
-            </div>
-            <NameField key={info.name} name={info.name} />
-          </>
-        ) : (
-          <Loading />
-        )}
-      </div>
-    </Page>
+    <PageSection
+      id="conexao"
+      title="Conexão"
+      description="Onde ficam os pacientes e a agenda, e quais computadores podem usá-los."
+    >
+      {info ? (
+        <>
+          <div className="mt-6">
+            <RolePicker role={info.role} />
+            {info.role === 'client' && (
+              <p className="mt-3 text-xs text-ink-soft">
+                Os dados que já estavam neste computador continuam guardados aqui e voltam a
+                aparecer se você escolher “Este computador guarda os dados”.
+              </p>
+            )}
+          </div>
+          <div className="mt-10">
+            {info.role === 'server' ? (
+              <ServerSection info={info} />
+            ) : info.server ? (
+              <LinkedServer info={info} server={info.server} />
+            ) : (
+              <FindServer />
+            )}
+          </div>
+          <NameField key={info.name} name={info.name} />
+        </>
+      ) : (
+        <Loading />
+      )}
+    </PageSection>
   )
 }

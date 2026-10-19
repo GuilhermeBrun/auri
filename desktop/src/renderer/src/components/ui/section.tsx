@@ -32,7 +32,7 @@ export function SectionTitle({
 }): React.JSX.Element {
   return (
     <>
-      <h2 className="text-[13px] font-medium">{title}</h2>
+      <h3 className="text-[13px] font-medium">{title}</h3>
       {children && <p className="mt-0.5 text-xs text-ink-soft">{children}</p>}
     </>
   )
@@ -44,5 +44,27 @@ export function StatusDot({ on }: { on: boolean }): React.JSX.Element {
       aria-hidden="true"
       className={cn('size-2 shrink-0 rounded-full', on ? 'bg-ink' : 'bg-line-strong')}
     />
+  )
+}
+
+export function PageSection({
+  id,
+  title,
+  description,
+  children
+}: {
+  id: string
+  title: string
+  description: string
+  children: ReactNode
+}): React.JSX.Element {
+  return (
+    <section id={id} aria-labelledby={`${id}-titulo`} className="scroll-mt-8">
+      <h2 id={`${id}-titulo`} className="text-[15px] font-semibold tracking-tight">
+        {title}
+      </h2>
+      <p className="mt-1 text-[13px] text-ink-soft">{description}</p>
+      {children}
+    </section>
   )
 }

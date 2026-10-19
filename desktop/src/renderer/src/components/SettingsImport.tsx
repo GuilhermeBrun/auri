@@ -1,41 +1,33 @@
-import { useMutation } from '@tanstack/react-query'
 import { ArrowRight, FileDown } from 'lucide-react'
-import { useState } from 'react'
 import { Button } from '@renderer/components/ui/button'
 import { ErrorText } from '@renderer/components/ui/section'
 import { formatWhen } from '@renderer/lib/backup'
-import { useToast } from '@renderer/lib/toast'
-import type { SettingsPreview } from '@shared/api'
+import { cn } from '@renderer/lib/utils'
+import { useSettingsImport, type ImportState } from '@renderer/lib/settings-import'
 
-export function SettingsImport({ onApplied }: { onApplied?: () => void }): React.JSX.Element {
-  const toast = useToast()
-  const [preview, setPreview] = useState<SettingsPreview | null>(null)
-  const pick = useMutation({
-    mutationFn: () => window.transfer.pickSettings(),
-    onSuccess: (next) => next && setPreview(next)
-  })
-  const apply = useMutation({
-    mutationFn: (token: string) => window.transfer.applySettings(token),
-    onSuccess: () => {
-      setPreview(null)
-      toast({ title: 'Configurações importadas' })
-      onApplied?.()
-    }
-  })
-
-  if (!preview) {
-    return (
-      <div>
-        <Button variant="secondary" loading={pick.isPending} onClick={() => pick.mutate()}>
-          {!pick.isPending && <FileDown />} Importar configurações…
-        </Button>
-        {pick.error && <ErrorText>{pick.error.message}</ErrorText>}
-      </div>
-    )
-  }
-
+export function ImportButton({ state }: { state: ImportState }): React.JSX.Element {
+  const { pick } = state
   return (
-    <div className="animate-fade-in rounded-card bg-fill p-4">
+    <div>
+      <Button variant="secondary" loading={pick.isPending} onClick={() => pick.mutate()}>
+        {!pick.isPending && <FileDown />} Importar configurações…
+      </Button>
+      {pick.error && <ErrorText>{pick.error.message}</ErrorText>}
+    </div>
+  )
+}
+
+export function ImportPreview({
+  state,
+  className
+}: {
+  state: ImportState
+  className?: string
+}): React.JSX.Element | null {
+  const { preview, cancel, apply } = state
+  if (!preview) return null
+  return (
+    <div className={cn('animate-fade-in rounded-card bg-fill p-4', className)}>
       <p className="text-xs text-ink-soft">
         {preview.name}, exportado {formatWhen(preview.exportedAt)}.
       </p>
@@ -57,7 +49,7 @@ export function SettingsImport({ onApplied }: { onApplied?: () => void }): React
         </ul>
       )}
       <div className="mt-4 flex justify-end gap-2">
-        <Button variant="secondary" size="sm" onClick={() => setPreview(null)}>
+        <Button variant="secondary" size="sm" onClick={cancel}>
           Cancelar
         </Button>
         {preview.changes.length > 0 && (
@@ -69,4 +61,9 @@ export function SettingsImport({ onApplied }: { onApplied?: () => void }): React
       {apply.error && <ErrorText>{apply.error.message}</ErrorText>}
     </div>
   )
+}
+
+export function SettingsImport({ onApplied }: { onApplied?: () => void }): React.JSX.Element {
+  const state = useSettingsImport(onApplied)
+  return state.preview ? <ImportPreview state={state} /> : <ImportButton state={state} />
 }
