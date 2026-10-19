@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import type { Funcionamento } from './agenda'
 import { isValidCpf } from './cpf'
 import { isIsoDate, isIsoLocalDateTime } from './dates'
 import { isValidPhone } from './masks'
@@ -119,7 +120,8 @@ export const appointmentInputSchema = z
     observacao: text(1000),
     tipo: z.enum(APPOINTMENT_TIPOS).default('sessao'),
     presenca: z.enum([...PRESENCAS, '']).default(''),
-    evolucao: text(10000).default('')
+    evolucao: text(10000).default(''),
+    confirmado: z.boolean().optional()
   })
   .refine((a) => a.fim > a.inicio, {
     message: 'O horário de término deve ser depois do início',
@@ -135,8 +137,9 @@ export type ArrivalSignature = {
   assinado_em: string
 }
 
-export type Appointment = z.output<typeof appointmentInputSchema> & {
+export type Appointment = Omit<z.output<typeof appointmentInputSchema>, 'confirmado'> & {
   id: number
+  confirmado_em: string | null
   patient_nome: string
   assinatura: ArrivalSignature | null
   created_at: string
@@ -219,6 +222,20 @@ export type UiPrefs = z.infer<typeof uiPrefsSchema>
 
 export const LOGO_MAX_BASE64 = 400_000
 
+const horaSchema = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Hora inválida')
+
+export const horarioSchema = z
+  .object({ abre: horaSchema, fecha: horaSchema })
+  .refine((h) => h.fecha > h.abre, {
+    message: 'Fecha depois de abrir',
+    path: ['fecha']
+  })
+
+export const funcionamentoSchema: z.ZodType<Funcionamento, Funcionamento> = z.partialRecord(
+  z.enum(['0', '1', '2', '3', '4', '5', '6']),
+  horarioSchema
+)
+
 export const clinicInputSchema = z.object({
   nome: text(120),
   documento: text(30),
@@ -230,12 +247,13 @@ export const clinicInputSchema = z.object({
   logo: z
     .string()
     .max(LOGO_MAX_BASE64, 'Logo grande demais')
-    .regex(/^[A-Za-z0-9+/]*={0,2}$/, 'Logo inválido')
+    .regex(/^[A-Za-z0-9+/]*={0,2}$/, 'Logo inválido'),
+  funcionamento: funcionamentoSchema.optional()
 })
 
 export type ClinicInput = z.input<typeof clinicInputSchema>
 
-export type Clinic = z.output<typeof clinicInputSchema> & { updated_at: string }
+export type Clinic = Required<z.output<typeof clinicInputSchema>> & { updated_at: string }
 
 export const reportRangeSchema = z
   .object({

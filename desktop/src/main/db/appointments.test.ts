@@ -7,6 +7,7 @@ import {
   removeAppointment,
   updateAppointment
 } from './appointments'
+import { getClinic, saveClinic } from './clinic'
 import { openDatabase, type Db } from './connection'
 import { createPatient } from './patients'
 
@@ -42,7 +43,9 @@ describe('agendamentos', () => {
   })
 
   it('inclui agendamentos que cruzam o limite do intervalo', () => {
-    createAppointment(db, at('2025-09-08T23:45', '2025-09-09T00:15'))
+    db.prepare(
+      `INSERT INTO appointments (patient_id, inicio, fim) VALUES (?, '2025-09-08T23:45', '2025-09-09T00:15')`
+    ).run(patientId)
     expect(listAppointments(db, '2025-09-09T00:00', '2025-09-10T00:00')).toHaveLength(1)
     expect(listAppointments(db, '2025-09-09T00:15', '2025-09-10T00:00')).toHaveLength(0)
   })
@@ -145,5 +148,85 @@ describe('agendamentos', () => {
     expect(
       appointmentInputSchema.safeParse(at('2025-09-08 14:00', '2025-09-08T14:30')).success
     ).toBe(false)
+  })
+})
+
+describe('horário de funcionamento', () => {
+  it('recusa agendar fora do horário, com o motivo', () => {
+    expect(() => createAppointment(db, at('2026-10-18T09:00', '2026-10-18T09:30'))).toThrow(
+      'A clínica não abre no domingo.'
+    )
+    expect(() => createAppointment(db, at('2026-10-24T11:30', '2026-10-24T12:30'))).toThrow(
+      'Fora do horário de funcionamento: no sábado, a clínica abre das 07:00 às 12:00.'
+    )
+    expect(() => createAppointment(db, at('2026-10-19T06:30', '2026-10-19T07:30'))).toThrow(
+      /na segunda, a clínica abre das 07:00 às 20:00/
+    )
+    expect(createAppointment(db, at('2026-10-24T11:30', '2026-10-24T12:00')).inicio).toBe(
+      '2026-10-24T11:30'
+    )
+    expect(createAppointment(db, at('2026-10-19T19:30', '2026-10-19T20:00')).fim).toBe(
+      '2026-10-19T20:00'
+    )
+  })
+
+  it('segue o horário salvo na clínica', () => {
+    const { updated_at: _, ...clinic } = getClinic(db)
+    saveClinic(db, { ...clinic, funcionamento: { 0: { abre: '08:00', fecha: '10:00' } } })
+    expect(createAppointment(db, at('2026-10-18T09:00', '2026-10-18T09:30')).id).toBeGreaterThan(0)
+    expect(() => createAppointment(db, at('2026-10-19T09:00', '2026-10-19T09:30'))).toThrow(
+      'A clínica não abre na segunda.'
+    )
+  })
+
+  it('edita o que ficou fora do horário sem mexer no horário, e recusa mudar para fora', () => {
+    const a = createAppointment(db, at('2026-10-24T11:00', '2026-10-24T11:30'))
+    const { updated_at: _, ...clinic } = getClinic(db)
+    saveClinic(db, { ...clinic, funcionamento: { 1: { abre: '07:00', fecha: '20:00' } } })
+    const anotado = updateAppointment(db, a.id, {
+      ...at('2026-10-24T11:00', '2026-10-24T11:30'),
+      observacao: 'Trazer exames'
+    })
+    expect(anotado.observacao).toBe('Trazer exames')
+    expect(() => updateAppointment(db, a.id, at('2026-10-24T11:30', '2026-10-24T12:00'))).toThrow(
+      'A clínica não abre no sábado.'
+    )
+  })
+})
+
+describe('confirmação', () => {
+  it('marca, mantém a hora da confirmação e desmarca', () => {
+    const a = createAppointment(db, at('2026-10-19T09:00', '2026-10-19T09:30'))
+    expect(a.confirmado_em).toBeNull()
+
+    const confirmado = updateAppointment(db, a.id, {
+      ...at('2026-10-19T09:00', '2026-10-19T09:30'),
+      confirmado: true
+    })
+    expect(confirmado.confirmado_em).toMatch(/^\d{4}-\d{2}-\d{2}T/)
+
+    const remarcado = updateAppointment(db, a.id, {
+      ...at('2026-10-19T10:00', '2026-10-19T10:30'),
+      confirmado: true
+    })
+    expect(remarcado.confirmado_em).toBe(confirmado.confirmado_em)
+
+    const semCampo = updateAppointment(db, a.id, at('2026-10-19T10:00', '2026-10-19T10:30'))
+    expect(semCampo.confirmado_em).toBe(confirmado.confirmado_em)
+
+    const desmarcado = updateAppointment(db, a.id, {
+      ...at('2026-10-19T10:00', '2026-10-19T10:30'),
+      confirmado: false
+    })
+    expect(desmarcado.confirmado_em).toBeNull()
+  })
+
+  it('já nasce confirmado quando pedido', () => {
+    const a = createAppointment(db, {
+      ...at('2026-10-19T09:00', '2026-10-19T09:30'),
+      confirmado: true
+    })
+    expect(a.confirmado_em).not.toBeNull()
+    expect(getAppointment(db, a.id).confirmado_em).toBe(a.confirmado_em)
   })
 })

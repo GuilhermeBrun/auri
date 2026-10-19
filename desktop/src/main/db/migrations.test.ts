@@ -45,6 +45,12 @@ describe('compatibilidade do banco', () => {
       { celular: null, pai_cpf: null, resp_tipo: null, resp_nome: null }
     )
     expect(() => db.prepare("UPDATE patients SET resp_tipo = 'avo'").run()).toThrow(/CHECK/)
+    expect(db.prepare('SELECT confirmado_em FROM appointments').get()).toEqual({
+      confirmado_em: null
+    })
+    expect(db.prepare('SELECT dia_semana FROM clinic_hours ORDER BY dia_semana').all()).toEqual(
+      [1, 2, 3, 4, 5, 6].map((dia_semana) => ({ dia_semana }))
+    )
     expect(db.pragma('integrity_check', { simple: true })).toBe('ok')
     expect(db.pragma('foreign_key_check')).toEqual([])
     db.close()
