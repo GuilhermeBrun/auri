@@ -16,7 +16,7 @@ import {
   isToday
 } from 'date-fns'
 import { ptBR } from 'date-fns/locale/pt-BR'
-import { Check, ChevronLeft, ChevronRight, PenLine, Plus } from 'lucide-react'
+import { Check, ChevronLeft, ChevronRight, Hourglass, PenLine, Plus, X } from 'lucide-react'
 import {
   memo,
   useCallback,
@@ -50,18 +50,26 @@ import {
   horarioDoDia,
   limitesDoFuncionamento,
   minutesOf,
+  DIAS_SEMANA,
   type DiaSemana,
   type Funcionamento
 } from '@shared/agenda'
 import { formatTime, parseIsoLocalDateTime, toIsoLocalDateTime } from '@shared/dates'
 import { shortName } from '@shared/names'
+import { COMMITMENT_LABELS, type Commitment } from '@shared/commitments'
+import { vagaEm, type Intervalo } from '@shared/encaixe'
 import type { Appointment } from '@shared/schemas'
+import type { WaitlistEntry } from '@shared/waitlist'
 import { AppointmentDialog, type AppointmentDraft } from '@renderer/components/AppointmentDialog'
+import { CommitmentDialog, type CommitmentDraft } from '@renderer/components/CommitmentDialog'
+import { SlotDialog, type SlotDraft } from '@renderer/components/SlotDialog'
+import { WaitlistPanel } from '@renderer/components/waitlist/WaitlistPanel'
 import { Page } from '@renderer/components/Layout'
 import { Button } from '@renderer/components/ui/button'
 import { ErrorState } from '@renderer/components/ui/error'
 import { Segmented } from '@renderer/components/ui/segmented'
-import { appointmentsQuery, clinicQuery } from '@renderer/lib/queries'
+import { duracaoTexto } from '@renderer/lib/commitments'
+import { appointmentsQuery, clinicQuery, commitmentsQuery } from '@renderer/lib/queries'
 import { DEFAULT_DURATION, nextSlot, PRESENCA_LABELS, tipoLabel } from '@renderer/lib/session'
 import { cn } from '@renderer/lib/utils'
 
@@ -185,7 +193,27 @@ function navigateDate(
   return next
 }
 
-type CalendarEvent = { id: number; title: string; start: Date; end: Date; appointment: Appointment }
+type AppointmentEvent = {
+  kind: 'appointment'
+  id: number
+  title: string
+  start: Date
+  end: Date
+  appointment: Appointment
+}
+
+type CommitmentEvent = {
+  kind: 'commitment'
+  id: string
+  title: string
+  start: Date
+  end: Date
+  commitment: Commitment
+}
+
+type VagaEvent = { kind: 'vaga'; id: string; title: string; start: Date; end: Date }
+
+type CalendarEvent = AppointmentEvent | CommitmentEvent | VagaEvent
 
 function visibleRange(date: Date, view: View): { de: string; ate: string } {
   let start: Date
@@ -203,7 +231,26 @@ function visibleRange(date: Date, view: View): { de: string; ate: string } {
   return { de: toIsoLocalDateTime(startOfDay(start)), ate: toIsoLocalDateTime(startOfDay(end)) }
 }
 
+function BlockContent({ event }: { event: CommitmentEvent | VagaEvent }): React.JSX.Element {
+  const label = event.kind === 'vaga' ? 'Vaga' : COMMITMENT_LABELS[event.commitment.tipo]
+  const titulo = event.kind === 'commitment' ? event.commitment.titulo : ''
+  return (
+    <span className="flex min-w-0 flex-col">
+      <span className="truncate">
+        {label}
+        {titulo && <span className="font-normal opacity-75"> · {titulo}</span>}
+      </span>
+      {differenceInMinutes(event.end, event.start) >= 45 && (
+        <span className="event-detail truncate text-xs font-normal tabular-nums opacity-75">
+          {timeRange(event)}
+        </span>
+      )}
+    </span>
+  )
+}
+
 function EventContent({ event }: EventProps<CalendarEvent>): React.JSX.Element {
+  if (event.kind !== 'appointment') return <BlockContent event={event} />
   const short = differenceInMinutes(event.end, event.start) < 45
   const start = formatTime(event.start)
   const { tipo, assinatura } = event.appointment
@@ -348,6 +395,12 @@ const COMPONENTS: Components<CalendarEvent> = {
 const CALENDAR_STYLE = { height: '100%' }
 
 function tooltip(event: CalendarEvent): string {
+  if (event.kind === 'vaga') return `Vaga · ${timeRange(event)}`
+  if (event.kind === 'commitment') {
+    const { tipo, titulo, observacao } = event.commitment
+    const nome = titulo ? `${COMMITMENT_LABELS[tipo]}: ${titulo}` : COMMITMENT_LABELS[tipo]
+    return `${timeRange(event)} · ${nome}${observacao ? `\n${observacao}` : ''}`
+  }
   const { tipo, presenca, observacao } = event.appointment
   const { assinatura } = event.appointment
   const tags = [
@@ -369,6 +422,9 @@ type AgendaCalendarProps = {
   onNavigate: (date: Date) => void
   onView: (view: View) => void
   onDraft: (draft: AppointmentDraft) => void
+  onSlot: (slot: SlotDraft, action: SlotInfo['action']) => void
+  onCommitment: (commitment: Commitment) => void
+  vaga: Intervalo | null
   arrivedRef: RefObject<number | null>
 }
 
@@ -381,6 +437,9 @@ const AgendaCalendar = memo(function AgendaCalendar({
   onNavigate,
   onView,
   onDraft,
+  onSlot,
+  onCommitment,
+  vaga,
   arrivedRef
 }: AgendaCalendarProps): React.JSX.Element {
   const { min, max, scrollToTime } = useMemo(() => {
@@ -428,28 +487,51 @@ const AgendaCalendar = memo(function AgendaCalendar({
       if (view === Views.MONTH) {
         const horario = horarioDoDia(funcionamento, slot.start)
         if (!horario) return
-        onDraft({
-          mode: 'create',
-          inicio: setMinutes(startOfDay(slot.start), Math.max(minutesOf(horario.abre), 8 * 60)),
-          duracao: DEFAULT_DURATION
-        })
+        onSlot(
+          {
+            inicio: setMinutes(startOfDay(slot.start), Math.max(minutesOf(horario.abre), 8 * 60)),
+            duracao: DEFAULT_DURATION
+          },
+          slot.action
+        )
       } else {
         if (!abertoNoHorario(funcionamento, slot.start)) return
         const selected = differenceInMinutes(slot.end, slot.start)
-        onDraft({
-          mode: 'create',
-          inicio: slot.start,
-          duracao:
-            slot.action === 'select' && selected > DEFAULT_DURATION ? selected : DEFAULT_DURATION
-        })
+        onSlot(
+          {
+            inicio: slot.start,
+            duracao:
+              slot.action === 'select' && selected > DEFAULT_DURATION ? selected : DEFAULT_DURATION
+          },
+          slot.action
+        )
       }
     },
-    [view, funcionamento, onDraft]
+    [view, funcionamento, onSlot]
   )
 
   const onSelectEvent = useCallback(
-    (event: CalendarEvent): void => onDraft({ mode: 'edit', appointment: event.appointment }),
-    [onDraft]
+    (event: CalendarEvent): void => {
+      if (event.kind === 'appointment') onDraft({ mode: 'edit', appointment: event.appointment })
+      else if (event.kind === 'commitment') onCommitment(event.commitment)
+    },
+    [onDraft, onCommitment]
+  )
+
+  const backgroundEvents = useMemo<CalendarEvent[]>(
+    () =>
+      vaga
+        ? [
+            {
+              kind: 'vaga',
+              id: 'vaga',
+              title: 'Vaga',
+              start: parseIsoLocalDateTime(vaga.inicio),
+              end: parseIsoLocalDateTime(vaga.fim)
+            }
+          ]
+        : [],
+    [vaga]
   )
 
   const rootRef = useRef<HTMLDivElement>(null)
@@ -466,6 +548,8 @@ const AgendaCalendar = memo(function AgendaCalendar({
 
   const eventPropGetter = useCallback(
     (event: CalendarEvent): { className?: string } => {
+      if (event.kind === 'commitment') return { className: 'event-block' }
+      if (event.kind === 'vaga') return { className: 'event-vaga' }
       const missed =
         event.appointment.presenca === 'falta' || event.appointment.presenca === 'desmarcou'
       const className = cn(
@@ -483,6 +567,7 @@ const AgendaCalendar = memo(function AgendaCalendar({
         localizer={localizer}
         culture="pt-BR"
         events={events}
+        backgroundEvents={backgroundEvents}
         date={date}
         view={view}
         onNavigate={onNavigate}
@@ -513,13 +598,40 @@ const AgendaCalendar = memo(function AgendaCalendar({
   )
 })
 
+const PANEL_KEY = 'auri.agenda.listaDeEspera'
+
+function readPanelOpen(): boolean {
+  try {
+    return localStorage.getItem(PANEL_KEY) !== 'fechado'
+  } catch {
+    return true
+  }
+}
+
+function savePanelOpen(open: boolean): void {
+  try {
+    localStorage.setItem(PANEL_KEY, open ? 'aberto' : 'fechado')
+  } catch {
+    return
+  }
+}
+
 export function AgendaPage(): React.JSX.Element {
   const [date, setDate] = useState(() => new Date())
   const [view, setView] = useState<View>(Views.WEEK)
   const [draft, setDraft] = useState<AppointmentDraft | null>(null)
+  const [slot, setSlot] = useState<SlotDraft | null>(null)
+  const [commitment, setCommitment] = useState<Commitment | null>(null)
+  const commitmentDraft = useMemo<CommitmentDraft | null>(
+    () => (commitment ? { mode: 'edit', commitment } : null),
+    [commitment]
+  )
+  const [panelOpen, setPanelOpen] = useState(readPanelOpen)
+  const [vaga, setVaga] = useState<Intervalo | null>(null)
   const arrivedRef = useRef<number | null>(null)
   const markArrived = useCallback((appointment: Appointment): void => {
     arrivedRef.current = appointment.id
+    setVaga(null)
     setTimeout(() => {
       if (arrivedRef.current === appointment.id) arrivedRef.current = null
     }, ARRIVED_MS)
@@ -528,22 +640,37 @@ export function AgendaPage(): React.JSX.Element {
   const queryClient = useQueryClient()
   const clinic = useQuery(clinicQuery())
   const funcionamento = clinic.data?.funcionamento ?? FUNCIONAMENTO_PADRAO
+  const range = visibleRange(date, view)
   const { data, error, refetch } = useQuery({
-    ...appointmentsQuery(visibleRange(date, view)),
+    ...appointmentsQuery(range),
+    placeholderData: (previous) => previous
+  })
+  const commitments = useQuery({
+    ...commitmentsQuery(range),
     placeholderData: (previous) => previous
   })
   const failed = error !== null && data === undefined
 
   const events = useMemo<CalendarEvent[]>(
-    () =>
-      (data ?? []).map((a) => ({
+    () => [
+      ...(data ?? []).map((a): CalendarEvent => ({
+        kind: 'appointment',
         id: a.id,
         title: a.patient_nome,
         start: parseIsoLocalDateTime(a.inicio),
         end: parseIsoLocalDateTime(a.fim),
         appointment: a
       })),
-    [data]
+      ...(commitments.data ?? []).map((c): CalendarEvent => ({
+        kind: 'commitment',
+        id: `c${c.id}`,
+        title: COMMITMENT_LABELS[c.tipo],
+        start: parseIsoLocalDateTime(c.inicio),
+        end: parseIsoLocalDateTime(c.fim),
+        commitment: c
+      }))
+    ],
+    [data, commitments.data]
   )
 
   const shownDays = useMemo(
@@ -558,7 +685,10 @@ export function AgendaPage(): React.JSX.Element {
       ...VIEWS.filter((v) => v !== view).map((v) => visibleRange(date, v))
     ]
     const idle = requestIdleCallback(() => {
-      for (const range of ranges) void queryClient.prefetchQuery(appointmentsQuery(range))
+      for (const range of ranges) {
+        void queryClient.prefetchQuery(appointmentsQuery(range))
+        void queryClient.prefetchQuery(commitmentsQuery(range))
+      }
     })
     return () => cancelIdleCallback(idle)
   }, [date, view, funcionamento, queryClient])
@@ -570,17 +700,57 @@ export function AgendaPage(): React.JSX.Element {
   )
 
   const openNew = useCallback((): void => {
+    setSlot({ inicio: nextSlot(new Date(), funcionamento), duracao: DEFAULT_DURATION })
+  }, [funcionamento])
+
+  const withPanel = panelOpen && view !== Views.MONTH
+
+  const turnos = useMemo(
+    () =>
+      DIAS_SEMANA.flatMap((dia) =>
+        funcionamento[dia] ? [{ dia_semana: dia, ...funcionamento[dia] }] : []
+      ),
+    [funcionamento]
+  )
+
+  const onSlot = useCallback(
+    (picked: SlotDraft, action: SlotInfo['action']): void => {
+      if (!withPanel || action !== 'click') {
+        setSlot(picked)
+        return
+      }
+      const ocupados = events.flatMap((e) =>
+        e.kind === 'commitment' ||
+        (e.kind === 'appointment' && e.appointment.presenca !== 'desmarcou')
+          ? [{ inicio: toIsoLocalDateTime(e.start), fim: toIsoLocalDateTime(e.end) }]
+          : []
+      )
+      setVaga(vagaEm(toIsoLocalDateTime(picked.inicio), turnos, ocupados))
+    },
+    [withPanel, events, turnos]
+  )
+
+  const togglePanel = (): void => {
+    const next = !panelOpen
+    setPanelOpen(next)
+    savePanelOpen(next)
+    if (!next) setVaga(null)
+  }
+
+  const pickFromWaitlist = useCallback((entry: WaitlistEntry, horario: Intervalo): void => {
     setDraft({
       mode: 'create',
-      inicio: nextSlot(new Date(), funcionamento),
-      duracao: DEFAULT_DURATION
+      inicio: parseIsoLocalDateTime(horario.inicio),
+      duracao: entry.duracao,
+      patient: { id: entry.patient_id, nome: entry.patient_nome }
     })
-  }, [funcionamento])
+  }, [])
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent): void {
       const target = e.target as HTMLElement
       const typing = target.closest('input, textarea, select, [contenteditable="true"]')
+      if (e.key === 'Escape' && !document.querySelector('[role="dialog"]')) setVaga(null)
       if (e.key.toLowerCase() !== 'n' || e.metaKey || e.ctrlKey || e.altKey || typing) return
       if (document.querySelector('[role="dialog"]')) return
       e.preventDefault()
@@ -606,16 +776,30 @@ export function AgendaPage(): React.JSX.Element {
       ]}
       toolbar={<AgendaControls view={view} onNavigate={navigate} onView={setView} />}
       actions={
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={openNew}
-          aria-keyshortcuts="N"
-          aria-label="Novo agendamento"
-          title="Novo agendamento (N)"
-        >
-          <Plus />
-        </Button>
+        <>
+          {view !== Views.MONTH && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={togglePanel}
+              aria-pressed={panelOpen}
+              aria-label="Lista de espera"
+              title={panelOpen ? 'Esconder a lista de espera' : 'Mostrar a lista de espera'}
+            >
+              <Hourglass />
+            </Button>
+          )}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={openNew}
+            aria-keyshortcuts="N"
+            aria-label="Novo agendamento"
+            title="Novo agendamento (N)"
+          >
+            <Plus />
+          </Button>
+        </>
       }
       bodyClassName="flex flex-col overflow-hidden"
     >
@@ -639,12 +823,77 @@ export function AgendaPage(): React.JSX.Element {
               onNavigate={setDate}
               onView={setView}
               onDraft={setDraft}
+              onSlot={onSlot}
+              onCommitment={setCommitment}
+              vaga={withPanel ? vaga : null}
               arrivedRef={arrivedRef}
             />
           </div>
+          {withPanel && (
+            <aside
+              aria-label="Encaixe"
+              className="flex w-72 shrink-0 animate-fade-in flex-col overflow-y-auto pt-3 pr-3 pb-20 pl-2"
+            >
+              {vaga && (
+                <div className="mb-4 flex animate-fade-in items-center gap-1 px-3">
+                  <span className="min-w-0 flex-1 text-xs text-ink-soft">
+                    Vaga de{' '}
+                    {duracaoTexto(
+                      differenceInMinutes(
+                        parseIsoLocalDateTime(vaga.fim),
+                        parseIsoLocalDateTime(vaga.inicio)
+                      )
+                    )}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() =>
+                      setSlot({
+                        inicio: parseIsoLocalDateTime(vaga.inicio),
+                        duracao: DEFAULT_DURATION
+                      })
+                    }
+                  >
+                    <Plus /> Marcar aqui
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label="Ver a lista toda"
+                    title="Ver a lista toda (Esc)"
+                    onClick={() => setVaga(null)}
+                  >
+                    <X />
+                  </Button>
+                </div>
+              )}
+              <WaitlistPanel vaga={vaga} onPick={pickFromWaitlist} />
+              {!vaga && (
+                <p className="mt-4 px-3 text-xs text-ink-faint">
+                  Clique num horário vago da agenda para ver quem cabe nele.
+                </p>
+              )}
+            </aside>
+          )}
         </div>
       )}
       <AppointmentDialog draft={draft} onClose={() => setDraft(null)} onSaved={markArrived} />
+      <SlotDialog slot={slot} onClose={() => setSlot(null)} onSaved={markArrived} />
+      <CommitmentDialog
+        draft={commitmentDraft}
+        onClose={() => setCommitment(null)}
+        onScheduleReserve={(reserve) => {
+          setCommitment(null)
+          const inicio = parseIsoLocalDateTime(reserve.inicio)
+          setDraft({
+            mode: 'create',
+            inicio,
+            duracao: differenceInMinutes(parseIsoLocalDateTime(reserve.fim), inicio),
+            reserveId: reserve.id
+          })
+        }}
+      />
     </Page>
   )
 }

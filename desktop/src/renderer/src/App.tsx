@@ -12,7 +12,6 @@ import { PatientSessionsRoute } from './pages/PatientSessionsPage'
 import { PatientTermsRoute } from './pages/PatientTermsPage'
 import { StoragePage } from './pages/StoragePage'
 import { TermModelRoute } from './pages/TermModelPage'
-import { WaitlistPage } from './pages/WaitlistPage'
 import { PatientsPage } from './pages/PatientsPage'
 import { GeneralPage } from './pages/GeneralPage'
 import { AppearancePage } from './pages/SettingsPage'
@@ -30,7 +29,6 @@ function App(): React.JSX.Element {
         <Route path="pacientes/:id/sessoes" element={<PatientSessionsRoute />} />
         <Route path="pacientes/:id/evolucoes" element={<PatientEvolutionsRoute />} />
         <Route path="pacientes/:id/termos" element={<PatientTermsRoute />} />
-        <Route path="lista-de-espera" element={<WaitlistPage />} />
         <Route path="pacientes/:id/financeiro" element={<PatientFinanceRoute />} />
         <Route path="financeiro" element={<FinancePage />} />
         <Route path="financeiro/valores" element={<FinanceCatalogPage />} />

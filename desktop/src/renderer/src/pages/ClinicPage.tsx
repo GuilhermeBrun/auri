@@ -24,6 +24,7 @@ import { ErrorState } from '@renderer/components/ui/error'
 import { Field, Input } from '@renderer/components/ui/input'
 import { Loading } from '@renderer/components/ui/loading'
 import { ErrorText, FormSection } from '@renderer/components/ui/section'
+import { Select } from '@renderer/components/ui/select'
 import { Switch } from '@renderer/components/ui/switch'
 import { TimeField } from '@renderer/components/ui/time-field'
 import { clinicQuery, termModelsQuery } from '@renderer/lib/queries'
@@ -42,6 +43,10 @@ function toInput({ updated_at: _, ...input }: Clinic): ClinicValues {
 const ORDEM: DiaSemana[] = [1, 2, 3, 4, 5, 6, 0]
 const HORAS = horarios('05:00', '23:59', 30)
 const HORARIO_NOVO: Horario = { abre: '07:00', fecha: '20:00' }
+const MARGENS = [0, 15, 30, 45, 60, 90, 120].map((m) => ({
+  value: String(m),
+  label: m === 0 ? 'Sem margem' : `${m} min`
+}))
 
 function HoursField({
   value,
@@ -298,6 +303,28 @@ function ClinicForm({ clinic }: { clinic: Clinic }): React.JSX.Element {
                   />
                 )}
               />
+              <Field
+                label="Margem de deslocamento"
+                htmlFor="margem-deslocamento"
+                className="col-span-6 mt-2 max-w-60"
+              >
+                <Controller
+                  control={control}
+                  name="margem_deslocamento"
+                  render={({ field }) => (
+                    <Select
+                      id="margem-deslocamento"
+                      value={String(field.value ?? 30)}
+                      onValueChange={(v) => field.onChange(Number(v))}
+                      options={MARGENS}
+                    />
+                  )}
+                />
+              </Field>
+              <p className="col-span-6 -mt-2 text-xs text-ink-soft">
+                Tempo livre entre uma atividade do paciente (escola, esporte) e a sessão, usado nas
+                sugestões de horário e de encaixe.
+              </p>
             </FormSection>
             <FormSection
               id="termos"

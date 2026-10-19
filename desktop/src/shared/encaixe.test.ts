@@ -7,6 +7,7 @@ import {
   periodoDe,
   quemCabe,
   sugerirHorarios,
+  vagaEm,
   type AtividadeDoPaciente,
   type EsperaQueCabe,
   type Funcionamento,
@@ -377,5 +378,35 @@ describe('quemCabe', () => {
     expect(
       quemCabe({ vaga: { inicio: `${QUA}T15:00`, fim: `${QUA}T14:00` }, esperas: [ana] })
     ).toEqual([])
+  })
+})
+
+describe('vagaEm', () => {
+  const ocupados = [
+    { inicio: `${QUA}T09:00`, fim: `${QUA}T10:00` },
+    { inicio: `${QUA}T14:00`, fim: `${QUA}T14:30` },
+    { inicio: `${QUA}T16:00`, fim: `${QUA}T17:00` }
+  ]
+
+  it('acha o buraco livre em volta do clique, dentro do turno', () => {
+    expect(vagaEm(`${QUA}T15:00`, SEMANA, ocupados)).toEqual({
+      inicio: `${QUA}T14:30`,
+      fim: `${QUA}T16:00`
+    })
+    expect(vagaEm(`${QUA}T10:30`, SEMANA, ocupados)).toEqual({
+      inicio: `${QUA}T10:00`,
+      fim: `${QUA}T12:00`
+    })
+    expect(vagaEm(`${QUA}T17:30`, SEMANA, ocupados)).toEqual({
+      inicio: `${QUA}T17:00`,
+      fim: `${QUA}T18:00`
+    })
+  })
+
+  it('clique em horário ocupado, fechado ou no almoço não é vaga', () => {
+    expect(vagaEm(`${QUA}T09:30`, SEMANA, ocupados)).toBeNull()
+    expect(vagaEm(`${QUA}T12:30`, SEMANA, ocupados)).toBeNull()
+    expect(vagaEm(`${DOM}T10:00`, SEMANA, [])).toBeNull()
+    expect(vagaEm('agora', SEMANA, [])).toBeNull()
   })
 })
