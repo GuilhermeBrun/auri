@@ -6,6 +6,7 @@ import { Link, useLocation, useNavigate } from 'react-router'
 import { formatAge, isIsoDate, parseIsoDate } from '@shared/dates'
 import type { Patient } from '@shared/schemas'
 import { responsavelDe } from '@shared/responsavel'
+import { formatSerie } from '@shared/serie'
 import { createPatientSearch } from '@shared/search'
 import { Page } from '@renderer/components/Layout'
 import { Avatar } from '@renderer/components/ui/avatar'
@@ -122,7 +123,9 @@ const PatientRow = memo(function PatientRow({
       <td className="px-3">
         <ResponsavelCell patient={p} />
       </td>
-      <td className="px-3">{p.escola ? <TwoLines main={p.escola} sub={p.serie} /> : <Blank />}</td>
+      <td className="px-3">
+        {p.escola ? <TwoLines main={p.escola} sub={formatSerie(p)} /> : <Blank />}
+      </td>
       <td className="px-3 text-ink-soft tabular-nums">{formatDate(p.data_entrada) || <Blank />}</td>
     </tr>
   )
