@@ -12,6 +12,7 @@ import { Callout } from '@renderer/components/ui/callout'
 import { ErrorState } from '@renderer/components/ui/error'
 import { Field, Input } from '@renderer/components/ui/input'
 import { Loading } from '@renderer/components/ui/loading'
+import { PageSection, SettingsGroup } from '@renderer/components/ui/section'
 import { clinicQuery } from '@renderer/lib/queries'
 import { useToast } from '@renderer/lib/toast'
 
@@ -33,13 +34,9 @@ function Group({
   children: ReactNode
 }): React.JSX.Element {
   return (
-    <section aria-labelledby={`${id}-titulo`}>
-      <h2 id={`${id}-titulo`} className="text-[15px] font-semibold tracking-tight">
-        {title}
-      </h2>
-      <p className="mt-1 text-[13px] text-ink-soft">{description}</p>
-      <div className="mt-6 grid grid-cols-2 gap-x-3 gap-y-4">{children}</div>
-    </section>
+    <PageSection id={id} title={title} description={description}>
+      <SettingsGroup className="grid grid-cols-2 gap-x-3 gap-y-4">{children}</SettingsGroup>
+    </PageSection>
   )
 }
 
@@ -84,7 +81,7 @@ function LogoField({
     <div className="col-span-2 flex flex-col gap-1">
       <span className="text-xs font-medium">Logo</span>
       <div className="flex items-center gap-4">
-        <div className="flex h-16 w-44 shrink-0 items-center justify-center rounded-control bg-fill p-2">
+        <div className="flex h-16 w-44 shrink-0 items-center justify-center rounded-control bg-surface p-2">
           {value ? (
             <img
               src={logoDataUrl(value)}
