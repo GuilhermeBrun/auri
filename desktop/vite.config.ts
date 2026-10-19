@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process'
 import { resolve } from 'node:path'
 import { defineConfig } from 'vite-plus'
 import type { UserConfig as ElectronConfig } from 'electron-vite'
@@ -11,8 +12,21 @@ const alias = {
 
 const maps = { build: { sourcemap: 'hidden' as const } }
 
+function localVersion(): string {
+  try {
+    const described = execFileSync('git', ['describe', '--tags', '--match', 'v*', '--abbrev=7'], {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore']
+    }).trim()
+    const [, tag, ahead, sha] = /^v(.+?)(?:-(\d+)-g([0-9a-f]+))?$/.exec(described) ?? []
+    return ahead ? `${tag}+${ahead}.${sha}` : (tag ?? '')
+  } catch {
+    return ''
+  }
+}
+
 const electron: ElectronConfig = {
-  main: maps,
+  main: { ...maps, define: { __AURI_LOCAL_VERSION__: JSON.stringify(localVersion()) } },
   preload: maps,
   renderer: {
     resolve: { alias },
