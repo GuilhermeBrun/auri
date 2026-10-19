@@ -8,6 +8,7 @@ import { ToastContext, type ToastInput } from '@renderer/lib/toast'
 export function fakePatient(over: Partial<Patient> = {}): Patient {
   return {
     ...emptyPatientInput(),
+    atividades: [],
     id: 1,
     nome: 'Helena Fictícia Andrade',
     data_nascimento: '2019-08-17',

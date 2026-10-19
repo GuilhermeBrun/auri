@@ -1,6 +1,6 @@
 import { differenceInYears } from 'date-fns'
 import { isIsoDate, parseIsoDate } from './dates'
-import type { Parentesco, PatientInput } from './schemas'
+import type { ContatoPrincipal, Parentesco, PatientFields } from './schemas'
 
 export const MAIORIDADE = 18
 
@@ -26,7 +26,7 @@ export const PARENTESCO_LABEL: Record<Parentesco, string> = {
 }
 
 type Ficha = Pick<
-  PatientInput,
+  PatientFields,
   | 'nome'
   | 'data_nascimento'
   | 'cpf'
@@ -48,6 +48,8 @@ type Ficha = Pick<
   | 'resp_celular'
   | 'resp_email'
 >
+
+type FichaComContato = Ficha & Pick<PatientFields, 'contato_principal'>
 
 export function isAdult(nascimento: string, today: Date = new Date()): boolean {
   if (!isIsoDate(nascimento)) return false
@@ -113,4 +115,32 @@ export function responsavelDe(p: Ficha, today: Date = new Date()): Responsavel {
         ? 'Cadastre a mãe, o pai ou outro responsável na ficha.'
         : 'Preencha o nome do responsável na ficha.'
   }
+}
+
+const PAPEL_DO_CONTATO: Record<ContatoPrincipal, Papel> = {
+  mae: 'mae',
+  pai: 'pai',
+  responsavel: 'outro',
+  paciente: 'paciente'
+}
+
+export const CONTATO_DO_PAPEL: Record<Papel, ContatoPrincipal> = {
+  mae: 'mae',
+  pai: 'pai',
+  outro: 'responsavel',
+  paciente: 'paciente'
+}
+
+export function contatoPrincipal(p: FichaComContato, today: Date = new Date()): Pessoa | null {
+  const pessoas = pessoasDaFicha(p, today)
+  if (p.contato_principal !== '') {
+    const papel = PAPEL_DO_CONTATO[p.contato_principal]
+    const escolhida = pessoas.find((x) => x.papel === papel)
+    if (escolhida) return escolhida
+  }
+  return (
+    responsavelDe(p, today).pessoa ??
+    pessoas.find((x) => x.papel !== 'paciente' || x.celular !== '') ??
+    null
+  )
 }

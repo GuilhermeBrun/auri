@@ -12,6 +12,7 @@ type Searchable = {
   nome: string
   mae_nome: string
   cpf: string
+  rg?: string
   mae_cpf: string
   pai_nome?: string
   pai_cpf?: string
@@ -25,7 +26,7 @@ export function createPatientSearch<T extends Searchable>(patients: T[]): (busca
     text: [patient.nome, patient.mae_nome, patient.pai_nome, patient.resp_nome]
       .map((value) => normalizeText(value ?? ''))
       .join('\n'),
-    digits: [patient.cpf, patient.mae_cpf, patient.pai_cpf, patient.resp_cpf]
+    digits: [patient.cpf, patient.rg, patient.mae_cpf, patient.pai_cpf, patient.resp_cpf]
       .map((value) => onlyDigits(value ?? ''))
       .join('\n')
   }))

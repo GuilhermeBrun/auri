@@ -99,3 +99,117 @@ describe('validação do cadastro', () => {
     expect(result.nome).toBe('Ana')
   })
 })
+
+describe('ficha ampliada', () => {
+  it('guarda RG, UF, série estruturada e contato principal', () => {
+    const created = createPatient(
+      db,
+      patient({
+        nome: 'Ana Exemplo',
+        rg: '12.345.678-9',
+        uf: 'MT',
+        serie_numero: '3',
+        serie_tipo: 'ano',
+        serie_etapa: 'fundamental',
+        contato_principal: 'pai'
+      })
+    )
+    expect(getPatient(db, created.id)).toMatchObject({
+      rg: '12.345.678-9',
+      uf: 'MT',
+      serie_numero: '3',
+      serie_tipo: 'ano',
+      serie_etapa: 'fundamental',
+      contato_principal: 'pai'
+    })
+    expect(listPatients(db, { busca: '345678', incluirInativos: false }).map((p) => p.id)).toEqual([
+      created.id
+    ])
+  })
+})
+
+describe('atividades extracurriculares', () => {
+  const natacao = { atividade: 'Natação', dia_semana: 2, inicio: '14:00', fim: '15:00' }
+  const bale = { atividade: 'Balé', dia_semana: 4, inicio: '08:30', fim: '09:30' }
+
+  it('salva junto com a ficha e devolve ordenadas por dia e horário', () => {
+    const created = createPatient(db, patient({ nome: 'Ana', atividades: [bale, natacao] }))
+    expect(created.atividades.map((a) => a.atividade)).toEqual(['Natação', 'Balé'])
+    expect(created.atividades[0]).toEqual({
+      id: expect.any(Number),
+      patient_id: created.id,
+      ...natacao
+    })
+    expect(listPatients(db, ALL)[0].atividades).toEqual(created.atividades)
+  })
+
+  it('a atualização troca a lista inteira, e sem a lista não mexe nas atividades', () => {
+    const created = createPatient(db, patient({ nome: 'Ana', atividades: [natacao] }))
+    const updated = updatePatient(
+      db,
+      created.id,
+      patient({ nome: 'Ana', atividades: [bale] }),
+      created.updated_at
+    )
+    expect(updated.atividades.map((a) => a.atividade)).toEqual(['Balé'])
+    const { atividades: _, ...semLista } = patient({ nome: 'Ana Maria' })
+    const kept = updatePatient(db, created.id, semLista, updated.updated_at)
+    expect(kept.nome).toBe('Ana Maria')
+    expect(kept.atividades.map((a) => a.atividade)).toEqual(['Balé'])
+    expect(updatePatient(db, created.id, patient({ nome: 'Ana' })).atividades).toEqual([])
+  })
+
+  it('não grava nada quando a ficha mudou em outro computador', () => {
+    const created = createPatient(db, patient({ nome: 'Ana', atividades: [natacao] }))
+    db.prepare("UPDATE patients SET updated_at = '2000-01-01T00:00:00.000Z'").run()
+    expect(() =>
+      updatePatient(
+        db,
+        created.id,
+        patient({ nome: 'Outra', atividades: [bale] }),
+        created.updated_at
+      )
+    ).toThrow('alterado em outro computador')
+    const current = getPatient(db, created.id)
+    expect(current.nome).toBe('Ana')
+    expect(current.atividades.map((a) => a.atividade)).toEqual(['Natação'])
+  })
+
+  it('desfaz o paciente se uma atividade não puder ser gravada', () => {
+    expect(() =>
+      createPatient(db, patient({ nome: 'Ana', atividades: [{ ...natacao, dia_semana: 9 }] }))
+    ).toThrow(/CHECK/)
+    expect(listPatients(db, ALL)).toEqual([])
+  })
+
+  it('valida atividade, dia e horário, com fim depois do início', () => {
+    const issues = (atividades: unknown[]): string[] => {
+      const r = patientInputSchema.safeParse({ ...patient({ nome: 'Ana' }), atividades })
+      return r.success ? [] : r.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`)
+    }
+    expect(issues([natacao, bale])).toEqual([])
+    expect(issues([{ ...natacao, fim: '14:00' }])).toEqual([
+      'atividades.0.fim: O término deve ser depois do início'
+    ])
+    expect(issues([{ ...natacao, atividade: '  ' }])).toEqual([
+      'atividades.0.atividade: Diga qual é a atividade'
+    ])
+    expect(issues([{ ...natacao, inicio: '25:00' }])).toContain(
+      'atividades.0.inicio: Horário inválido'
+    )
+    expect(issues([{ ...natacao, dia_semana: 7 }])).toHaveLength(1)
+    expect(issues(Array.from({ length: 21 }, () => natacao))).toHaveLength(1)
+  })
+
+  it('pede o tipo quando há número de série e o número quando há tipo', () => {
+    const issues = (over: Partial<PatientInput>): string[] => {
+      const r = patientInputSchema.safeParse(patient({ nome: 'Ana', ...over }))
+      return r.success ? [] : r.error.issues.map((i) => i.path.join('.'))
+    }
+    expect(issues({ serie_numero: '3', serie_tipo: 'ano' })).toEqual([])
+    expect(issues({ serie_numero: '3' })).toEqual(['serie_tipo'])
+    expect(issues({ serie_tipo: 'serie' })).toEqual(['serie_numero'])
+    expect(issues({ serie_numero: '0', serie_tipo: 'ano' })).toEqual(['serie_numero'])
+    expect(issues({ uf: 'XX' as PatientInput['uf'] })).toEqual(['uf'])
+  })
+})

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vite-plus/test'
-import { isAdult, pessoasDaFicha, responsavelDe } from './responsavel'
+import { contatoPrincipal, isAdult, pessoasDaFicha, responsavelDe } from './responsavel'
 import { emptyPatientInput, patientInputSchema, type PatientInput } from './schemas'
 
 const HOJE = new Date(2026, 9, 19, 12)
@@ -105,5 +105,80 @@ describe('validação do responsável', () => {
         email: 'sem-arroba'
       }).sort()
     ).toEqual(['email', 'pai_cpf', 'resp_celular'])
+  })
+})
+
+describe('contato principal', () => {
+  const ADULTO = '1990-01-01'
+  const CRIANCA = '2019-05-07'
+
+  it('paciente adulto é o próprio contato por padrão', () => {
+    const c = contatoPrincipal(
+      ficha({ data_nascimento: ADULTO, celular: '(66) 99999-0000', mae_nome: 'Marina' }),
+      HOJE
+    )
+    expect(c).toMatchObject({
+      papel: 'paciente',
+      nome: 'Helena Fictícia',
+      celular: '(66) 99999-0000'
+    })
+  })
+
+  it('criança usa o responsável escolhido por padrão', () => {
+    const base = { data_nascimento: CRIANCA, mae_nome: 'Marina', pai_nome: 'Paulo' }
+    expect(contatoPrincipal(ficha(base), HOJE)?.papel).toBe('mae')
+    expect(contatoPrincipal(ficha({ ...base, resp_tipo: 'pai' }), HOJE)?.papel).toBe('pai')
+    expect(
+      contatoPrincipal(
+        ficha({ ...base, resp_tipo: 'outro', resp_nome: 'Vera', resp_parentesco: 'avo_f' }),
+        HOJE
+      )
+    ).toMatchObject({ papel: 'outro', nome: 'Vera', parentesco: 'Avó' })
+  })
+
+  it('respeita a escolha da ficha', () => {
+    const base = {
+      data_nascimento: CRIANCA,
+      mae_nome: 'Marina',
+      pai_nome: 'Paulo',
+      pai_celular: '(66) 98888-0000',
+      pai_email: 'paulo@exemplo.com'
+    }
+    expect(contatoPrincipal(ficha({ ...base, contato_principal: 'pai' }), HOJE)).toMatchObject({
+      papel: 'pai',
+      nome: 'Paulo',
+      celular: '(66) 98888-0000',
+      email: 'paulo@exemplo.com'
+    })
+    expect(contatoPrincipal(ficha({ ...base, contato_principal: 'paciente' }), HOJE)?.papel).toBe(
+      'paciente'
+    )
+    expect(
+      contatoPrincipal(
+        ficha({ data_nascimento: ADULTO, mae_nome: 'Marina', contato_principal: 'mae' }),
+        HOJE
+      )?.papel
+    ).toBe('mae')
+  })
+
+  it('volta ao padrão quando a pessoa escolhida não está na ficha', () => {
+    const c = contatoPrincipal(
+      ficha({ data_nascimento: CRIANCA, mae_nome: 'Marina', contato_principal: 'pai' }),
+      HOJE
+    )
+    expect(c?.papel).toBe('mae')
+    expect(
+      contatoPrincipal(
+        ficha({ data_nascimento: CRIANCA, mae_nome: 'Marina', contato_principal: 'responsavel' }),
+        HOJE
+      )?.papel
+    ).toBe('mae')
+  })
+
+  it('sem ninguém para contato devolve null, ou o paciente se tiver celular', () => {
+    expect(contatoPrincipal(ficha({ data_nascimento: CRIANCA }), HOJE)).toBeNull()
+    expect(
+      contatoPrincipal(ficha({ data_nascimento: CRIANCA, celular: '(66) 97777-0000' }), HOJE)?.papel
+    ).toBe('paciente')
   })
 })
