@@ -1,9 +1,12 @@
 import type { CSSProperties } from 'react'
+import { Check, Clock, PenLine } from '../components/icons'
 import {
   clock,
+  closesAt,
   dateOf,
   FIRST,
-  isWeekend,
+  isClosed,
+  KINDS,
   LENGTH,
   NOW,
   patientRow,
@@ -15,6 +18,7 @@ import {
   weekOf,
   WEEKDAYS,
   type Enter,
+  type Mark,
   type Session,
   type State,
   type Store
@@ -23,6 +27,22 @@ import {
 const vars = (values: Record<string, number>) => values as CSSProperties
 
 export type Slot = { day: number; start: number }
+
+const MARKS: Record<Mark, { label: string; icon: typeof PenLine }> = {
+  signed: { label: 'Chegada assinada', icon: PenLine },
+  confirmed: { label: 'Confirmada', icon: Check },
+  waiting: { label: 'Aguardando resposta', icon: Clock }
+}
+
+function MarkIcon({ mark }: { mark?: Mark }) {
+  if (!mark) return null
+  const { label, icon: Icon } = MARKS[mark]
+  return (
+    <span className={`ev-mark ev-mark-${mark}`} role="img" aria-label={label}>
+      <Icon />
+    </span>
+  )
+}
 
 type GridProps = { state: State; store: Store; enter: Enter; ghost: Slot | null }
 
@@ -44,6 +64,7 @@ function Event({
   if (session.id === state.arrived) classes.push('arrived')
   if (enter === 'all') classes.push('enter')
   if (enter === session.id) classes.push('enter', 'arrived')
+  classes.push(`ev-${session.kind}`)
   const name = state.mode === 'day' ? session.name : shortName(session.name)
   const title = `${range(session)} · ${session.name}`
   if (month) {
@@ -58,6 +79,7 @@ function Event({
       >
         <span className="ev-start">{clock(session.start)}</span>
         {name}
+        <span className="ev-kind">{` · ${KINDS[session.kind]}`}</span>
       </button>
     )
   }
@@ -69,8 +91,11 @@ function Event({
       title={title}
       style={vars({ '--top': session.start - FIRST, '--len': session.len, '--d': index })}
     >
-      <span className="ev-name">{name}</span>
-      <span className="ev-time">{range(session)}</span>
+      <span className="ev-name">
+        <span className="ev-name-text">{name}</span>
+        <MarkIcon mark={session.mark} />
+      </span>
+      <span className="ev-time">{`${KINDS[session.kind]} · ${range(session)}`}</span>
     </button>
   )
 }
@@ -79,7 +104,7 @@ function WeekGrid({ state, store, enter, ghost }: GridProps) {
   const days =
     state.mode === 'day'
       ? [state.focus]
-      : Array.from({ length: 7 }, (_, i) => weekOf(state.focus) * 7 + i)
+      : Array.from({ length: 6 }, (_, i) => weekOf(state.focus) * 7 + 1 + i)
   let index = 0
   return (
     <div className="cal-week" style={vars({ '--cols': days.length })}>
@@ -110,16 +135,20 @@ function WeekGrid({ state, store, enter, ghost }: GridProps) {
           {Array.from({ length: VISIBLE }, (_, i) => (
             <div key={i} className="hour">
               <span>{clock(FIRST + i)}</span>
+              <span className="half">{clock(FIRST + i + 0.5)}</span>
             </div>
           ))}
         </div>
         <div className="cal-cols">
           {days.map((day) => (
-            <div
-              key={day}
-              className={`col${isWeekend(day) && state.mode !== 'day' ? ' weekend' : ''}`}
-              data-day={day}
-            >
+            <div key={day} className="col" data-day={day}>
+              {closesAt(day) < FIRST + VISIBLE && (
+                <div
+                  className="closed"
+                  aria-hidden="true"
+                  style={vars({ '--top': closesAt(day) - FIRST })}
+                />
+              )}
               {store.day(day).map((session) => (
                 <Event
                   key={session.id}
@@ -175,7 +204,7 @@ function MonthGrid({ state, store, enter }: GridProps) {
           return (
             <div
               key={day}
-              className={`mc${off ? ' off' : ''}${isWeekend(day) ? ' weekend' : ''}`}
+              className={`mc${off ? ' off' : ''}${isClosed(day) ? ' weekend' : ''}`}
               data-day={day}
             >
               <button
