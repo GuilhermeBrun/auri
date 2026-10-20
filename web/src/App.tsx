@@ -3,44 +3,55 @@ import { AgendaPreview } from './agenda/AgendaPreview'
 import { DownloadButtons } from './components/DownloadButtons'
 import { ArrowUp, Wordmark } from './components/icons'
 import { Reveal } from './components/Reveal'
+import { SCENES } from './scenes'
 import { prefersReducedMotion } from './lib/dom'
 import { PointerTrail } from './components/PointerTrail'
 import { ThemeToggle } from './components/ThemeToggle'
 import { longDate, type DownloadInfo } from './releases'
 
-const FEATURES = [
+const FEATURES: { scene: keyof typeof SCENES; title: string; text: string }[] = [
   {
-    image: 'agenda',
-    zoom: 150,
-    focus: 0,
+    scene: 'agenda',
     title: 'Agenda da clínica',
-    text: 'Dia, semana ou mês, com o horário de agora sempre à vista. Um clique num horário livre agenda a sessão, e o Auri confirma quando ela foi salva.'
+    text: 'Dia, semana ou mês, só nos dias e horários em que a clínica atende. Cada tipo de atendimento tem a sua cor, e um clique num horário livre agenda a sessão.'
   },
   {
-    image: 'anamnese',
-    zoom: 150,
-    focus: 0.24,
+    scene: 'confirmacao',
+    title: 'Confirmação pelo WhatsApp',
+    text: 'Na véspera, o Auri prepara a mensagem de cada família. A resposta volta para a agenda, que mostra quem confirmou e quem ainda não respondeu.'
+  },
+  {
+    scene: 'encaixe',
+    title: 'Lista de espera e encaixe',
+    text: 'Quem espera um horário fica na lista, com prioridade e os dias e períodos que prefere. Clique num horário vago e o Auri mostra quem cabe nele.'
+  },
+  {
+    scene: 'anamnese',
     title: 'Fichas e anamnese',
     text: 'A ficha completa de cada paciente e a anamnese em roteiro, um tema por vez, com perguntas para guiar a conversa com a família.'
   },
   {
-    image: 'sessoes',
-    zoom: 150,
-    focus: 0.24,
-    title: 'Sessões e frequência',
-    text: 'Presença e evolução de cada sessão, com um gráfico da frequência para acompanhar o tratamento do paciente.'
+    scene: 'sessoes',
+    title: 'Presença assinada',
+    text: 'A família assina na tela do computador quando chega, e a sessão fica como presente. Frequência, evoluções e relatório em PDF ficam na ficha do paciente.'
   },
   {
-    image: 'copia',
-    zoom: 135,
-    focus: 0,
+    scene: 'termos',
+    title: 'Termos da clínica',
+    text: 'A clínica escreve os próprios termos, com o nome e o logo dela. O Auri manda o link pelo WhatsApp, a família assina no celular e o termo volta assinado.'
+  },
+  {
+    scene: 'financeiro',
+    title: 'Financeiro',
+    text: 'Particular, pacote ou convênio: cada sessão assinada já entra na conta do paciente. O que está em aberto e o que entrou no mês ficam numa tela só.'
+  },
+  {
+    scene: 'copia',
     title: 'Seus dados, no seu computador',
     text: 'Os pacientes e a agenda ficam no computador da clínica. Uma cópia cifrada vai para o Google Drive, OneDrive ou iCloud que vocês já usam.'
   },
   {
-    image: 'conexao',
-    zoom: 135,
-    focus: 0,
+    scene: 'conexao',
     title: 'Recepção e consultório',
     text: 'Um computador guarda os dados e os outros usam pela rede da clínica ou pela internet, só com a sua permissão.'
   }
@@ -67,9 +78,8 @@ function Words({ lines }: { lines: string[] }) {
   ))
 }
 
-function Feature({ image, zoom, focus, title, text }: (typeof FEATURES)[number]) {
-  const crop = { '--zoom': zoom, '--focus': focus } as CSSProperties
-  const alt = (theme: string) => `Tela do Auri: ${title.toLowerCase()}, no tema ${theme}`
+function Feature({ scene, title, text }: (typeof FEATURES)[number]) {
+  const Scene = SCENES[scene]
   return (
     <article className="feature">
       <Reveal className="feature-text">
@@ -77,26 +87,7 @@ function Feature({ image, zoom, focus, title, text }: (typeof FEATURES)[number])
         <p>{text}</p>
       </Reveal>
       <Reveal className="feature-media" order={1}>
-        <img
-          className="shot-light"
-          style={crop}
-          src={`telas/${image}-claro.webp`}
-          alt={alt('claro')}
-          width="1600"
-          height="950"
-          loading="lazy"
-          decoding="async"
-        />
-        <img
-          className="shot-dark"
-          style={crop}
-          src={`telas/${image}-escuro.webp`}
-          alt={alt('escuro')}
-          width="1600"
-          height="950"
-          loading="lazy"
-          decoding="async"
-        />
+        <Scene />
       </Reveal>
     </article>
   )
@@ -133,9 +124,9 @@ export function App({ info }: { info: DownloadInfo }) {
             <Words lines={HEADLINE} />
           </h1>
           <p className="lead">
-            Pacientes, sessões e anamneses no computador da clínica, mesmo sem internet.
+            Agenda, pacientes e financeiro no computador da clínica, mesmo sem internet.
           </p>
-          <DownloadButtons options={info.options} />
+          <DownloadButtons info={info} />
           {info.missing && <p className="missing meta">{info.missing}</p>}
         </section>
         <AgendaPreview />
@@ -145,7 +136,7 @@ export function App({ info }: { info: DownloadInfo }) {
           </Reveal>
           <div className="features">
             {FEATURES.map((feature) => (
-              <Feature key={feature.image} {...feature} />
+              <Feature key={feature.scene} {...feature} />
             ))}
           </div>
         </section>

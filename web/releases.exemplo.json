@@ -10,12 +10,25 @@
       { "name": "Auri-0.1.0-arm64-mac.zip", "size": 114032640 }
     ]
   },
-  "alpha": null,
+  "alpha": {
+    "tag": "v0.1.1-alpha.20261019.3",
+    "publishedAt": "2026-10-19T23:53:51Z",
+    "assets": [
+      { "name": "alpha.yml", "size": 512 },
+      { "name": "alpha-mac.yml", "size": 512 },
+      { "name": "auri-0.1.1-alpha.20261019.3-setup.exe", "size": 121576186 },
+      { "name": "auri-0.1.1-alpha.20261019.3-arm64.dmg", "size": 141492317 }
+    ]
+  },
   "files": [
     { "name": "Auri-0.1.0-arm64-mac.zip", "tag": "v0.1.0" },
     { "name": "auri-0.1.0-arm64.dmg", "tag": "v0.1.0" },
     { "name": "auri-0.1.0-setup.exe", "tag": "v0.1.0" },
     { "name": "latest-mac.yml", "tag": "v0.1.0" },
-    { "name": "latest.yml", "tag": "v0.1.0" }
+    { "name": "latest.yml", "tag": "v0.1.0" },
+    { "name": "alpha.yml", "tag": "v0.1.1-alpha.20261019.3" },
+    { "name": "alpha-mac.yml", "tag": "v0.1.1-alpha.20261019.3" },
+    { "name": "auri-0.1.1-alpha.20261019.3-setup.exe", "tag": "v0.1.1-alpha.20261019.3" },
+    { "name": "auri-0.1.1-alpha.20261019.3-arm64.dmg", "tag": "v0.1.1-alpha.20261019.3" }
   ]
 }

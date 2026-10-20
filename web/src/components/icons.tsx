@@ -115,6 +115,176 @@ export function Users() {
     </Svg>
   )
 }
+export function Wallet() {
+  return (
+    <Svg>
+      <>
+        <path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1" />
+        <path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4" />
+      </>
+    </Svg>
+  )
+}
+export function Building() {
+  return (
+    <Svg>
+      <>
+        <path d="M10 12h4" />
+        <path d="M10 8h4" />
+        <path d="M14 21v-3a2 2 0 0 0-4 0v3" />
+        <path d="M6 10H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-2" />
+        <path d="M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16" />
+      </>
+    </Svg>
+  )
+}
+export function CalendarCheck() {
+  return (
+    <Svg>
+      <>
+        <path d="M8 2v3" />
+        <path d="M16 2v3" />
+        <rect x="3" y="3" width="18" height="18" rx="2" />
+        <path d="M3 9h18" />
+        <path d="m9 15 2 2 4-4" />
+      </>
+    </Svg>
+  )
+}
+export function Hourglass() {
+  return (
+    <Svg>
+      <>
+        <path d="M5 22h14" />
+        <path d="M5 2h14" />
+        <path d="M17 22v-4.172a2 2 0 0 0-.586-1.414L12 12l-4.414 4.414A2 2 0 0 0 7 17.828V22" />
+        <path d="M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 0 17 6.172V2" />
+      </>
+    </Svg>
+  )
+}
+export function PenLine() {
+  return (
+    <Svg>
+      <>
+        <path d="M13 21h8" />
+        <path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" />
+      </>
+    </Svg>
+  )
+}
+export function Clock() {
+  return (
+    <Svg>
+      <>
+        <circle cx="12" cy="12" r="10" />
+        <path d="M12 6v6l4 2" />
+      </>
+    </Svg>
+  )
+}
+export function SlidersHorizontal() {
+  return (
+    <Svg>
+      <>
+        <path d="M10 5H3" />
+        <path d="M12 19H3" />
+        <path d="M14 3v4" />
+        <path d="M16 17v4" />
+        <path d="M21 12h-9" />
+        <path d="M21 19h-5" />
+        <path d="M21 5h-7" />
+        <path d="M8 10v4" />
+        <path d="M8 12H3" />
+      </>
+    </Svg>
+  )
+}
+export function SunMoon() {
+  return (
+    <Svg>
+      <>
+        <path d="M12 2v2" />
+        <path d="M14.837 16.385a6 6 0 1 1-7.223-7.222c.624-.147.97.66.715 1.248a4 4 0 0 0 5.26 5.259c.589-.255 1.396.09 1.248.715" />
+        <path d="M16 12a4 4 0 0 0-4-4" />
+        <path d="m19 5-1.256 1.256" />
+        <path d="M20 12h2" />
+      </>
+    </Svg>
+  )
+}
+export function Database() {
+  return (
+    <Svg>
+      <>
+        <ellipse cx="12" cy="5" rx="9" ry="3" />
+        <path d="M3 5V19A9 3 0 0 0 21 19V5" />
+        <path d="M3 12A9 3 0 0 0 21 12" />
+      </>
+    </Svg>
+  )
+}
+export function ArrowLeft() {
+  return (
+    <Svg>
+      <>
+        <path d="m12 19-7-7 7-7" />
+        <path d="M19 12H5" />
+      </>
+    </Svg>
+  )
+}
+export function Send() {
+  return (
+    <Svg>
+      <>
+        <path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z" />
+        <path d="m21.854 2.147-10.94 10.939" />
+      </>
+    </Svg>
+  )
+}
+export function FilePen() {
+  return (
+    <Svg>
+      <>
+        <path d="M14.364 13.634a2 2 0 0 0-.506.854l-.837 2.87a.5.5 0 0 0 .62.62l2.87-.837a2 2 0 0 0 .854-.506l4.013-4.009a1 1 0 0 0-3.004-3.004z" />
+        <path d="M14.487 7.858A1 1 0 0 1 14 7V2" />
+        <path d="M20 19.645V20a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l2.516 2.516" />
+        <path d="M8 18h1" />
+      </>
+    </Svg>
+  )
+}
+export function Laptop() {
+  return (
+    <Svg>
+      <>
+        <path d="M18 5a2 2 0 0 1 2 2v8.526a2 2 0 0 0 .212.897l1.068 2.127a1 1 0 0 1-.9 1.45H3.62a1 1 0 0 1-.9-1.45l1.068-2.127A2 2 0 0 0 4 15.526V7a2 2 0 0 1 2-2z" />
+        <path d="M20.054 15.987H3.946" />
+      </>
+    </Svg>
+  )
+}
+export function HardDrive() {
+  return (
+    <Svg>
+      <>
+        <path d="M10 16h.01" />
+        <path d="M2.212 11.577a2 2 0 0 0-.212.896V18a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-5.527a2 2 0 0 0-.212-.896L18.55 5.11A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" />
+        <path d="M21.946 12.013H2.054" />
+        <path d="M6 16h.01" />
+      </>
+    </Svg>
+  )
+}
+export function AuriSymbol() {
+  return (
+    <svg viewBox="-2 -2 122 116" fill="currentColor" aria-hidden="true">
+      <path d="M10 51C3 52 0 46 1 37C5 16 29 0 52 0C84 0 105 19 106 47L106 66C106 76 109 80 113 84C123 96 116 110 102 110C90 110 82 103 74 92L63 77C56 67 49 67 41 73C31 80 27 89 31 96C35 103 44 106 48 109C34 114 15 111 7 101C-1 92-2 77 5 66C13 55 27 49 39 49C58 49 68 58 78 70C82 75 85 80 88 77C90 75 89 70 89 64L88 53C87 40 82 32 73 30C61 25 52 31 40 39L20 49C16 51 12 52 10 51Z" />
+    </svg>
+  )
+}
 export function Settings() {
   return (
     <Svg>
@@ -140,6 +310,13 @@ export function ChevronLeft() {
   return (
     <Svg>
       <path d="m15 18-6-6 6-6" />
+    </Svg>
+  )
+}
+export function ChevronDown() {
+  return (
+    <Svg>
+      <path d="m6 9 6 6 6-6" />
     </Svg>
   )
 }

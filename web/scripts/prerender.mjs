@@ -68,7 +68,6 @@ function fill(html, marker, value) {
 const { info, html } = render(await releases())
 const data = JSON.stringify(info).replaceAll('<', '\\u003c')
 let page = await readFile('dist/index.html', 'utf8')
-page = fill(page, '<title>Baixar o Auri</title>', `<title>Baixar o Auri ${info.version}</title>`)
 page = fill(page, '<!--app-html-->', html)
 page = fill(
   page,

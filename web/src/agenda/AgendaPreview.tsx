@@ -9,11 +9,14 @@ import {
   type ReactNode
 } from 'react'
 import {
+  Building,
+  CalendarCheck,
   CalendarDays,
   Check,
   ChevronLeft,
   ChevronRight,
   Archive,
+  Hourglass,
   PanelLeftClose,
   Plus,
   Pointer,
@@ -21,6 +24,7 @@ import {
   Settings,
   Trash,
   Users,
+  Wallet,
   WindowLogo,
   X
 } from '../components/icons'
@@ -29,11 +33,13 @@ import { moveThumb, prefersReducedMotion, useBrowserLayoutEffect } from '../lib/
 import { Grid, type Slot } from './Grid'
 import {
   clock,
+  closesAt,
   createStore,
   dateOf,
   DAY_END,
   FIRST,
   initialState,
+  KINDS,
   LENGTH,
   longDay,
   NAMES,
@@ -51,6 +57,12 @@ import {
 } from './model'
 
 type Toast = { icon: 'check' | 'trash'; title: string; text: string; seq: number }
+
+const MARK_TEXT = {
+  signed: 'Chegada assinada',
+  confirmed: 'Presença confirmada pelo WhatsApp',
+  waiting: 'Aguardando a resposta da família'
+}
 
 const INTRO: Omit<Toast, 'seq'> = {
   icon: 'check',
@@ -114,6 +126,12 @@ function Tools({ state }: { state: State }) {
             {label}
           </button>
         ))}
+      </span>
+      <span className="ghost-icon" aria-hidden="true">
+        <CalendarCheck />
+      </span>
+      <span className="ghost-icon" aria-hidden="true">
+        <Hourglass />
       </span>
       <button type="button" className="ghost-icon" data-new="" aria-label="Novo agendamento">
         <Plus />
@@ -267,7 +285,9 @@ export function AgendaPreview() {
       DAY_END - LENGTH
     )
     const day = Number((column as HTMLElement).dataset.day)
-    const busy = store.day(day).some((session) => overlaps(session, start, LENGTH))
+    const busy =
+      start + LENGTH > closesAt(day) ||
+      store.day(day).some((session) => overlaps(session, start, LENGTH))
     return busy ? null : { column, day, start }
   }
 
@@ -402,6 +422,14 @@ export function AgendaPreview() {
               <Users />
               Pacientes
             </NavButton>
+            <span className="nav-item">
+              <Wallet />
+              Financeiro
+            </span>
+            <span className="nav-item">
+              <Building />
+              Clínica
+            </span>
           </nav>
           <span className="win-foot">
             <Settings />
@@ -431,7 +459,8 @@ export function AgendaPreview() {
               <>
                 <b>{session.name}</b>
                 <span>{longDay(session.day)}</span>
-                <span>{`${range(session)} · ${Math.round(session.len * 60)} min`}</span>
+                <span>{`${KINDS[session.kind]} · ${range(session)} · ${Math.round(session.len * 60)} min`}</span>
+                {session.mark && <span>{MARK_TEXT[session.mark]}</span>}
                 <div className="pop-actions">
                   <button type="button" className="pop-danger" data-delete={session.id}>
                     <Trash />

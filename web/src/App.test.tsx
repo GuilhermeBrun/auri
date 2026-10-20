@@ -62,11 +62,22 @@ describe('página de download (HTML sem script)', () => {
     expect(page(odd, null)).toContain('/v1.0.0/auri-%221%22%3Cb%3E-setup.exe"')
   })
 
-  test('a prévia da agenda vem pronta, com a semana de 18 a 24 de outubro', () => {
+  test('a prévia da agenda vem pronta, com a semana de 19 a 24 de outubro', () => {
     const html = page(stable, null)
-    expect(html).toContain('18 a 24 de outubro 2026')
+    expect(html).toContain('19 a 24 de outubro 2026')
     expect(html).toContain('Alice Costa')
   })
+})
+
+test('o alpha mais novo que a estável fica disponível para escolher', () => {
+  const info = downloadInfo({ stable, alpha, files: files(stable, alpha) })
+  expect(info.version).toBe('1.1.0')
+  expect(info.alpha?.options.map((option) => option.name)).toEqual([
+    'auri-1.1.1-alpha.20261021.3-setup.exe'
+  ])
+  const older = release('v1.0.9-alpha.20261001.1', ['alpha.yml', 'auri-1.0.9-setup.exe'])
+  expect(downloadInfo({ stable, alpha: older, files: files(stable, older) }).alpha).toBeNull()
+  expect(downloadInfo({ stable: null, alpha, files: files(alpha) }).alpha).toBeNull()
 })
 
 test('sem estável nem alpha, o build falha', () => {

@@ -1,4 +1,4 @@
-import { downloadUrl } from './feed'
+import { downloadUrl, isNewer } from './feed'
 
 export type Release = {
   tag: string
@@ -39,19 +39,30 @@ function installer(release: Release, files: Releases['files'], os: Os): Installe
   return { os, name: file.name, url: downloadUrl(release.tag, file.name), size: asset?.size }
 }
 
+function installers(release: Release, files: Releases['files']) {
+  return [installer(release, files, 'win'), installer(release, files, 'mac')].filter(
+    (option): option is Installer => option !== null
+  )
+}
+
 export function downloadInfo({ stable, alpha, files }: Releases) {
   const main = stable ?? alpha
   if (!main) throw new Error('releases.json sem estável nem alpha.')
-  const win = installer(main, files, 'win')
-  const mac = installer(main, files, 'mac')
+  const options = installers(main, files)
+  const has = (os: Os) => options.some((option) => option.os === os)
+  const preview =
+    stable && alpha && isNewer(alpha.tag, stable.tag)
+      ? { publishedAt: alpha.publishedAt, options: installers(alpha, files) }
+      : null
   return {
     version: main.tag.slice(1),
     publishedAt: main.publishedAt,
     isAlpha: main === alpha,
-    options: [win, mac].filter((option): option is Installer => option !== null),
-    missing: !mac
+    options,
+    alpha: preview && preview.options.length > 0 ? preview : null,
+    missing: !has('mac')
       ? 'Ainda não há versão para Mac.'
-      : !win
+      : !has('win')
         ? 'Ainda não há versão para Windows.'
         : ''
   }
