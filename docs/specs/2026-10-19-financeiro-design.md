@@ -178,6 +178,31 @@ caso).
   também, onde valores não ajudam a terapeuta. Quem cuida do dinheiro vê o bloco Pagamento ao abrir
   a sessão e a lista Em aberto no Financeiro.
 
+### Pacote do paciente e renovação (20/10)
+
+Pedidos da clínica: a forma de cobrança não mostrava os pacotes, o Cobrar não oferecia pacote e a
+recepção contava à mão quantas sessões do pacote já tinham sido usadas.
+
+- **Forma de cobrança `pacote` guarda o pacote** (`finance_billing.plan_id`, obrigatório na tela).
+  A migração preenche com o modelo do último pacote contratado. Sem pacote em vigor, o diálogo
+  oferece **Contratar agora** com a data de início (ligado por padrão só para quem nunca teve
+  pacote); salvar e contratar acontecem na mesma transação.
+- **Cobrar** lista os pacotes junto com os valores. Escolher um pacote contrata (mesmo efeito de
+  Contratar pacote), com a data como início.
+- **Contratar absorve as sessões fora do pacote:** ao contratar um pacote com início D, as sessões
+  cobradas "fora do pacote" a partir de D (e até a validade, até acabarem as vagas, das mais
+  antigas para as mais novas) têm a cobrança estornada com o motivo "Passou para o pacote" e
+  passam a usar uma vaga do pacote novo. Um pagamento já feito para essa cobrança vira crédito,
+  que abate a cobrança do pacote.
+- **Renovação:** com forma `pacote`, quando resta 1 sessão nos pacotes em vigor, ou quando o
+  último pacote acabou ou venceu, a aba Financeiro avisa ("Resta 1 sessão do pacote", "O pacote
+  acabou", "O pacote venceu") com **Renovar**; o Financeiro lista os **Pacotes a renovar** e o
+  registro da sessão mostra **Renovar pacote**. Renovar contrata o pacote da forma de cobrança
+  (ou, sem ele, o do último pacote) com início **hoje**, ou na data da primeira sessão fora do
+  pacote desde o início do último pacote, se for antes, para que ela entre no novo. Renovado
+  antes de acabar, a sessão que restava continua sendo usada primeiro (pacote mais antigo).
+- A contagem do pacote diz "3 de 8 usadas · restam 5".
+
 ### Tópico de dados
 
 `finance`: toda operação que grava avisa esse tópico, e as telas do financeiro recarregam. Mudar
