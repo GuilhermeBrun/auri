@@ -6,6 +6,7 @@ import { useNavigate, useParams } from 'react-router'
 import type { TermModel, TermRequest } from '@shared/schemas'
 import { Page } from '@renderer/components/Layout'
 import { PATIENT_COLUMN, PatientHeader } from '@renderer/components/PatientHeader'
+import { patientTrail } from '@renderer/lib/session'
 import { SendTerm } from '@renderer/components/SendTerm'
 import { Button } from '@renderer/components/ui/button'
 import { ConfirmAction } from '@renderer/components/ui/confirm-action'
@@ -13,7 +14,6 @@ import { EmptyState } from '@renderer/components/ui/empty'
 import { ErrorState } from '@renderer/components/ui/error'
 import { Loading } from '@renderer/components/ui/loading'
 import { patientQuery, patientTermsQuery, termModelsQuery } from '@renderer/lib/queries'
-import { PATIENTS_CRUMB } from '@renderer/lib/session'
 import { openReceive, signedLocal } from '@renderer/lib/terms'
 import { useReception } from '@renderer/lib/reception'
 import { useToast } from '@renderer/lib/toast'
@@ -63,7 +63,7 @@ function PatientTermsPage({ patientId }: { patientId: number }): React.JSX.Eleme
 
   return (
     <Page
-      trail={[PATIENTS_CRUMB, { label: patient.data?.nome ?? 'Termos' }]}
+      trail={patientTrail(patientId, patient.data?.nome, 'termos')}
       actions={
         <Button
           variant="ghost"

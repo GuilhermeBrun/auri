@@ -19,7 +19,7 @@ import { Loading } from '@renderer/components/ui/loading'
 import { Segmented } from '@renderer/components/ui/segmented'
 import { monthRange, type Range } from '@renderer/lib/period'
 import { patientAppointmentsQuery, patientQuery } from '@renderer/lib/queries'
-import { PATIENTS_CRUMB, PRESENCA_LABELS, spokenDate, timeRange } from '@renderer/lib/session'
+import { patientTrail, PRESENCA_LABELS, spokenDate, timeRange } from '@renderer/lib/session'
 import { useToast } from '@renderer/lib/toast'
 
 const PERIODOS = [
@@ -98,7 +98,7 @@ function PatientEvolutionsPage({ patientId }: { patientId: number }): React.JSX.
 
   return (
     <Page
-      trail={[PATIENTS_CRUMB, { label: patient.data?.nome ?? 'Evoluções' }]}
+      trail={patientTrail(patientId, patient.data?.nome, 'evolucoes')}
       actions={
         <Button
           variant="ghost"
