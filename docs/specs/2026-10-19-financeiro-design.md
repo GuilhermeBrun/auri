@@ -1,7 +1,7 @@
 # Financeiro (base) — design
 
-Data: 19/10/2026. Estado: implementado na trilha F1 (base) e na F2 (registro da sessão). A cobrança
-automática de falta não respondida é de outra trilha e só chama `cobrarFalta`.
+Data: 19/10/2026. Estado: implementado. A cobrança de falta sem resposta é da confirmação pelo
+celular (`2026-10-19-confirmacao-design.md`), que só chama `cobrarFalta`.
 
 ## Pedido
 
@@ -16,7 +16,6 @@ no mês.
 ## Fora do escopo
 
 - Gateway de pagamento, cobrança por link, boleto, Pix com QR Code, nota fiscal, recibo em PDF.
-- Cobrança automática de falta não confirmada (trilha da confirmação automática).
 - Relatórios contábeis, comissão de profissional, despesas da clínica.
 
 ## Decisões
@@ -30,7 +29,7 @@ teste, e não usam `Intl` (o espaço do `Intl` muda de sistema para sistema).
 
 ### Cadastro: Valores, pacotes e convênios ficam no Financeiro, não na Clínica
 
-O menu principal ganha **Financeiro**. Os cadastros ficam numa subtela dele
+O menu principal tem **Financeiro**. Os cadastros ficam numa subtela dele
 (**Financeiro / Valores e convênios**, `/financeiro/valores`), aberta por um ícone do cabeçalho e
 pelo estado vazio. Por quê:
 
@@ -43,7 +42,9 @@ pelo estado vazio. Por quê:
 ### Catálogo
 
 - **Valor** (`finance_services`; na tela, "Valores"): nome e valor. Ex.: Sessão R$ 190,
-  Avaliação R$ 400, Relatório R$ 150.
+  Avaliação R$ 400, Relatório R$ 150. Um valor pode ser o **valor padrão**
+  (`finance_services.padrao_desde`, no máximo um): vale como particular para quem não tem forma de
+  cobrança.
 - **Modelo de pacote** (`finance_plans`): nome, número de sessões, valor total e validade opcional
   em dias. Ex.: "8 sessões" por R$ 1.520, válido por 60 dias.
 - **Convênio** (`finance_insurers`): nome e valor que o convênio paga por sessão.
@@ -56,17 +57,19 @@ corrigir o catálogo não muda o passado.
 
 Cada paciente tem uma forma de cobrança (`finance_billing`, uma linha por paciente, editável):
 
-| Forma         | Guarda                             | Ao lançar uma sessão                                 |
-| ------------- | ---------------------------------- | ---------------------------------------------------- |
-| `particular`  | o serviço da sessão (ex.: R$ 190)  | cobra o valor do serviço da família                  |
-| `pacote`      | o serviço para sessões fora dele   | consome 1 sessão do pacote em vigor                  |
-| `convenio`    | o convênio e o nº da carteirinha   | cobra do convênio o valor por sessão                 |
+| Forma        | Guarda                            | Ao lançar uma sessão                 |
+| ------------ | --------------------------------- | ------------------------------------ |
+| `particular` | o serviço da sessão (ex.: R$ 190) | cobra o valor do serviço da família  |
+| `pacote`     | o serviço para sessões fora dele  | consome 1 sessão do pacote em vigor  |
+| `convenio`   | o convênio e o nº da carteirinha  | cobra do convênio o valor por sessão |
 
-A carteirinha fica nessa tabela, e não em `patients`, para o financeiro não mexer na ficha
-(outra trilha) e para a ficha não precisar saber de convênio.
+A carteirinha fica nessa tabela, e não em `patients`, para o financeiro não mexer na ficha e para
+a ficha não precisar saber de convênio.
 
-Sem forma definida, o paciente não tem financeiro: a aba mostra o convite "Definir forma de
-cobrança" e nada é lançado.
+Sem forma definida, vale o valor padrão: `billingFor` (`main/db/finance.ts`) devolve uma forma
+`particular` com esse valor, marcada como padrão, e a sessão é lançada como a de qualquer
+particular. O "A lançar" conta a partir da data em que o valor virou padrão. Sem forma e sem valor padrão, o paciente não tem
+financeiro: a aba mostra "Definir forma de cobrança" e nada é lançado.
 
 ### Lançamentos que não somem
 
@@ -86,12 +89,12 @@ DELETE**, só o **estorno**, que grava motivo, computador e quando (`estornado_e
 
 Motivos da cobrança:
 
-| Motivo          | Quando                                                              |
-| --------------- | ------------------------------------------------------------------- |
-| `sessao`        | sessão com presença, particular ou convênio                         |
-| `falta_cobrada` | falta que a clínica decidiu cobrar (e a confirmação automática)     |
-| `pacote`        | contratação de um pacote, pelo valor total                          |
-| `avulsa`        | qualquer outro serviço (avaliação, relatório) lançado à mão         |
+| Motivo          | Quando                                                          |
+| --------------- | --------------------------------------------------------------- |
+| `sessao`        | sessão com presença, particular ou convênio                     |
+| `falta_cobrada` | falta que a clínica decidiu cobrar (e a confirmação automática) |
+| `pacote`        | contratação de um pacote, pelo valor total                      |
+| `avulsa`        | qualquer outro serviço (avaliação, relatório) lançado à mão     |
 
 Uma sessão tem no máximo um lançamento em vigor: uma cobrança `sessao`/`falta_cobrada` **ou** um
 uso de pacote (índices únicos parciais `WHERE estornado_em IS NULL` e checagem na operação).
@@ -109,21 +112,22 @@ sessão guarda o valor da época, e o que mudou fica no extrato como estorno.
 
 O lançamento é feito por `lancarSessao(db, appointmentId, computador)` (`main/db/finance.ts`):
 
-- exige presença `presente` (que, desde 19/10, só existe com a chegada assinada);
+- exige presença `presente` (que só existe com a chegada assinada);
 - aplica a forma de cobrança do paciente;
 - no pacote, consome a vaga do **pacote mais antigo** que ainda tem sessões e vale na data da
   sessão. Sem pacote em vigor, a sessão é cobrada avulsa pelo serviço da forma de cobrança, com
   "fora do pacote" na descrição;
-- avaliação (`tipo = 'avaliacao'`) nunca consome pacote; em "A lançar", lançar uma avaliação
-  pergunta qual valor cobrar (sugere o que começa com "Avalia");
-- a descrição é "Sessão de 14/10", com o nome do valor só quando ele não é "Sessão"/"Avaliação"
-  ("Sessão de 14/10 · Sessão social"), e "fora do pacote" quando for o caso.
+- só a categoria `sessao` da etiqueta consome pacote (`consomePacote` em `shared/tipos.ts`);
+  avaliação e exame nunca consomem. Em "A lançar", lançar uma sessão de outra categoria pergunta
+  qual valor cobrar (na avaliação, sugere o valor que começa com "Avalia");
+- a descrição é "<etiqueta> de 14/10", com o nome do valor só quando ele é diferente do nome da
+  etiqueta ("Sessão de 14/10 · Sessão social"), e "fora do pacote" quando for o caso.
 
-**Na chegada (F2):** `signArrival` chama `lancarNaChegada` na mesma transação, se o paciente tem
-forma de cobrança. Um erro do financeiro nunca impede a assinatura: o lançamento desfaz só a parte
-dele (savepoint), o erro vai para o log e a sessão fica em **A lançar**, que continua na aba
-Financeiro como conferência (sessões que escaparam e as de antes da F2), com "Lançar" e "Lançar
-todas".
+**Na chegada:** `signArrival` chama `lancarNaChegada` na mesma transação, se o paciente tem forma
+de cobrança (ou vale o valor padrão). Um erro do financeiro nunca impede a assinatura: o lançamento
+desfaz só a parte dele (savepoint), o erro vai para o log e a sessão fica em **A lançar**, a
+conferência da aba Financeiro: sessões com presença desde o início da forma de cobrança que ficaram
+sem lançamento, com "Lançar" e "Lançar todas".
 
 **Ao anular a assinatura:** `voidArrival` estorna, na mesma transação, o lançamento em vigor daquela
 sessão (cobrança ou uso do pacote) com **o mesmo motivo** e o mesmo computador da anulação. A
@@ -145,7 +149,7 @@ negativo é crédito (pagou adiantado).
 Pagamento não é ligado a uma cobrança: é uma conta corrente, como a tabela de papel. A situação de
 cada cobrança (paga, parcial, em aberto) é **calculada** distribuindo os pagamentos pelas cobranças
 mais antigas primeiro (por data, depois pela ordem de lançamento), separadamente para família e
-convênio. `situacaoSessoes(db, appointmentIds)` devolve, para a F2, a situação de cada sessão:
+convênio. `situacaoSessoes(db, appointmentIds)` devolve a situação de cada sessão:
 `sem_lancamento`, `pacote` (com "3/8"), `pago`, `parcial` ou `em_aberto` (com o convênio, se for o
 caso).
 
@@ -156,8 +160,9 @@ caso).
   **Convênios a receber**, por convênio; **Recebimentos do mês**, a lista dos pagamentos com total
   por forma. O botão principal **Registrar pagamento** abre o diálogo com a busca de paciente.
 - **Valores e convênios** (`/financeiro/valores`): três seções no padrão da Clínica (título à
-  esquerda, lista à direita): Serviços, Pacotes e Convênios, cada item editável num diálogo, com
-  arquivar.
+  esquerda, lista à direita): Valores, Pacotes e Convênios, cada item editável num diálogo, com
+  arquivar. No diálogo do valor, "Valor padrão" ("Para quem não tem forma de cobrança"); na lista,
+  "Padrão · R$ 190,00".
 - **Aba Financeiro da ficha** (`/pacientes/:id/financeiro`): resumo (em aberto ou crédito, a
   receber do convênio), forma de cobrança com "Alterar", pacote em vigor com a contagem "3 de 8" e
   a validade (um quadrado por sessão, cheio quando usada, como o 1/8, 2/8 do papel), **A lançar**,
@@ -178,13 +183,10 @@ caso).
   também, onde valores não ajudam a terapeuta. Quem cuida do dinheiro vê o bloco Pagamento ao abrir
   a sessão e a lista Em aberto no Financeiro.
 
-### Pacote do paciente e renovação (20/10)
-
-Pedidos da clínica: a forma de cobrança não mostrava os pacotes, o Cobrar não oferecia pacote e a
-recepção contava à mão quantas sessões do pacote já tinham sido usadas.
+### Pacote do paciente e renovação
 
 - **Forma de cobrança `pacote` guarda o pacote** (`finance_billing.plan_id`, obrigatório na tela).
-  A migração preenche com o modelo do último pacote contratado. Sem pacote em vigor, o diálogo
+  Sem pacote em vigor, o diálogo
   oferece **Contratar agora** com a data de início (ligado por padrão só para quem nunca teve
   pacote); salvar e contratar acontecem na mesma transação.
 - **Cobrar** lista os pacotes junto com os valores. Escolher um pacote contrata (mesmo efeito de
@@ -211,20 +213,13 @@ paciente ou sessão também avisa `patients`/`appointments`; a aba Financeiro es
 
 ## Em aberto para o usuário
 
-1. **Lançar sozinho na assinatura da chegada:** feito na F2, com "A lançar" como conferência.
-   Confirmar com a clínica.
-2. **Sessão sem pacote em vigor** é cobrada avulsa pelo valor da sessão (feito). A clínica prefere
-   isso ou um aviso para contratar o próximo pacote antes?
-3. **Pacote vencido com sessões sobrando**: hoje as vagas simplesmente deixam de valer. A clínica
+1. **Pacote vencido com sessões sobrando**: hoje as vagas simplesmente deixam de valer. A clínica
    costuma estender a validade? (Daria para editar a validade com registro.)
-4. **Convênio com coparticipação** (o convênio paga parte, a família o resto): não existe na F1.
-5. **Falta cobrada**: cobra o valor cheio da sessão (feito), também de quem tem pacote ou
-   convênio. A alternativa seria consumir a vaga do pacote em vez de cobrar.
-6. **Marca na agenda**: nenhuma (ver Telas). Se a clínica quiser, o candidato é um ponto só nas
+2. **Convênio com coparticipação** (o convênio paga parte, a família o resto): não existe.
+3. **Marca na agenda**: nenhuma (ver Telas). Se a clínica quiser, o candidato é um ponto só nas
    sessões com presença ainda não lançadas, que é o único caso em que a recepção precisa agir.
-7. **Avaliação** cobrada à mão como "Cobrar · Avaliação". Quando houver tipos de atendimento
-   cadastráveis, cada tipo pode apontar para um serviço.
-8. **Quem vê o financeiro**: o consultório também vê tudo, como o resto do app. Restringir exige
-   perfis de acesso, que o Auri ainda não tem.
-9. **Exportar configurações**: o catálogo (serviços, pacotes, convênios) não vai no arquivo de
-   configurações ainda; a cópia de segurança leva tudo.
+4. **Quem vê o financeiro**: os dois computadores veem tudo, como o resto do app; com a chave
+   "Computador da recepção", o catálogo não muda ali. Restringir por pessoa exige perfis de acesso,
+   que o Auri ainda não tem.
+5. **Exportar configurações**: o catálogo (valores, pacotes, convênios) não vai no arquivo de
+   configurações; a cópia de segurança leva tudo.
