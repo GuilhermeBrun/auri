@@ -117,6 +117,13 @@ import {
 import { useArrastarCartao, type Contexto } from '@renderer/lib/arrastar-cartao'
 import { useComputador } from '@renderer/lib/finance'
 import { useToast } from '@renderer/lib/toast'
+import {
+  comAtalho,
+  useTeclas,
+  textoDaTecla,
+  useAtalhos,
+  useTextoDoAtalho
+} from '@renderer/lib/atalhos'
 
 const WEEK_OPTIONS = { weekStartsOn: 0 as const }
 
@@ -432,6 +439,7 @@ function AgendaControls({
 }: AgendaControlsProps): React.JSX.Element {
   const { data = [] } = useQuery(tiposQuery())
   const opcoes = data.filter((e) => ehPrincipal(e.categoria))
+  const teclas = useTeclas()
   return (
     <>
       {opcoes.length > 0 && (
@@ -463,6 +471,7 @@ function AgendaControls({
           className="rounded-chip"
           onClick={() => onNavigate('PREV')}
           aria-label="Anterior"
+          title={comAtalho('Anterior', textoDaTecla(teclas['agenda-anterior']))}
         >
           <ChevronLeft />
         </Button>
@@ -471,6 +480,7 @@ function AgendaControls({
           size="sm"
           className="rounded-chip text-ink"
           onClick={() => onNavigate('TODAY')}
+          title={comAtalho('Hoje', textoDaTecla(teclas['agenda-hoje']))}
         >
           Hoje
         </Button>
@@ -480,6 +490,7 @@ function AgendaControls({
           className="rounded-chip"
           onClick={() => onNavigate('NEXT')}
           aria-label="Próximo"
+          title={comAtalho('Próximo', textoDaTecla(teclas['agenda-proximo']))}
         >
           <ChevronRight />
         </Button>
@@ -1020,17 +1031,22 @@ export function AgendaPage(): React.JSX.Element {
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent): void {
-      const target = e.target as HTMLElement
-      const typing = target.closest('input, textarea, select, [contenteditable="true"]')
       if (e.key === 'Escape' && !document.querySelector('[role="dialog"]')) setVaga(null)
-      if (e.key.toLowerCase() !== 'n' || e.metaKey || e.ctrlKey || e.altKey || typing) return
-      if (document.querySelector('[role="dialog"]')) return
-      e.preventDefault()
-      openNew()
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [openNew])
+  }, [])
+
+  useAtalhos({
+    'agenda-novo': openNew,
+    'agenda-hoje': () => navigate('TODAY'),
+    'agenda-anterior': () => navigate('PREV'),
+    'agenda-proximo': () => navigate('NEXT'),
+    'agenda-dia': () => setView(Views.DAY),
+    'agenda-semana': () => setView(Views.WEEK),
+    'agenda-mes': () => setView(Views.MONTH)
+  })
+  const novoAtalho = useTextoDoAtalho('agenda-novo')
 
   const period = periodLabel(date, view, shownDays)
 
@@ -1083,9 +1099,8 @@ export function AgendaPage(): React.JSX.Element {
             variant="ghost"
             size="icon"
             onClick={openNew}
-            aria-keyshortcuts="N"
             aria-label="Novo agendamento"
-            title="Novo agendamento (N)"
+            title={comAtalho('Novo agendamento', novoAtalho)}
           >
             <Plus />
           </Button>

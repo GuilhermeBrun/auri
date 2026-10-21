@@ -1,6 +1,7 @@
 import {
   ArrowLeft,
   Database,
+  Keyboard,
   Network,
   PanelLeft,
   PanelLeftClose,
@@ -12,6 +13,7 @@ import {
 } from 'lucide-react'
 import { Fragment, useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link, matchPath, NavLink, Outlet, useLocation, useNavigate } from 'react-router'
+import type { SidebarItemId } from '@shared/sidebar'
 import { AgendaNotices } from '@renderer/components/AgendaNotices'
 import { Button } from '@renderer/components/ui/button'
 import { AuriLogo } from '@renderer/components/ui/brand'
@@ -28,7 +30,14 @@ import { useIncomingConfirmacoes } from '@renderer/lib/confirmacoes'
 import { useIncomingTerms } from '@renderer/lib/terms'
 import { needsAttention, useBackup } from '@renderer/lib/backup'
 import { useConnection } from '@renderer/lib/connection'
-import { isMac, SETTINGS_SHORTCUT, SIDEBAR_SHORTCUT } from '@renderer/lib/platform'
+import { isMac } from '@renderer/lib/platform'
+import {
+  comAtalho,
+  textoDaTecla,
+  useAtalhos,
+  useTeclas,
+  useTextoDoAtalho
+} from '@renderer/lib/atalhos'
 import { SidebarEditor } from '@renderer/components/SidebarEditor'
 import {
   NAV_GAP,
@@ -48,6 +57,7 @@ import { cn } from '@renderer/lib/utils'
 type NavItem = {
   to: string
   label: string
+  title?: string
   icon: ReactNode
   alert?: boolean
   badge?: number
@@ -80,6 +90,7 @@ const BACKUP_PATH = `${STORAGE_PATH}?secao=copia`
 const SETTINGS_ITEMS: NavItem[] = [
   { to: `${SETTINGS_PATH}/geral`, label: 'Geral', icon: <SlidersHorizontal /> },
   { to: `${SETTINGS_PATH}/aparencia`, label: 'Aparência', icon: <SunMoon /> },
+  { to: `${SETTINGS_PATH}/atalhos`, label: 'Atalhos', icon: <Keyboard /> },
   { to: STORAGE_PATH, label: 'Armazenamento', icon: <Database /> }
 ]
 
@@ -105,10 +116,11 @@ function SidebarNav({
           }}
         />
       )}
-      {items.map(({ to, label, icon, alert, badge }) => (
+      {items.map(({ to, label, title, icon, alert, badge }) => (
         <NavLink
           key={to}
           to={to}
+          title={title}
           className={({ isActive }) =>
             cn(navItemClass, isActive && 'text-ink hover:bg-transparent')
           }
@@ -131,6 +143,8 @@ function SidebarBody(): React.JSX.Element {
   const whatsapp = useWhatsAppEnabled()
   const unread = useWhatsAppUnread(whatsapp)
   const visible = useAvailableItems().filter((item) => !item.hidden)
+  const teclas = useTeclas()
+  const settingsShortcut = useTextoDoAtalho('configuracoes')
   const backTo = useRef(useHomePath())
   useEffect(() => {
     if (!inSettings) backTo.current = pathname
@@ -169,6 +183,7 @@ function SidebarBody(): React.JSX.Element {
           return {
             to: item.path,
             label: item.label,
+            title: comAtalho(item.label, textoDaTecla(teclas[`ir-${item.id}`])),
             icon: <Icon />,
             badge: item.id === 'whatsapp' ? unread : undefined
           }
@@ -179,7 +194,7 @@ function SidebarBody(): React.JSX.Element {
       <SidebarEditor />
       <Link
         to={attention ? BACKUP_PATH : SETTINGS_PATH}
-        title={`Configurações (${SETTINGS_SHORTCUT})`}
+        title={comAtalho('Configurações', settingsShortcut)}
         className={cn(navItemClass, 'mt-auto')}
       >
         <Settings aria-hidden="true" />
@@ -226,6 +241,7 @@ function useToggleLeft(): number {
 function SidebarToggle(): React.JSX.Element {
   const { open, toggle } = useSidebar()
   const label = open ? 'Ocultar barra lateral' : 'Mostrar barra lateral'
+  const shortcut = useTextoDoAtalho('barra-lateral')
   return (
     <Button
       variant="ghost"
@@ -235,7 +251,7 @@ function SidebarToggle(): React.JSX.Element {
       aria-label={label}
       aria-expanded={open}
       aria-controls="sidebar"
-      title={`${label} (${SIDEBAR_SHORTCUT})`}
+      title={comAtalho(label, shortcut)}
     >
       {open ? <PanelLeftClose /> : <PanelLeft />}
     </Button>
@@ -260,22 +276,27 @@ export function Layout(): React.JSX.Element {
 
   useEffect(() => window.prefs.onOpenSettings(() => void navigate(SETTINGS_PATH)), [navigate])
 
-  useEffect(() => {
-    function onKeyDown(e: KeyboardEvent): void {
-      const key = e.key.toLowerCase()
-      const sidebar = isMac
-        ? e.ctrlKey && e.metaKey && !e.altKey && key === 's'
-        : e.ctrlKey && !e.shiftKey && !e.altKey && key === 'b'
-      const settings =
-        (isMac ? e.metaKey && !e.ctrlKey : e.ctrlKey) && !e.shiftKey && !e.altKey && key === ','
-      if (!sidebar && !settings) return
-      e.preventDefault()
-      if (sidebar) toggle()
-      else void navigate(SETTINGS_PATH)
-    }
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [toggle, navigate])
+  const available = useAvailableItems()
+  const goTo = (id: SidebarItemId) => (): void => {
+    const item = available.find((i) => i.id === id)
+    if (item) void navigate(item.path)
+  }
+  useAtalhos({
+    'barra-lateral': toggle,
+    configuracoes: () => void navigate(SETTINGS_PATH),
+    'buscar-paciente': () => void navigate('/pacientes', { state: { buscar: Date.now() } }),
+    salvar: () =>
+      document
+        .querySelector<HTMLButtonElement>('main form button[type="submit"]:not(:disabled)')
+        ?.click(),
+    voltar: () => void navigate(-1),
+    avancar: () => void navigate(1),
+    'ir-agenda': goTo('agenda'),
+    'ir-pacientes': goTo('pacientes'),
+    'ir-financeiro': goTo('financeiro'),
+    'ir-clinica': goTo('clinica'),
+    'ir-whatsapp': goTo('whatsapp')
+  })
 
   return (
     <SidebarContext value={{ open, toggle }}>

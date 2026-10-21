@@ -218,6 +218,7 @@ export interface AuriPrefs {
 export const DEFAULT_UI_PREFS: UiPrefs = {
   sidebarOpen: true,
   sidebarItems: DEFAULT_SIDEBAR_ITEMS,
+  atalhos: {},
   theme: 'system',
   whatsapp: true,
   recepcao: false,
