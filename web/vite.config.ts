@@ -65,6 +65,7 @@ export default defineConfig({
     include: ['src/**/*.test.{ts,tsx}', 'tests/**/*.test.ts', 'contrato/**/*.test.ts'],
     environment: 'node',
     passWithNoTests: false,
+    fileParallelism: !process.env.TEST_DATABASE_URL,
     retry: 0
   }
 })

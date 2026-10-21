@@ -2,11 +2,14 @@ import { sha256 } from '../../contrato/assinatura/cifra'
 import {
   LinkInvalido,
   PAPEIS,
+  VERSAO,
   idDaVolta,
   lerIda,
   venceu,
   type Termo
 } from '../../contrato/assinatura/formato'
+import { ehCodigo } from '../../contrato/link-curto'
+import { expandir, type Rede } from './link'
 import { codificar, type Ponto } from '../../contrato/assinatura/traco'
 import { opcoesDePapel, type Preenchido } from './textos'
 
@@ -17,6 +20,8 @@ export type Estado =
   | { tela: 'sem-suporte' }
   | { tela: 'incompleto' }
   | { tela: 'versao' }
+  | { tela: 'sumiu' }
+  | { tela: 'sem-conexao' }
   | { tela: 'vencido'; termo: Termo }
   | { tela: 'termo'; aberto: Aberto; rascunho: Preenchido | null }
   | { tela: 'enviado'; termo: Termo; mensagem: string }
@@ -81,11 +86,14 @@ export async function abrir(
   fragmento: string,
   armazenamento?: Armazenamento,
   agora: number = Date.now(),
-  ambiente: Ambiente = globalThis
+  ambiente: Ambiente = globalThis,
+  rede: Rede = {}
 ): Promise<Estado> {
   if (!temSuporte(ambiente)) return { tela: 'sem-suporte' }
   try {
-    const { termo, chave } = await lerIda(fragmento)
+    const expandido = await expandir(fragmento, VERSAO, rede)
+    if ('falha' in expandido) return { tela: expandido.falha }
+    const { termo, chave } = await lerIda(expandido.fragmento)
     const rascunho = lerRascunho(termo.id, armazenamento)
     if (rascunho && 'enviado' in rascunho) {
       return { tela: 'enviado', termo, mensagem: rascunho.enviado }
@@ -105,6 +113,7 @@ export async function abrir(
 }
 
 export function avaliarRecebido(fragmento: string): 'pronto' | 'incompleto' | 'versao' {
+  if (ehCodigo(fragmento.replace(/^#/, ''))) return 'pronto'
   try {
     idDaVolta(fragmento)
     return 'pronto'

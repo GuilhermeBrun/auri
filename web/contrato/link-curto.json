@@ -1,0 +1,10 @@
+{
+  "caminho": "/api/links",
+  "tamanhoDoId": 43,
+  "maximoGuardado": 6000,
+  "vidaMaximaS": 5184000,
+  "vidaDaVoltaS": 2592000,
+  "folgaDaIdaS": 86400,
+  "rotuloDoId": "auri/link/id/",
+  "rotuloDaChave": "auri/link/chave/"
+}

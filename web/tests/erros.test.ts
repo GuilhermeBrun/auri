@@ -180,6 +180,7 @@ describe.skipIf(!url)('tabela error_reports', () => {
   const writer = postgres(target.toString(), { max: 1 })
 
   beforeAll(async () => {
+    await admin`DROP TABLE IF EXISTS links`
     await admin`DROP TABLE IF EXISTS error_reports`
     await admin`DROP TABLE IF EXISTS schema_migrations`
     expect(await migrate(admin)).toEqual(loadMigrations().map((m) => m.version))
@@ -190,6 +191,7 @@ describe.skipIf(!url)('tabela error_reports', () => {
   })
   afterAll(async () => {
     await writer.end()
+    await admin`DROP TABLE IF EXISTS links`
     await admin`DROP TABLE IF EXISTS error_reports`
     await admin`DROP TABLE IF EXISTS segredo`
     await admin`DROP TABLE IF EXISTS schema_migrations`

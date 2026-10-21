@@ -25,6 +25,7 @@ import {
   Relogio,
   Voltar
 } from '../assinatura/icones'
+import { voltaCurta } from '../assinatura/link'
 import { linkDoWhatsApp, telefone } from '../assinatura/textos'
 import {
   abrir,
@@ -71,6 +72,7 @@ function Pergunta({
   const [passo, setPasso] = useState<'pergunta' | 'desmarcar'>('pergunta')
   const [voltas, setVoltas] = useState<Voltas | null>(null)
   const [falhou, setFalhou] = useState(false)
+  const [enviando, setEnviando] = useState<Decisao | null>(null)
 
   useEffect(() => {
     let ativo = true
@@ -111,16 +113,38 @@ function Pergunta({
         </button>
       )
     }
+    const enviar = async (): Promise<void> => {
+      if (enviando) return
+      setEnviando(res)
+      let longo = voltas![res]
+      try {
+        longo = await montarVolta(chave, respostaDe(confirmacao, res, new Date()), {
+          origem: location.origin
+        })
+      } catch {}
+      const final = mensagemDaVolta(confirmacao, res, await voltaCurta(longo))
+      guardarEnviado(confirmacao.id, { res, mensagem: final })
+      location.href = linkDoWhatsApp(confirmacao.cli.whats, final)
+      setTimeout(() => onEnviado(res, final))
+    }
     return (
       <a
         className="botao botao-principal"
         href={linkDoWhatsApp(confirmacao.cli.whats, texto)}
-        onClick={() => {
-          guardarEnviado(confirmacao.id, { res, mensagem: texto })
-          setTimeout(() => onEnviado(res, texto))
+        aria-busy={enviando === res}
+        onClick={(evento) => {
+          evento.preventDefault()
+          void enviar()
         }}
       >
-        {conteudo}
+        {enviando === res ? (
+          <>
+            <Carregando />
+            Abrindo o WhatsApp…
+          </>
+        ) : (
+          conteudo
+        )}
       </a>
     )
   }
@@ -309,6 +333,31 @@ function Tela({
           </p>
         </Aviso>
       )
+    case 'sumiu':
+      return (
+        <Aviso icone={<Relogio />} titulo="Este link não vale mais">
+          <p>O prazo para responder acabou ou a clínica mandou outro link. Fale com a clínica.</p>
+        </Aviso>
+      )
+    case 'sem-conexao':
+      return (
+        <Aviso
+          icone={<Atualizar />}
+          titulo="Sem internet"
+          acao={
+            <button
+              type="button"
+              className="botao botao-principal"
+              onClick={() => location.reload()}
+            >
+              <Atualizar />
+              Tentar de novo
+            </button>
+          }
+        >
+          <p>A confirmação precisa de internet para abrir. Confira a conexão e tente de novo.</p>
+        </Aviso>
+      )
     case 'versao':
       return (
         <Aviso
@@ -412,8 +461,7 @@ export function PaginaConfirmar({ inicial }: { inicial?: Estado }) {
         }
       />
       <Rodape>
-        Esta página não manda nada pela internet. A resposta vai cifrada pelo seu WhatsApp, só para
-        a clínica.
+        A sessão e a resposta vão cifradas: só a clínica consegue ler, nem o site do Auri.
       </Rodape>
     </main>
   )
