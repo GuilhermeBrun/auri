@@ -15,7 +15,10 @@ import {
   reportRangeSchema,
   voidMotivoSchema
 } from '../shared/schemas'
-import type { CommitmentInput } from '../shared/commitments'
+import type { AgendaChange, AgendaNoticeDraft } from '../shared/agenda-notice'
+import { commitmentName, type Commitment, type CommitmentInput } from '../shared/commitments'
+import { shortName } from '../shared/names'
+import type { Appointment } from '../shared/schemas'
 import {
   vagaSchema,
   type SugestaoPedido,
@@ -50,6 +53,7 @@ import {
 } from './db/confirmacoes'
 import {
   createCommitment,
+  getCommitment,
   listCommitments,
   removeCommitment,
   scheduleOnReserve,
@@ -82,6 +86,7 @@ import {
 import { archiveTipo, listTipos, saveTipo } from './db/tipos'
 import {
   createAppointment,
+  getAppointment,
   moveAppointment,
   listAppointments,
   listPatientAppointments,
@@ -121,7 +126,60 @@ type Operation = {
   run: (db: Db, args: unknown[]) => unknown
   changes?: DataTopic[]
   changesOf?: (result: unknown) => DataTopic[]
+  before?: (db: Db, args: unknown[]) => unknown
+  notice?: (result: unknown, before: unknown) => AgendaNoticeDraft | null
 }
+
+function existing<T>(get: (db: Db, id: number) => T): (db: Db, args: unknown[]) => T | null {
+  return (db, [id]) => {
+    const parsed = idSchema.safeParse(id)
+    if (!parsed.success) return null
+    try {
+      return get(db, parsed.data)
+    } catch {
+      return null
+    }
+  }
+}
+
+function sessao(a: Appointment, change: AgendaChange, antes?: string): AgendaNoticeDraft {
+  return { change, kind: 'sessao', nome: shortName(a.patient_nome), inicio: a.inicio, antes }
+}
+
+function compromisso(c: Commitment, change: AgendaChange, antes?: string): AgendaNoticeDraft {
+  return { change, kind: 'compromisso', nome: commitmentName(c), inicio: c.inicio, antes }
+}
+
+function sessionChange(before: Appointment, after: Appointment): AgendaNoticeDraft | null {
+  if (after.presenca !== before.presenca) {
+    if (after.presenca === 'desmarcou') return sessao(after, 'desmarcou')
+    if (after.presenca === 'falta') return sessao(after, 'faltou')
+  }
+  if (after.inicio !== before.inicio) return sessao(after, 'remarcou', before.inicio)
+  if (after.confirmado_em && !before.confirmado_em) return sessao(after, 'confirmou')
+  if (
+    after.fim !== before.fim ||
+    after.patient_id !== before.patient_id ||
+    after.tipo_id !== before.tipo_id ||
+    after.presenca !== before.presenca
+  )
+    return sessao(after, 'alterou')
+  return null
+}
+
+function commitmentChange(before: Commitment, after: Commitment): AgendaNoticeDraft | null {
+  if (after.inicio !== before.inicio) return compromisso(after, 'remarcou', before.inicio)
+  if (
+    after.fim !== before.fim ||
+    after.etiqueta_id !== before.etiqueta_id ||
+    after.titulo !== before.titulo
+  )
+    return compromisso(after, 'alterou')
+  return null
+}
+
+const appointmentBefore = existing(getAppointment)
+const commitmentBefore = existing(getCommitment)
 
 const responseText = z.string().max(20_000)
 
@@ -171,7 +229,8 @@ const OPERATIONS: Record<string, Operation> = {
   },
   'appointments:create': {
     run: (db, [input]) => createAppointment(db, appointmentInputSchema.parse(input)),
-    changes: ['appointments', 'waitlist']
+    changes: ['appointments', 'waitlist'],
+    notice: (a) => sessao(a as Appointment, 'marcou')
   },
   'appointments:move': {
     run: (db, [id, slot, expected, computador]) =>
@@ -182,12 +241,16 @@ const OPERATIONS: Record<string, Operation> = {
         expectedSchema.parse(expected),
         computadorSchema.parse(computador)
       ),
-    changes: ['appointments', 'finance']
+    changes: ['appointments', 'finance'],
+    before: appointmentBefore,
+    notice: (a, before) =>
+      sessao(a as Appointment, 'remarcou', (before as Appointment | null)?.inicio)
   },
   'appointments:scheduleOnReserve': {
     run: (db, [reserveId, input]) =>
       scheduleOnReserve(db, idSchema.parse(reserveId), appointmentInputSchema.parse(input)),
-    changes: ['appointments', 'commitments', 'waitlist']
+    changes: ['appointments', 'commitments', 'waitlist'],
+    notice: (a) => sessao(a as Appointment, 'marcou')
   },
 
   'commitments:listRange': {
@@ -198,7 +261,8 @@ const OPERATIONS: Record<string, Operation> = {
   },
   'commitments:create': {
     run: (db, [input]) => createCommitment(db, input as CommitmentInput),
-    changes: ['commitments']
+    changes: ['commitments'],
+    notice: (c) => compromisso(c as Commitment, 'marcou')
   },
   'commitments:update': {
     run: (db, [id, input, expected]) =>
@@ -208,11 +272,15 @@ const OPERATIONS: Record<string, Operation> = {
         input as CommitmentInput,
         expectedSchema.parse(expected)
       ),
-    changes: ['commitments']
+    changes: ['commitments'],
+    before: commitmentBefore,
+    notice: (c, before) => (before ? commitmentChange(before as Commitment, c as Commitment) : null)
   },
   'commitments:remove': {
     run: (db, [id]) => removeCommitment(db, idSchema.parse(id)),
-    changes: ['commitments']
+    changes: ['commitments'],
+    before: commitmentBefore,
+    notice: (_, before) => (before ? compromisso(before as Commitment, 'excluiu') : null)
   },
   'appointments:update': {
     run: (db, [id, input, expected, computador]) =>
@@ -223,11 +291,15 @@ const OPERATIONS: Record<string, Operation> = {
         expectedSchema.parse(expected),
         computadorSchema.parse(computador)
       ),
-    changes: ['appointments', 'finance']
+    changes: ['appointments', 'finance'],
+    before: appointmentBefore,
+    notice: (a, before) => (before ? sessionChange(before as Appointment, a as Appointment) : null)
   },
   'appointments:remove': {
     run: (db, [id]) => removeAppointment(db, idSchema.parse(id)),
-    changes: ['appointments']
+    changes: ['appointments'],
+    before: appointmentBefore,
+    notice: (_, before) => (before ? sessao(before as Appointment, 'excluiu') : null)
   },
 
   'attendance:sign': {
@@ -238,7 +310,8 @@ const OPERATIONS: Record<string, Operation> = {
         arrivalSignInputSchema.parse(input),
         computadorSchema.parse(computador)
       ),
-    changes: ['appointments', 'attendance', 'finance']
+    changes: ['appointments', 'attendance', 'finance'],
+    notice: (a) => sessao(a as Appointment, 'chegou')
   },
   'attendance:void': {
     run: (db, [signatureId, motivo, computador]) =>
@@ -533,15 +606,16 @@ export function runOperation(
   db: Db,
   channel: string,
   args: unknown[],
-  onChange?: (topics: DataTopic[]) => void,
+  onChange?: (topics: DataTopic[], notice: AgendaNoticeDraft | null) => void,
   onFailure?: (error: unknown) => void
 ): IpcResult<unknown> {
   const operation = Object.hasOwn(OPERATIONS, channel) ? OPERATIONS[channel] : undefined
   if (!operation) return { ok: false, error: 'Operação desconhecida' }
   try {
+    const before = operation.before?.(db, args) ?? null
     const data = operation.run(db, args)
     const topics = operation.changesOf?.(data) ?? operation.changes
-    if (topics && topics.length > 0) onChange?.(topics)
+    if (topics && topics.length > 0) onChange?.(topics, operation.notice?.(data, before) ?? null)
     return { ok: true, data }
   } catch (error) {
     const name = error instanceof Error ? error.name : typeof error

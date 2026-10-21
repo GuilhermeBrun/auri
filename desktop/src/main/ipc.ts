@@ -103,6 +103,7 @@ export function registerIpc({
   handle('connection:setKeepRunning', (on: unknown) => connection.setKeepRunning(bool.parse(on)))
   handle('connection:setOpenAtLogin', (on: unknown) => connection.setOpenAtLogin(bool.parse(on)))
   handle('connection:setRemoteAccess', (on: unknown) => connection.setRemoteAccess(bool.parse(on)))
+  handle('connection:setNotices', (on: unknown) => connection.setNotices(bool.parse(on)))
   handle('connection:testRemote', () => connection.testRemote())
   handle('connection:createCode', () => connection.createCode())
   handle('connection:cancelCode', () => connection.cancelCode())

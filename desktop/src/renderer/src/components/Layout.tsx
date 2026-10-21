@@ -17,6 +17,7 @@ import {
 } from 'lucide-react'
 import { Fragment, useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link, matchPath, NavLink, Outlet, useLocation, useNavigate } from 'react-router'
+import { AgendaNotices } from '@renderer/components/AgendaNotices'
 import { Button } from '@renderer/components/ui/button'
 import { AuriLogo } from '@renderer/components/ui/brand'
 import { EmptyState } from '@renderer/components/ui/empty'
@@ -311,6 +312,7 @@ export function Layout(): React.JSX.Element {
         <ReceberConfirmacao />
         <BackupAttention />
         <UpdateReady />
+        <AgendaNotices />
       </ToastProvider>
     </SidebarContext>
   )

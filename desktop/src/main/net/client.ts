@@ -1,5 +1,6 @@
 import net from 'node:net'
 import SecretStream from '@hyperswarm/secret-stream'
+import type { AgendaNotice } from '../../shared/agenda-notice'
 import type { DataTopic, IpcResult, LinkVia, RemoteProbe } from '../../shared/api'
 import { pairingProof, proofMatches } from './pairing'
 import {
@@ -34,7 +35,7 @@ export type ClientHooks = {
   addresses: () => Promise<Address[]>
   dialRemote?: () => SecretStream
   onStatus: (status: ClientStatus) => void
-  onEvent: (topics: DataTopic[]) => void
+  onEvent: (topics: DataTopic[], notice?: AgendaNotice) => void
   onConnected?: (route: Route) => void
 }
 
@@ -124,7 +125,7 @@ export function createSyncClient(hooks: ClientHooks): {
       clearTimeout(entry.timeout)
       entry.resolve(message.result)
     } else if (message.t === 'event') {
-      hooks.onEvent(message.topics)
+      hooks.onEvent(message.topics, message.notice)
     }
   }
 

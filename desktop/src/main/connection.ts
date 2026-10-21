@@ -1,5 +1,6 @@
 import SecretStream from '@hyperswarm/secret-stream'
 import { app, powerSaveBlocker, safeStorage } from 'electron'
+import type { AgendaNotice, AgendaNoticeDraft } from '../shared/agenda-notice'
 import { hostname } from 'os'
 import { join } from 'path'
 import {
@@ -40,6 +41,7 @@ export type Connection = {
   setKeepRunning(on: boolean): Promise<ConnectionInfo>
   setOpenAtLogin(on: boolean): Promise<ConnectionInfo>
   setRemoteAccess(on: boolean): Promise<ConnectionInfo>
+  setNotices(on: boolean): Promise<ConnectionInfo>
   testRemote(): Promise<RemoteProbe>
   createCode(): Promise<PairingCode>
   cancelCode(): Promise<void>
@@ -71,6 +73,7 @@ export function parseAddress(value: string): Address | null {
 export function createConnection(options: {
   userData: string
   onDataChanged: (topics: DataTopic[]) => void
+  onNotice?: (notice: AgendaNotice) => void
   onInfoChanged: (info: ConnectionInfo) => void
   onWrite?: () => void
   onFailure?: (error: unknown) => void
@@ -132,6 +135,7 @@ export function createConnection(options: {
       keepRunning: s.keepRunning,
       openAtLogin: s.openAtLogin,
       remoteAccess: s.remoteAccess,
+      notices: s.notices,
       remoteReach: s.role === 'server' && server ? remoteReach : null,
       addresses:
         s.role === 'server' && s.sharing && port !== null
@@ -174,10 +178,17 @@ export function createConnection(options: {
     app.setLoginItemSettings({ openAtLogin: s.role === 'server' && s.sharing && s.openAtLogin })
   }
 
-  function dataChanged(topics: DataTopic[]): void {
-    server?.broadcast(topics)
+  function notify(notice: AgendaNotice | undefined): void {
+    if (notice && store.get().notices) options.onNotice?.(notice)
+  }
+
+  function dataChanged(topics: DataTopic[], draft: AgendaNoticeDraft | null, peer?: string): void {
+    const author = peer ? store.get().devices.find((d) => d.publicKey === peer)?.name : name()
+    const notice = draft && author ? { ...draft, autor: author.slice(0, 60) } : undefined
+    server?.broadcast(topics, notice, peer)
     options.onDataChanged(topics)
     options.onWrite?.()
+    if (peer) notify(notice)
   }
 
   function startRemote(): void {
@@ -220,9 +231,15 @@ export function createConnection(options: {
         changed()
         if (online) console.log('[conexão] computador conectado')
       },
-      handle: (channel, args) =>
+      handle: (channel, args, peer) =>
         db
-          ? runOperation(db, channel, args, dataChanged, options.onFailure)
+          ? runOperation(
+              db,
+              channel,
+              args,
+              (topics, draft) => dataChanged(topics, draft, peer),
+              options.onFailure
+            )
           : { ok: false, error: 'Os dados estão sendo restaurados. Tente de novo em instantes.' }
     })
     try {
@@ -296,7 +313,10 @@ export function createConnection(options: {
         if (status === 'connected') options.onDataChanged([...DATA_TOPICS])
         changed()
       },
-      onEvent: options.onDataChanged,
+      onEvent: (topics, notice) => {
+        options.onDataChanged(topics)
+        notify(notice)
+      },
       onConnected: (route) => {
         if (route.via !== 'local') return
         const current = store.get().server
@@ -403,6 +423,12 @@ export function createConnection(options: {
       store.update({ remoteAccess: on })
       if (on) startRemote()
       else await stopRemote()
+      changed()
+      return info()
+    },
+
+    async setNotices(on: boolean): Promise<ConnectionInfo> {
+      store.update({ notices: on })
       changed()
       return info()
     },

@@ -1,5 +1,6 @@
 import net from 'node:net'
 import SecretStream from '@hyperswarm/secret-stream'
+import type { AgendaNotice } from '../../shared/agenda-notice'
 import type { DataTopic, IpcResult } from '../../shared/api'
 import { pairingProof, type createPairingCodes } from './pairing'
 import {
@@ -22,7 +23,7 @@ export type ServerHooks = {
   codes: ReturnType<typeof createPairingCodes>
   onPaired: (device: { publicKey: string; name: string }) => void
   onPresence: (publicKey: string, online: boolean) => void
-  handle: (channel: string, args: unknown[]) => IpcResult<unknown>
+  handle: (channel: string, args: unknown[], peer: string) => IpcResult<unknown>
 }
 
 const HELLO_TIMEOUT_MS = 10_000
@@ -31,7 +32,7 @@ const IDLE_TIMEOUT_MS = 45_000
 export function createSyncServer(hooks: ServerHooks): {
   listen(options?: { host?: string; port?: number }): Promise<number>
   attach(this: void, stream: SecretStream): void
-  broadcast(topics: DataTopic[]): void
+  broadcast(topics: DataTopic[], notice?: AgendaNotice, from?: string): void
   disconnect(publicKey: string): void
   online(): Set<string>
   close(): Promise<void>
@@ -111,7 +112,7 @@ export function createSyncServer(hooks: ServerHooks): {
         send(stream, {
           t: 'res',
           id: message.id,
-          result: hooks.handle(message.channel, message.args)
+          result: hooks.handle(message.channel, message.args, peer)
         })
       }
     })
@@ -146,8 +147,10 @@ export function createSyncServer(hooks: ServerHooks): {
       return tryPort(port)
     },
     attach,
-    broadcast(topics) {
-      for (const [stream, peer] of sessions) if (peer) send(stream, { t: 'event', topics })
+    broadcast(topics, notice, from) {
+      for (const [stream, peer] of sessions) {
+        if (peer) send(stream, { t: 'event', topics, notice: peer === from ? undefined : notice })
+      }
     },
     disconnect(publicKey) {
       for (const [stream, peer] of sessions) if (peer === publicKey) stream.destroy()

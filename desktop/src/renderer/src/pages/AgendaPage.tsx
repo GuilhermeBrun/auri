@@ -41,6 +41,7 @@ import {
   type HTMLAttributes,
   type RefObject
 } from 'react'
+import { useLocation } from 'react-router'
 import {
   Calendar,
   dateFnsLocalizer,
@@ -835,8 +836,20 @@ function savePanelOpen(open: boolean): void {
   }
 }
 
+function targetDate(state: unknown): string | null {
+  const date = (state as { date?: unknown } | null)?.date
+  return typeof date === 'string' ? date : null
+}
+
 export function AgendaPage(): React.JSX.Element {
-  const [date, setDate] = useState(() => new Date())
+  const location = useLocation()
+  const target = targetDate(location.state)
+  const [date, setDate] = useState(() => (target ? parseIsoLocalDateTime(target) : new Date()))
+  const [targetKey, setTargetKey] = useState(location.key)
+  if (targetKey !== location.key) {
+    setTargetKey(location.key)
+    if (target) setDate(parseIsoLocalDateTime(target))
+  }
   const [view, setView] = useState<View>(Views.WEEK)
   const [draft, setDraft] = useState<AppointmentDraft | null>(null)
   const [slot, setSlot] = useState<SlotDraft | null>(null)

@@ -1,5 +1,6 @@
 import SecretStream from '@hyperswarm/secret-stream'
 import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test'
+import type { AgendaNotice } from '../../shared/agenda-notice'
 import type { DataTopic } from '../../shared/api'
 import { emptyPatientInput } from '../../shared/schemas'
 import { openDatabase, type Db } from '../db/connection'
@@ -107,8 +108,14 @@ describe('servidor e cliente', () => {
       codes,
       onPaired: ({ publicKey, name }) => paired.set(publicKey, name),
       onPresence: (key, online) => presence.push(`${online ? '+' : '-'}${paired.get(key)}`),
-      handle: (channel, args) =>
-        runOperation(db, channel, args, (topics) => server.broadcast(topics))
+      handle: (channel, args, peer) =>
+        runOperation(db, channel, args, (topics, draft) =>
+          server.broadcast(
+            topics,
+            draft ? { ...draft, autor: paired.get(peer) ?? 'Outro' } : undefined,
+            peer
+          )
+        )
     })
     port = await server.listen({ host: '127.0.0.1', port: 0 })
   })
@@ -133,9 +140,11 @@ describe('servidor e cliente', () => {
     client: ReturnType<typeof createSyncClient>
     statuses: ClientStatus[]
     events: DataTopic[][]
+    notices: AgendaNotice[]
   } {
     const statuses: ClientStatus[] = []
     const events: DataTopic[][] = []
+    const notices: AgendaNotice[] = []
     const client = createSyncClient({
       keyPair: options.keyPair ?? clientKeys,
       name: () => 'Consultório',
@@ -144,10 +153,13 @@ describe('servidor e cliente', () => {
       serverName: 'Recepção',
       addresses: async () => [{ host: '127.0.0.1', port }],
       onStatus: (status) => statuses.push(status),
-      onEvent: (topics) => events.push(topics)
+      onEvent: (topics, notice) => {
+        events.push(topics)
+        if (notice) notices.push(notice)
+      }
     })
     closers.push(() => client.close())
-    return { client, statuses, events }
+    return { client, statuses, events, notices }
   }
 
   it('pareia com o código e depois usa os dados do servidor', async () => {
@@ -166,6 +178,38 @@ describe('servidor e cliente', () => {
     await until(() => events.length > 0)
     expect(events[0]).toEqual(['patients'])
     expect(presence.at(-1)).toBe('+Consultório')
+  })
+
+  it('avisa da mudança na agenda os outros computadores, não quem mudou', async () => {
+    const otherKeys = SecretStream.keyPair()
+    paired.set(clientKeys.publicKey.toString('hex'), 'Consultório')
+    paired.set(otherKeys.publicKey.toString('hex'), 'Sala 2')
+    const consultorio = connect()
+    const sala = connect({ keyPair: otherKeys })
+    await until(() => consultorio.statuses.includes('connected'))
+    await until(() => sala.statuses.includes('connected'))
+
+    const patient = await consultorio.client.request('patients:create', [
+      { ...emptyPatientInput(), nome: 'Paciente Fictício' }
+    ])
+    const patientId = (patient as { data: { id: number } }).data.id
+    const created = await consultorio.client.request('appointments:create', [
+      { patient_id: patientId, inicio: '2025-09-08T14:00', fim: '2025-09-08T14:30', observacao: '' }
+    ])
+    expect(created.ok).toBe(true)
+
+    await until(() => sala.notices.length > 0)
+    await until(() => consultorio.events.length >= 2)
+    expect(sala.notices).toEqual([
+      {
+        change: 'marcou',
+        kind: 'sessao',
+        nome: 'Paciente Fictício',
+        inicio: '2025-09-08T14:00',
+        autor: 'Consultório'
+      }
+    ])
+    expect(consultorio.notices).toEqual([])
   })
 
   it('recusa código errado e computador não pareado', async () => {

@@ -61,7 +61,8 @@ const settingsFileSchema = z
         sharing: z.boolean(),
         keepRunning: z.boolean(),
         openAtLogin: z.boolean(),
-        remoteAccess: z.boolean()
+        remoteAccess: z.boolean(),
+        notices: z.boolean()
       })
       .partial()
       .default({}),
@@ -203,6 +204,7 @@ export function describeChanges(current: SettingsSnapshot, file: SettingsFile): 
   add('Continuar rodando ao fechar a janela', c.keepRunning, file.connection.keepRunning, yesNo)
   add('Abrir ao ligar o computador', c.openAtLogin, file.connection.openAtLogin, yesNo)
   add('Acesso de fora da clínica', c.remoteAccess, file.connection.remoteAccess, yesNo)
+  add('Avisos da agenda', c.notices, file.connection.notices, yesNo)
   const b = current.backup
   add('Nuvem da cópia de segurança', b.kind, file.backup.kind, (v) => (v ? KIND[v] : 'Nenhuma'))
   add('Quando copiar', b.frequency, file.backup.frequency, (v) => FREQUENCY[v])

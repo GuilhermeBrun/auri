@@ -587,6 +587,22 @@ function NameField({ name }: { name: string }): React.JSX.Element {
   )
 }
 
+function NoticesField({ on }: { on: boolean }): React.JSX.Element {
+  const notices = useMutation({ mutationFn: (next: boolean) => window.connection.setNotices(next) })
+  return (
+    <SettingsGroup label="Avisos">
+      <SwitchField
+        label="Avisar quando a agenda mudar em outro computador"
+        description="Sessão marcada, remarcada, desmarcada ou com chegada assinada."
+        checked={on}
+        disabled={notices.isPending}
+        onCheckedChange={(next) => notices.mutate(next)}
+      />
+      {notices.error && <ErrorText>{notices.error.message}</ErrorText>}
+    </SettingsGroup>
+  )
+}
+
 export function ConnectionSection(): React.JSX.Element {
   const { info } = useConnection()
   return (
@@ -607,6 +623,9 @@ export function ConnectionSection(): React.JSX.Element {
             <LinkedServer info={info} server={info.server} />
           ) : (
             <FindServer />
+          )}
+          {(info.role === 'server' ? info.devices.length > 0 : info.server !== null) && (
+            <NoticesField on={info.notices} />
           )}
           <NameField key={info.name} name={info.name} />
         </>

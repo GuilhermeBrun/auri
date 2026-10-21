@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { AGENDA_CHANGES } from '../../shared/agenda-notice'
 import { DATA_TOPICS } from '../../shared/api'
 
 export const PROTOCOL_VERSION = 1
@@ -12,6 +13,20 @@ const hex = z
   .regex(/^[0-9a-f]+$/)
   .max(256)
 const name = z.string().trim().min(1).max(60)
+
+const localDateTime = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/)
+  .max(30)
+
+const agendaNoticeSchema = z.object({
+  change: z.enum(AGENDA_CHANGES),
+  kind: z.enum(['sessao', 'compromisso']),
+  nome: z.string().max(160),
+  inicio: localDateTime,
+  antes: localDateTime.optional(),
+  autor: name
+})
 
 export const clientMessage = z.discriminatedUnion('t', [
   z.object({
@@ -51,7 +66,11 @@ export const serverMessage = z.discriminatedUnion('t', [
       z.object({ ok: z.literal(false), error: z.string() })
     ])
   }),
-  z.object({ t: z.literal('event'), topics: z.array(z.enum(DATA_TOPICS)) }),
+  z.object({
+    t: z.literal('event'),
+    topics: z.array(z.enum(DATA_TOPICS)),
+    notice: agendaNoticeSchema.optional()
+  }),
   z.object({ t: z.literal('pong') })
 ])
 
