@@ -173,7 +173,7 @@ for ($i = 0; $i -lt ${seconds}; $i++) {
 }
 
 const FIELDS =
-  'nome,data_nascimento,cpf,celular,email,escola,serie,professora,mae_nome,mae_cpf,mae_rg,mae_celular,mae_email,mae_profissao,pai_nome,pai_cpf,pai_rg,pai_celular,pai_email,pai_profissao,resp_tipo,resp_nome,resp_parentesco,resp_parentesco_outro,resp_cpf,resp_rg,resp_celular,resp_email,endereco,bairro,cidade,indicacao,pediatra,data_entrada,observacoes'
+  'nome,data_nascimento,cpf,rg,celular,email,escola,serie_numero,serie_tipo,serie_etapa,serie,professora,mae_nome,mae_cpf,mae_rg,mae_celular,mae_email,mae_profissao,pai_nome,pai_cpf,pai_rg,pai_celular,pai_email,pai_profissao,resp_tipo,resp_nome,resp_parentesco,resp_parentesco_outro,resp_cpf,resp_rg,resp_celular,resp_email,contato_principal,endereco,bairro,cidade,uf,indicacao,pediatra,data_entrada,observacoes'
 
 async function run() {
   const page = await connect(PAGE_PORT, 'page')
