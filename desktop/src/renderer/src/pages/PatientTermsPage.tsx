@@ -107,8 +107,7 @@ function PatientTermsPage({ patientId }: { patientId: number }): React.JSX.Eleme
               </Button>
             }
           >
-            Os termos que a clínica usa, como o de consentimento ou o de uso de imagem, ficam na
-            tela Clínica. Depois de criar, eles aparecem aqui para enviar.
+            Os modelos ficam na tela Clínica.
           </EmptyState>
         ) : (
           <ul className="-mx-3 flex flex-col">
@@ -167,7 +166,7 @@ function TermRow({ row, onSend }: { row: Linha; onSend: () => void }): React.JSX
       return via
     },
     onSuccess: (via) => {
-      if (via === 'copiar') toast({ title: 'Mensagem copiada', description: 'Cole na conversa.' })
+      if (via === 'copiar') toast({ title: 'Mensagem copiada' })
     }
   })
   const cancel = useMutation({ mutationFn: () => window.api.terms.cancel(atual!.id) })

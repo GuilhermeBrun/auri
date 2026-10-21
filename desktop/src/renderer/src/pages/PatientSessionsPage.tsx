@@ -173,8 +173,7 @@ function SessionList({
             </Button>
           }
         >
-          As sessões agendadas aparecem aqui. Para lançar as das fichas de papel, agende com a data
-          em que aconteceram e marque a presença.
+          Para lançar as do papel, agende na data em que aconteceram.
         </EmptyState>
       ) : (
         <div className="flex flex-col gap-10">

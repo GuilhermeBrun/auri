@@ -177,7 +177,7 @@ function BackupAttention(): null {
     shown.current = true
     toast({
       title: 'A cópia de segurança parou',
-      description: message ?? 'Veja em Configurações › Armazenamento.',
+      description: message,
       icon: <TriangleAlert className="text-warning" />,
       action: {
         label: 'Resolver',
@@ -357,29 +357,25 @@ function ConnectionGate({
   return (
     <Page trail={[{ label: info.server?.name ?? 'Conexão' }]}>
       {status === 'unpaired' ? (
-        <EmptyState icon={<Network />} title="Conecte este computador" action={openSettings}>
-          Ele está configurado para usar os dados de outro computador, mas ainda não foi conectado a
-          nenhum.
-        </EmptyState>
+        <EmptyState icon={<Network />} title="Conecte este computador" action={openSettings} />
       ) : status === 'version' ? (
         <ErrorState
           title="Versões diferentes do Auri"
           onRetry={() => void window.connection.retry()}
         >
-          {server} usa outra versão do Auri. Atualize os dois computadores para a mesma versão.
+          {server} usa outra versão. Atualize os dois.
         </ErrorState>
       ) : status === 'revoked' ? (
         <ErrorState title={`Este computador foi desconectado de ${server}`}>
-          Para voltar a usar os dados, conecte de novo em Configurações / Armazenamento, com um
-          código gerado em {server}.<span className="mt-4 flex justify-center">{openSettings}</span>
+          Conecte de novo com um código gerado em {server}.
+          <span className="mt-4 flex justify-center">{openSettings}</span>
         </ErrorState>
       ) : (
         <ErrorState
           title={`Sem conexão com ${server}`}
           onRetry={() => void window.connection.retry()}
         >
-          Confira se o Auri está aberto em {server} e se os dois computadores estão na mesma rede. O
-          Auri continua tentando sozinho.
+          Confira se o Auri está aberto em {server} e na mesma rede.
         </ErrorState>
       )}
     </Page>

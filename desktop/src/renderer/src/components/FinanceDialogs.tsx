@@ -157,7 +157,7 @@ export function PaymentDialog({
       open={open}
       onOpenChange={onOpenChange}
       title="Registrar pagamento"
-      description={patient ? patient.nome : 'O que entrou, de quem e como.'}
+      description={patient?.nome}
     >
       <PaymentForm fixed={patient ?? null} onClose={() => onOpenChange(false)} />
     </FormDialog>
@@ -366,9 +366,7 @@ function VoidForm({
       noValidate
     >
       <DialogBody className="flex flex-col gap-4">
-        <p className="text-[13px] text-ink-soft">
-          O lançamento continua no extrato, riscado, com o motivo. Nada é apagado.
-        </p>
+        <p className="text-[13px] text-ink-soft">Fica no extrato, riscado, com o motivo.</p>
         <Field label="Motivo" error={error}>
           <Textarea
             value={motivo}
@@ -417,8 +415,7 @@ function PlanSummary({ plan, inicio }: { plan: FinancePlan; inicio: string }): R
   return (
     <p className="animate-fade-in text-[13px] text-ink-soft">
       {plural(plan.sessoes, 'sessão', 'sessões')} por {formatBRL(plan.valor_centavos)}
-      {validade ? `, válido até ${validade}` : ', sem validade'}. A cobrança de{' '}
-      {formatBRL(plan.valor_centavos)} entra no extrato.
+      {validade ? `, válido até ${validade}` : ', sem validade'}.
     </p>
   )
 }
@@ -433,9 +430,7 @@ function MissingCatalog({ what }: { what: string }): React.JSX.Element {
           Cadastrar
         </Button>
       }
-    >
-      Os valores, pacotes e convênios ficam em Financeiro / Valores e convênios.
-    </Callout>
+    />
   )
 }
 
@@ -465,12 +460,7 @@ export function BillingDialog({
   billing: Billing | null
 }): React.JSX.Element {
   return (
-    <FormDialog
-      open={open}
-      onOpenChange={onOpenChange}
-      title="Forma de cobrança"
-      description="Como as sessões deste paciente são cobradas."
-    >
+    <FormDialog open={open} onOpenChange={onOpenChange} title="Forma de cobrança">
       <BillingForm patientId={patientId} billing={billing} onClose={() => onOpenChange(false)} />
     </FormDialog>
   )

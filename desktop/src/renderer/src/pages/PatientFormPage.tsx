@@ -135,8 +135,7 @@ function ResponsavelFields({
   if (adulto) {
     return (
       <p className="col-span-6 text-[13px] text-ink-soft">
-        Paciente maior de idade: ele mesmo assina os termos e a presença. O celular dele fica nos
-        dados do paciente.
+        Maior de idade: ele mesmo assina os termos e a presença.
       </p>
     )
   }
@@ -160,16 +159,12 @@ function ResponsavelFields({
             />
           )}
         />
-        {efetivo === 'mae' || efetivo === 'pai' ? (
+        {(efetivo === 'mae' || efetivo === 'pai') && (
           <span className="text-[13px] text-ink-soft">
             {escolhido
               ? `Assina: ${escolhido}`
               : `Preencha o nome ${efetivo === 'mae' ? 'da mãe' : 'do pai'} acima.`}
           </span>
-        ) : (
-          efetivo === '' && (
-            <span className="text-[13px] text-ink-soft">Escolha quem assina pelo paciente.</span>
-          )
         )}
       </div>
 
@@ -234,8 +229,7 @@ function ResponsavelFields({
             <Input {...register('resp_rg')} />
           </Field>
           <Callout title="Guarda ou tutela" className="col-span-6">
-            Avó, avô, tios e outras pessoas só respondem pelo paciente menor de idade quando têm a
-            guarda ou a tutela dele.
+            Outras pessoas só respondem pelo menor com a guarda ou a tutela.
           </Callout>
         </>
       )}
@@ -324,7 +318,7 @@ function SerieFields({
       {textoAntigo && (
         <Field
           label="Série como estava escrita"
-          hint="Não deu para converter. Preencha acima e apague este texto."
+          hint="Não deu para converter. Preencha acima."
           error={err('serie')}
           className="col-span-6"
         >
@@ -401,7 +395,7 @@ function ContatoFields({ control }: { control: Control<PatientInput> }): React.J
       )}
       <p className="text-[13px] text-ink-soft">
         {!atual
-          ? 'Cadastre a mãe, o pai, outro responsável ou o celular do paciente.'
+          ? 'Cadastre um responsável ou o celular do paciente.'
           : atual.celular
             ? `Mensagens para ${atual.nome || 'o paciente'} · ${atual.celular}`
             : `${atual.nome || 'O paciente'} está sem celular na ficha.`}
@@ -688,9 +682,7 @@ function PatientFormPage({ patientId }: { patientId: number | null }): React.JSX
             tabs={isNew ? undefined : { patientId, value: 'ficha' }}
           >
             {isNew && !idade && (
-              <span className="text-[13px] text-ink-soft">
-                Preencha a ficha de entrada. Só o nome é obrigatório.
-              </span>
+              <span className="text-[13px] text-ink-soft">Só o nome é obrigatório.</span>
             )}
           </PatientHeader>
 
@@ -707,7 +699,7 @@ function PatientFormPage({ patientId }: { patientId: number | null }): React.JSX
           )}
 
           <div className="flex flex-col">
-            <FormSection id="secao-paciente" title="Paciente" description="Dados de identificação.">
+            <FormSection id="secao-paciente" title="Paciente">
               <Field label="Nome completo" error={err('nome')} className="col-span-6">
                 <Input {...register('nome')} aria-invalid={invalid('nome')} autoFocus={isNew} />
               </Field>
@@ -758,7 +750,7 @@ function PatientFormPage({ patientId }: { patientId: number | null }): React.JSX
               )}
             </FormSection>
 
-            <FormSection id="secao-escola" title="Escola" description="Onde estuda e com quem.">
+            <FormSection id="secao-escola" title="Escola">
               <Field label="Escola" error={err('escola')} className="col-span-4">
                 <Input {...register('escola')} />
               </Field>
@@ -774,11 +766,7 @@ function PatientFormPage({ patientId }: { patientId: number | null }): React.JSX
               />
             </FormSection>
 
-            <FormSection
-              id="secao-atividades"
-              title="Atividades"
-              description="Atividades fora da escola, com dia e horário."
-            >
+            <FormSection id="secao-atividades" title="Atividades">
               <AtividadesFields control={control} register={register} errors={errors} />
             </FormSection>
 
@@ -855,7 +843,7 @@ function PatientFormPage({ patientId }: { patientId: number | null }): React.JSX
             <FormSection
               id="secao-responsavel"
               title="Responsável"
-              description="Quem assina os termos e a presença nas sessões."
+              description="Assina os termos e a presença."
             >
               <ResponsavelFields
                 control={control}
@@ -869,7 +857,7 @@ function PatientFormPage({ patientId }: { patientId: number | null }): React.JSX
             <FormSection
               id="secao-contato"
               title="Contato principal"
-              description="Quem recebe as mensagens e confirmações da clínica."
+              description="Recebe as mensagens e confirmações."
             >
               <ContatoFields control={control} />
             </FormSection>
@@ -901,11 +889,7 @@ function PatientFormPage({ patientId }: { patientId: number | null }): React.JSX
               </Field>
             </FormSection>
 
-            <FormSection
-              id="secao-outros"
-              title="Outros"
-              description="Como chegou à clínica e observações gerais."
-            >
+            <FormSection id="secao-outros" title="Outros">
               <Field label="Indicação" error={err('indicacao')} className="col-span-2">
                 <Input {...register('indicacao')} />
               </Field>

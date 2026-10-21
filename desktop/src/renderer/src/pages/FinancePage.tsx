@@ -279,10 +279,7 @@ export function FinancePage(): React.JSX.Element {
               Cadastrar valores
             </Button>
           }
-        >
-          Cadastre o valor da sessão, os pacotes e os convênios. Depois, cada paciente ganha uma
-          forma de cobrança na aba Financeiro da ficha.
-        </EmptyState>
+        />
       ) : (
         <div className="mx-auto max-w-[840px] px-8 pt-6 pb-20">
           <Overview data={overview.data} month={month} />
