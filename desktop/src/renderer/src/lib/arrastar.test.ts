@@ -25,7 +25,10 @@ const sessao = (over: Partial<Appointment> & { inicio: string }): Arrastavel => 
 
 const reuniao: Commitment = {
   id: 7,
-  tipo: 'reuniao',
+  etiqueta_id: 7,
+  etiqueta_nome: 'Reunião',
+  cor: '#0d9488',
+  reserva: false,
   titulo: 'Equipe',
   inicio: '2026-10-15T12:00',
   fim: '2026-10-15T13:00',
@@ -167,7 +170,7 @@ describe('arrastar na agenda', () => {
     await gravar(api, { kind: 'commitment', commitment: reuniao }, destino, 'Recepção')
     expect(fake.commitments.update).toHaveBeenCalledWith(
       7,
-      { tipo: 'reuniao', titulo: 'Equipe', observacao: '', ...destino },
+      { etiqueta_id: 7, titulo: 'Equipe', observacao: '', ...destino },
       'c1'
     )
   })
