@@ -466,6 +466,12 @@ h1 {
   display: block;
 }
 
+@media (pointer: coarse) {
+  .hint-drag {
+    display: none;
+  }
+}
+
 .shot-hint svg {
   display: inline-block;
   width: 1rem;
@@ -931,6 +937,7 @@ h1 {
 }
 
 .win .ev {
+  --cor: var(--tipo, var(--tipo-sessao));
   position: absolute;
   top: calc(var(--top) * var(--row));
   left: 0;
@@ -939,20 +946,22 @@ h1 {
   flex-direction: column;
   width: calc(100% - 4 * var(--u));
   height: calc(var(--len) * var(--row));
-  padding: calc(3 * var(--u)) calc(6 * var(--u)) calc(3 * var(--u)) calc(8 * var(--u));
+  padding: calc(3 * var(--u)) calc(6 * var(--u)) calc(3 * var(--u)) calc(10 * var(--u));
   overflow: hidden;
   border-radius: calc(6 * var(--u));
-  background: var(--app-session);
-  box-shadow: inset 0 0 0 calc(1 * var(--u)) var(--app-session-edge);
+  background: color-mix(in oklab, var(--cor) var(--app-tinta), var(--app-surface));
+  box-shadow: inset 0 0 0 calc(1 * var(--u)) color-mix(in oklab, var(--cor) 30%, transparent);
   color: var(--ink);
   font-size: calc(12.5 * var(--u));
   font-weight: 600;
   line-height: 1.3;
-  transition: background-color 120ms;
+  transition:
+    background-color 120ms,
+    opacity 150ms;
 }
 
 .win .ev:hover {
-  background: var(--app-session-hover);
+  background: color-mix(in oklab, var(--cor) calc(var(--app-tinta) + 8%), var(--app-surface));
 }
 
 .ev-name-text,
@@ -986,28 +995,43 @@ h1 {
 }
 
 .ev-sessao {
-  --tipo: var(--tipo-grafite);
+  --tipo: var(--tipo-sessao);
 }
 
 .ev-avaliacao {
-  --tipo: var(--tipo-azul);
+  --tipo: var(--tipo-avaliacao);
+}
+
+.ev-exame {
+  --tipo: var(--tipo-exame);
+}
+
+.ev-reuniao {
+  --tipo: var(--tipo-reuniao);
 }
 
 .win .ev::before {
   content: '';
   position: absolute;
-  top: calc(3 * var(--u));
-  bottom: calc(3 * var(--u));
-  left: calc(3 * var(--u));
-  width: calc(2 * var(--u));
-  border-radius: calc(1 * var(--u));
-  background: var(--tipo);
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: calc(4 * var(--u));
+  border-radius: calc(6 * var(--u)) 0 0 calc(6 * var(--u));
+  background: var(--cor);
   pointer-events: none;
 }
 
-.win .ev.selected::before {
-  background: currentColor;
-  opacity: 0.6;
+.win .ev.ev-block {
+  background: repeating-linear-gradient(
+      135deg,
+      var(--fill-hover) 0 calc(6 * var(--u)),
+      transparent calc(6 * var(--u)) calc(12 * var(--u))
+    )
+    var(--app-subtle);
+  box-shadow: inset 0 0 0 calc(1 * var(--u)) var(--app-session-edge);
+  color: var(--ink-soft);
+  font-weight: 500;
 }
 
 .ev-kind {
@@ -1023,9 +1047,16 @@ h1 {
 }
 
 .win .ev.selected {
-  background: var(--app-solid);
-  box-shadow: none;
-  color: var(--on-solid);
+  background: color-mix(in oklab, var(--cor) calc(var(--app-tinta) + 12%), var(--app-surface));
+  box-shadow: inset 0 0 0 calc(1.5 * var(--u)) var(--cor);
+}
+
+.win .ev.ev-block.selected {
+  background-color: var(--app-canvas);
+}
+
+.win .ev.origin {
+  opacity: 0.35;
 }
 
 .ev::after {
@@ -1035,6 +1066,98 @@ h1 {
   border: calc(2 * var(--u)) solid var(--accent);
   border-radius: calc(6 * var(--u));
   opacity: 0;
+  pointer-events: none;
+}
+
+.drop {
+  --cor: var(--tipo, var(--tipo-sessao));
+  position: absolute;
+  top: calc(var(--top) * var(--row));
+  left: 0;
+  z-index: 2;
+  width: calc(100% - 4 * var(--u));
+  height: calc(var(--len) * var(--row));
+  border-radius: calc(6 * var(--u));
+  background: color-mix(in oklab, var(--cor) 12%, transparent);
+  box-shadow: inset 0 0 0 calc(1.5 * var(--u)) color-mix(in oklab, var(--cor) 55%, transparent);
+  pointer-events: none;
+}
+
+.drop.refused {
+  background: repeating-linear-gradient(
+    135deg,
+    var(--fill-hover) 0 calc(6 * var(--u)),
+    transparent calc(6 * var(--u)) calc(12 * var(--u))
+  );
+  box-shadow: inset 0 0 0 calc(1.5 * var(--u)) var(--app-session-edge);
+}
+
+.lift-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.lift {
+  position: absolute;
+  top: 0;
+  left: 0;
+  will-change: transform;
+}
+
+.lift-card {
+  position: absolute;
+  inset: 0;
+  border-radius: calc(6 * var(--u));
+  box-shadow: var(--app-pop);
+  opacity: 0.94;
+  transform: scale(1.02);
+  transition:
+    transform 140ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    box-shadow 140ms;
+}
+
+.lift.landing .lift-card {
+  box-shadow: none;
+  transform: none;
+}
+
+.win .lift .ev {
+  top: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.lift-time {
+  position: absolute;
+  bottom: calc(100% + 4 * var(--u));
+  left: 0;
+  padding: 0 calc(6 * var(--u));
+  border-radius: calc(4 * var(--u));
+  background: var(--app-solid);
+  color: var(--on-solid);
+  font-size: calc(11.5 * var(--u));
+  font-weight: 600;
+  line-height: calc(18 * var(--u));
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  box-shadow: var(--app-lift);
+}
+
+.lift-time.refused {
+  background: var(--raised);
+  color: var(--ink-faint);
+  text-decoration: line-through;
+}
+
+.win[data-dragging],
+.win[data-dragging] * {
+  cursor: grabbing !important;
+}
+
+.win[data-dragging] .ev {
   pointer-events: none;
 }
 
@@ -1385,6 +1508,30 @@ h1 {
   text-overflow: ellipsis;
 }
 
+.toast-action {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: calc(6 * var(--u));
+  height: calc(28 * var(--u));
+  padding: 0 calc(10 * var(--u));
+  border-radius: calc(6 * var(--u));
+  background: var(--fill);
+  color: var(--ink);
+  font-size: calc(12.5 * var(--u));
+  font-weight: 500;
+  pointer-events: auto;
+}
+
+.toast-action:hover {
+  background: var(--fill-hover);
+}
+
+.win .toast-action svg {
+  width: calc(14 * var(--u));
+  height: calc(14 * var(--u));
+}
+
 .toast-close {
   display: grid;
   flex: none;
@@ -1615,6 +1762,10 @@ h2 {
     transform 200ms ease-in;
 }
 
+.js .toast:not(.show) .toast-action {
+  pointer-events: none;
+}
+
 .js .toast.show {
   opacity: 1;
   transform: translate(-50%, 0);
@@ -1728,6 +1879,11 @@ h2 {
   .ev::after,
   .btn-primary::after {
     display: none;
+  }
+
+  .lift-card {
+    transform: none;
+    transition: none;
   }
 
   .js [data-reveal],

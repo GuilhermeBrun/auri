@@ -31,9 +31,15 @@ export const WEEKDAYS = [
 ]
 export const SHORT = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
 
-export type Kind = 'sessao' | 'avaliacao'
+export type Kind = 'sessao' | 'avaliacao' | 'exame' | 'reuniao'
 export type Mark = 'signed' | 'confirmed' | 'waiting'
-export const KINDS: Record<Kind, string> = { sessao: 'Sessão', avaliacao: 'Avaliação' }
+export const KINDS: Record<Kind, string> = {
+  sessao: 'Sessão',
+  avaliacao: 'Avaliação',
+  exame: 'Exame',
+  reuniao: 'Reunião'
+}
+export const isBlock = (kind: Kind) => kind === 'reuniao'
 
 const SESSIONS: [number, number, number, string, Kind, Mark?][] = [
   [1, 8, 45, 'Ana Beatriz Souza', 'sessao', 'signed'],
@@ -47,9 +53,10 @@ const SESSIONS: [number, number, number, string, Kind, Mark?][] = [
   [3, 11.5, 45, 'Lucas Nunes Pires', 'sessao', 'confirmed'],
   [4, 9.5, 45, 'Beatriz Melo Dias', 'sessao', 'waiting'],
   [4, 11, 45, 'Gabriel Reis Prado', 'sessao', 'confirmed'],
-  [5, 8, 60, 'Manuela Cruz Rocha', 'avaliacao'],
+  [5, 8, 60, 'Manuela Cruz Rocha', 'exame'],
   [5, 10, 45, 'Rafael Pires Souza', 'sessao'],
   [5, 12, 45, 'Júlia Fontes Lima', 'sessao'],
+  [4, 13, 60, 'Equipe', 'reuniao'],
   [3, 10.5, 45, 'Alice Costa Martins', 'sessao', 'confirmed']
 ]
 export const NAMES = [
@@ -144,7 +151,10 @@ export function createStore() {
       t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
       return ((t ^ (t >>> 14)) >>> 0) / 4294967296
     }
-    const pool = [...SESSIONS.map((session) => session[3]), ...NAMES]
+    const pool = [
+      ...SESSIONS.filter((session) => !isBlock(session[4])).map((session) => session[3]),
+      ...NAMES
+    ]
     const sessions: Session[] = []
     for (let weekday = 1; weekday <= 5; weekday++) {
       const day = week * 7 + weekday
@@ -152,8 +162,9 @@ export function createStore() {
       const starts = [8, 8.5, 9, 9.5, 10, 10.5, 11, 11.5, 12, 14, 15].sort(() => random() - 0.5)
       for (const start of starts) {
         if (sessions.filter((session) => session.day === day).length >= count) break
-        const kind: Kind = random() < 0.2 ? 'avaliacao' : 'sessao'
-        const len = kind === 'avaliacao' ? 1 : LENGTH
+        const pick = random()
+        const kind: Kind = pick < 0.12 ? 'avaliacao' : pick < 0.2 ? 'exame' : 'sessao'
+        const len = kind === 'sessao' ? LENGTH : 1
         if (sessions.some((session) => session.day === day && overlaps(session, start, len)))
           continue
         const name = pool[Math.floor(random() * pool.length)]
@@ -179,6 +190,17 @@ export function createStore() {
       week(weekOf(day)).push(session)
       return session
     },
+    move(id: number, day: number, start: number, mark?: Mark) {
+      for (const sessions of weeks.values()) {
+        const index = sessions.findIndex((session) => session.id === id)
+        if (index < 0) continue
+        const [session] = sessions.splice(index, 1)
+        const moved = { ...session, day, start, mark }
+        week(weekOf(day)).push(moved)
+        return moved
+      }
+      return null
+    },
     remove(id: number) {
       for (const sessions of weeks.values()) {
         const index = sessions.findIndex((session) => session.id === id)
@@ -194,8 +216,12 @@ export function createStore() {
       return null
     },
     patients() {
-      const names = new Set([...SESSIONS.map((session) => session[3]), ...NAMES])
-      for (const sessions of weeks.values()) for (const session of sessions) names.add(session.name)
+      const names = new Set([
+        ...SESSIONS.filter((session) => !isBlock(session[4])).map((session) => session[3]),
+        ...NAMES
+      ])
+      for (const sessions of weeks.values())
+        for (const session of sessions) if (!isBlock(session.kind)) names.add(session.name)
       return [...names].sort((a, b) => a.localeCompare(b, 'pt-BR'))
     }
   }

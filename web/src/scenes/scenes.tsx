@@ -2,20 +2,28 @@ import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
 import {
   AuriSymbol,
   CalendarCheck,
+  CalendarDays,
   Check,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   ClipboardPaste,
   Clock,
   Copy,
+  Eraser,
   FilePen,
+  FileText,
   FolderOpen,
   HardDrive,
   Hourglass,
   Laptop,
   PenLine,
+  Pencil,
   Plus,
-  Send
+  Printer,
+  Send,
+  Undo,
+  X
 } from '../components/icons'
 import { Stage, Toast, Window } from './Stage'
 import { useTimeline, type Beat } from './timeline'
@@ -29,36 +37,51 @@ const clock = (hours: number) =>
 
 type Mark = 'signed' | 'confirmed' | 'waiting'
 
+type Kind = 'Sessão' | 'Avaliação' | 'Exame' | 'Reunião'
+
 type Session = {
   day: number
   start: number
   len?: number
   name: string
-  kind?: 'Sessão' | 'Avaliação'
+  kind?: Kind
   mark?: Mark
   target?: string
   fresh?: boolean
+  origin?: boolean
 }
 
 const MARK_ICONS = { signed: PenLine, confirmed: Check, waiting: Clock }
 
-function Ev({ start, len = 0.75, name, kind = 'Sessão', mark, target, fresh }: Session) {
+const KIND_CLASS: Record<Kind, string> = {
+  Sessão: 'ev-sessao',
+  Avaliação: 'ev-avaliacao',
+  Exame: 'ev-exame',
+  Reunião: 'ev-reuniao ev-block'
+}
+
+function Ev({ start, len = 0.75, name, kind = 'Sessão', mark, target, fresh, origin }: Session) {
   const Icon = mark && MARK_ICONS[mark]
+  const block = kind === 'Reunião'
+  const range = `${clock(start)} – ${clock(start + len)}`
   return (
     <span
-      className={`ev ${kind === 'Avaliação' ? 'ev-avaliacao' : 'ev-sessao'}${fresh ? ' sc-new' : ''}`}
+      className={`ev ${KIND_CLASS[kind]}${fresh ? ' sc-new' : ''}${origin ? ' origin' : ''}`}
       style={vars({ '--top': start - FIRST, '--len': len })}
       data-target={target}
     >
       <span className="ev-name">
-        <span className="ev-name-text">{name}</span>
+        <span className="ev-name-text">
+          {block ? kind : name}
+          {block && <span className="ev-kind">{` · ${name}`}</span>}
+        </span>
         {Icon && (
           <span className={`ev-mark ev-mark-${mark}`}>
             <Icon />
           </span>
         )}
       </span>
-      <span className="ev-time">{`${kind} · ${clock(start)} – ${clock(start + len)}`}</span>
+      <span className="ev-time">{block ? range : `${kind} · ${range}`}</span>
     </span>
   )
 }
@@ -174,33 +197,51 @@ const BASE: Session[] = [
   { day: 1, start: 11.5, name: 'Davi Lima' },
   { day: 2, start: 9, name: 'Theo Martins', mark: 'confirmed' },
   { day: 2, start: 11.5, name: 'Lucas Nunes', mark: 'waiting' },
-  { day: 3, start: 9.5, name: 'Beatriz Melo' },
-  { day: 4, start: 8, len: 1, name: 'Manuela Cruz', kind: 'Avaliação' }
+  { day: 4, start: 8, len: 1, name: 'Manuela Cruz', kind: 'Exame' },
+  { day: 3, start: 13, len: 1, name: 'Equipe', kind: 'Reunião' }
 ]
 
 const AGENDA_BEATS: Beat[] = [
   { ms: 700 },
   { ms: 1000, to: 'slot' },
   { ms: 700 },
-  { ms: 2000, click: true },
-  { ms: 2400, hide: true },
+  { ms: 1800, click: true },
+  { ms: 950, to: 'grab' },
+  { ms: 450 },
+  { ms: 1100, to: 'drop' },
+  { ms: 2600, hide: true },
   { ms: 500, hide: true }
 ]
 
+const COLUMN = (592 - 52) / 5
+
 export function AgendaScene() {
-  const timeline = useTimeline(AGENDA_BEATS, 3)
+  const timeline = useTimeline(AGENDA_BEATS, 7)
   const { beat } = timeline
   const added = beat >= 3
+  const lifted = beat === 5 || beat === 6
+  const beatriz: Session =
+    beat >= 7
+      ? { day: 4, start: 10.5, name: 'Beatriz Melo' }
+      : {
+          day: 3,
+          start: 9.5,
+          name: 'Beatriz Melo',
+          mark: 'waiting',
+          target: 'grab',
+          origin: lifted
+        }
   const sessions: Session[] = [
     ...BASE,
+    beatriz,
     { day: 1, start: 10, name: 'Laura Dias', mark: 'signed' },
-    ...(added ? [{ day: 2, start: 10.5, name: 'Maria Eduarda', fresh: true }] : [])
+    ...(added ? [{ day: 2, start: 10.5, name: 'Maria Eduarda', fresh: beat === 3 }] : [])
   ]
   return (
     <Stage
       timeline={timeline}
       beats={AGENDA_BEATS}
-      label="Animação: um clique num horário livre agenda a sessão"
+      label="Animação: um clique num horário livre agenda a sessão, e arrastar a sessão remarca"
     >
       <Window active="Agenda" trail={['Agenda', '19 a 23 de outubro 2026']} tools={<AgendaTools />}>
         <Week
@@ -208,23 +249,61 @@ export function AgendaScene() {
           sessions={sessions}
           now={{ day: 1, at: 9.75 }}
           width={592}
-          extra={(day) =>
-            day === 2 && (
-              <>
-                {beat === 2 && (
-                  <div className="ghost" style={vars({ '--top': 10.5 - FIRST })}>
-                    10:30 – 11:15
-                  </div>
-                )}
-                <Slot start={10.5} target="slot" />
-              </>
-            )
-          }
+          extra={(day) => (
+            <>
+              {day === 2 && (
+                <>
+                  {beat === 2 && (
+                    <div className="ghost" style={vars({ '--top': 10.5 - FIRST })}>
+                      10:30 – 11:15
+                    </div>
+                  )}
+                  <Slot start={10.5} target="slot" />
+                </>
+              )}
+              {day === 3 && lifted && (
+                <div
+                  className="sc-lift"
+                  data-moving={beat === 6 ? '' : undefined}
+                  style={vars({
+                    '--top': 9.5 - FIRST,
+                    '--len': 0.75,
+                    '--dx': `${COLUMN}px`,
+                    '--dy': `${46}px`
+                  })}
+                >
+                  <span className="sc-lift-card">
+                    <Ev day={3} start={9.5} name="Beatriz Melo" mark="waiting" />
+                  </span>
+                  <span className="lift-time">
+                    {beat === 6 ? '10:30 – 11:15' : '09:30 – 10:15'}
+                  </span>
+                </div>
+              )}
+              {day === 4 && (
+                <>
+                  {beat === 6 && (
+                    <div
+                      className="drop ev-sessao sc-fade"
+                      style={vars({ '--top': 10.5 - FIRST, '--len': 0.75 })}
+                    />
+                  )}
+                  <Slot start={10.5} target="drop" />
+                </>
+              )}
+            </>
+          )}
         />
         <Toast
           show={beat === 3 || beat === 4}
           title="Sessão agendada"
           text="Maria Eduarda · qua, 21 de out às 10:30"
+        />
+        <Toast
+          show={beat === 7}
+          title="Sessão remarcada"
+          text="Beatriz Melo · sex, 23 de out · 10:30–11:15"
+          action="Desfazer"
         />
       </Window>
     </Stage>
@@ -389,17 +468,20 @@ const WAITING = [
     initials: 'BC',
     high: true,
     text: 'Sessão · 45 min · seg, qua · manhã',
+    since: 'Esperando há 6 dias',
     fits: 'qui, 22 de out · 08:00–08:45'
   },
   {
     name: 'Lívia Ramos',
     initials: 'LR',
-    text: 'Avaliação · 60 min · qualquer dia · tarde'
+    text: 'Avaliação · 60 min · qualquer dia · tarde',
+    since: 'Esperando há 2 dias'
   },
   {
     name: 'Nicolas Araújo',
     initials: 'NA',
     text: 'Sessão · 45 min · ter, qui · qualquer horário',
+    since: 'Entrou hoje',
     fits: 'qui, 22 de out · 08:00–08:45'
   }
 ]
@@ -408,24 +490,27 @@ const WAIT_BEATS: Beat[] = [
   { ms: 800 },
   { ms: 1000, to: 'slot' },
   { ms: 1500, click: true },
-  { ms: 1000, to: 'add' },
+  { ms: 1000, to: 'pick' },
+  { ms: 1300, click: true },
+  { ms: 900, to: 'book' },
   { ms: 2200, click: true },
   { ms: 1800, hide: true },
   { ms: 500, hide: true }
 ]
 
 export function WaitlistScene() {
-  const timeline = useTimeline(WAIT_BEATS, 4)
+  const timeline = useTimeline(WAIT_BEATS, 6)
   const { beat } = timeline
-  const vaga = beat === 2 || beat === 3
-  const booked = beat >= 4
+  const vaga = beat >= 2 && beat <= 5
+  const dialog = beat === 4 || beat === 5
+  const booked = beat >= 6
   const shown = vaga ? WAITING.filter((item) => item.fits) : WAITING.slice(booked ? 1 : 0)
   const sessions: Session[] = [
     { day: 0, start: 9, name: 'Theo Martins', mark: 'confirmed' },
     { day: 0, start: 11.5, name: 'Lucas Nunes' },
     { day: 1, start: 9.5, name: 'Beatriz Melo' },
     { day: 1, start: 11, name: 'Gabriel Reis' },
-    { day: 2, start: 8, len: 1, name: 'Manuela Cruz', kind: 'Avaliação' },
+    { day: 2, start: 8, len: 1, name: 'Manuela Cruz', kind: 'Exame' },
     { day: 2, start: 10, name: 'Rafael Pires' },
     ...(booked ? [{ day: 1, start: 8, name: 'Bento Carvalho', fresh: true }] : [])
   ]
@@ -439,7 +524,7 @@ export function WaitlistScene() {
         <Week
           days={WAIT_DAYS}
           sessions={sessions}
-          width={352}
+          width={336}
           extra={(day) =>
             day === 1 && (
               <>
@@ -456,7 +541,15 @@ export function WaitlistScene() {
         />
         <aside className="sc-panel">
           <div className="sc-panel-head" key={vaga ? 'vaga' : 'lista'}>
-            <b>{vaga ? 'Cabem neste horário' : 'Lista de espera'}</b>
+            <span className="sc-panel-title">
+              <b>{vaga ? 'Cabem neste horário' : 'Lista de espera'}</b>
+              {vaga && (
+                <span className="sc-panel-icons">
+                  <Plus />
+                  <X />
+                </span>
+              )}
+            </span>
             <span>
               {vaga
                 ? 'qui, 22 de out · 08:00–09:30'
@@ -468,22 +561,76 @@ export function WaitlistScene() {
               <span className="avatar">{item.initials}</span>
               <span className="sc-two">
                 <b>
-                  {item.name}
+                  <span className="sc-trunc">{item.name}</span>
                   {item.high && <i className="sc-tag">Prioridade</i>}
                 </b>
                 <span>{item.text}</span>
-                {vaga && <span className="sc-fits">{item.fits}</span>}
+                <span className="sc-faint">{item.since}</span>
+                {vaga ? (
+                  <span className="sc-fits" data-target={i === 0 ? 'pick' : undefined}>
+                    {item.fits}
+                  </span>
+                ) : (
+                  <span className="sc-more">
+                    Horários livres
+                    <ChevronDown />
+                  </span>
+                )}
               </span>
-              {vaga && i === 0 && (
-                <span className="sc-icon-btn" data-target="add">
-                  <Plus />
-                </span>
-              )}
+              <span className="sc-edit">
+                <Pencil />
+              </span>
             </div>
           ))}
         </aside>
+        {dialog && (
+          <>
+            <div className="sc-dim sc-fade" />
+            <div className="sc-dialog sc-new-appointment sc-in">
+              <span className="sc-dialog-head">
+                <b className="sc-dialog-title">Novo agendamento</b>
+                <X />
+              </span>
+              <span className="sc-label">Paciente</span>
+              <span className="sc-input sc-patient-pick">
+                <span className="sc-mini-avatar">BC</span>
+                <b>Bento Carvalho</b>
+                <span className="sc-faint">Trocar</span>
+              </span>
+              <span className="sc-fields">
+                <span>
+                  <span className="sc-label">Data</span>
+                  <span className="sc-input">22/10/2026</span>
+                </span>
+                <span>
+                  <span className="sc-label">Hora</span>
+                  <span className="sc-input">08:00</span>
+                </span>
+                <span>
+                  <span className="sc-label">Duração</span>
+                  <span className="sc-input">45 min</span>
+                </span>
+              </span>
+              <span className="sc-label">Etiqueta</span>
+              <span className="sc-input sc-select">
+                <i className="sc-swatch ev-sessao" />
+                Sessão
+              </span>
+              <span className="sc-summary">
+                <CalendarDays />
+                Sessão de 45 min com Bento Carvalho na quinta-feira, 22 de outubro, das 08:00 às
+                08:45.
+              </span>
+              <div className="sc-dialog-foot">
+                <span className="sc-btn sc-btn-solid" data-target="book">
+                  Agendar
+                </span>
+              </div>
+            </div>
+          </>
+        )}
         <Toast
-          show={beat >= 4 && beat <= 5}
+          show={beat >= 6 && beat <= 7}
           title="Sessão agendada"
           text="Bento Carvalho · qui, 22 de out às 08:00"
         />
@@ -536,7 +683,17 @@ function Typing({ text, play }: { text: string; play: boolean }) {
   )
 }
 
-const TOPICS = ['Queixa', 'Gestação e nascimento', 'Alimentação', 'Sono', 'Desenvolvimento e fala']
+const TOPICS = [
+  'Queixa',
+  'Gestação e nascimento',
+  'Alimentação',
+  'Sono',
+  'Desenvolvimento e fala',
+  'Saúde',
+  'Escola e rotina',
+  'Terapias',
+  'Observações'
+]
 
 const ANAMNESE_BEATS: Beat[] = [
   { ms: 800 },
@@ -544,43 +701,74 @@ const ANAMNESE_BEATS: Beat[] = [
   { ms: 700, click: true },
   { ms: 900, to: 'text' },
   { ms: 3200, click: true },
-  { ms: 1600, hide: true },
+  { ms: 900, to: 'save' },
+  { ms: 1800, click: true },
   { ms: 500, hide: true }
 ]
 
 const SONO =
   'Dorme por volta das 21h e acorda às 7h. Às vezes acorda de madrugada e vai para a cama dos pais.'
 
+function AnamneseTools({ dirty }: { dirty: boolean }) {
+  return (
+    <>
+      <span className="ghost-icon sc-faint">
+        <Printer />
+      </span>
+      <span className={`sc-btn sc-btn-solid${dirty ? '' : ' sc-btn-off'}`} data-target="save">
+        Salvar anamnese
+      </span>
+    </>
+  )
+}
+
 export function AnamneseScene() {
   const timeline = useTimeline(ANAMNESE_BEATS, 5)
   const { beat } = timeline
   const sono = beat >= 2
   const written = beat >= 4
+  const saved = beat >= 6
+  const count = written ? 4 : 3
   return (
     <Stage
       timeline={timeline}
       beats={ANAMNESE_BEATS}
       label="Animação: a anamnese em roteiro, um tema por vez"
     >
-      <Window active="Pacientes" trail={['Pacientes', 'Alice Costa Martins', 'Anamnese']}>
+      <Window
+        active="Pacientes"
+        trail={['Pacientes', 'Alice Costa Martins', 'Anamnese']}
+        tools={<AnamneseTools dirty={written && !saved} />}
+      >
         <div className="sc-page">
-          <PatientHead tab="Anamnese" saved="Salva hoje às 10:12" />
+          <PatientHead
+            tab="Anamnese"
+            saved={saved ? 'Salva em 21 de out às 10:14' : 'Salva em 14 de out às 16:40'}
+          />
           <div className="sc-anamnese">
             <div className="sc-topics">
-              {TOPICS.map((topic) => {
-                const active = topic === (sono ? 'Sono' : 'Queixa')
-                const done = topic !== 'Sono' || written
-                return (
-                  <span
-                    key={topic}
-                    data-active={active ? '' : undefined}
-                    data-target={topic === 'Sono' ? 'sono' : undefined}
-                  >
-                    <i className={done ? 'sc-dot' : 'sc-dot sc-dot-empty'} />
-                    {topic}
-                  </span>
-                )
-              })}
+              <span className="sc-label">Data da anamnese</span>
+              <span className="sc-input sc-date">
+                14/10/2026
+                <CalendarDays />
+              </span>
+              <nav>
+                {TOPICS.map((topic, i) => {
+                  const active = topic === (sono ? 'Sono' : 'Queixa')
+                  const done = i < 3 || (topic === 'Sono' && written)
+                  return (
+                    <span
+                      key={topic}
+                      data-active={active ? '' : undefined}
+                      data-target={topic === 'Sono' ? 'sono' : undefined}
+                    >
+                      <i className={done ? 'sc-dot' : 'sc-dot sc-dot-empty'} />
+                      {topic}
+                    </span>
+                  )
+                })}
+              </nav>
+              <span className="sc-small sc-count">{count} de 9 temas escritos</span>
             </div>
             <div className="sc-topic" key={sono ? 'sono' : 'queixa'}>
               <span className="sc-small">{sono ? 'Tema 4 de 9' : 'Tema 1 de 9'}</span>
@@ -590,6 +778,7 @@ export function AnamneseScene() {
                   ? 'Como é o sono e a rotina da noite.'
                   : 'Por que a família procurou a clínica, nas palavras dela.'}
               </span>
+              <span className="sc-small sc-prompts">Perguntas para guiar a conversa</span>
               <div className="sc-questions">
                 {(sono
                   ? ['Que horas dorme?', 'Acorda à noite?', 'Dorme sozinha?']
@@ -601,15 +790,30 @@ export function AnamneseScene() {
               <div
                 className="sc-textarea"
                 data-target="text"
-                data-focus={sono && beat >= 4 ? '' : undefined}
+                data-focus={sono && beat >= 4 && !saved ? '' : undefined}
               >
                 {sono
                   ? written && <Typing text={SONO} play={beat === 4 && timeline.moving} />
                   : 'A mãe conta que a Alice troca o "r" pelo "l" ("balata" em vez de "barata") e que os colegas começaram a comentar.'}
               </div>
+              <div className="sc-topic-nav">
+                <span>
+                  {sono && (
+                    <>
+                      <ChevronLeft />
+                      Alimentação
+                    </>
+                  )}
+                </span>
+                <span>
+                  {sono ? 'Desenvolvimento e fala' : 'Gestação e nascimento'}
+                  <ChevronRight />
+                </span>
+              </div>
             </div>
           </div>
         </div>
+        <Toast show={beat === 6} title="Anamnese salva" text="Alice Costa Martins" />
       </Window>
     </Stage>
   )
@@ -625,6 +829,8 @@ const ARRIVAL_BEATS: Beat[] = [
   { ms: 700 },
   { ms: 1000, to: 'alice' },
   { ms: 900, click: true },
+  { ms: 900, to: 'assinar' },
+  { ms: 700, click: true },
   { ms: 2600, hide: true },
   { ms: 1000, to: 'confirm' },
   { ms: 2000, click: true },
@@ -633,12 +839,14 @@ const ARRIVAL_BEATS: Beat[] = [
 ]
 
 export function ArrivalScene() {
-  const timeline = useTimeline(ARRIVAL_BEATS, 4)
+  const timeline = useTimeline(ARRIVAL_BEATS, 7)
   const { beat } = timeline
-  const open = beat >= 2 && beat <= 4
-  const signed = beat >= 5
+  const dialog = beat === 2 || beat === 3
+  const signing = beat >= 4 && beat <= 6
+  const signed = beat >= 7
   const sessions: Session[] = [
     ...BASE,
+    { day: 3, start: 9.5, name: 'Beatriz Melo' },
     {
       day: 1,
       start: 10,
@@ -653,56 +861,121 @@ export function ArrivalScene() {
       beats={ARRIVAL_BEATS}
       label="Animação: a família assina a chegada na tela do computador"
     >
-      <Window active="Agenda" trail={['Agenda', '19 a 23 de outubro 2026']} tools={<AgendaTools />}>
+      <Window
+        active="Agenda"
+        trail={['Agenda', '19 a 23 de outubro 2026']}
+        tools={<AgendaTools />}
+        overlay={
+          signing && (
+            <div className="sc-sign sc-fade">
+              <div className="sc-sign-head">
+                <span>
+                  <span className="sc-small">Assinatura de chegada</span>
+                  <b className="sc-arrival-name">Alice Costa Martins</b>
+                  <span className="sc-sign-when">Hoje, 10:00–10:45 · Sessão</span>
+                </span>
+                <X />
+              </div>
+              <div className="sc-sign-body">
+                <b className="sc-sign-label">Quem está assinando</b>
+                <div className="sc-choices">
+                  <span data-active="">
+                    <b>Fernanda Costa</b>
+                    Mãe
+                  </span>
+                  <span>
+                    <b>Ricardo Martins</b>
+                    Pai
+                  </span>
+                  <span className="sc-choice-other">Outra pessoa</span>
+                </div>
+                <b className="sc-sign-label">Assinatura</b>
+                <div className="sc-pad">
+                  {beat >= 5 && (
+                    <svg
+                      viewBox="0 0 260 90"
+                      className={beat === 5 && timeline.moving ? 'sc-draw' : undefined}
+                    >
+                      {SIGNATURE.map((d, i) => (
+                        <path key={d} d={d} pathLength={1} style={vars({ '--i': i })} />
+                      ))}
+                    </svg>
+                  )}
+                </div>
+                <div className="sc-pad-foot">
+                  <span>
+                    Ao assinar, Fernanda Costa confirma que Alice Costa chegou para a sessão de
+                    hoje.
+                  </span>
+                  <span className="sc-pad-tools">
+                    <span>
+                      <Undo />
+                      Desfazer traço
+                    </span>
+                    <span>
+                      <Eraser />
+                      Limpar
+                    </span>
+                  </span>
+                </div>
+              </div>
+              <span
+                className={`sc-btn sc-btn-solid sc-sign-confirm${beat >= 5 ? '' : ' sc-btn-off'}`}
+                data-target="confirm"
+              >
+                <PenLine />
+                Confirmar chegada
+              </span>
+            </div>
+          )
+        }
+      >
         <Week days={WEEK} sessions={sessions} now={{ day: 1, at: 9.9 }} width={592} />
-        {open && (
+        {dialog && (
           <>
             <div className="sc-dim sc-fade" />
-            <div className="sc-dialog sc-arrival sc-in">
-              <span className="sc-small">Assinatura de chegada</span>
-              <b className="sc-arrival-name">Alice Costa Martins</b>
-              <span className="sc-small">Hoje, 10:00–10:45 · Sessão</span>
-              <b className="sc-label">Quem está assinando</b>
-              <div className="sc-choices">
-                <span data-active="">
-                  <b>Fernanda Costa</b> Mãe
-                </span>
-                <span>
-                  <b>Ricardo Martins</b> Pai
-                </span>
-                <span>
-                  <b>Outra pessoa</b>
-                </span>
-              </div>
-              <b className="sc-label">Assinatura</b>
-              <div className="sc-pad">
-                {beat >= 3 && (
-                  <svg
-                    viewBox="0 0 260 90"
-                    className={beat === 3 && timeline.moving ? 'sc-draw' : undefined}
-                  >
-                    {SIGNATURE.map((d, i) => (
-                      <path key={d} d={d} pathLength={1} style={vars({ '--i': i })} />
-                    ))}
-                  </svg>
-                )}
-              </div>
-              <span className="sc-small">
-                Ao assinar, Fernanda Costa confirma que Alice Costa chegou para a sessão de hoje.
+            <div className="sc-dialog sc-session sc-in">
+              <span className="sc-dialog-head">
+                <b className="sc-dialog-title">Registro da sessão</b>
+                <X />
               </span>
-              <div className="sc-dialog-foot">
-                <span className="sc-btn sc-btn-solid" data-target="confirm">
-                  <PenLine />
-                  Confirmar chegada
+              <span className="sc-label">Paciente</span>
+              <span className="sc-input sc-patient-pick">
+                <span className="sc-mini-avatar">AM</span>
+                <b>Alice Costa Martins</b>
+                <span className="sc-faint">Trocar</span>
+              </span>
+              <span className="sc-fields">
+                <span>
+                  <span className="sc-label">Data</span>
+                  <span className="sc-input">20/10/2026</span>
                 </span>
-              </div>
+                <span>
+                  <span className="sc-label">Hora</span>
+                  <span className="sc-input">10:00</span>
+                </span>
+                <span>
+                  <span className="sc-label">Duração</span>
+                  <span className="sc-input">45 min</span>
+                </span>
+              </span>
+              <span className="sc-arrival-box">
+                <span className="sc-two">
+                  <b>Chegada</b>
+                  <span>Marca a presença e trava a sessão.</span>
+                </span>
+                <span className="sc-btn" data-target="assinar">
+                  <PenLine />
+                  Assinar chegada
+                </span>
+              </span>
             </div>
           </>
         )}
         <Toast
-          show={signed && beat <= 6}
+          show={signed && beat <= 8}
           title="Chegada assinada"
-          text="Alice Costa · hoje às 09:54, por Fernanda Costa"
+          text="Alice Costa · Fernanda Costa (mãe)"
         />
       </Window>
     </Stage>
@@ -713,20 +986,22 @@ const TERM_BEATS: Beat[] = [
   { ms: 700 },
   { ms: 1000, to: 'send' },
   { ms: 1000, click: true },
-  { ms: 2200, hide: true },
-  { ms: 2600, hide: true },
+  { ms: 1700, hide: true },
+  { ms: 900, to: 'keep' },
+  { ms: 2400, click: true },
   { ms: 500, hide: true }
 ]
 
 export function TermsScene() {
-  const timeline = useTimeline(TERM_BEATS, 4)
+  const timeline = useTimeline(TERM_BEATS, 5)
   const { beat } = timeline
   const sent = beat >= 2
-  const signed = beat >= 4
+  const receiving = beat === 3 || beat === 4
+  const signed = beat >= 5
   const status = signed
-    ? 'Assinado por Fernanda Costa (mãe) hoje às 10:41'
+    ? 'Assinado por Fernanda Costa (mãe) em 20/10/2026'
     : sent
-      ? 'Enviado para Fernanda (mãe) hoje · vence em 27/10'
+      ? 'Enviado para Fernanda (mãe) em 20/10 · vence em 27/10'
       : 'Ainda não enviado'
   return (
     <Stage
@@ -734,7 +1009,15 @@ export function TermsScene() {
       beats={TERM_BEATS}
       label="Animação: o termo vai pelo WhatsApp e volta assinado"
     >
-      <Window active="Pacientes" trail={['Pacientes', 'Alice Costa Martins', 'Termos']}>
+      <Window
+        active="Pacientes"
+        trail={['Pacientes', 'Alice Costa Martins', 'Termos']}
+        tools={
+          <span className="ghost-icon">
+            <ClipboardPaste />
+          </span>
+        }
+      >
         <div className="sc-page">
           <PatientHead tab="Termos" />
           <div className="sc-terms">
@@ -744,15 +1027,26 @@ export function TermsScene() {
               </span>
               <span className="sc-two" key={status}>
                 <b>Autorização de uso de imagem</b>
-                <span className={sent ? 'sc-in' : undefined}>
-                  {signed && <Check />}
+                <span
+                  className={`${sent ? 'sc-in' : ''}${signed ? ' sc-ink' : sent ? '' : ' sc-faint'}`}
+                >
                   {status}
                 </span>
               </span>
               {signed ? (
-                <span className="sc-btn sc-in">Ver PDF</span>
+                <span className="sc-actions sc-in">
+                  <span className="sc-link">Enviar de novo</span>
+                  <span className="sc-btn">
+                    <FileText />
+                    Abrir PDF
+                  </span>
+                </span>
               ) : sent ? (
                 <span className="sc-actions sc-in">
+                  <span className="sc-link">
+                    <Copy />
+                  </span>
+                  <span className="sc-link">Cancelar</span>
                   <span className="sc-link">Colar resposta</span>
                   <span className="sc-btn">
                     <Send />
@@ -772,16 +1066,61 @@ export function TermsScene() {
               </span>
               <span className="sc-two">
                 <b>Contrato de prestação de serviços</b>
-                <span>
-                  <Check />
-                  Assinado por Fernanda Costa (mãe) em 15/10
+                <span className="sc-ink">Assinado por Fernanda Costa (mãe) em 15/10/2026</span>
+              </span>
+              <span className="sc-actions">
+                <span className="sc-link">Enviar de novo</span>
+                <span className="sc-btn">
+                  <FileText />
+                  Abrir PDF
                 </span>
               </span>
-              <span className="sc-btn">Ver PDF</span>
             </div>
           </div>
         </div>
-        <Toast show={signed} title="Termo assinado" text="Fernanda Costa assinou pelo celular" />
+        {receiving && (
+          <>
+            <div className="sc-dim sc-fade" />
+            <div className="sc-dialog sc-receive sc-in">
+              <span className="sc-dialog-head">
+                <b className="sc-dialog-title">Termo assinado</b>
+                <X />
+              </span>
+              <b className="sc-receive-title">Autorização de uso de imagem</b>
+              <span className="sc-small">Alice Costa · versão 1</span>
+              <div className="sc-receive-box">
+                <span className="sc-receive-sign">
+                  <svg viewBox="0 0 260 90">
+                    {SIGNATURE.map((d) => (
+                      <path key={d} d={d} />
+                    ))}
+                  </svg>
+                </span>
+                <span className="sc-receive-data">
+                  <span>Nome</span>
+                  <b>Fernanda Costa</b>
+                  <span>CPF</span>
+                  <b className="sc-sensitive">123.456.789-00</b>
+                  <span>Parentesco</span>
+                  <b>Mãe</b>
+                  <span>Assinou</span>
+                  <b>20/10/2026 às 10:38</b>
+                </span>
+              </div>
+              <div className="sc-dialog-foot">
+                <span className="sc-btn">Recusar</span>
+                <span className="sc-btn sc-btn-solid" data-target="keep">
+                  Guardar termo assinado
+                </span>
+              </div>
+            </div>
+          </>
+        )}
+        <Toast
+          show={beat === 5}
+          title="Termo guardado"
+          text="Autorização de uso de imagem · Fernanda Costa"
+        />
       </Window>
     </Stage>
   )
@@ -804,7 +1143,7 @@ export function FinanceScene() {
   const paid = beat >= 4
   const rows = [
     ...(paid
-      ? [{ date: '20/10', title: 'Pagamento · Pix', status: '', value: '−R$ 360,00', fresh: true }]
+      ? [{ date: '20/10', title: 'Pagamento · Pix', status: '', value: '-R$ 360,00', fresh: true }]
       : []),
     {
       date: '14/10',
@@ -818,7 +1157,7 @@ export function FinanceScene() {
       status: paid ? 'Pago' : 'Em aberto',
       value: 'R$ 180,00'
     },
-    { date: '05/10', title: 'Pagamento · Cartão', status: '', value: '−R$ 540,00' },
+    { date: '05/10', title: 'Pagamento · Cartão', status: '', value: '-R$ 540,00' },
     { date: '30/09', title: 'Sessão de 30/09 · Fonoaudiologia', status: 'Pago', value: 'R$ 180,00' }
   ]
   return (
@@ -832,7 +1171,9 @@ export function FinanceScene() {
           <PatientHead tab="Financeiro" />
           <div className="sc-balance">
             <span className="sc-two">
-              <span>Em aberto</span>
+              <span key={`label-${paid}`} className="sc-in">
+                {paid ? 'Em dia' : 'Em aberto'}
+              </span>
               <b key={String(paid)} className="sc-money sc-in">
                 {paid ? 'R$ 0,00' : 'R$ 360,00'}
               </b>
@@ -844,6 +1185,14 @@ export function FinanceScene() {
               </span>
             </span>
           </div>
+          <span className="sc-section-row">
+            <b className="sc-section">Forma de cobrança</b>
+            <span className="sc-link">Alterar</span>
+          </span>
+          <span className="sc-two sc-billing">
+            <b>Particular por sessão</b>
+            <span>Fonoaudiologia R$ 180,00</span>
+          </span>
           <b className="sc-section">Extrato</b>
           <div className="sc-ledger">
             {rows.map((row) => (
@@ -865,9 +1214,27 @@ export function FinanceScene() {
           <>
             <div className="sc-dim sc-fade" />
             <div className="sc-dialog sc-pay sc-in">
-              <b className="sc-dialog-title">Registrar pagamento</b>
-              <span className="sc-label">Valor</span>
-              <span className="sc-input">R$ 360,00</span>
+              <span className="sc-dialog-head">
+                <b className="sc-dialog-title">Registrar pagamento</b>
+                <X />
+              </span>
+              <span className="sc-small">Alice Costa Martins</span>
+              <span className="sc-fields sc-fields-two">
+                <span>
+                  <span className="sc-label sc-label-split">
+                    Valor
+                    <span className="sc-faint">Em aberto R$ 360,00</span>
+                  </span>
+                  <span className="sc-input">
+                    <span className="sc-faint">R$</span>
+                    360,00
+                  </span>
+                </span>
+                <span>
+                  <span className="sc-label">Data</span>
+                  <span className="sc-input">20/10/2026</span>
+                </span>
+              </span>
               <span className="sc-label">Forma</span>
               <span className="track sc-seg sc-seg-wide">
                 <span data-active="">Pix</span>
@@ -875,6 +1242,8 @@ export function FinanceScene() {
                 <span>Cartão</span>
                 <span>Transferência</span>
               </span>
+              <span className="sc-label">Observação</span>
+              <span className="sc-input" />
               <div className="sc-dialog-foot">
                 <span className="sc-btn sc-btn-solid" data-target="ok">
                   Registrar
@@ -886,7 +1255,7 @@ export function FinanceScene() {
         <Toast
           show={beat === 5}
           title="Pagamento registrado"
-          text="Alice Costa Martins · R$ 360,00 por Pix"
+          text="Alice Costa · R$ 360,00 · Pix"
         />
       </Window>
     </Stage>
