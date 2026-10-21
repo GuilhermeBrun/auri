@@ -43,7 +43,7 @@ export function DestinationRepair({
     onSuccess: (next) => {
       setBackupInfo(next)
       setChoosing(false)
-      toast({ title: 'Pasta trocada', description: 'A próxima cópia já vai para lá.' })
+      toast({ title: 'Pasta trocada' })
     }
   })
 
@@ -56,7 +56,7 @@ export function DestinationRepair({
 
   return (
     <Callout tone="warning" title={problem.message} className="mt-4">
-      <p>As cópias estão paradas. Resolva por aqui e o Auri volta a copiar sozinho.</p>
+      <p>As cópias estão paradas.</p>
       <div className="mt-3">
         {problem.state === 'ready' && problem.folder ? (
           <Button

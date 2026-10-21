@@ -42,17 +42,6 @@ const TIME_OPTIONS = Array.from({ length: 18 }, (_, i) => {
   return { value, label: value }
 })
 
-function frequencyText(frequency: BackupFrequency, time: string): string {
-  switch (frequency) {
-    case 'daily':
-      return `Uma cópia por dia às ${time}. Se o computador estiver desligado nesse horário, a cópia sai assim que o Auri abrir.`
-    case 'change':
-      return 'Uma cópia alguns minutos depois de alterar pacientes ou a agenda, no máximo uma por hora, e outra ao fechar o Auri.'
-    case 'manual':
-      return 'Só quando você clicar em “Fazer cópia agora”. O Auri avisa depois de 3 dias sem cópia.'
-  }
-}
-
 function DestinationLine({ destination }: { destination: BackupDestination }): React.JSX.Element {
   return (
     <div className="min-w-0 flex-1">
@@ -93,10 +82,7 @@ function Setup({
   if (!destination) {
     return (
       <SettingsGroup label="Passo 1 de 3 · Onde guardar as cópias" className="animate-fade-in">
-        <GroupText>
-          Numa nuvem, para a cópia sobreviver se este computador quebrar. O Auri grava na pasta que
-          o app da nuvem cria neste computador, e ele manda para a internet.
-        </GroupText>
+        <GroupText>Numa nuvem, para a cópia sobreviver se este computador quebrar.</GroupText>
         <div className="mt-4">
           <DestinationPicker onPick={setDestination} suggested={suggested} />
         </div>
@@ -106,11 +92,7 @@ function Setup({
 
   return (
     <SettingsGroup label="Passo 2 de 3 · Crie uma senha para as cópias" className="animate-fade-in">
-      <GroupText>
-        As cópias saem cifradas: sem a senha, ninguém consegue ler, nem quem tiver acesso à nuvem.
-        Neste computador as cópias são automáticas; a senha só é pedida para abrir uma cópia em
-        outro computador.
-      </GroupText>
+      <GroupText>Sem a senha, ninguém abre as cópias, nem quem acessa a nuvem.</GroupText>
       <div className="mt-4 flex items-center gap-3 rounded-card bg-surface px-4 py-3">
         <DestinationLine destination={destination} />
         <Button variant="secondary" onClick={() => setDestination(null)}>
@@ -142,10 +124,7 @@ function RecoveryStep({ code, onDone }: { code: string; onDone: () => void }): R
       label="Passo 3 de 3 · Guarde o código de recuperação"
       className="animate-fade-in"
     >
-      <GroupText>
-        Se a senha for esquecida, só este código abre as cópias. Imprima ou anote e guarde junto aos
-        documentos da clínica. Ele não aparece de novo.
-      </GroupText>
+      <GroupText>Sem a senha, só este código abre as cópias. Ele não aparece de novo.</GroupText>
       <div className="mt-4">
         <RecoveryCode code={code} className="bg-surface" />
       </div>
@@ -183,7 +162,7 @@ function Status({ info }: { info: BackupInfo }): React.JSX.Element {
   const hadProblem = useRef(problem !== null)
   useEffect(() => {
     if (hadProblem.current && problem === null) {
-      toast({ title: `O ${label} voltou`, description: 'As cópias continuam.' })
+      toast({ title: `O ${label} voltou` })
     }
     hadProblem.current = problem !== null
   }, [problem, label, toast])
@@ -223,7 +202,7 @@ function Status({ info }: { info: BackupInfo }): React.JSX.Element {
       {problem && <DestinationRepair info={info} problem={problem} />}
       {failed && !problem && !run.error && (
         <Callout tone="warning" title="A última cópia não foi feita" className="mt-4">
-          {info.lastError!.message} Tente “Fazer cópia agora”; se continuar, confira a pasta.
+          {info.lastError!.message}
         </Callout>
       )}
       {run.error && <ErrorText>{run.error.message}</ErrorText>}
@@ -234,13 +213,11 @@ function Status({ info }: { info: BackupInfo }): React.JSX.Element {
           title={`As cópias já ocupam ${formatSize(info.stored.bytes)}`}
           className="mt-4"
         >
-          Confira se o plano da nuvem ainda tem espaço livre.
+          Confira o espaço livre na nuvem.
         </Callout>
       )}
       {!failed && info.stale && info.lastSuccessAt && !info.running && (
-        <Callout tone="warning" title="Faz mais de 3 dias sem cópia" className="mt-4">
-          Confira se a pasta está disponível ou faça uma cópia agora.
-        </Callout>
+        <Callout tone="warning" title="Faz mais de 3 dias sem cópia" className="mt-4" />
       )}
     </SettingsGroup>
   )
@@ -254,7 +231,7 @@ function Destination({ info }: { info: BackupInfo }): React.JSX.Element {
     onSuccess: (next) => {
       setBackupInfo(next)
       setChanging(false)
-      toast({ title: 'Pasta trocada', description: 'A próxima cópia já vai para lá.' })
+      toast({ title: 'Pasta trocada' })
     }
   })
   const destination = info.destination!
@@ -278,9 +255,6 @@ function Destination({ info }: { info: BackupInfo }): React.JSX.Element {
       )}
       {changing && (
         <div className="mt-4 animate-fade-in rounded-card bg-surface p-4">
-          <p className="mb-3 text-xs text-ink-soft">
-            As próximas cópias vão para a pasta nova. As que já estão na pasta atual ficam lá.
-          </p>
           <DestinationPicker onPick={(next) => change.mutate(next)} />
           <div className="mt-3 flex justify-end">
             <Button variant="secondary" onClick={() => setChanging(false)}>
@@ -323,7 +297,9 @@ function Frequency({ info }: { info: BackupInfo }): React.JSX.Element {
           </div>
         )}
       </div>
-      <p className="mt-2 text-xs text-ink-soft">{frequencyText(info.frequency, info.dailyTime)}</p>
+      {info.frequency === 'manual' && (
+        <p className="mt-2 text-xs text-ink-soft">O Auri avisa depois de 3 dias sem cópia.</p>
+      )}
       {change.error && <ErrorText>{change.error.message}</ErrorText>}
     </SettingsGroup>
   )
@@ -334,8 +310,7 @@ function Password(): React.JSX.Element {
   const open = (mode: PasswordMode): void => setRequest({ mode, id: Date.now() })
   return (
     <SettingsGroup label="Senha das cópias">
-      <GroupText>Pedida só para abrir uma cópia em outro computador.</GroupText>
-      <div className="mt-3 flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2">
         <Button variant="secondary" onClick={() => open('change')}>
           Alterar senha
         </Button>
@@ -360,15 +335,12 @@ function Restore({ info }: { info: BackupInfo }): React.JSX.Element {
     onSuccess: (next) => {
       setBackupInfo(next)
       setConfirming(false)
-      toast({ title: 'Restauração desfeita', description: 'Os dados de antes voltaram.' })
+      toast({ title: 'Restauração desfeita' })
     }
   })
   return (
     <SettingsGroup label="Restaurar dados">
-      <GroupText>
-        Troca os pacientes e a agenda deste computador pelos de uma cópia. As configurações não
-        mudam.
-      </GroupText>
+      <GroupText>Troca os pacientes e a agenda pelos da cópia.</GroupText>
       <Button variant="secondary" className="mt-3" onClick={() => setRequest({ id: Date.now() })}>
         Restaurar de uma cópia…
       </Button>
@@ -376,7 +348,7 @@ function Restore({ info }: { info: BackupInfo }): React.JSX.Element {
         <div className="mt-4 flex animate-fade-in items-center gap-3 rounded-card bg-surface px-4 py-3">
           <p className="min-w-0 flex-1 text-xs text-ink-soft">
             {confirming
-              ? 'Voltar aos dados de antes da restauração? O que foi feito depois dela se perde.'
+              ? 'Voltar aos dados de antes? O que foi feito depois se perde.'
               : `Dados restaurados ${formatWhen(info.undo.at)}.`}
           </p>
           {confirming ? (
@@ -412,8 +384,7 @@ function Disable(): React.JSX.Element {
       {confirming ? (
         <div className="animate-fade-in rounded-card bg-fill p-4">
           <p className="text-xs text-ink-soft">
-            As cópias automáticas param e este computador esquece a senha. As cópias que já estão na
-            pasta continuam lá e abrem com a senha de agora.
+            As cópias param e este computador esquece a senha. As já feitas ficam na pasta.
           </p>
           <div className="mt-3 flex justify-end gap-2">
             <Button variant="secondary" onClick={() => setConfirming(false)}>
@@ -439,11 +410,7 @@ export function BackupSection(): React.JSX.Element {
   const [code, setCode] = useState<string | null>(null)
 
   return (
-    <PageSection
-      id="copia"
-      title="Cópia de segurança"
-      description="Uma cópia cifrada dos pacientes e da agenda, numa pasta da nuvem, para não perder nada se este computador quebrar."
-    >
+    <PageSection id="copia" title="Cópia de segurança">
       <div className="flex flex-col gap-8">
         {!info ? (
           <Loading />
@@ -453,8 +420,7 @@ export function BackupSection(): React.JSX.Element {
               As cópias são feitas no computador que guarda os dados
             </p>
             <p className="mt-0.5 text-xs text-ink-soft">
-              Este computador usa os dados de outro. Ligue a cópia de segurança lá, em Configurações
-              / Armazenamento.
+              Ligue lá, em Configurações › Armazenamento.
             </p>
           </SettingsGroup>
         ) : code ? (

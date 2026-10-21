@@ -11,18 +11,17 @@ import { useToast } from '@renderer/lib/toast'
 
 export type PasswordMode = 'change' | 'reset' | 'code'
 
-const TITLES: Record<PasswordMode, { title: string; description: string }> = {
+const TITLES: Record<PasswordMode, { title: string; description?: string }> = {
   change: {
     title: 'Alterar senha',
-    description: 'As cópias que já estão na pasta passam a abrir só com a senha nova.'
+    description: 'As cópias já feitas passam a abrir só com a senha nova.'
   },
   reset: {
-    title: 'Esqueci a senha',
-    description: 'Digite o código de recuperação que você guardou e escolha uma senha nova.'
+    title: 'Esqueci a senha'
   },
   code: {
     title: 'Novo código de recuperação',
-    description: 'O código antigo deixa de abrir as cópias. Guarde o novo em lugar seguro.'
+    description: 'O código antigo deixa de abrir as cópias.'
   }
 }
 
@@ -92,9 +91,7 @@ function PasswordForm({
       <>
         <DialogBody>
           <RecoveryCode code={newCode} />
-          <p className="mt-3 text-xs text-ink-soft">
-            Este código não aparece de novo. Imprima ou anote antes de fechar.
-          </p>
+          <p className="mt-3 text-xs text-ink-soft">Este código não aparece de novo.</p>
         </DialogBody>
         <DialogFooter>
           <span />
