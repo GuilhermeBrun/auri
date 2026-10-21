@@ -103,11 +103,6 @@ const api: AuriApi = {
     save: (id, input) => invoke('tipos:save', id, input),
     archive: (id, arquivado) => invoke('tipos:archive', id, arquivado)
   },
-  etiquetas: {
-    list: () => invoke('etiquetas:list'),
-    save: (id, input) => invoke('etiquetas:save', id, input),
-    archive: (id, arquivado) => invoke('etiquetas:archive', id, arquivado)
-  },
   waitlist: {
     list: () => invoke('waitlist:list'),
     getByPatient: (patientId) => invoke('waitlist:getByPatient', patientId),

@@ -42,7 +42,7 @@ const SELECT = `
          s.signer_parentesco AS assinatura_parentesco, s.assinado_em AS assinatura_em,
          (SELECT json_group_array(json_object('id', g.id, 'nome', g.nome, 'cor', g.cor))
             FROM (SELECT g.id, g.nome, g.cor FROM appointment_tags x
-                  JOIN tags g ON g.id = x.tag_id
+                  JOIN appointment_types g ON g.id = x.tag_id
                   WHERE x.appointment_id = a.id ORDER BY g.nome COLLATE NOCASE) g) AS etiquetas,
          (SELECT json_object('estado', r.estado, 'resposta', r.resposta, 'prazo', r.prazo)
             FROM confirmation_requests r

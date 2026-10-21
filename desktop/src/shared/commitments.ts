@@ -1,22 +1,12 @@
 import { z } from 'zod'
 import { isIsoLocalDateTime } from './dates'
-
-export const COMMITMENT_TIPOS = ['palestra', 'curso', 'hospital', 'reuniao', 'reserva'] as const
-export type CommitmentTipo = (typeof COMMITMENT_TIPOS)[number]
-
-export const COMMITMENT_LABELS: Record<CommitmentTipo, string> = {
-  palestra: 'Palestra',
-  curso: 'Curso',
-  hospital: 'Hospital',
-  reuniao: 'Reunião',
-  reserva: 'Reserva'
-}
+import type { Cor } from './tipos'
 
 const localDateTime = z.string().refine(isIsoLocalDateTime, 'Data/hora inválida')
 
 export const commitmentInputSchema = z
   .object({
-    tipo: z.enum(COMMITMENT_TIPOS),
+    etiqueta_id: z.number().int().positive('Escolha a etiqueta'),
     titulo: z.string().trim().max(120, 'Use no máximo 120 caracteres').default(''),
     inicio: localDateTime,
     fim: localDateTime,
@@ -31,10 +21,13 @@ export type CommitmentInput = z.input<typeof commitmentInputSchema>
 
 export type Commitment = z.output<typeof commitmentInputSchema> & {
   id: number
+  etiqueta_nome: string
+  cor: Cor
+  reserva: boolean
   created_at: string
   updated_at: string
 }
 
-export function commitmentName(c: Pick<Commitment, 'tipo' | 'titulo'>): string {
-  return c.titulo ? `${COMMITMENT_LABELS[c.tipo]}: ${c.titulo}` : COMMITMENT_LABELS[c.tipo]
+export function commitmentName(c: Pick<Commitment, 'etiqueta_nome' | 'titulo'>): string {
+  return c.titulo ? `${c.etiqueta_nome}: ${c.titulo}` : c.etiqueta_nome
 }

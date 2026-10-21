@@ -24,7 +24,8 @@ type RecordRow = Omit<AttendanceRecord, 'traco' | 'anulada'> & {
 }
 
 const SELECT_RECORDS = `
-  SELECT s.id, s.appointment_id, a.inicio, a.fim, t.nome AS tipo_nome, t.categoria,
+  SELECT s.id, s.appointment_id, a.inicio, a.fim, t.nome AS tipo_nome,
+         coalesce(a.categoria, t.categoria) AS categoria,
          s.signer_nome, s.signer_papel,
          s.signer_parentesco, s.traco, s.assinado_em, s.fuso_minutos, s.computador,
          s.registro_sha256, v.motivo AS anulada_motivo, v.anulado_em AS anulada_em,

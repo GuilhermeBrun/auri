@@ -20,6 +20,7 @@ import {
 import { openDatabase, type Db } from './connection'
 import { suggestSlots, whoFits } from './encaixe'
 import { createPatient } from './patients'
+import { listTipos } from './tipos'
 import { addToWaitlist } from './waitlist'
 
 const QUA = '2026-10-21'
@@ -35,9 +36,13 @@ beforeEach(() => {
   bruno = createPatient(db, { ...emptyPatientInput(), nome: 'Bruno Fictício' }).id
 })
 
+function et(nome: string): number {
+  return listTipos(db).find((t) => t.nome === nome)!.id
+}
+
 function compromisso(inicio: string, fim: string, over: Partial<CommitmentInput> = {}) {
   return createCommitment(db, {
-    tipo: 'reuniao',
+    etiqueta_id: et('Reunião'),
     inicio: `${QUA}T${inicio}`,
     fim: `${QUA}T${fim}`,
     ...over
@@ -55,12 +60,12 @@ function sessao(patient_id: number, inicio: string, fim: string, presenca: '' | 
 describe('compromissos', () => {
   it('cria, lista por intervalo, edita e exclui', () => {
     const palestra = compromisso('14:00', '16:00', {
-      tipo: 'palestra',
+      etiqueta_id: et('Palestra'),
       titulo: '  Escola Fictícia  ',
       observacao: 'Levar o projetor'
     })
     expect(palestra).toMatchObject({
-      tipo: 'palestra',
+      etiqueta_id: et('Palestra'),
       titulo: 'Escola Fictícia',
       observacao: 'Levar o projetor'
     })
@@ -69,10 +74,10 @@ describe('compromissos', () => {
     const curso = updateCommitment(
       db,
       palestra.id,
-      { tipo: 'curso', inicio: `${QUA}T15:00`, fim: `${QUA}T17:00` },
+      { etiqueta_id: et('Curso'), inicio: `${QUA}T15:00`, fim: `${QUA}T17:00` },
       palestra.updated_at
     )
-    expect(curso).toMatchObject({ tipo: 'curso', titulo: '', observacao: '' })
+    expect(curso).toMatchObject({ etiqueta_nome: 'Curso', titulo: '', observacao: '' })
     removeCommitment(db, curso.id)
     expect(listCommitments(db, `${QUA}T00:00`, '2026-10-22T00:00')).toEqual([])
     expect(() => removeCommitment(db, curso.id)).toThrow(/não encontrado/)
@@ -82,7 +87,7 @@ describe('compromissos', () => {
     expect(() => compromisso('19:30', '20:30')).toThrow(/Fora do horário/)
     expect(() =>
       createCommitment(db, {
-        tipo: 'hospital',
+        etiqueta_id: et('Hospital'),
         inicio: '2026-10-25T09:00',
         fim: '2026-10-25T10:00'
       })
@@ -93,14 +98,19 @@ describe('compromissos', () => {
     const c = compromisso('14:00', '15:00')
     db.prepare("UPDATE commitments SET updated_at = '2000-01-01T00:00:00.000Z'").run()
     expect(() =>
-      updateCommitment(db, c.id, { tipo: 'reuniao', inicio: c.inicio, fim: c.fim }, c.updated_at)
+      updateCommitment(
+        db,
+        c.id,
+        { etiqueta_id: et('Reunião'), inicio: c.inicio, fim: c.fim },
+        c.updated_at
+      )
     ).toThrow(/outro computador/)
   })
 })
 
 describe('conflito de horário entre compromissos e agendamentos', () => {
   it('o agendamento não entra num horário bloqueado', () => {
-    compromisso('14:00', '15:00', { tipo: 'hospital', titulo: 'Hospital Fictício' })
+    compromisso('14:00', '15:00', { etiqueta_id: et('Hospital'), titulo: 'Hospital Fictício' })
     expect(() => sessao(ana, '14:30', '15:00')).toThrow(
       'Esse horário está bloqueado: Hospital: Hospital Fictício, das 14:00 às 15:00.'
     )
@@ -129,17 +139,19 @@ describe('conflito de horário entre compromissos e agendamentos', () => {
       'Esse horário já está ocupado: Ana Fictícia, das 14:00 às 14:30.'
     )
     const reuniao = compromisso('15:00', '16:00')
-    expect(() => compromisso('15:30', '16:30', { tipo: 'curso' })).toThrow(/bloqueado: Reunião/)
+    expect(() => compromisso('15:30', '16:30', { etiqueta_id: et('Curso') })).toThrow(
+      /bloqueado: Reunião/
+    )
     expect(() =>
       updateCommitment(db, reuniao.id, {
-        tipo: 'reuniao',
+        etiqueta_id: et('Reunião'),
         inicio: `${QUA}T14:15`,
         fim: `${QUA}T15:00`
       })
     ).toThrow(/ocupado: Ana Fictícia/)
     expect(
       updateCommitment(db, reuniao.id, {
-        tipo: 'reuniao',
+        etiqueta_id: et('Reunião'),
         inicio: `${QUA}T15:30`,
         fim: `${QUA}T16:30`
       }).inicio
@@ -159,7 +171,7 @@ describe('conflito de horário entre compromissos e agendamentos', () => {
   it('sessão desmarcada não bloqueia mais o horário', () => {
     const desmarcada = sessao(ana, '14:00', '14:30', 'desmarcou')
     expect(sessao(bruno, '14:00', '14:30').patient_nome).toBe('Bruno Fictício')
-    expect(compromisso('14:30', '15:00').tipo).toBe('reuniao')
+    expect(compromisso('14:30', '15:00').etiqueta_nome).toBe('Reunião')
     expect(() =>
       updateAppointment(db, desmarcada.id, {
         patient_id: ana,
@@ -174,7 +186,7 @@ describe('conflito de horário entre compromissos e agendamentos', () => {
 
 describe('reserva', () => {
   it('vira agendamento de paciente no mesmo horário', () => {
-    const reserva = compromisso('14:00', '15:00', { tipo: 'reserva' })
+    const reserva = compromisso('14:00', '15:00', { etiqueta_id: et('Reserva') })
     addToWaitlist(db, { patient_id: ana, duracao: 60 })
     const a = scheduleOnReserve(
       db,
@@ -193,7 +205,7 @@ describe('reserva', () => {
     const reuniao = compromisso('14:00', '15:00')
     const input = { patient_id: ana, inicio: `${QUA}T14:00`, fim: `${QUA}T15:00`, observacao: '' }
     expect(() => scheduleOnReserve(db, reuniao.id, input)).toThrow(/Só uma reserva/)
-    const reserva = compromisso('15:00', '16:00', { tipo: 'reserva' })
+    const reserva = compromisso('15:00', '16:00', { etiqueta_id: et('Reserva') })
     sessao(bruno, '16:00', '16:30')
     expect(() =>
       scheduleOnReserve(db, reserva.id, { ...input, inicio: `${QUA}T15:30`, fim: `${QUA}T16:30` })
@@ -280,7 +292,7 @@ describe('encaixe com compromissos', () => {
 
   it('compromissos ocupam e sessões desmarcadas liberam o horário', () => {
     compromisso('07:00', '12:00')
-    compromisso('13:00', '20:00', { tipo: 'curso' })
+    compromisso('13:00', '20:00', { etiqueta_id: et('Curso') })
     expect(suggestSlots(db, pedido(), AGORA).map((s) => s.inicio.slice(11))).toEqual(['12:00'])
     sessao(bruno, '12:00', '12:30', 'desmarcou')
     expect(suggestSlots(db, pedido(), AGORA)).toHaveLength(1)
@@ -327,7 +339,7 @@ describe('operações', () => {
       runOperation(
         db,
         'commitments:create',
-        [{ tipo: 'reserva', inicio: `${QUA}T14:00`, fim: `${QUA}T15:00` }],
+        [{ etiqueta_id: et('Reserva'), inicio: `${QUA}T14:00`, fim: `${QUA}T15:00` }],
         on
       ).ok
     ).toBe(true)
@@ -347,7 +359,7 @@ describe('operações', () => {
         on
       )
     ).toMatchObject({ ok: true, data: { inicio: `${QUA}T15:00` } })
-    expect(runOperation(db, 'commitments:create', [{ tipo: 'feriado' }]).ok).toBe(false)
+    expect(runOperation(db, 'commitments:create', [{ etiqueta_id: 'feriado' }]).ok).toBe(false)
     expect(topics).toEqual([
       ['commitments'],
       ['appointments', 'commitments', 'waitlist'],

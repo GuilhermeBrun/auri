@@ -8,9 +8,9 @@ import {
 } from './settings-transfer'
 
 const TIPOS_SEMENTE: SettingsSnapshot['tipos'] = [
-  { nome: 'Sessão', categoria: 'sessao', cor: 'grafite', duracao: 30 },
-  { nome: 'Avaliação', categoria: 'avaliacao', cor: 'azul', duracao: 60 },
-  { nome: 'Exame', categoria: 'exame', cor: 'violeta', duracao: 60 }
+  { nome: 'Sessão', categoria: 'sessao', cor: '#6b7280', duracao: 30 },
+  { nome: 'Avaliação', categoria: 'avaliacao', cor: '#2563eb', duracao: 60 },
+  { nome: 'Exame', categoria: 'exame', cor: '#7c3aed', duracao: 60 }
 ]
 
 const { 6: _, ...SEM_SABADO } = FUNCIONAMENTO_PADRAO
@@ -44,9 +44,9 @@ const RECEPCAO: SettingsSnapshot = {
   ],
   tipos: [
     ...TIPOS_SEMENTE,
-    { nome: 'Audiometria', categoria: 'exame', cor: 'ardosia', duracao: 45 }
-  ],
-  etiquetas: [{ nome: 'Convênio', cor: 'azul' }]
+    { nome: 'Audiometria', categoria: 'exame', cor: '#0ea5e9', duracao: 45 },
+    { nome: 'Convênio', categoria: 'marca', cor: '#2563eb', duracao: null }
+  ]
 }
 
 const NOVO: SettingsSnapshot = {
@@ -73,8 +73,7 @@ const NOVO: SettingsSnapshot = {
     funcionamento: SEM_SABADO
   },
   termModels: [{ titulo: 'contrato', texto: 'Outro texto.' }],
-  tipos: TIPOS_SEMENTE,
-  etiquetas: []
+  tipos: TIPOS_SEMENTE
 }
 
 describe('arquivo de configurações', () => {
@@ -127,12 +126,8 @@ describe('arquivo de configurações', () => {
       },
       { label: 'Logo da clínica', from: 'Sem logo', to: 'O do arquivo' },
       { label: 'Modelo de termo “Uso de imagem”', from: 'Não tem', to: 'Novo' },
-      {
-        label: 'Tipo de atendimento “Audiometria”',
-        from: 'Não tem',
-        to: 'Novo (Exame, 45 min)'
-      },
-      { label: 'Etiqueta “Convênio”', from: 'Não tem', to: 'Nova' }
+      { label: 'Etiqueta “Audiometria”', from: 'Não tem', to: 'Nova (Exame, 45 min)' },
+      { label: 'Etiqueta “Convênio”', from: 'Não tem', to: 'Nova (Marca)' }
     ])
     expect(describeChanges(RECEPCAO, file)).toEqual([])
   })
@@ -156,7 +151,32 @@ describe('arquivo de configurações', () => {
       'não é de configurações do Auri'
     )
     expect(() =>
-      parseSettingsFile(JSON.stringify({ app: 'auri', kind: 'configuracoes', format: 2 }))
+      parseSettingsFile(JSON.stringify({ app: 'auri', kind: 'configuracoes', format: 3 }))
     ).toThrow('versão mais nova')
+  })
+
+  it('lê o formato antigo, com cores por nome e etiquetas separadas', () => {
+    const file = parseSettingsFile(
+      JSON.stringify({
+        app: 'auri',
+        kind: 'configuracoes',
+        format: 1,
+        exportedAt: '2026-10-13T22:00:00Z',
+        tipos: [
+          { nome: 'Sessão', categoria: 'sessao', cor: 'grafite', duracao: 30 },
+          { nome: 'Audiometria', categoria: 'exame', cor: 'ardosia', duracao: 45 }
+        ],
+        etiquetas: [{ nome: 'Convênio', cor: 'azul' }]
+      })
+    )
+    expect(file.tipos).toEqual([
+      { nome: 'Sessão', categoria: 'sessao', cor: '#6b7280', duracao: 30 },
+      { nome: 'Audiometria', categoria: 'exame', cor: '#0ea5e9', duracao: 45 },
+      { nome: 'Convênio', categoria: 'marca', cor: '#2563eb', duracao: null }
+    ])
+    expect(describeChanges(NOVO, file).map((c) => c.label)).toEqual([
+      'Etiqueta “Audiometria”',
+      'Etiqueta “Convênio”'
+    ])
   })
 })

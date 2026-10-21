@@ -3,10 +3,10 @@ import { resumoFuncionamento } from '../shared/agenda'
 import type { SettingsChange } from '../shared/api'
 import {
   CATEGORIA_LABELS,
-  etiquetaInputSchema,
+  COR_ANTIGA,
+  type CategoriaEtiqueta,
   mesmoNome,
   tipoInputSchema,
-  type EtiquetaInput,
   type TipoInput
 } from '../shared/tipos'
 import {
@@ -22,38 +22,65 @@ export const SETTINGS_EXTENSION = 'auriconfig'
 
 const kindSchema = z.enum(['google', 'onedrive', 'icloud', 'folder'])
 
-const settingsFileSchema = z.object({
-  app: z.literal('auri'),
-  kind: z.literal('configuracoes'),
-  format: z.literal(1),
-  exportedAt: z.string(),
-  appearance: z.object({ theme: themeSchema, sidebarOpen: z.boolean() }).partial().default({}),
-  connection: z
-    .object({
-      role: z.enum(['server', 'client']),
-      name: z.string().trim().min(1).max(60),
-      sharing: z.boolean(),
-      keepRunning: z.boolean(),
-      openAtLogin: z.boolean(),
-      remoteAccess: z.boolean()
-    })
-    .partial()
-    .default({}),
-  backup: z
-    .object({
-      kind: kindSchema,
-      frequency: z.enum(['daily', 'change', 'manual']),
-      dailyTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/)
-    })
-    .partial()
-    .default({}),
-  clinic: clinicInputSchema.partial().default({}),
-  termModels: z.array(termModelInputSchema).max(200).default([]),
-  tipos: z.array(tipoInputSchema).max(200).default([]),
-  etiquetas: z.array(etiquetaInputSchema).max(200).default([])
-})
+const corDoArquivo = z.preprocess(
+  (cor) => (typeof cor === 'string' ? (COR_ANTIGA[cor] ?? cor) : cor),
+  z.string()
+)
 
-export type SettingsFile = z.infer<typeof settingsFileSchema>
+const tipoDoArquivo = z
+  .object({
+    nome: z.string(),
+    categoria: z.string(),
+    cor: corDoArquivo,
+    duracao: z.number().nullable().default(null)
+  })
+  .pipe(tipoInputSchema)
+
+const marcaDoArquivo = z
+  .object({ nome: z.string(), cor: corDoArquivo })
+  .transform((m) => ({
+    ...m,
+    categoria: 'marca' as CategoriaEtiqueta,
+    duracao: null as number | null
+  }))
+  .pipe(tipoInputSchema)
+
+export const SETTINGS_FORMAT = 2
+
+const settingsFileSchema = z
+  .object({
+    app: z.literal('auri'),
+    kind: z.literal('configuracoes'),
+    format: z.union([z.literal(1), z.literal(SETTINGS_FORMAT)]),
+    exportedAt: z.string(),
+    appearance: z.object({ theme: themeSchema, sidebarOpen: z.boolean() }).partial().default({}),
+    connection: z
+      .object({
+        role: z.enum(['server', 'client']),
+        name: z.string().trim().min(1).max(60),
+        sharing: z.boolean(),
+        keepRunning: z.boolean(),
+        openAtLogin: z.boolean(),
+        remoteAccess: z.boolean()
+      })
+      .partial()
+      .default({}),
+    backup: z
+      .object({
+        kind: kindSchema,
+        frequency: z.enum(['daily', 'change', 'manual']),
+        dailyTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/)
+      })
+      .partial()
+      .default({}),
+    clinic: clinicInputSchema.partial().default({}),
+    termModels: z.array(termModelInputSchema).max(200).default([]),
+    tipos: z.array(tipoDoArquivo).max(400).default([]),
+    etiquetas: z.array(marcaDoArquivo).max(200).default([])
+  })
+  .transform(({ etiquetas, ...file }) => ({ ...file, tipos: [...file.tipos, ...etiquetas] }))
+
+export type SettingsFile = z.output<typeof settingsFileSchema>
 
 export type SettingsSnapshot = {
   appearance: UiPrefs
@@ -64,14 +91,13 @@ export type SettingsSnapshot = {
   clinic: Required<ClinicInput>
   termModels: TermModelInput[]
   tipos: TipoInput[]
-  etiquetas: EtiquetaInput[]
 }
 
 export function buildSettingsFile(snapshot: SettingsSnapshot, now: Date = new Date()): string {
-  const file: SettingsFile = {
+  const file: z.input<typeof settingsFileSchema> = {
     app: 'auri',
     kind: 'configuracoes',
-    format: 1,
+    format: SETTINGS_FORMAT,
     exportedAt: now.toISOString(),
     appearance: snapshot.appearance,
     connection: snapshot.connection,
@@ -87,8 +113,7 @@ export function buildSettingsFile(snapshot: SettingsSnapshot, now: Date = new Da
       categoria,
       cor,
       duracao
-    })),
-    etiquetas: snapshot.etiquetas.map(({ nome, cor }) => ({ nome, cor }))
+    }))
   }
   return JSON.stringify(file, null, 2)
 }
@@ -104,7 +129,7 @@ export function parseSettingsFile(text: string): SettingsFile {
   if (!parsed.success) {
     const app = (json as { app?: unknown; format?: unknown } | null)?.app
     const format = (json as { format?: unknown } | null)?.format
-    if (app === 'auri' && typeof format === 'number' && format > 1) {
+    if (app === 'auri' && typeof format === 'number' && format > SETTINGS_FORMAT) {
       throw new Error('Estas configurações são de uma versão mais nova do Auri. Atualize o Auri.')
     }
     throw new Error('Este arquivo não é de configurações do Auri.')
@@ -160,10 +185,6 @@ export function newTipos(current: TipoInput[], file: SettingsFile): TipoInput[] 
   return novos(current, file.tipos)
 }
 
-export function newEtiquetas(current: EtiquetaInput[], file: SettingsFile): EtiquetaInput[] {
-  return novos(current, file.etiquetas)
-}
-
 export function describeChanges(current: SettingsSnapshot, file: SettingsFile): SettingsChange[] {
   const changes: SettingsChange[] = []
   const add = <T>(label: string, from: T, to: T | undefined, show: (v: T) => string): void => {
@@ -207,14 +228,12 @@ export function describeChanges(current: SettingsSnapshot, file: SettingsFile): 
     changes.push({ label: `Modelo de termo “${model.titulo}”`, from: 'Não tem', to: 'Novo' })
   }
   for (const tipo of newTipos(current.tipos, file)) {
+    const detalhe = [CATEGORIA_LABELS[tipo.categoria], tipo.duracao && `${tipo.duracao} min`]
     changes.push({
-      label: `Tipo de atendimento “${tipo.nome}”`,
+      label: `Etiqueta “${tipo.nome}”`,
       from: 'Não tem',
-      to: `Novo (${CATEGORIA_LABELS[tipo.categoria]}, ${tipo.duracao} min)`
+      to: `Nova (${detalhe.filter(Boolean).join(', ')})`
     })
-  }
-  for (const etiqueta of newEtiquetas(current.etiquetas, file)) {
-    changes.push({ label: `Etiqueta “${etiqueta.nome}”`, from: 'Não tem', to: 'Nova' })
   }
   return changes
 }

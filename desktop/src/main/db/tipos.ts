@@ -1,35 +1,35 @@
+import { toIsoLocalDateTime } from '../../shared/dates'
 import {
-  etiquetaInputSchema,
+  CATEGORIA_LABELS,
+  ehPrincipal,
   mesmoNome,
   tipoInputSchema,
-  type Etiqueta,
-  type EtiquetaInput,
+  type CategoriaEtiqueta,
   type TipoAtendimento,
   type TipoInput
 } from '../../shared/tipos'
 import type { Db } from './connection'
 
 export const TIPO_COLUMNS = `t.id AS tipo_id, t.nome AS tipo_nome, t.cor AS tipo_cor,
-         t.categoria AS categoria`
+         coalesce(a.categoria, t.categoria) AS categoria`
 
 export const TIPO_JOIN = 'JOIN appointment_types t ON t.id = a.tipo_id'
 
-const ORDEM_CATEGORIA = `CASE categoria WHEN 'sessao' THEN 0 WHEN 'avaliacao' THEN 1 ELSE 2 END`
+const ORDEM_CATEGORIA = `CASE categoria WHEN 'sessao' THEN 0 WHEN 'avaliacao' THEN 1
+  WHEN 'exame' THEN 2 WHEN 'compromisso' THEN 3 ELSE 4 END`
+
+const COLUNAS = 'id, nome, categoria, cor, duracao, sistema, arquivado_em'
 
 type TipoRow = Omit<TipoAtendimento, 'arquivado'> & { arquivado_em: string | null }
-type EtiquetaRow = Omit<Etiqueta, 'arquivado'> & { arquivado_em: string | null }
 
-function ativo<T extends { arquivado_em: string | null }>({
-  arquivado_em,
-  ...rest
-}: T): Omit<T, 'arquivado_em'> & { arquivado: boolean } {
+function ativo({ arquivado_em, ...rest }: TipoRow): TipoAtendimento {
   return { ...rest, arquivado: arquivado_em !== null }
 }
 
 export function listTipos(db: Db): TipoAtendimento[] {
   const rows = db
     .prepare(
-      `SELECT id, nome, categoria, cor, duracao, arquivado_em FROM appointment_types
+      `SELECT ${COLUNAS} FROM appointment_types
        ORDER BY arquivado_em IS NOT NULL, ${ORDEM_CATEGORIA}, id`
     )
     .all() as TipoRow[]
@@ -37,30 +37,95 @@ export function listTipos(db: Db): TipoAtendimento[] {
 }
 
 export function getTipo(db: Db, id: number): TipoAtendimento {
-  const row = db
-    .prepare(
-      'SELECT id, nome, categoria, cor, duracao, arquivado_em FROM appointment_types WHERE id = ?'
-    )
-    .get(id) as TipoRow | undefined
-  if (!row) throw new Error('Tipo de atendimento não encontrado')
+  const row = db.prepare(`SELECT ${COLUNAS} FROM appointment_types WHERE id = ?`).get(id) as
+    | TipoRow
+    | undefined
+  if (!row) throw new Error('Etiqueta não encontrada')
   return ativo(row)
 }
 
-function assertNomeLivre<T extends { id: number; nome: string; arquivado: boolean }>(
-  lista: T[],
-  nome: string,
-  id: number | null,
-  mensagem: string
-): void {
-  if (lista.some((item) => item.id !== id && !item.arquivado && mesmoNome(item.nome, nome))) {
-    throw new Error(mensagem)
+function assertNomeLivre(db: Db, nome: string, id: number | null): void {
+  if (listTipos(db).some((t) => t.id !== id && !t.arquivado && mesmoNome(t.nome, nome))) {
+    throw new Error(`Já existe uma etiqueta chamada “${nome}”.`)
   }
 }
 
-export function saveTipo(db: Db, id: number | null, input: TipoInput): TipoAtendimento {
+const GRUPO = (c: CategoriaEtiqueta): string => (ehPrincipal(c) ? 'principal' : c)
+
+function contar(db: Db, sql: string, id: number): number {
+  return (db.prepare(sql).get(id) as { n: number }).n
+}
+
+function plural(n: number, um: string, varios: string): string {
+  return `${n} ${n === 1 ? um : varios}`
+}
+
+function emUso(db: Db, tipo: TipoAtendimento): string | null {
+  if (ehPrincipal(tipo.categoria)) {
+    const sessoes = contar(db, 'SELECT count(*) AS n FROM appointments WHERE tipo_id = ?', tipo.id)
+    if (sessoes > 0) return plural(sessoes, 'agendamento', 'agendamentos')
+    const espera = contar(
+      db,
+      'SELECT count(*) AS n FROM waitlist_entries WHERE tipo_id = ?',
+      tipo.id
+    )
+    return espera > 0 ? 'a fila de espera' : null
+  }
+  if (tipo.categoria === 'marca') {
+    const n = contar(db, 'SELECT count(*) AS n FROM appointment_tags WHERE tag_id = ?', tipo.id)
+    return n > 0 ? plural(n, 'agendamento', 'agendamentos') : null
+  }
+  const n = contar(db, 'SELECT count(*) AS n FROM commitments WHERE etiqueta_id = ?', tipo.id)
+  return n > 0 ? plural(n, 'compromisso', 'compromissos') : null
+}
+
+function assertUltimoAtivo(db: Db, tipo: TipoAtendimento): void {
+  const grupo = GRUPO(tipo.categoria)
+  if (grupo === 'marca') return
+  const outros = listTipos(db).filter(
+    (t) => t.id !== tipo.id && !t.arquivado && GRUPO(t.categoria) === grupo
+  )
+  if (outros.length > 0) return
+  throw new Error(
+    grupo === 'principal'
+      ? 'Deixe pelo menos uma etiqueta de sessão, avaliação ou exame ativa.'
+      : 'Deixe pelo menos uma etiqueta de compromisso ativa.'
+  )
+}
+
+function assertTrocaDeCategoria(db: Db, atual: TipoAtendimento, nova: CategoriaEtiqueta): void {
+  if (atual.categoria === nova || GRUPO(atual.categoria) === GRUPO(nova)) return
+  if (atual.sistema === 'reserva') {
+    throw new Error('A Reserva é sempre um compromisso.')
+  }
+  const uso = emUso(db, atual)
+  if (uso) {
+    throw new Error(
+      `“${atual.nome}” está em ${uso}. Para virar ${CATEGORIA_LABELS[nova]}, crie outra etiqueta.`
+    )
+  }
+  if (!atual.arquivado) assertUltimoAtivo(db, atual)
+}
+
+function categoriaDaquiPraFrente(db: Db, id: number, agora: Date): void {
+  db.prepare(
+    `UPDATE appointments SET categoria = (SELECT categoria FROM appointment_types WHERE id = @id)
+     WHERE tipo_id = @id AND inicio >= @agora
+       AND NOT EXISTS (SELECT 1 FROM attendance_signatures s WHERE s.appointment_id = appointments.id)
+       AND NOT EXISTS (SELECT 1 FROM finance_charges c WHERE c.appointment_id = appointments.id)
+       AND NOT EXISTS (SELECT 1 FROM finance_package_uses u WHERE u.appointment_id = appointments.id)`
+  ).run({ id, agora: toIsoLocalDateTime(agora) })
+}
+
+export function saveTipo(
+  db: Db,
+  id: number | null,
+  input: TipoInput,
+  agora: Date = new Date()
+): TipoAtendimento {
   const tipo = tipoInputSchema.parse(input)
   return db.transaction(() => {
-    assertNomeLivre(listTipos(db), tipo.nome, id, `Já existe um tipo chamado “${tipo.nome}”.`)
+    assertNomeLivre(db, tipo.nome, id)
     if (id === null) {
       const result = db
         .prepare(
@@ -70,12 +135,16 @@ export function saveTipo(db: Db, id: number | null, input: TipoInput): TipoAtend
         .run(tipo)
       return getTipo(db, Number(result.lastInsertRowid))
     }
-    if (getTipo(db, id).categoria !== tipo.categoria) {
-      throw new Error('A categoria de um tipo não muda.')
-    }
+    const atual = getTipo(db, id)
+    assertTrocaDeCategoria(db, atual, tipo.categoria)
     db.prepare(
-      'UPDATE appointment_types SET nome = @nome, cor = @cor, duracao = @duracao WHERE id = @id'
+      `UPDATE appointment_types
+       SET nome = @nome, categoria = @categoria, cor = @cor, duracao = @duracao
+       WHERE id = @id`
     ).run({ ...tipo, id })
+    if (atual.categoria !== tipo.categoria && ehPrincipal(tipo.categoria)) {
+      categoriaDaquiPraFrente(db, id, agora)
+    }
     return getTipo(db, id)
   })()
 }
@@ -84,10 +153,9 @@ export function archiveTipo(db: Db, id: number, arquivado: boolean): TipoAtendim
   return db.transaction(() => {
     const tipo = getTipo(db, id)
     if (arquivado) {
-      const outros = listTipos(db).filter((t) => t.id !== id && !t.arquivado)
-      if (outros.length === 0) throw new Error('Deixe pelo menos um tipo de atendimento ativo.')
+      if (!tipo.arquivado) assertUltimoAtivo(db, tipo)
     } else {
-      assertNomeLivre(listTipos(db), tipo.nome, id, `Já existe um tipo chamado “${tipo.nome}”.`)
+      assertNomeLivre(db, tipo.nome, id)
     }
     db.prepare(
       `UPDATE appointment_types
@@ -102,76 +170,37 @@ export function archiveTipo(db: Db, id: number, arquivado: boolean): TipoAtendim
 export function tipoPadrao(db: Db): number {
   const row = db
     .prepare(
-      `SELECT id FROM appointment_types WHERE arquivado_em IS NULL
+      `SELECT id FROM appointment_types
+       WHERE arquivado_em IS NULL AND categoria IN ('sessao', 'avaliacao', 'exame')
        ORDER BY categoria <> 'sessao', id LIMIT 1`
     )
     .get() as { id: number } | undefined
-  if (!row) throw new Error('Cadastre um tipo de atendimento na tela Clínica.')
+  if (!row) throw new Error('Cadastre uma etiqueta de sessão na tela Clínica.')
   return row.id
 }
 
 export function assertTipoUsavel(db: Db, id: number): TipoAtendimento {
   const tipo = getTipo(db, id)
-  if (tipo.arquivado) throw new Error(`O tipo “${tipo.nome}” foi arquivado. Escolha outro.`)
+  if (!ehPrincipal(tipo.categoria)) {
+    throw new Error(`“${tipo.nome}” não é uma etiqueta de sessão, avaliação ou exame.`)
+  }
+  if (tipo.arquivado) throw new Error(`A etiqueta “${tipo.nome}” foi arquivada. Escolha outra.`)
   return tipo
 }
 
-export function listEtiquetas(db: Db): Etiqueta[] {
-  const rows = db
-    .prepare(
-      `SELECT id, nome, cor, arquivado_em FROM tags
-       ORDER BY arquivado_em IS NOT NULL, nome COLLATE NOCASE, id`
-    )
-    .all() as EtiquetaRow[]
-  return rows.map(ativo)
-}
-
-function getEtiqueta(db: Db, id: number): Etiqueta {
-  const row = db.prepare('SELECT id, nome, cor, arquivado_em FROM tags WHERE id = ?').get(id) as
-    | EtiquetaRow
-    | undefined
-  if (!row) throw new Error('Etiqueta não encontrada')
-  return ativo(row)
-}
-
-export function saveEtiqueta(db: Db, id: number | null, input: EtiquetaInput): Etiqueta {
-  const etiqueta = etiquetaInputSchema.parse(input)
-  return db.transaction(() => {
-    assertNomeLivre(
-      listEtiquetas(db),
-      etiqueta.nome,
-      id,
-      `Já existe uma etiqueta chamada “${etiqueta.nome}”.`
-    )
-    if (id === null) {
-      const result = db.prepare('INSERT INTO tags (nome, cor) VALUES (@nome, @cor)').run(etiqueta)
-      return getEtiqueta(db, Number(result.lastInsertRowid))
-    }
-    getEtiqueta(db, id)
-    db.prepare('UPDATE tags SET nome = @nome, cor = @cor WHERE id = @id').run({ ...etiqueta, id })
-    return getEtiqueta(db, id)
-  })()
-}
-
-export function archiveEtiqueta(db: Db, id: number, arquivado: boolean): Etiqueta {
-  return db.transaction(() => {
-    const etiqueta = getEtiqueta(db, id)
-    if (!arquivado) {
-      assertNomeLivre(
-        listEtiquetas(db),
-        etiqueta.nome,
-        id,
-        `Já existe uma etiqueta chamada “${etiqueta.nome}”.`
-      )
-    }
-    db.prepare(
-      `UPDATE tags
-       SET arquivado_em = CASE WHEN @arquivado = 1
-         THEN coalesce(arquivado_em, strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) END
-       WHERE id = @id`
-    ).run({ id, arquivado: Number(arquivado) })
-    return getEtiqueta(db, id)
-  })()
+export function assertCompromissoUsavel(
+  db: Db,
+  id: number,
+  antes: number | null = null
+): TipoAtendimento {
+  const tipo = getTipo(db, id)
+  if (tipo.categoria !== 'compromisso') {
+    throw new Error(`“${tipo.nome}” não é uma etiqueta de compromisso.`)
+  }
+  if (tipo.arquivado && id !== antes) {
+    throw new Error(`A etiqueta “${tipo.nome}” foi arquivada. Escolha outra.`)
+  }
+  return tipo
 }
 
 export function setAppointmentEtiquetas(
@@ -182,7 +211,10 @@ export function setAppointmentEtiquetas(
 ): void {
   const unicos = [...new Set(ids)]
   for (const id of unicos) {
-    const etiqueta = getEtiqueta(db, id)
+    const etiqueta = getTipo(db, id)
+    if (etiqueta.categoria !== 'marca') {
+      throw new Error(`“${etiqueta.nome}” não é uma marca.`)
+    }
     if (etiqueta.arquivado && !antes.includes(id)) {
       throw new Error(`A etiqueta “${etiqueta.nome}” foi arquivada.`)
     }

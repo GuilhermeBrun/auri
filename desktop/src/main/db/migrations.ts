@@ -1,7 +1,10 @@
 import type Database from 'better-sqlite3'
 import { parseSerie } from '../../shared/serie'
 
-type Migration = string | ((db: Database.Database) => void)
+type Migration =
+  | string
+  | ((db: Database.Database) => void)
+  | { semChavesEstrangeiras: (db: Database.Database) => void }
 
 const NOW = `(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`
 
@@ -663,7 +666,234 @@ ${onlyVoid('finance_payments', ['id', 'patient_id', 'data', 'valor_centavos', 'f
     ORDER BY k.inicio DESC, k.id DESC LIMIT 1
   )
   WHERE forma = 'pacote';
-  `
+  `,
+  {
+    semChavesEstrangeiras: (db) => {
+      const principal = `('sessao', 'avaliacao', 'exame')`
+      const categoriaDe = (id: string): string =>
+        `(SELECT categoria FROM appointment_types WHERE id = ${id})`
+      db.exec(`
+    DROP TRIGGER appointment_types_categoria_fixa;
+    DROP TRIGGER appointment_types_no_delete;
+    DROP TRIGGER tags_no_delete;
+
+    CREATE TABLE etiquetas_unificadas (
+      id           INTEGER PRIMARY KEY,
+      nome         TEXT NOT NULL CHECK (length(trim(nome)) > 0),
+      categoria    TEXT NOT NULL
+        CHECK (categoria IN ('sessao', 'avaliacao', 'exame', 'compromisso', 'marca')),
+      cor          TEXT NOT NULL
+        CHECK (cor GLOB '#[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]'),
+      duracao      INTEGER CHECK (duracao BETWEEN 15 AND 240 AND duracao % 15 = 0),
+      sistema      TEXT UNIQUE CHECK (sistema IN ('reserva')),
+      arquivado_em TEXT,
+      created_at   TEXT NOT NULL DEFAULT ${NOW},
+      CHECK ((categoria = 'marca') = (duracao IS NULL)),
+      CHECK (sistema IS NULL OR categoria = 'compromisso')
+    );
+
+    CREATE TEMP TABLE cores_antigas (nome TEXT PRIMARY KEY, hex TEXT NOT NULL);
+    INSERT INTO cores_antigas VALUES
+      ('grafite', '#6b7280'), ('ardosia', '#0ea5e9'), ('azul', '#2563eb'),
+      ('violeta', '#7c3aed'), ('rosa', '#db2777'), ('areia', '#d97706');
+
+    INSERT INTO etiquetas_unificadas (id, nome, categoria, cor, duracao, arquivado_em, created_at)
+    SELECT t.id, t.nome, t.categoria, coalesce(c.hex, '#6b7280'), t.duracao, t.arquivado_em,
+           t.created_at
+    FROM appointment_types t LEFT JOIN cores_antigas c ON c.nome = t.cor;
+
+    DROP TABLE appointment_types;
+    ALTER TABLE etiquetas_unificadas RENAME TO appointment_types;
+    CREATE TEMP TABLE mapa_etiquetas (origem TEXT NOT NULL, antigo TEXT NOT NULL, novo INTEGER NOT NULL,
+      PRIMARY KEY (origem, antigo));
+    `)
+
+      const ativos = (
+        db.prepare('SELECT nome FROM appointment_types WHERE arquivado_em IS NULL').all() as {
+          nome: string
+        }[]
+      ).map((r) => r.nome.trim().toLocaleLowerCase('pt-BR'))
+      const livre = (nome: string, sufixo: string, arquivado: boolean): string => {
+        const chave = nome.trim().toLocaleLowerCase('pt-BR')
+        const final = !arquivado && ativos.includes(chave) ? `${nome.trim()} (${sufixo})` : nome
+        if (!arquivado) ativos.push(final.trim().toLocaleLowerCase('pt-BR'))
+        return final
+      }
+      const inserir = db.prepare(
+        `INSERT INTO appointment_types (nome, categoria, cor, duracao, sistema, arquivado_em, created_at)
+       VALUES (@nome, @categoria, @cor, @duracao, @sistema, @arquivado_em, coalesce(@created_at, ${NOW}))`
+      )
+      const mapear = db.prepare(
+        'INSERT INTO mapa_etiquetas (origem, antigo, novo) VALUES (?, ?, ?)'
+      )
+      const tags = db
+        .prepare(
+          `SELECT g.id, g.nome, coalesce(c.hex, '#0ea5e9') AS cor, g.arquivado_em, g.created_at
+         FROM tags g LEFT JOIN cores_antigas c ON c.nome = g.cor ORDER BY g.id`
+        )
+        .all() as {
+        id: number
+        nome: string
+        cor: string
+        arquivado_em: string | null
+        created_at: string
+      }[]
+      for (const tag of tags) {
+        const result = inserir.run({
+          nome: livre(tag.nome, 'Marca', tag.arquivado_em !== null),
+          categoria: 'marca',
+          cor: tag.cor,
+          duracao: null,
+          sistema: null,
+          arquivado_em: tag.arquivado_em,
+          created_at: tag.created_at
+        })
+        mapear.run('tag', String(tag.id), Number(result.lastInsertRowid))
+      }
+      const compromissos = [
+        ['palestra', 'Palestra', '#ea580c', null],
+        ['curso', 'Curso', '#4f46e5', null],
+        ['hospital', 'Hospital', '#e11d48', null],
+        ['reuniao', 'Reunião', '#0d9488', null],
+        ['reserva', 'Reserva', '#6b7280', 'reserva']
+      ] as const
+      for (const [tipo, nome, cor, sistema] of compromissos) {
+        const result = inserir.run({
+          nome: livre(nome, 'Compromisso', false),
+          categoria: 'compromisso',
+          cor,
+          duracao: 60,
+          sistema,
+          arquivado_em: null,
+          created_at: null
+        })
+        mapear.run('compromisso', tipo, Number(result.lastInsertRowid))
+      }
+
+      db.exec(`
+    CREATE TABLE appointment_tags_unificadas (
+      appointment_id INTEGER NOT NULL REFERENCES appointments (id) ON DELETE CASCADE,
+      tag_id         INTEGER NOT NULL REFERENCES appointment_types (id) ON DELETE RESTRICT,
+      PRIMARY KEY (appointment_id, tag_id)
+    ) WITHOUT ROWID;
+    INSERT INTO appointment_tags_unificadas (appointment_id, tag_id)
+    SELECT x.appointment_id, m.novo FROM appointment_tags x
+    JOIN mapa_etiquetas m ON m.origem = 'tag' AND m.antigo = CAST(x.tag_id AS TEXT);
+    DROP TABLE appointment_tags;
+    DROP TABLE tags;
+    ALTER TABLE appointment_tags_unificadas RENAME TO appointment_tags;
+    CREATE INDEX appointment_tags_tag ON appointment_tags (tag_id);
+
+    CREATE TABLE commitments_unificados (
+      id          INTEGER PRIMARY KEY,
+      etiqueta_id INTEGER NOT NULL REFERENCES appointment_types (id),
+      titulo      TEXT,
+      inicio      TEXT NOT NULL,
+      fim         TEXT NOT NULL,
+      observacao  TEXT,
+      created_at  TEXT NOT NULL DEFAULT ${NOW},
+      updated_at  TEXT NOT NULL DEFAULT ${NOW},
+      CHECK (fim > inicio)
+    );
+    INSERT INTO commitments_unificados
+      (id, etiqueta_id, titulo, inicio, fim, observacao, created_at, updated_at)
+    SELECT c.id, m.novo, c.titulo, c.inicio, c.fim, c.observacao, c.created_at, c.updated_at
+    FROM commitments c JOIN mapa_etiquetas m ON m.origem = 'compromisso' AND m.antigo = c.tipo;
+    DROP TABLE commitments;
+    ALTER TABLE commitments_unificados RENAME TO commitments;
+    CREATE INDEX commitments_inicio ON commitments (inicio);
+    CREATE INDEX commitments_etiqueta ON commitments (etiqueta_id);
+
+    DROP TABLE mapa_etiquetas;
+    DROP TABLE cores_antigas;
+
+    ALTER TABLE appointments ADD COLUMN categoria TEXT CHECK (categoria IN ${principal});
+    UPDATE appointments SET categoria = ${categoriaDe('appointments.tipo_id')};
+
+    CREATE TRIGGER appointment_types_no_delete
+    BEFORE DELETE ON appointment_types
+    BEGIN
+      SELECT RAISE(ABORT, 'Uma etiqueta não pode ser apagada: arquive.');
+    END;
+
+    CREATE TRIGGER appointment_types_categoria_em_uso
+    BEFORE UPDATE OF categoria ON appointment_types
+    WHEN NEW.categoria IS NOT OLD.categoria AND (
+      (NEW.categoria NOT IN ${principal} AND (
+        EXISTS (SELECT 1 FROM appointments WHERE tipo_id = OLD.id)
+        OR EXISTS (SELECT 1 FROM waitlist_entries WHERE tipo_id = OLD.id)))
+      OR (NEW.categoria <> 'marca' AND EXISTS (SELECT 1 FROM appointment_tags WHERE tag_id = OLD.id))
+      OR (NEW.categoria <> 'compromisso' AND EXISTS (SELECT 1 FROM commitments WHERE etiqueta_id = OLD.id))
+    )
+    BEGIN
+      SELECT RAISE(ABORT, 'Esta etiqueta está em uso e não pode mudar para essa categoria.');
+    END;
+
+    CREATE TRIGGER appointments_etiqueta_principal
+    BEFORE INSERT ON appointments
+    WHEN NEW.tipo_id IS NOT NULL AND ${categoriaDe('NEW.tipo_id')} NOT IN ${principal}
+    BEGIN
+      SELECT RAISE(ABORT, 'Escolha uma etiqueta de sessão, avaliação ou exame.');
+    END;
+
+    CREATE TRIGGER appointments_etiqueta_principal_troca
+    BEFORE UPDATE OF tipo_id ON appointments
+    WHEN NEW.tipo_id IS NOT NULL AND ${categoriaDe('NEW.tipo_id')} NOT IN ${principal}
+    BEGIN
+      SELECT RAISE(ABORT, 'Escolha uma etiqueta de sessão, avaliação ou exame.');
+    END;
+
+    CREATE TRIGGER appointments_categoria_nova
+    AFTER INSERT ON appointments
+    BEGIN
+      UPDATE appointments SET categoria = ${categoriaDe('coalesce(NEW.tipo_id, 1)')}
+      WHERE id = NEW.id;
+    END;
+
+    CREATE TRIGGER appointments_categoria_troca
+    AFTER UPDATE OF tipo_id ON appointments
+    WHEN NEW.tipo_id IS NOT OLD.tipo_id
+    BEGIN
+      UPDATE appointments SET categoria = ${categoriaDe('NEW.tipo_id')} WHERE id = NEW.id;
+    END;
+
+    CREATE TRIGGER waitlist_entries_etiqueta_principal
+    BEFORE INSERT ON waitlist_entries
+    WHEN NEW.tipo_id IS NOT NULL AND ${categoriaDe('NEW.tipo_id')} NOT IN ${principal}
+    BEGIN
+      SELECT RAISE(ABORT, 'Escolha uma etiqueta de sessão, avaliação ou exame.');
+    END;
+
+    CREATE TRIGGER waitlist_entries_etiqueta_principal_troca
+    BEFORE UPDATE OF tipo_id ON waitlist_entries
+    WHEN NEW.tipo_id IS NOT NULL AND ${categoriaDe('NEW.tipo_id')} NOT IN ${principal}
+    BEGIN
+      SELECT RAISE(ABORT, 'Escolha uma etiqueta de sessão, avaliação ou exame.');
+    END;
+
+    CREATE TRIGGER appointment_tags_marca
+    BEFORE INSERT ON appointment_tags
+    WHEN ${categoriaDe('NEW.tag_id')} IS NOT 'marca'
+    BEGIN
+      SELECT RAISE(ABORT, 'Só uma etiqueta de marca entra nas marcas da sessão.');
+    END;
+
+    CREATE TRIGGER commitments_etiqueta_compromisso
+    BEFORE INSERT ON commitments
+    WHEN ${categoriaDe('NEW.etiqueta_id')} IS NOT 'compromisso'
+    BEGIN
+      SELECT RAISE(ABORT, 'Escolha uma etiqueta de compromisso.');
+    END;
+
+    CREATE TRIGGER commitments_etiqueta_compromisso_troca
+    BEFORE UPDATE OF etiqueta_id ON commitments
+    WHEN ${categoriaDe('NEW.etiqueta_id')} IS NOT 'compromisso'
+    BEGIN
+      SELECT RAISE(ABORT, 'Escolha uma etiqueta de compromisso.');
+    END;
+    `)
+    }
+  }
 ]
 
 export class DatabaseTooNewError extends Error {
@@ -683,11 +913,23 @@ export function migrate(db: Database.Database, target: number = MIGRATIONS.lengt
   }
   for (let version = current; version < target; version++) {
     const migration = MIGRATIONS[version]
-    db.transaction(() => {
-      if (typeof migration === 'string') db.exec(migration)
-      else migration(db)
-      db.pragma(`user_version = ${version + 1}`)
-    })()
+    const chaves = db.pragma('foreign_keys', { simple: true }) as number
+    if (typeof migration === 'object') db.pragma('foreign_keys = OFF')
+    try {
+      db.transaction(() => {
+        if (typeof migration === 'string') db.exec(migration)
+        else if (typeof migration === 'function') migration(db)
+        else {
+          migration.semChavesEstrangeiras(db)
+          if ((db.pragma('foreign_key_check') as unknown[]).length > 0) {
+            throw new Error('A atualização do banco deixaria referências quebradas.')
+          }
+        }
+        db.pragma(`user_version = ${version + 1}`)
+      })()
+    } finally {
+      if (typeof migration === 'object') db.pragma(`foreign_keys = ${chaves}`)
+    }
   }
 }
 
