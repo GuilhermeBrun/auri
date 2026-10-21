@@ -54,14 +54,13 @@ function linha(over: Partial<ConfirmacaoLinha>): ConfirmacaoLinha {
     contato: { nome: 'Maria Fictícia', parentesco: 'Mãe', celular: '(65) 98888-1111' },
     confirmado: false,
     pedido: null,
+    bloqueio: null,
     ...over
   }
 }
 
-const lista = (over: Partial<ConfirmacaoLista> = {}): ConfirmacaoLista => ({
-  dia: '2026-10-20',
-  janela: { aberta: true, ate: '18:00' },
-  sessoes: [
+const amanha = (bloqueio: string | null = null) =>
+  [
     linha({ appointment_id: 1 }),
     linha({
       appointment_id: 2,
@@ -81,7 +80,12 @@ const lista = (over: Partial<ConfirmacaoLista> = {}): ConfirmacaoLista => ({
       patient_nome: 'Duda Fictícia',
       contato: { nome: 'Rita', parentesco: 'Mãe', celular: '' }
     })
-  ],
+  ].map((s) => ({ ...s, bloqueio }))
+
+const lista = (over: Partial<ConfirmacaoLista> = {}): ConfirmacaoLista => ({
+  janela: { aberta: true, ate: '18:00' },
+  grupos: [{ dia: '2026-10-20', hoje: false, sessoes: amanha() }],
+  semAtendimento: false,
   ...over
 })
 
@@ -107,7 +111,7 @@ describe('confirmações do próximo dia', () => {
   it('lista quem falta, quem já confirmou, quem aguarda e quem não tem celular', async () => {
     confirmacoes.lista.mockResolvedValue(lista())
     renderRoute('/', '/', <ConfirmacoesDialog open onClose={() => {}} />)
-    expect(await screen.findByText('Confirmações de terça-feira, 20/10')).toBeTruthy()
+    expect(await screen.findByText('Terça-feira, 20/10')).toBeTruthy()
     const linhas = screen.getAllByRole('listitem')
     expect(linhas).toHaveLength(4)
     expect(linhas[0].textContent).toContain('Maria (Mãe) · (65) 98888-1111')
@@ -133,13 +137,44 @@ describe('confirmações do próximo dia', () => {
 
   it('fora da janela, explica e não deixa enviar', async () => {
     confirmacoes.lista.mockResolvedValue(
-      lista({ janela: { aberta: false, motivo: 'A clínica fecha às 18:00.' } })
+      lista({
+        janela: { aberta: false, motivo: 'A clínica fecha às 18:00.' },
+        grupos: [{ dia: '2026-10-20', hoje: false, sessoes: amanha('A clínica fecha às 18:00.') }]
+      })
     )
     renderRoute('/', '/', <ConfirmacoesDialog open onClose={() => {}} />)
     expect(await screen.findByText('A clínica fecha às 18:00.')).toBeTruthy()
     expect(
       (screen.getByRole('button', { name: 'Enviar a próxima' }) as HTMLButtonElement).disabled
     ).toBe(true)
+  })
+})
+
+describe('confirmações de hoje', () => {
+  it('aparecem antes do próximo dia; a que começa logo pede para ligar', async () => {
+    const hoje = [
+      linha({ appointment_id: 7, inicio: '2026-10-19T09:00', patient_nome: 'Eva Fictícia' }),
+      linha({
+        appointment_id: 8,
+        inicio: '2026-10-19T08:45',
+        patient_nome: 'Fabi Fictícia',
+        bloqueio: 'A sessão começa em menos de 30 minutos. Confirme com a família por telefone.'
+      })
+    ]
+    confirmacoes.lista.mockResolvedValue(
+      lista({
+        grupos: [
+          { dia: '2026-10-19', hoje: true, sessoes: hoje },
+          { dia: '2026-10-20', hoje: false, sessoes: amanha() }
+        ]
+      })
+    )
+    renderRoute('/', '/', <ConfirmacoesDialog open onClose={() => {}} />)
+    const [listaDeHoje] = await screen.findAllByRole('list')
+    expect(listaDeHoje.getAttribute('aria-label')).toBe('Hoje')
+    expect(within(listaDeHoje).getByText('Começa logo: ligue')).toBeTruthy()
+    await userEvent.click(screen.getByRole('button', { name: 'Enviar a próxima (2)' }))
+    await waitFor(() => expect(confirmacoes.enviar).toHaveBeenCalledWith(7, expect.any(String)))
   })
 })
 

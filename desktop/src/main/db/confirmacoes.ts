@@ -15,7 +15,9 @@ import {
   prazoDaConfirmacao,
   type AvisosDaConfirmacao,
   type ConfirmacaoEnvio,
+  type ConfirmacaoLinha,
   type ConfirmacaoLista,
+  type GrupoParaConfirmar,
   type ConfirmacaoRecebida,
   type HorarioLiberado,
   type JanelaDeEnvio,
@@ -93,25 +95,43 @@ function contatoDaFicha(db: Db, patientId: number, agora: Date) {
     : null
 }
 
+function bloqueioDoEnvio(funcionamento: Funcionamento, inicio: Date, agora: Date): string | null {
+  if (prazoCurtoDemais(inicio, agora)) return PERTO_DEMAIS
+  const janela = janelaDeEnvio(funcionamento, agora, prazoDaConfirmacao(inicio, agora))
+  return janela.aberta ? null : janela.motivo
+}
+
 export function listarParaConfirmar(db: Db, agora: Date): ConfirmacaoLista {
   const funcionamento = getFuncionamento(db)
   const janela = janelaDeEnvio(funcionamento, agora)
+  const linhas = (de: Date, ate: Date): ConfirmacaoLinha[] =>
+    listAppointments(db, toIsoLocalDateTime(de), toIsoLocalDateTime(ate))
+      .filter((a) => a.presenca === '' && parseIsoLocalDateTime(a.inicio) > agora)
+      .map((a) => ({
+        appointment_id: a.id,
+        inicio: a.inicio,
+        fim: a.fim,
+        patient_id: a.patient_id,
+        patient_nome: a.patient_nome,
+        tipo_nome: a.tipo_nome,
+        contato: contatoDaFicha(db, a.patient_id, agora),
+        confirmado: a.confirmado_em !== null,
+        pedido: a.pedido,
+        bloqueio: bloqueioDoEnvio(funcionamento, parseIsoLocalDateTime(a.inicio), agora)
+      }))
+  const hoje = startOfDay(agora)
+  const grupos: GrupoParaConfirmar[] = []
+  const deHoje = linhas(hoje, addDays(hoje, 1))
+  if (deHoje.length > 0)
+    grupos.push({ dia: format(hoje, 'yyyy-MM-dd'), hoje: true, sessoes: deHoje })
   const dia = proximoDiaDeAtendimento(funcionamento, agora)
-  if (!dia) return { dia: null, janela, sessoes: [] }
-  const sessoes = listAppointments(db, toIsoLocalDateTime(dia), toIsoLocalDateTime(addDays(dia, 1)))
-    .filter((a) => a.presenca === '')
-    .map((a) => ({
-      appointment_id: a.id,
-      inicio: a.inicio,
-      fim: a.fim,
-      patient_id: a.patient_id,
-      patient_nome: a.patient_nome,
-      tipo_nome: a.tipo_nome,
-      contato: contatoDaFicha(db, a.patient_id, agora),
-      confirmado: a.confirmado_em !== null,
-      pedido: a.pedido
-    }))
-  return { dia: format(dia, 'yyyy-MM-dd'), janela, sessoes }
+  if (dia)
+    grupos.push({
+      dia: format(dia, 'yyyy-MM-dd'),
+      hoje: false,
+      sessoes: linhas(dia, addDays(dia, 1))
+    })
+  return { janela, grupos, semAtendimento: dia === null }
 }
 
 type RequestRow = {

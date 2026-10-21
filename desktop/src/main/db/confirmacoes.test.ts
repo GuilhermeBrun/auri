@@ -107,30 +107,47 @@ describe('janela de envio', () => {
   })
 })
 
-describe('lista do próximo dia de atendimento', () => {
+describe('lista para confirmar', () => {
+  const proximo = (lista: ReturnType<typeof listarParaConfirmar>) =>
+    lista.grupos.find((g) => !g.hoje)
+
   it('traz as sessões do dia seguinte com o contato principal', () => {
     const outro = paciente('Bruno Fictício', '')
     marcar('2026-10-20T09:00', '2026-10-20T09:30', outro)
     marcar('2026-10-21T09:00', '2026-10-21T09:30')
     const lista = listarParaConfirmar(db, AGORA)
-    expect(lista.dia).toBe('2026-10-20')
-    expect(lista.sessoes.map((s) => s.patient_nome)).toEqual([
+    const amanha = proximo(lista)!
+    expect(amanha.dia).toBe('2026-10-20')
+    expect(amanha.sessoes.map((s) => s.patient_nome)).toEqual([
       'Bruno Fictício',
       'Ana Beatriz Fictícia'
     ])
-    expect(lista.sessoes[1].contato).toEqual({
+    expect(amanha.sessoes[1].contato).toEqual({
       nome: 'Maria Fictícia',
       parentesco: 'Mãe',
       celular: '(65) 98888-1111'
     })
-    expect(lista.sessoes[0].contato?.celular).toBe('')
+    expect(amanha.sessoes[0].contato?.celular).toBe('')
+    expect(amanha.sessoes[1].bloqueio).toBeNull()
+  })
+
+  it('traz também as sessões que ainda vão começar hoje, com o que impede o envio', () => {
+    marcar('2026-10-19T08:00', '2026-10-19T08:30')
+    const perto = marcar('2026-10-19T08:50', '2026-10-19T09:20')
+    const encaixe = marcar('2026-10-19T10:00', '2026-10-19T10:30')
+    const [hoje] = listarParaConfirmar(db, AGORA).grupos
+    expect(hoje).toMatchObject({ dia: '2026-10-19', hoje: true })
+    expect(hoje.sessoes.map((s) => [s.appointment_id, s.bloqueio])).toEqual([
+      [perto, expect.stringContaining('menos de 30 minutos')],
+      [encaixe, null]
+    ])
   })
 
   it('na sexta, as sessões de segunda', () => {
     marcar('2026-10-26T09:00', '2026-10-26T09:30')
-    expect(listarParaConfirmar(db, new Date(2026, 9, 23, 9)).dia).toBe('2026-10-24')
+    expect(proximo(listarParaConfirmar(db, new Date(2026, 9, 23, 9)))?.dia).toBe('2026-10-24')
     db.prepare('DELETE FROM clinic_hours WHERE dia_semana = 6').run()
-    expect(listarParaConfirmar(db, new Date(2026, 9, 23, 9)).dia).toBe('2026-10-26')
+    expect(proximo(listarParaConfirmar(db, new Date(2026, 9, 23, 9)))?.dia).toBe('2026-10-26')
   })
 })
 

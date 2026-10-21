@@ -2,7 +2,12 @@ import { useQuery } from '@tanstack/react-query'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale/pt-BR'
 import { Check, ClipboardPaste, Clock, Copy, Send } from 'lucide-react'
-import type { ConfirmacaoLinha } from '@shared/confirmacao'
+import {
+  PERTO_DEMAIS,
+  type ConfirmacaoLinha,
+  type ConfirmacaoLista,
+  type GrupoParaConfirmar
+} from '@shared/confirmacao'
 import { parseIsoDate, parseIsoLocalDateTime, formatTime } from '@shared/dates'
 import { shortName } from '@shared/names'
 import { Button } from '@renderer/components/ui/button'
@@ -12,7 +17,20 @@ import { abrirResposta, horaDe } from '@renderer/lib/confirmacoes'
 import { useEnviarConfirmacao, type Via } from './useEnviar'
 
 const precisaEnviar = (s: ConfirmacaoLinha): boolean =>
-  !s.confirmado && s.pedido === null && Boolean(s.contato?.celular)
+  !s.confirmado && s.pedido === null && Boolean(s.contato?.celular) && s.bloqueio === null
+
+const nomeDoDia = (grupo: GrupoParaConfirmar): string =>
+  grupo.hoje
+    ? 'Hoje'
+    : capitalizar(format(parseIsoDate(grupo.dia), 'EEEE, dd/MM', { locale: ptBR }))
+
+const capitalizar = (texto: string): string => texto.charAt(0).toUpperCase() + texto.slice(1)
+
+function avisoDoGrupo(grupo: GrupoParaConfirmar): string | null {
+  const [primeiro] = grupo.sessoes
+  if (!primeiro?.bloqueio || primeiro.bloqueio === PERTO_DEMAIS) return null
+  return grupo.sessoes.every((s) => s.bloqueio === primeiro.bloqueio) ? primeiro.bloqueio : null
+}
 
 export function ConfirmacoesDialog({
   open,
@@ -26,17 +44,12 @@ export function ConfirmacoesDialog({
     queryFn: () => window.api.confirmacoes.lista(),
     enabled: open
   })
-  const dia = lista.data?.dia
   return (
     <Dialog
       open={open}
       onOpenChange={(next) => !next && onClose()}
-      title={
-        dia
-          ? `Confirmações de ${format(parseIsoDate(dia), 'EEEE, dd/MM', { locale: ptBR })}`
-          : 'Confirmações'
-      }
-      description="2 horas para responder. Sem resposta, a falta é cobrada."
+      title="Confirmações"
+      description="Prazo de 2 horas, ou até 15 min antes da sessão. Sem resposta, a falta é cobrada."
     >
       {open && (
         <Conteudo
@@ -58,63 +71,68 @@ function Conteudo({
 }: {
   carregando: boolean
   erro: string | null
-  data: Awaited<ReturnType<typeof window.api.confirmacoes.lista>> | undefined
+  data: ConfirmacaoLista | undefined
   onClose: () => void
 }): React.JSX.Element {
   const enviar = useEnviarConfirmacao()
-  const sessoes = data?.sessoes ?? []
-  const aberta = data?.janela.aberta ?? false
-  const faltam = sessoes.filter(precisaEnviar)
+  const grupos = (data?.grupos ?? []).filter((g) => g.sessoes.length > 0)
+  const faltam = grupos.flatMap((g) => g.sessoes).filter(precisaEnviar)
   const enviarUma = (appointmentId: number, via: Via): void => enviar.mutate({ appointmentId, via })
   const ocupada = (id: number, via: Via): boolean =>
     enviar.isPending && enviar.variables?.appointmentId === id && enviar.variables.via === via
 
   return (
     <>
-      <DialogBody className="flex flex-col gap-3">
-        {data && !data.janela.aberta && (
-          <Callout tone="warning" title="Fora da janela de envio">
-            {data.janela.motivo}
-          </Callout>
-        )}
+      <DialogBody className="flex flex-col gap-5">
         {carregando && <p className="py-8 text-center text-ink-soft">Carregando…</p>}
         {erro && (
           <Callout tone="danger" title="Não foi possível carregar as sessões">
             {erro}
           </Callout>
         )}
-        {data && sessoes.length === 0 && (
+        {data && grupos.length === 0 && (
           <p className="py-8 text-center text-[13px] text-ink-soft">
-            {data.dia
-              ? 'Nenhuma sessão marcada para esse dia.'
-              : 'A clínica não abre nos próximos dias.'}
+            {data.semAtendimento
+              ? 'A clínica não abre nos próximos dias.'
+              : 'Nenhuma sessão para confirmar hoje nem no próximo dia de atendimento.'}
           </p>
         )}
-        {sessoes.length > 0 && (
-          <ul aria-label="Sessões" className="-mx-2 flex flex-col">
-            {sessoes.map((s) => (
-              <li
-                key={s.appointment_id}
-                className="flex items-center gap-3 rounded-control px-2 py-2 hover:bg-canvas"
-              >
-                <span className="w-11 shrink-0 text-[13px] font-medium tabular-nums">
-                  {formatTime(parseIsoLocalDateTime(s.inicio))}
-                </span>
-                <span className="flex min-w-0 flex-1 flex-col">
-                  <span className="truncate text-[13px] font-medium">
-                    {shortName(s.patient_nome)}
-                  </span>
-                  <span className="truncate text-xs text-ink-soft">
-                    {s.contato
-                      ? `${s.contato.nome.split(' ')[0]} (${s.contato.parentesco}) · ${s.contato.celular || 'sem celular na ficha'}`
-                      : 'Sem contato principal na ficha'}
-                  </span>
-                </span>
-                <Situacao sessao={s} aberta={aberta} ocupada={ocupada} onEnviar={enviarUma} />
-              </li>
-            ))}
-          </ul>
-        )}
+        {grupos.map((grupo) => {
+          const aviso = avisoDoGrupo(grupo)
+          return (
+            <section key={grupo.dia} className="flex flex-col gap-2">
+              <h3 className="text-xs font-medium text-ink-soft">{nomeDoDia(grupo)}</h3>
+              {aviso && (
+                <Callout tone="warning" title="Fora da janela de envio">
+                  {aviso}
+                </Callout>
+              )}
+              <ul aria-label={nomeDoDia(grupo)} className="-mx-2 flex flex-col">
+                {grupo.sessoes.map((s) => (
+                  <li
+                    key={s.appointment_id}
+                    className="flex items-center gap-3 rounded-control px-2 py-2 hover:bg-canvas"
+                  >
+                    <span className="w-11 shrink-0 text-[13px] font-medium tabular-nums">
+                      {formatTime(parseIsoLocalDateTime(s.inicio))}
+                    </span>
+                    <span className="flex min-w-0 flex-1 flex-col">
+                      <span className="truncate text-[13px] font-medium">
+                        {shortName(s.patient_nome)}
+                      </span>
+                      <span className="truncate text-xs text-ink-soft">
+                        {s.contato
+                          ? `${s.contato.nome.split(' ')[0]} (${s.contato.parentesco}) · ${s.contato.celular || 'sem celular na ficha'}`
+                          : 'Sem contato principal na ficha'}
+                      </span>
+                    </span>
+                    <Situacao sessao={s} ocupada={ocupada} onEnviar={enviarUma} />
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )
+        })}
         {enviar.error && <p className="text-xs text-danger">{enviar.error.message}</p>}
       </DialogBody>
       <DialogFooter>
@@ -127,21 +145,15 @@ function Conteudo({
         >
           <ClipboardPaste /> Colar resposta
         </Button>
-        <div className="flex gap-2">
-          <Button variant="secondary" onClick={onClose}>
-            Fechar
-          </Button>
-          <Button
-            disabled={!aberta || faltam.length === 0}
-            loading={
-              enviar.isPending && enviar.variables?.appointmentId === faltam[0]?.appointment_id
-            }
-            onClick={() => enviarUma(faltam[0].appointment_id, 'whatsapp')}
-          >
-            <Send />{' '}
-            {faltam.length > 1 ? `Enviar a próxima (${faltam.length})` : 'Enviar a próxima'}
-          </Button>
-        </div>
+        <Button
+          disabled={faltam.length === 0}
+          loading={
+            enviar.isPending && enviar.variables?.appointmentId === faltam[0]?.appointment_id
+          }
+          onClick={() => enviarUma(faltam[0].appointment_id, 'whatsapp')}
+        >
+          <Send /> {faltam.length > 1 ? `Enviar a próxima (${faltam.length})` : 'Enviar a próxima'}
+        </Button>
       </DialogFooter>
     </>
   )
@@ -149,12 +161,10 @@ function Conteudo({
 
 function Situacao({
   sessao,
-  aberta,
   ocupada,
   onEnviar
 }: {
   sessao: ConfirmacaoLinha
-  aberta: boolean
   ocupada: (id: number, via: Via) => boolean
   onEnviar: (id: number, via: Via) => void
 }): React.JSX.Element {
@@ -174,7 +184,7 @@ function Situacao({
         size="icon-sm"
         aria-label="Copiar mensagem"
         title="Copiar mensagem"
-        disabled={!aberta && !pedido}
+        disabled={sessao.bloqueio !== null && !pedido}
         loading={ocupada(id, 'copiar')}
         onClick={() => onEnviar(id, 'copiar')}
       >
@@ -185,7 +195,7 @@ function Situacao({
         size="icon-sm"
         aria-label={pedido ? 'Abrir de novo no WhatsApp' : 'Abrir no WhatsApp'}
         title={pedido ? 'Abrir de novo no WhatsApp' : 'Abrir no WhatsApp'}
-        disabled={!aberta && !pedido}
+        disabled={sessao.bloqueio !== null && !pedido}
         loading={ocupada(id, 'whatsapp')}
         onClick={() => onEnviar(id, 'whatsapp')}
       >
@@ -204,5 +214,11 @@ function Situacao({
     )
   }
   if (!sessao.contato?.celular) return <span className="text-xs text-ink-faint">Sem celular</span>
+  if (sessao.bloqueio === PERTO_DEMAIS)
+    return (
+      <span className="text-xs text-ink-faint" title={PERTO_DEMAIS}>
+        Começa logo: ligue
+      </span>
+    )
   return <span className="flex items-center gap-1">{botoes}</span>
 }

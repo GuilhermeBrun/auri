@@ -58,14 +58,17 @@ export type ConfirmacaoLinha = {
   contato: Contato | null
   confirmado: boolean
   pedido: PedidoNaSessao | null
+  bloqueio: string | null
 }
 
 export type JanelaDeEnvio = { aberta: true; ate: string } | { aberta: false; motivo: string }
 
+export type GrupoParaConfirmar = { dia: string; hoje: boolean; sessoes: ConfirmacaoLinha[] }
+
 export type ConfirmacaoLista = {
-  dia: string | null
   janela: JanelaDeEnvio
-  sessoes: ConfirmacaoLinha[]
+  grupos: GrupoParaConfirmar[]
+  semAtendimento: boolean
 }
 
 export type ConfirmacaoEnvio = {
