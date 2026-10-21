@@ -222,7 +222,8 @@ const prefs: AuriPrefs = {
   onChange: (listener) => subscribe<UiPrefs>('prefs:changed', listener),
   enableReception: (password) => invoke('reception:enable', password),
   disableReception: (secret) => invoke('reception:disable', secret),
-  onFit: (listener) => subscribe<TextSize>('prefs:fit', listener)
+  onFit: (listener) => subscribe<TextSize>('prefs:fit', listener),
+  onOpenSettings: (listener) => subscribe<void>('settings:open', listener)
 }
 
 const transfer: AuriTransfer = {

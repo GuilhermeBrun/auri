@@ -211,6 +211,7 @@ export interface AuriPrefs {
   enableReception(password?: string): Promise<{ recoveryCode: string } | null>
   disableReception(secret?: BackupSecret): Promise<void>
   onFit(listener: (largest: TextSize) => void): () => void
+  onOpenSettings(listener: () => void): () => void
 }
 
 export const DEFAULT_UI_PREFS: UiPrefs = {

@@ -263,6 +263,8 @@ export function Layout(): React.JSX.Element {
 
   useEffect(() => window.whatsapp.onOpen(() => void navigate(WHATSAPP_PATH)), [navigate])
 
+  useEffect(() => window.prefs.onOpenSettings(() => void navigate(SETTINGS_PATH)), [navigate])
+
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent): void {
       const key = e.key.toLowerCase()
