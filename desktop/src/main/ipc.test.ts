@@ -28,6 +28,7 @@ const save = vi.fn()
 const capture = vi.fn()
 const captureUnexpected = vi.fn()
 const exportSettings = vi.fn(() => 'arquivo fictício')
+const openWhatsApp = vi.fn()
 const checkUpdates = vi.fn(() => ({ status: 'checking' }))
 const installUpdate = vi.fn(() => {
   throw new Error('Nenhuma versão nova pronta.')
@@ -43,7 +44,8 @@ beforeEach(() => {
     transfer: { exportSettings } as unknown as AuriTransfer,
     updates: { check: checkUpdates, install: installUpdate } as unknown as UpdateService,
     reports: { capture, captureUnexpected } as unknown as ErrorReportService,
-    inbox: { receber: () => false, retirar: () => [], retirarConfirmacoes: () => [] }
+    inbox: { receber: () => false, retirar: () => [], retirarConfirmacoes: () => [] },
+    whatsapp: { open: openWhatsApp, owns: () => false, close: vi.fn() }
   })
 })
 
@@ -61,6 +63,7 @@ describe('handlers IPC', () => {
     expect(exportSettings).not.toHaveBeenCalled()
     expect(checkUpdates).not.toHaveBeenCalled()
     expect(installUpdate).not.toHaveBeenCalled()
+    expect(openWhatsApp).not.toHaveBeenCalled()
   })
   it('janela autorizada usa a API, mas um subframe não pode ler dados nem gravar preferências', async () => {
     const mainFrame = { url: 'file:///auri/out/renderer/index.html#/pacientes' }
@@ -110,5 +113,27 @@ describe('handlers IPC', () => {
     listeners.get('prefs:save')!(subframe as unknown as IpcMainEvent, { theme: 'dark' })
     expect(call).not.toHaveBeenCalled()
     expect(save).not.toHaveBeenCalled()
+  })
+  it('abre a conversa na janela do WhatsApp só com número e texto válidos', async () => {
+    const mainFrame = { url: 'file:///auri/out/renderer/index.html' }
+    const sender = {
+      id: 301,
+      mainFrame,
+      isDestroyed: () => false,
+      once: () => undefined
+    } as unknown as WebContents
+    trustRenderer(sender, mainFrame.url)
+    const event = { sender, senderFrame: mainFrame } as IpcMainInvokeEvent
+    const open = handlers.get('terms:openWhatsApp')!
+    expect(await open(event, '5565900000000', 'Olá')).toEqual({ ok: true, data: undefined })
+    expect(openWhatsApp).toHaveBeenCalledExactlyOnceWith('5565900000000', 'Olá')
+    for (const [numero, texto] of [
+      ['65 90000-0000', 'Olá'],
+      ['123', 'Olá'],
+      ['5565900000000', 'x'.repeat(6001)],
+      ['5565900000000', 42]
+    ])
+      expect(await open(event, numero, texto)).toMatchObject({ ok: false })
+    expect(openWhatsApp).toHaveBeenCalledTimes(1)
   })
 })
