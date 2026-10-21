@@ -306,9 +306,9 @@ function EventContent({ event }: EventProps<CalendarEvent>): React.JSX.Element {
           <span className="event-start mr-1.5 hidden font-normal tabular-nums opacity-75">
             {start}
           </span>
+          <BoloAniversario patientId={event.appointment.patient_id} dia={event.start} />
           <span className="name-short">{shortName(event.title)}</span>
           <span className="name-full">{event.title}</span>
-          <BoloAniversario patientId={event.appointment.patient_id} dia={event.start} />
           {assinatura && (
             <PenLine
               aria-label="Chegada assinada"
