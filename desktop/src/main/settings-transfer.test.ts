@@ -16,7 +16,12 @@ const TIPOS_SEMENTE: SettingsSnapshot['tipos'] = [
 const { 6: _, ...SEM_SABADO } = FUNCIONAMENTO_PADRAO
 
 const RECEPCAO: SettingsSnapshot = {
-  appearance: { theme: 'dark', sidebarOpen: true },
+  appearance: {
+    theme: 'dark',
+    sidebarOpen: true,
+    textSize: 1.2,
+    colors: { accent: '#bf5530', canvas: '#fbf6f2', overrides: { light: {}, dark: {} } }
+  },
   connection: {
     role: 'server',
     name: 'Recepção',
@@ -51,7 +56,12 @@ const RECEPCAO: SettingsSnapshot = {
 }
 
 const NOVO: SettingsSnapshot = {
-  appearance: { theme: 'system', sidebarOpen: true },
+  appearance: {
+    theme: 'system',
+    sidebarOpen: true,
+    textSize: 1,
+    colors: { accent: null, canvas: null, overrides: { light: {}, dark: {} } }
+  },
   connection: {
     role: 'server',
     name: 'DESKTOP-4F2K',
@@ -111,6 +121,8 @@ describe('arquivo de configurações', () => {
     const file = parseSettingsFile(buildSettingsFile(RECEPCAO))
     expect(describeChanges(NOVO, file)).toEqual([
       { label: 'Tema', from: 'Sistema', to: 'Escuro' },
+      { label: 'Tamanho do texto', from: 'Padrão', to: 'Grande' },
+      { label: 'Cores', from: 'Grafite', to: 'Terracota' },
       { label: 'Nome deste computador', from: 'DESKTOP-4F2K', to: 'Recepção' },
       { label: 'Compartilhar com outros computadores', from: 'Desligado', to: 'Ligado' },
       { label: 'Acesso de fora da clínica', from: 'Ligado', to: 'Desligado' },

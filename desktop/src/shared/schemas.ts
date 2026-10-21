@@ -5,6 +5,7 @@ import type { Categoria, Cor, EtiquetaResumo } from './tipos'
 import { isValidCpf } from './cpf'
 import { isIsoDate, isIsoLocalDateTime } from './dates'
 import { isValidPhone } from './masks'
+import { HEX_COLOR, ROLE_TOKENS, TEXT_SIZES } from './aparencia'
 
 const text = (max = 200): z.ZodString =>
   z.string().trim().max(max, `Use no máximo ${max} caracteres`)
@@ -325,11 +326,30 @@ export const themeSchema = z.enum(['system', 'light', 'dark'])
 
 export type Theme = z.infer<typeof themeSchema>
 
+export const textSizeSchema = z.union(TEXT_SIZES.map((size) => z.literal(size)))
+
+const hexColorSchema = z.string().toLowerCase().regex(HEX_COLOR).nullable()
+
+const roleOverridesSchema = z.partialRecord(
+  z.enum(ROLE_TOKENS),
+  z.string().toLowerCase().regex(HEX_COLOR)
+)
+
+export const themeColorsSchema = z.object({
+  accent: hexColorSchema,
+  canvas: hexColorSchema,
+  overrides: z
+    .object({ light: roleOverridesSchema.default({}), dark: roleOverridesSchema.default({}) })
+    .default({ light: {}, dark: {} })
+})
+
 export const uiPrefsSchema = z.object({
   sidebarOpen: z.boolean(),
   theme: themeSchema,
   whatsapp: z.boolean(),
-  recepcao: z.boolean()
+  recepcao: z.boolean(),
+  textSize: textSizeSchema,
+  colors: themeColorsSchema
 })
 
 export type UiPrefs = z.infer<typeof uiPrefsSchema>

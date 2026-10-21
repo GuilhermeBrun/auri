@@ -5,6 +5,7 @@ type SegmentedProps<T extends string> = {
   label: string
   value: T
   options: readonly (readonly [T, string])[]
+  disabled?: readonly T[]
   onChange: (value: T) => void
 }
 
@@ -12,6 +13,7 @@ export function Segmented<T extends string>({
   label,
   value,
   options,
+  disabled,
   onChange
 }: SegmentedProps<T>): React.JSX.Element {
   const trackRef = useRef<HTMLDivElement>(null)
@@ -52,8 +54,9 @@ export function Segmented<T extends string>({
           type="button"
           onClick={() => onChange(optionValue)}
           aria-pressed={value === optionValue}
+          disabled={disabled?.includes(optionValue)}
           className={cn(
-            'relative h-7 rounded-chip px-3 text-xs font-medium text-ink-soft transition-colors hover:text-ink pointer-coarse:h-10',
+            'relative h-7 rounded-chip px-3 text-xs font-medium text-ink-soft transition-colors hover:text-ink disabled:pointer-events-none disabled:opacity-40 pointer-coarse:h-10',
             value === optionValue && 'text-ink'
           )}
         >

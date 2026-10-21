@@ -36,6 +36,7 @@ import { useConnection } from '@renderer/lib/connection'
 import { useReception } from '@renderer/lib/reception'
 import { isMac, SETTINGS_SHORTCUT, SIDEBAR_SHORTCUT } from '@renderer/lib/platform'
 import { SidebarContext, useSidebar } from '@renderer/lib/sidebar'
+import { useZoom } from '@renderer/lib/theme'
 import { useToast } from '@renderer/lib/toast'
 import { useWhatsAppEnabled, useWhatsAppUnread } from '@renderer/lib/whatsapp'
 import { cn } from '@renderer/lib/utils'
@@ -220,9 +221,12 @@ function BackupAttention(): null {
 
 const SIDEBAR_WIDTH = 216
 
-const TOGGLE_LEFT = isMac ? 84 : 12
 const TOGGLE_SIZE = 32
-const HEADER_PAD_COLLAPSED = isMac ? 'pl-[136px]' : 'pl-[64px]'
+
+function useToggleLeft(): number {
+  const zoom = useZoom()
+  return isMac ? 84 / zoom : 12
+}
 
 function SidebarToggle(): React.JSX.Element {
   const { open, toggle } = useSidebar()
@@ -244,6 +248,7 @@ function SidebarToggle(): React.JSX.Element {
 }
 
 export function Layout(): React.JSX.Element {
+  const toggleLeft = useToggleLeft()
   const [open, setOpen] = useState(() => window.prefs.initial.sidebarOpen)
   const toggle = useCallback(() => setOpen((current) => !current), [])
   const navigate = useNavigate()
@@ -290,14 +295,18 @@ export function Layout(): React.JSX.Element {
           >
             <div
               className="drag flex h-12 shrink-0 items-center"
-              style={{ paddingLeft: TOGGLE_LEFT + TOGGLE_SIZE + 8 - 12 }}
+              style={{ paddingLeft: toggleLeft + TOGGLE_SIZE + 8 - 12 }}
             >
               <AuriLogo className="w-12 -translate-y-0.5" />
             </div>
             <div className="h-3 shrink-0" />
             <SidebarBody />
           </aside>
-          <div className="absolute top-2 z-30" style={{ left: TOGGLE_LEFT }}>
+          <div
+            className="absolute top-2 z-30"
+            style={{ left: toggleLeft }}
+            data-on-sidebar={open ? '' : undefined}
+          >
             <SidebarToggle />
           </div>
           <main
@@ -475,19 +484,18 @@ export function Page({
   bodyClassName
 }: PageProps): React.JSX.Element {
   const { open } = useSidebar()
+  const toggleLeft = useToggleLeft()
   return (
     <div className="flex h-full flex-col">
       <header
-        className={cn(
-          '@container drag relative flex h-12 shrink-0 items-center gap-3 px-6 transition-[padding] duration-200 ease-out',
-          !open && HEADER_PAD_COLLAPSED
-        )}
+        className="@container drag relative flex h-12 shrink-0 items-center gap-3 px-6 transition-[padding] duration-200 ease-out"
+        style={open ? undefined : { paddingLeft: toggleLeft + TOGGLE_SIZE + 20 }}
       >
         {!open && (
           <div
             aria-hidden="true"
             className="no-drag pointer-events-none absolute inset-y-0"
-            style={{ left: TOGGLE_LEFT - 4, width: TOGGLE_SIZE + 8 }}
+            style={{ left: toggleLeft - 4, width: TOGGLE_SIZE + 8 }}
           />
         )}
         <Breadcrumbs trail={trail} />

@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { resumoFuncionamento } from '../shared/agenda'
+import { colorsLabel, sameColors, TEXT_SIZE_LABELS } from '../shared/aparencia'
 import type { SettingsChange } from '../shared/api'
 import {
   CATEGORIA_LABELS,
@@ -12,6 +13,8 @@ import {
 import {
   clinicInputSchema,
   termModelInputSchema,
+  textSizeSchema,
+  themeColorsSchema,
   themeSchema,
   type ClinicInput,
   type TermModelInput,
@@ -53,7 +56,15 @@ const settingsFileSchema = z
     kind: z.literal('configuracoes'),
     format: z.union([z.literal(1), z.literal(SETTINGS_FORMAT)]),
     exportedAt: z.string(),
-    appearance: z.object({ theme: themeSchema, sidebarOpen: z.boolean() }).partial().default({}),
+    appearance: z
+      .object({
+        theme: themeSchema,
+        sidebarOpen: z.boolean(),
+        textSize: textSizeSchema,
+        colors: themeColorsSchema
+      })
+      .partial()
+      .default({}),
     connection: z
       .object({
         role: z.enum(['server', 'client']),
@@ -197,6 +208,11 @@ export function describeChanges(current: SettingsSnapshot, file: SettingsFile): 
   add('Barra lateral', a.sidebarOpen, file.appearance.sidebarOpen, (v) =>
     v ? 'Aberta' : 'Recolhida'
   )
+  add('Tamanho do texto', a.textSize, file.appearance.textSize, (v) => TEXT_SIZE_LABELS[v])
+  const colors = file.appearance.colors
+  if (colors && !sameColors(colors, a.colors)) {
+    changes.push({ label: 'Cores', from: colorsLabel(a.colors), to: colorsLabel(colors) })
+  }
   const c = current.connection
   add('Este computador', c.role, file.connection.role, (v) => ROLE[v])
   add('Nome deste computador', c.name, file.connection.name, (v) => v)
