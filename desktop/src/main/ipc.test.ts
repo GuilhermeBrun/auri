@@ -51,6 +51,7 @@ beforeEach(() => {
       open: openWhatsApp,
       attach: vi.fn(),
       setEnabled: vi.fn(),
+      setPaused: vi.fn(),
       show: vi.fn(),
       hide: vi.fn(),
       unread: () => 0

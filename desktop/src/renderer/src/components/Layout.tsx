@@ -279,7 +279,7 @@ export function Layout(): React.JSX.Element {
   const available = useAvailableItems()
   const goTo = (id: SidebarItemId) => (): void => {
     const item = available.find((i) => i.id === id)
-    if (item) void navigate(item.path)
+    if (item && !(item.id === 'whatsapp' && item.hidden)) void navigate(item.path)
   }
   useAtalhos({
     'barra-lateral': toggle,
