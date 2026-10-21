@@ -38,6 +38,13 @@ async function check(name, fn) {
   }
 }
 
+const isAppWindow = (window) => window.url().startsWith('file:')
+
+async function appWindow() {
+  await expect.poll(() => application.windows().some(isAppWindow), { timeout: 30_000 }).toBe(true)
+  return application.windows().find(isAppWindow)
+}
+
 async function launch() {
   const env = { ...process.env, TZ: 'America/Cuiaba' }
   delete env.ELECTRON_RUN_AS_NODE
@@ -48,7 +55,7 @@ async function launch() {
     timeout: 30_000,
     colorScheme: null
   })
-  page = await application.firstWindow()
+  page = await appWindow()
   await page.emulateMedia({ colorScheme: null })
   expect(realpathSync(await application.evaluate(({ app }) => app.getPath('userData')))).toBe(
     realpathSync(directory)

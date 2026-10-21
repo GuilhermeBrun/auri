@@ -42,7 +42,9 @@ async function connect(port, type) {
   for (let i = 0; i < 60; i++) {
     try {
       const targets = await (await fetch(`http://127.0.0.1:${port}/json`)).json()
-      const target = targets.find((t) => t.type === type && !t.url.startsWith('devtools'))
+      const target = targets.find(
+        (t) => t.type === type && (type !== 'page' || t.url.startsWith('file:'))
+      )
       if (target) {
         const ws = new WebSocket(target.webSocketDebuggerUrl)
         await new Promise((resolve, reject) => {
