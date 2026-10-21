@@ -176,6 +176,23 @@ describe('agenda da semana', () => {
     expect(within(bruno).queryByLabelText('Confirmado')).toBeNull()
   })
 
+  it('deixa arrastar só a sessão que ainda vai acontecer e sem chegada assinada', async () => {
+    const futura = fakeAppointment({ inicio: '2026-10-15T09:00', patient_nome: 'Iara Fictícia' })
+    const passada = fakeAppointment({ inicio: '2026-10-13T09:00', patient_nome: 'João Fictício' })
+    const assinada = fakeAppointment({
+      inicio: '2026-10-14T11:00',
+      patient_nome: 'Lia Fictícia',
+      assinatura: { id: 1, signer_nome: 'Mãe', signer_parentesco: 'Mãe', assinado_em: 'x' }
+    })
+    setup([futura, passada, assinada])
+    renderRoute('/agenda', '/agenda', <AgendaPage />)
+    const alca = (event: HTMLElement): Element | null =>
+      event.querySelector('.rbc-addons-dnd-resize-ns-anchor')
+    expect(alca(await eventOf('Iara Fictícia'))).toBeTruthy()
+    expect(alca(await eventOf('João Fictício'))).toBeNull()
+    expect(alca(await eventOf('Lia Fictícia'))).toBeNull()
+  })
+
   it('marca quem aguarda resposta da confirmação e quem ficou sem resposta', async () => {
     const prazo = new Date(2026, 9, 14, 12, 0).toISOString()
     const aguarda = fakeAppointment({

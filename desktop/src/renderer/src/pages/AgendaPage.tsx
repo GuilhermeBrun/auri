@@ -20,12 +20,14 @@ import {
   CalendarCheck,
   Check,
   ChevronLeft,
+  CircleAlert,
   ChevronRight,
   Clock,
   Hourglass,
   PenLine,
   Plus,
   TimerOff,
+  Undo2,
   X
 } from 'lucide-react'
 import {
@@ -51,6 +53,10 @@ import {
   type SlotInfo,
   type View
 } from 'react-big-calendar'
+import withDragAndDrop, {
+  type EventInteractionArgs
+} from 'react-big-calendar/lib/addons/dragAndDrop'
+import 'react-big-calendar/lib/addons/dragAndDrop/styles.css'
 import {
   abertoNoHorario,
   algumDiaAberto,
@@ -95,8 +101,26 @@ import { DEFAULT_DURATION, nextSlot, PRESENCA_LABELS } from '@renderer/lib/sessi
 import { aoPedirEncaixe, horaDe } from '@renderer/lib/confirmacoes'
 import { cn } from '@renderer/lib/utils'
 import { corVar } from '@renderer/lib/tipos'
+import {
+  avisoDeErro,
+  descricaoDoAviso,
+  desfazer,
+  destinoDe,
+  gravar,
+  horarioDe,
+  mesmoLugar,
+  podeArrastar,
+  problemaNoDestino,
+  tituloDoAviso,
+  type Arrastavel,
+  type Destino
+} from '@renderer/lib/arrastar'
+import { useComputador } from '@renderer/lib/finance'
+import { useToast } from '@renderer/lib/toast'
 
 const WEEK_OPTIONS = { weekStartsOn: 0 as const }
+
+const DragCalendar = withDragAndDrop<CalendarEvent>(Calendar)
 
 const localizer = dateFnsLocalizer({
   format,
@@ -502,7 +526,18 @@ type AgendaCalendarProps = {
   onCommitment: (commitment: Commitment) => void
   vaga: Intervalo | null
   arrivedRef: RefObject<number | null>
+  onMoved: (appointment: Appointment) => void
 }
+
+const chave = (event: CalendarEvent | Arrastavel): string =>
+  event.kind === 'appointment'
+    ? `a${event.appointment.id}`
+    : event.kind === 'commitment'
+      ? `c${event.commitment.id}`
+      : event.id
+
+const arrastavel = (event: CalendarEvent): boolean =>
+  event.kind !== 'vaga' && podeArrastar(event, new Date())
 
 const AgendaCalendar = memo(function AgendaCalendar({
   events,
@@ -516,18 +551,119 @@ const AgendaCalendar = memo(function AgendaCalendar({
   onSlot,
   onCommitment,
   vaga,
-  arrivedRef
+  arrivedRef,
+  onMoved
 }: AgendaCalendarProps): React.JSX.Element {
+  const toast = useToast()
+  const queryClient = useQueryClient()
+  const computador = useComputador()
+  const [movendo, setMovendo] = useState<ReadonlyMap<string, Destino>>(new Map())
+
+  const shown = useMemo(
+    () =>
+      movendo.size === 0
+        ? events
+        : events.map((event) => {
+            const destino = movendo.get(chave(event))
+            return destino
+              ? {
+                  ...event,
+                  start: parseIsoLocalDateTime(destino.inicio),
+                  end: parseIsoLocalDateTime(destino.fim)
+                }
+              : event
+          }),
+    [events, movendo]
+  )
+
   const { min, max, scrollToTime } = useMemo(() => {
     const base = startOfDay(date)
     const days = view === Views.DAY ? [base] : shownDays
-    const { abre, fecha } = gridLimits(funcionamento, days, events)
+    const { abre, fecha } = gridLimits(funcionamento, days, shown)
     return {
       min: setMinutes(base, abre),
       max: setMinutes(base, fecha),
       scrollToTime: setMinutes(base, abre)
     }
-  }, [date, view, shownDays, funcionamento, events])
+  }, [date, view, shownDays, funcionamento, shown])
+
+  const segurar = useCallback((item: Arrastavel, destino: Destino | null): void => {
+    setMovendo((atual) => {
+      const next = new Map(atual)
+      if (destino) next.set(chave(item), destino)
+      else next.delete(chave(item))
+      return next
+    })
+  }, [])
+
+  const aplicar = useCallback(
+    async (
+      item: Arrastavel,
+      destino: Destino,
+      gravacao: () => Promise<Arrastavel>,
+      feito: (gravado: Arrastavel) => void
+    ): Promise<void> => {
+      segurar(item, destino)
+      try {
+        const gravado = await gravacao()
+        if (gravado.kind === 'appointment') onMoved(gravado.appointment)
+        await queryClient.invalidateQueries({
+          queryKey: [gravado.kind === 'appointment' ? 'appointments' : 'commitments']
+        })
+        feito(gravado)
+      } catch (error) {
+        toast({
+          ...avisoDeErro(error instanceof Error ? error.message : String(error)),
+          icon: <CircleAlert />
+        })
+      } finally {
+        segurar(item, null)
+      }
+    },
+    [segurar, onMoved, queryClient, toast]
+  )
+
+  const mover = useCallback(
+    ({ event, start, end }: EventInteractionArgs<CalendarEvent>): void => {
+      if (event.kind === 'vaga' || !podeArrastar(event, new Date())) return
+      const item: Arrastavel = event
+      const destino = destinoDe(start, end)
+      if (mesmoLugar(item, destino)) return
+      const problema = problemaNoDestino(item, destino, funcionamento, new Date())
+      if (problema) {
+        toast({ ...avisoDeErro(problema), icon: <CircleAlert /> })
+        return
+      }
+      void aplicar(
+        item,
+        destino,
+        () => gravar(window.api, item, destino, computador),
+        (gravado) =>
+          toast({
+            title: tituloDoAviso(item, destino),
+            description: descricaoDoAviso(gravado),
+            action: {
+              label: 'Desfazer',
+              icon: <Undo2 />,
+              altText: 'Para desfazer, arraste de volta.',
+              onClick: () =>
+                void aplicar(
+                  gravado,
+                  horarioDe(item),
+                  () => desfazer(window.api, item, gravado, computador),
+                  (volta) => toast({ title: 'Desfeito', description: descricaoDoAviso(volta) })
+                )
+            }
+          })
+      )
+    },
+    [funcionamento, toast, aplicar, computador]
+  )
+
+  const redimensionavel = useCallback(
+    (event: CalendarEvent): boolean => view !== Views.MONTH && arrastavel(event),
+    [view]
+  )
 
   const shownKeys = useMemo(() => new Set(shownDays.map(dayNumber)), [shownDays])
 
@@ -640,10 +776,10 @@ const AgendaCalendar = memo(function AgendaCalendar({
 
   return (
     <div ref={rootRef} className="h-full">
-      <Calendar<CalendarEvent>
+      <DragCalendar
         localizer={localizer}
         culture="pt-BR"
-        events={events}
+        events={shown}
         backgroundEvents={backgroundEvents}
         date={date}
         view={view}
@@ -668,6 +804,10 @@ const AgendaCalendar = memo(function AgendaCalendar({
         onSelectSlot={onSelectSlot}
         onSelectEvent={onSelectEvent}
         tooltipAccessor={tooltip}
+        draggableAccessor={arrastavel}
+        resizableAccessor={redimensionavel}
+        onEventDrop={mover}
+        onEventResize={mover}
         className={`agenda-${view}`}
         style={CALENDAR_STYLE}
       />
@@ -930,7 +1070,7 @@ export function AgendaPage(): React.JSX.Element {
       ) : (
         <>
           <AvisosDaConfirmacao onEncaixar={encaixar} />
-          <div className="flex min-h-[520px] flex-1">
+          <div className="flex min-h-0 flex-1">
             <div className="min-w-0 flex-1">
               <AgendaCalendar
                 events={events}
@@ -945,6 +1085,7 @@ export function AgendaPage(): React.JSX.Element {
                 onCommitment={setCommitment}
                 vaga={withPanel ? vaga : null}
                 arrivedRef={arrivedRef}
+                onMoved={markArrived}
               />
             </div>
             {withPanel && (
