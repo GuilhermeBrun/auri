@@ -14,6 +14,8 @@ const { handlers, listeners } = vi.hoisted(() => ({
   listeners: new Map<string, (event: IpcMainEvent, ...args: unknown[]) => unknown>()
 }))
 vi.mock('electron', () => ({
+  app: { getApplicationNameForProtocol: () => '' },
+  shell: { openExternal: vi.fn() },
   clipboard: { writeText: vi.fn() },
   ipcMain: {
     handle: (name: string, fn: (event: IpcMainInvokeEvent, ...args: unknown[]) => unknown) =>
@@ -28,7 +30,7 @@ const save = vi.fn()
 const capture = vi.fn()
 const captureUnexpected = vi.fn()
 const exportSettings = vi.fn(() => 'arquivo fictício')
-const openWhatsApp = vi.fn()
+const openWhatsApp = vi.fn(() => true)
 const checkUpdates = vi.fn(() => ({ status: 'checking' }))
 const installUpdate = vi.fn(() => {
   throw new Error('Nenhuma versão nova pronta.')
@@ -45,7 +47,14 @@ beforeEach(() => {
     updates: { check: checkUpdates, install: installUpdate } as unknown as UpdateService,
     reports: { capture, captureUnexpected } as unknown as ErrorReportService,
     inbox: { receber: () => false, retirar: () => [], retirarConfirmacoes: () => [] },
-    whatsapp: { open: openWhatsApp, owns: () => false, close: vi.fn() }
+    whatsapp: {
+      open: openWhatsApp,
+      attach: vi.fn(),
+      setEnabled: vi.fn(),
+      show: vi.fn(),
+      hide: vi.fn(),
+      unread: () => 0
+    }
   })
 })
 

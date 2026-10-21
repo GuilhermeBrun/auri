@@ -5,7 +5,8 @@ import type {
   AuriPrefs,
   AuriReports,
   AuriTransfer,
-  AuriUpdates
+  AuriUpdates,
+  AuriWhatsApp
 } from '../shared/api'
 
 declare global {
@@ -17,6 +18,7 @@ declare global {
     transfer: AuriTransfer
     updates: AuriUpdates
     reports: AuriReports
+    whatsapp: AuriWhatsApp
     platform: string
   }
 }

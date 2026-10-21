@@ -15,6 +15,7 @@ import { TermModelRoute } from './pages/TermModelPage'
 import { PatientsPage } from './pages/PatientsPage'
 import { GeneralPage } from './pages/GeneralPage'
 import { AppearancePage } from './pages/SettingsPage'
+import { WhatsAppPage } from './pages/WhatsAppPage'
 
 function App(): React.JSX.Element {
   return (
@@ -33,6 +34,7 @@ function App(): React.JSX.Element {
         <Route path="financeiro" element={<FinancePage />} />
         <Route path="financeiro/valores" element={<FinanceCatalogPage />} />
         <Route path="clinica" element={<ClinicPage />} />
+        <Route path="whatsapp" element={<WhatsAppPage />} />
         <Route path="clinica/termos/novo" element={<TermModelRoute />} />
         <Route path="clinica/termos/:id" element={<TermModelRoute />} />
         <Route path="configuracoes" element={<Navigate to="geral" replace />} />

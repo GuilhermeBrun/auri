@@ -324,7 +324,11 @@ export const themeSchema = z.enum(['system', 'light', 'dark'])
 
 export type Theme = z.infer<typeof themeSchema>
 
-export const uiPrefsSchema = z.object({ sidebarOpen: z.boolean(), theme: themeSchema })
+export const uiPrefsSchema = z.object({
+  sidebarOpen: z.boolean(),
+  theme: themeSchema,
+  whatsapp: z.boolean()
+})
 
 export type UiPrefs = z.infer<typeof uiPrefsSchema>
 

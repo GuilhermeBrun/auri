@@ -10,6 +10,7 @@ import {
   type AuriReports,
   type AuriTransfer,
   type AuriUpdates,
+  type AuriWhatsApp,
   type ConnectionInfo,
   type DataTopic,
   type IpcResult,
@@ -221,6 +222,14 @@ const reports: AuriReports = {
   error: (error) => ipcRenderer.send('reports:error', error)
 }
 
+const whatsapp: AuriWhatsApp = {
+  show: (bounds) => invoke('whatsapp:show', bounds),
+  hide: () => invoke('whatsapp:hide'),
+  unread: () => invoke('whatsapp:unread'),
+  onUnread: (listener) => subscribe<number>('whatsapp:unread', listener),
+  onOpen: (listener) => subscribe<void>('whatsapp:open', listener)
+}
+
 contextBridge.exposeInMainWorld('api', api)
 contextBridge.exposeInMainWorld('prefs', prefs)
 contextBridge.exposeInMainWorld('connection', connection)
@@ -228,4 +237,5 @@ contextBridge.exposeInMainWorld('backup', backup)
 contextBridge.exposeInMainWorld('transfer', transfer)
 contextBridge.exposeInMainWorld('updates', updates)
 contextBridge.exposeInMainWorld('reports', reports)
+contextBridge.exposeInMainWorld('whatsapp', whatsapp)
 contextBridge.exposeInMainWorld('platform', process.platform)

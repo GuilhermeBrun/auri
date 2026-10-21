@@ -3,6 +3,7 @@ import {
   Building2,
   CalendarDays,
   Database,
+  MessageCircle,
   Network,
   PanelLeft,
   PanelLeftClose,
@@ -34,6 +35,7 @@ import { useConnection } from '@renderer/lib/connection'
 import { isMac, SETTINGS_SHORTCUT, SIDEBAR_SHORTCUT } from '@renderer/lib/platform'
 import { SidebarContext, useSidebar } from '@renderer/lib/sidebar'
 import { useToast } from '@renderer/lib/toast'
+import { useWhatsAppEnabled, useWhatsAppUnread } from '@renderer/lib/whatsapp'
 import { cn } from '@renderer/lib/utils'
 
 const NAV_ITEM_HEIGHT = 34
@@ -47,6 +49,7 @@ type NavItem = {
   label: string
   icon: ReactNode
   alert?: boolean
+  badge?: number
 }
 
 function AlertDot(): React.JSX.Element {
@@ -64,6 +67,17 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/financeiro', label: 'Financeiro', icon: <Wallet /> },
   { to: '/clinica', label: 'Clínica', icon: <Building2 /> }
 ]
+
+const WHATSAPP_PATH = '/whatsapp'
+
+function Badge({ count }: { count: number }): React.JSX.Element {
+  return (
+    <span className="ml-auto min-w-5 rounded-full bg-fill-hover px-1.5 text-center text-xs leading-5 font-semibold text-ink tabular-nums">
+      {count > 99 ? '99+' : count}
+      <span className="sr-only"> não lidas</span>
+    </span>
+  )
+}
 
 const SETTINGS_PATH = '/configuracoes'
 const STORAGE_PATH = `${SETTINGS_PATH}/armazenamento`
@@ -97,7 +111,7 @@ function SidebarNav({
           }}
         />
       )}
-      {items.map(({ to, label, icon, alert }) => (
+      {items.map(({ to, label, icon, alert, badge }) => (
         <NavLink
           key={to}
           to={to}
@@ -108,6 +122,7 @@ function SidebarNav({
           {icon}
           {label}
           {alert && <AlertDot />}
+          {!alert && badge ? <Badge count={badge} /> : null}
         </NavLink>
       ))}
     </nav>
@@ -119,6 +134,8 @@ function SidebarBody(): React.JSX.Element {
   const navigate = useNavigate()
   const inSettings = matchPath({ path: SETTINGS_PATH, end: false }, pathname) !== null
   const attention = needsAttention(useBackup())
+  const whatsapp = useWhatsAppEnabled()
+  const unread = useWhatsAppUnread(whatsapp)
   const backTo = useRef('/agenda')
   useEffect(() => {
     if (!inSettings) backTo.current = pathname
@@ -151,7 +168,18 @@ function SidebarBody(): React.JSX.Element {
 
   return (
     <div key="principal" className="flex flex-1 animate-fade-in flex-col">
-      <SidebarNav items={NAV_ITEMS} label="Principal" pathname={pathname} />
+      <SidebarNav
+        items={
+          whatsapp
+            ? [
+                ...NAV_ITEMS,
+                { to: WHATSAPP_PATH, label: 'WhatsApp', icon: <MessageCircle />, badge: unread }
+              ]
+            : NAV_ITEMS
+        }
+        label="Principal"
+        pathname={pathname}
+      />
       <Link
         to={attention ? BACKUP_PATH : SETTINGS_PATH}
         title={`Configurações (${SETTINGS_SHORTCUT})`}
@@ -226,6 +254,8 @@ export function Layout(): React.JSX.Element {
   }, [open])
 
   useEffect(() => window.prefs.onChange((prefs) => setOpen(prefs.sidebarOpen)), [])
+
+  useEffect(() => window.whatsapp.onOpen(() => void navigate(WHATSAPP_PATH)), [navigate])
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent): void {

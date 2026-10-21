@@ -28,7 +28,7 @@ import { trustRenderer } from './ipc-security'
 import { pathToFileURL } from 'node:url'
 import { createPrefsStore, type PrefsStore } from './prefs'
 import { createTransferService } from './transfer-service'
-import { createWhatsAppWindow, type WhatsAppWindow } from './whatsapp-window'
+import { createWhatsAppView, type WhatsAppView } from './whatsapp-view'
 import { tamanhoDaJanela } from './window-size'
 import { ESQUEMA, criarCaixa, enderecoNosArgumentos } from './terms/protocol'
 import {
@@ -49,7 +49,7 @@ let prefs: PrefsStore | null = null
 let tray: Tray | null = null
 let updates: UpdateService | null = null
 let reports: ErrorReportService | null = null
-let whatsapp: WhatsAppWindow | null = null
+let whatsapp: WhatsAppView | null = null
 let quitConfirmed = false
 let quitBackupDone = false
 let skipQuitBackup = false
@@ -64,7 +64,7 @@ function applyTheme(theme: Theme): void {
 }
 
 function appWindows(): BrowserWindow[] {
-  return BrowserWindow.getAllWindows().filter((window) => !whatsapp?.owns(window))
+  return BrowserWindow.getAllWindows()
 }
 
 function syncWindowBackgrounds(): void {
@@ -94,10 +94,6 @@ function createWindow(prefs: UiPrefs): void {
   mainWindow.on('ready-to-show', () => {
     mainWindow.show()
   })
-  mainWindow.on('closed', () => {
-    if (appWindows().length === 0) whatsapp?.close()
-  })
-
   mainWindow.webContents.setWindowOpenHandler((details) => {
     if (details.url.startsWith('https://')) void shell.openExternal(details.url)
     return { action: 'deny' }
@@ -107,6 +103,7 @@ function createWindow(prefs: UiPrefs): void {
   const file = join(__dirname, '../renderer/index.html')
   const url = devUrl ?? pathToFileURL(file).href
   trustRenderer(mainWindow.webContents, url)
+  whatsapp?.attach(mainWindow)
   mainWindow.webContents.on('will-navigate', (event, target) => {
     if (target !== url) event.preventDefault()
   })
@@ -308,6 +305,7 @@ void app.whenReady().then(async () => {
   syncTray()
   prefs = createPrefsStore(join(app.getPath('userData'), 'preferencias.json'), (next) => {
     applyTheme(next.theme)
+    void whatsapp?.setEnabled(next.whatsapp)
     sendToWindows('prefs:changed', next)
   })
   const channel = channelFile(join(app.getPath('userData'), 'atualizacoes.json'))
@@ -318,8 +316,10 @@ void app.whenReady().then(async () => {
     onChange: (state) => sendToWindows('updates:changed', state),
     onChannelChange: (next) => channel.save(next)
   })
-  whatsapp = createWhatsAppWindow({
-    boundsFile: join(app.getPath('userData'), 'janela-whatsapp.json')
+  whatsapp = createWhatsAppView({
+    enabled: prefs.get().whatsapp,
+    onUnread: (count) => sendToWindows('whatsapp:unread', count),
+    onOpen: () => sendToWindows('whatsapp:open', undefined)
   })
   registerIpc({
     connection,
