@@ -692,6 +692,90 @@
   background: var(--slot-selection);
 }
 
+.rbc-addons-dnd .rbc-event {
+  transition: background-color 120ms;
+}
+
+.rbc-addons-dnd .rbc-event.event-origem {
+  opacity: 0.35;
+  transition: opacity 150ms;
+}
+
+.rbc-event.event-pousando {
+  visibility: hidden;
+}
+
+.rbc-day-slot.agenda-fantasma {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 10;
+  pointer-events: none;
+  will-change: transform;
+}
+
+.agenda-fantasma-erguido {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-chip);
+  box-shadow: var(--elevation-pop);
+  opacity: 0.94;
+  transform: scale(calc(1 + 0.02 * var(--shift)));
+}
+
+.agenda-fantasma-horario {
+  position: absolute;
+  bottom: calc(100% + 4px);
+  left: 0;
+  padding: 0 6px;
+  border-radius: var(--radius-mark);
+  background: var(--color-solid);
+  color: var(--color-on-solid);
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 18px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  box-shadow: var(--elevation-lift);
+}
+
+.agenda-fantasma-horario.recusado {
+  background: var(--color-raised);
+  color: var(--color-ink-faint);
+  text-decoration: line-through;
+}
+
+.agenda-destino {
+  --cor: var(--tipo-cor, var(--color-control));
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 4;
+  border-radius: var(--radius-chip);
+  background: color-mix(in oklab, var(--cor) 12%, transparent);
+  box-shadow: inset 0 0 0 1.5px color-mix(in oklab, var(--cor) 55%, transparent);
+  pointer-events: none;
+  transition: transform 90ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.agenda-destino.recusado {
+  background: repeating-linear-gradient(
+    135deg,
+    var(--color-fill-hover) 0 6px,
+    transparent 6px 12px
+  );
+  box-shadow: inset 0 0 0 1.5px var(--color-line-strong);
+}
+
+:root[data-arrastando],
+:root[data-arrastando] * {
+  cursor: grabbing !important;
+}
+
+:root[data-arrastando] .rbc-event {
+  pointer-events: none;
+}
+
 .rbc-event:focus {
   outline: 2px solid var(--color-accent);
   outline-offset: 1px;
@@ -711,6 +795,7 @@
 }
 
 .rbc-time-view {
+  position: relative;
   container-type: inline-size;
 }
 

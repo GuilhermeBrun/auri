@@ -99,19 +99,21 @@ import { aoPedirEncaixe, horaDe } from '@renderer/lib/confirmacoes'
 import { cn } from '@renderer/lib/utils'
 import { corVar } from '@renderer/lib/tipos'
 import {
+  aoSoltar,
   avisoDeErro,
   descricaoDoAviso,
   desfazer,
   destinoDe,
   gravar,
   horarioDe,
-  mesmoLugar,
+  minutosDaGrade,
   podeArrastar,
-  problemaNoDestino,
   tituloDoAviso,
   type Arrastavel,
-  type Destino
+  type Destino,
+  type Soltura
 } from '@renderer/lib/arrastar'
+import { useArrastarCartao, type Contexto } from '@renderer/lib/arrastar-cartao'
 import { useComputador } from '@renderer/lib/finance'
 import { useToast } from '@renderer/lib/toast'
 
@@ -137,6 +139,8 @@ localizer.inRange = (day, min, max, unit = 'day') =>
 
 const TOAST_CLEARANCE = 72
 const ARRIVED_MS = 3000
+const STEP = 30
+const TIMESLOTS = 2
 
 const messages: Messages<CalendarEvent> = {
   today: 'Hoje',
@@ -259,6 +263,13 @@ type VagaEvent = { kind: 'vaga'; id: string; title: string; start: Date; end: Da
 
 type CalendarEvent = AppointmentEvent | CommitmentEvent | VagaEvent
 
+const chave = (event: CalendarEvent | Arrastavel): string =>
+  event.kind === 'appointment'
+    ? `a${event.appointment.id}`
+    : event.kind === 'commitment'
+      ? `c${event.commitment.id}`
+      : event.id
+
 function visibleRange(date: Date, view: View): { de: string; ate: string } {
   let start: Date
   let end: Date
@@ -279,13 +290,16 @@ function BlockContent({ event }: { event: CommitmentEvent | VagaEvent }): React.
   const label = event.kind === 'vaga' ? 'Vaga' : event.commitment.etiqueta_nome
   const titulo = event.kind === 'commitment' ? event.commitment.titulo : ''
   return (
-    <span className="flex min-w-0 flex-col">
+    <span data-chave={chave(event)} className="flex min-w-0 flex-col">
       <span className="truncate">
         {label}
         {titulo && <span className="font-normal opacity-75"> · {titulo}</span>}
       </span>
       {differenceInMinutes(event.end, event.start) >= 45 && (
-        <span className="event-detail truncate text-xs font-normal tabular-nums opacity-75">
+        <span
+          data-horario
+          className="event-detail truncate text-xs font-normal tabular-nums opacity-75"
+        >
           {timeRange(event)}
         </span>
       )}
@@ -301,7 +315,7 @@ function EventContent({ event }: EventProps<CalendarEvent>): React.JSX.Element {
   const confirmado = !assinatura && confirmacao(event.appointment) === 'confirmado'
   const aguardando = !confirmado && pedido?.estado === 'aguardando'
   return (
-    <span className="flex min-w-0 flex-col">
+    <span data-chave={chave(event)} className="flex min-w-0 flex-col">
       <span className="flex min-w-0 items-baseline gap-3">
         <span className="min-w-0 truncate">
           <span className="event-start mr-1.5 hidden font-normal tabular-nums opacity-75">
@@ -353,13 +367,19 @@ function EventContent({ event }: EventProps<CalendarEvent>): React.JSX.Element {
           </span>
         </span>
         {short && (
-          <span className="event-inline-time ml-auto hidden shrink-0 text-xs font-normal tabular-nums opacity-75">
+          <span
+            data-horario
+            className="event-inline-time ml-auto hidden shrink-0 text-xs font-normal tabular-nums opacity-75"
+          >
             {timeRange(event)}
           </span>
         )}
       </span>
       {!short && (
-        <span className="event-detail truncate text-xs font-normal tabular-nums opacity-75">
+        <span
+          data-horario
+          className="event-detail truncate text-xs font-normal tabular-nums opacity-75"
+        >
           {tipoText} · {timeRange(event)}
         </span>
       )}
@@ -529,13 +549,6 @@ type AgendaCalendarProps = {
   onMoved: (appointment: Appointment) => void
 }
 
-const chave = (event: CalendarEvent | Arrastavel): string =>
-  event.kind === 'appointment'
-    ? `a${event.appointment.id}`
-    : event.kind === 'commitment'
-      ? `c${event.commitment.id}`
-      : event.id
-
 const arrastavel = (event: CalendarEvent): boolean =>
   event.kind !== 'vaga' && podeArrastar(event, new Date())
 
@@ -623,17 +636,14 @@ const AgendaCalendar = memo(function AgendaCalendar({
     [segurar, onMoved, queryClient, toast]
   )
 
-  const mover = useCallback(
-    ({ event, start, end }: EventInteractionArgs<CalendarEvent>): void => {
-      if (event.kind === 'vaga' || !podeArrastar(event, new Date())) return
-      const item: Arrastavel = event
-      const destino = destinoDe(start, end)
-      if (mesmoLugar(item, destino)) return
-      const problema = problemaNoDestino(item, destino, funcionamento, new Date())
-      if (problema) {
-        toast({ ...avisoDeErro(problema), icon: <CircleAlert /> })
+  const executar = useCallback(
+    (item: Arrastavel, soltura: Soltura): void => {
+      if (soltura.tipo === 'recusa') {
+        toast({ ...avisoDeErro(soltura.problema), icon: <CircleAlert /> })
         return
       }
+      if (soltura.tipo === 'volta') return
+      const { destino } = soltura
       void aplicar(
         item,
         destino,
@@ -657,7 +667,15 @@ const AgendaCalendar = memo(function AgendaCalendar({
           })
       )
     },
-    [funcionamento, toast, aplicar, computador]
+    [toast, aplicar, computador]
+  )
+
+  const mover = useCallback(
+    ({ event, start, end }: EventInteractionArgs<CalendarEvent>): void => {
+      if (event.kind === 'vaga' || !podeArrastar(event, new Date())) return
+      executar(event, aoSoltar(event, destinoDe(start, end), funcionamento, new Date()))
+    },
+    [funcionamento, executar]
   )
 
   const redimensionavel = useCallback(
@@ -747,6 +765,18 @@ const AgendaCalendar = memo(function AgendaCalendar({
   )
 
   const rootRef = useRef<HTMLDivElement>(null)
+  const contexto: Contexto = {
+    dias: view === Views.DAY ? [startOfDay(date)] : weekDays(date),
+    ...minutosDaGrade(min, max, STEP * TIMESLOTS),
+    funcionamento,
+    item: (alvo) => {
+      const event = shown.find((e) => chave(e) === alvo)
+      return event && event.kind !== 'vaga' && podeArrastar(event, new Date()) ? event : null
+    },
+    soltar: executar
+  }
+  const arraste = useArrastarCartao(rootRef, contexto)
+
   useEffect(() => {
     if (arrivedRef.current === null) return
     const arrived = rootRef.current?.querySelector<HTMLElement>('.event-arrived')
@@ -760,21 +790,25 @@ const AgendaCalendar = memo(function AgendaCalendar({
 
   const eventPropGetter = useCallback(
     (event: CalendarEvent): { className?: string; style?: CSSProperties } => {
+      const arrastado =
+        arraste?.chave === chave(event) &&
+        (arraste.fase === 'erguido' ? 'event-origem' : 'event-pousando')
       if (event.kind === 'commitment') {
         const style = { '--tipo-cor': corVar(event.commitment.cor) } as CSSProperties
-        return { className: 'event-block', style }
+        return { className: cn('event-block', arrastado), style }
       }
       if (event.kind === 'vaga') return { className: 'event-vaga' }
       const missed =
         event.appointment.presenca === 'falta' || event.appointment.presenca === 'desmarcou'
       const className = cn(
         event.id === arrivedRef.current && 'event-arrived',
-        missed && 'event-missed'
+        missed && 'event-missed',
+        arrastado
       )
       const style = { '--tipo-cor': corVar(event.appointment.tipo_cor) } as CSSProperties
       return className ? { className, style } : { style }
     },
-    [arrivedRef]
+    [arrivedRef, arraste]
   )
 
   return (
@@ -790,8 +824,8 @@ const AgendaCalendar = memo(function AgendaCalendar({
         onView={onView}
         views={VIEWS}
         toolbar={false}
-        step={30}
-        timeslots={2}
+        step={STEP}
+        timeslots={TIMESLOTS}
         min={min}
         max={max}
         scrollToTime={scrollToTime}

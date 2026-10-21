@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, screen, waitFor, within } from '@testing-library/react'
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { FUNCIONAMENTO_PADRAO, type Funcionamento } from '@shared/agenda'
@@ -37,7 +37,8 @@ vi.hoisted(() => {
   Object.assign(Element.prototype, {
     hasPointerCapture: () => false,
     releasePointerCapture: () => {},
-    scrollIntoView: () => {}
+    scrollIntoView: () => {},
+    animate: () => ({ finished: Promise.resolve(), cancel: () => {} })
   })
 })
 
@@ -423,5 +424,152 @@ describe('agendamento e funcionamento', () => {
     )
     await screen.findByRole('button', { name: 'Salvar alterações' })
     expect(screen.queryByRole('switch', { name: 'Confirmado' })).toBeNull()
+  })
+})
+
+describe('arrastar o cartão pela agenda', () => {
+  const TOPO = 50
+  const ALTURA = 13 * 60
+  const LARGURA = 100
+  const nina = fakeAppointment({ inicio: '2026-10-15T09:00', patient_nome: 'Nina Fictícia' })
+
+  const caixa = (left: number, top: number, width: number, height: number): DOMRect =>
+    ({
+      left,
+      top,
+      width,
+      height,
+      right: left + width,
+      bottom: top + height,
+      x: left,
+      y: top,
+      toJSON: () => ({})
+    }) as DOMRect
+
+  function geometria(this: Element): DOMRect {
+    if (this.classList.contains('rbc-time-view')) return caixa(0, 0, 800, 900)
+    if (this.classList.contains('rbc-time-content')) return caixa(0, TOPO, 800, 600)
+    const coluna = this.closest<HTMLElement>('.rbc-time-content > .rbc-day-slot')
+    if (!coluna) return caixa(0, 0, 0, 0)
+    const colunas = Array.from(coluna.parentElement!.querySelectorAll(':scope > .rbc-day-slot'))
+    const esquerda = 52 + (colunas.indexOf(coluna) - 1) * LARGURA
+    const largura = coluna.classList.contains('day-hidden') ? 0 : LARGURA
+    if (this === coluna) return caixa(esquerda, TOPO, largura, ALTURA)
+    if (this.classList.contains('rbc-events-container')) {
+      return caixa(esquerda, TOPO, largura - 4, ALTURA)
+    }
+    const { top, height } = (this as HTMLElement).style
+    const em = (valor: string): number => (parseFloat(valor) / 100) * ALTURA
+    return caixa(esquerda, TOPO + em(top), largura - 4, em(height))
+  }
+
+  const ponteiro = (clientX: number, clientY: number): PointerEventInit => ({
+    pointerId: 1,
+    pointerType: 'mouse',
+    isPrimary: true,
+    button: 0,
+    clientX,
+    clientY
+  })
+
+  const marca = (): HTMLElement | null => document.querySelector<HTMLElement>('.agenda-destino')
+  const horario = (): string | null | undefined =>
+    document.querySelector<HTMLElement>('.agenda-fantasma-horario')?.textContent
+  const fantasma = (): HTMLElement | null => document.querySelector<HTMLElement>('.agenda-fantasma')
+
+  async function pegar(): Promise<HTMLElement> {
+    setup([nina])
+    api.appointments.move = vi.fn(async (id: number, slot: { inicio: string; fim: string }) =>
+      fakeAppointment({ ...nina, id, ...slot })
+    )
+    renderRoute('/agenda', '/agenda', <AgendaPage />, toast)
+    const cartao = await eventOf('Nina Fictícia')
+    await waitFor(() => expect(shownHeaders()).toHaveLength(6))
+    fireEvent.pointerDown(cartao, ponteiro(372, 180))
+    return cartao
+  }
+
+  const toast = vi.fn()
+
+  beforeEach(() => {
+    toast.mockClear()
+    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(geometria)
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('desgruda, segue o ponteiro livre e remarca no horário marcado na grade', async () => {
+    await pegar()
+    fireEvent.pointerMove(window, ponteiro(375, 183))
+    await new Promise((pronto) => requestAnimationFrame(pronto))
+    expect(fantasma()).toBeNull()
+
+    fireEvent.pointerMove(window, ponteiro(472, 280))
+    await waitFor(() => expect(marca()?.hidden).toBe(false))
+    expect(horario()).toBe('10:45 – 11:15')
+    expect(fantasma()?.querySelector('[data-horario]')?.textContent).toBe('10:45 – 11:15')
+    expect(fantasma()?.style.transform).toMatch(/^translate3d\(452px, 270px/)
+    await waitFor(() =>
+      expect(document.querySelector('.rbc-time-content .event-origem')?.textContent).toContain(
+        'Nina Fictícia'
+      )
+    )
+
+    fireEvent.pointerMove(window, ponteiro(473, 281))
+    await waitFor(() => expect(fantasma()?.style.transform).toMatch(/^translate3d\(453px, 271px/))
+    expect(horario()).toBe('10:45 – 11:15')
+
+    fireEvent.pointerUp(window, ponteiro(473, 281))
+    await waitFor(() =>
+      expect(api.appointments.move).toHaveBeenCalledWith(
+        nina.id,
+        { inicio: '2026-10-16T10:45', fim: '2026-10-16T11:15' },
+        nina.updated_at,
+        'Este computador'
+      )
+    )
+    await waitFor(() => expect(fantasma()).toBeNull())
+    expect(marca()).toBeNull()
+    expect(document.documentElement.dataset.arrastando).toBeUndefined()
+  })
+
+  it('Esc devolve o cartão ao lugar sem gravar', async () => {
+    await pegar()
+    fireEvent.pointerMove(window, ponteiro(472, 280))
+    await waitFor(() => expect(marca()?.hidden).toBe(false))
+    fireEvent.keyDown(window, { key: 'Escape' })
+    await waitFor(() => expect(fantasma()).toBeNull())
+    expect(marca()).toBeNull()
+    fireEvent.pointerUp(window, ponteiro(472, 280))
+    await waitFor(async () =>
+      expect((await eventOf('Nina Fictícia')).classList).not.toContain('event-origem')
+    )
+    expect(api.appointments.move).not.toHaveBeenCalled()
+    expect(api.appointments.update).not.toHaveBeenCalled()
+  })
+
+  it('soltar fora da grade volta para o lugar', async () => {
+    await pegar()
+    fireEvent.pointerMove(window, ponteiro(20, 280))
+    await waitFor(() => expect(fantasma()?.style.transform).toMatch(/^translate3d\(0px, 270px/))
+    expect(marca()?.hidden).toBe(true)
+    fireEvent.pointerUp(window, ponteiro(20, 280))
+    await waitFor(() => expect(fantasma()).toBeNull())
+    expect(api.appointments.move).not.toHaveBeenCalled()
+  })
+
+  it('marca o horário recusado e avisa ao soltar ali', async () => {
+    await pegar()
+    fireEvent.pointerMove(window, ponteiro(572, 520))
+    await waitFor(() => expect(horario()).toBe('14:45 – 15:15'))
+    expect(marca()?.classList).toContain('recusado')
+    fireEvent.pointerUp(window, ponteiro(572, 520))
+    await waitFor(() => expect(fantasma()).toBeNull())
+    expect(toast).toHaveBeenCalledWith(
+      expect.objectContaining({ title: 'Fora do horário de funcionamento' })
+    )
+    expect(api.appointments.move).not.toHaveBeenCalled()
   })
 })

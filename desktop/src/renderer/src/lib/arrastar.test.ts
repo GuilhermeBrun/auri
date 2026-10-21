@@ -4,16 +4,25 @@ import type { Commitment } from '@shared/commitments'
 import type { Appointment } from '@shared/schemas'
 import { fakeAppointment } from '@renderer/testing'
 import {
+  alvoNoPonto,
+  aoSoltar,
   avisoDeErro,
   desfazer,
   destinoDe,
   gravar,
   HORARIO_PASSADO,
+  horarioDe,
   mesmoLugar,
+  minutosDaGrade,
+  passouDoLimiar,
   podeArrastar,
+  posicaoLivre,
   problemaNoDestino,
+  rolagemNaBorda,
   tituloDoAviso,
-  type Arrastavel
+  topoDoMinuto,
+  type Arrastavel,
+  type Grade
 } from './arrastar'
 
 const AGORA = new Date(2026, 9, 14, 10, 0)
@@ -173,6 +182,94 @@ describe('arrastar na agenda', () => {
       { etiqueta_id: 7, titulo: 'Equipe', observacao: '', ...destino },
       'c1'
     )
+  })
+})
+
+describe('cartão solto pela grade', () => {
+  const grade: Grade = {
+    colunas: [
+      { dia: new Date(2026, 9, 15), esquerda: 100, direita: 200 },
+      { dia: new Date(2026, 9, 16), esquerda: 200, direita: 300 }
+    ],
+    topo: 50,
+    altura: 13 * 60,
+    abre: 7 * 60,
+    minutos: 13 * 60
+  }
+  const naGrade = (hora: number, minuto: number): number => grade.topo + hora * 60 + minuto - 7 * 60
+
+  it('só desgruda depois do limiar de movimento', () => {
+    expect(passouDoLimiar({ x: 10, y: 10 }, { x: 15, y: 5 })).toBe(false)
+    expect(passouDoLimiar({ x: 10, y: 10 }, { x: 10, y: 16 })).toBe(true)
+    expect(passouDoLimiar({ x: 10, y: 10 }, { x: 4, y: 10 })).toBe(true)
+  })
+
+  it('segue o ponteiro pixel a pixel, sem pular de faixa', () => {
+    const pega = { x: 12, y: 9 }
+    expect(posicaoLivre({ x: 150, y: 263 }, pega)).toEqual({ x: 138, y: 254 })
+    expect(posicaoLivre({ x: 151, y: 264 }, pega)).toEqual({ x: 139, y: 255 })
+  })
+
+  it('o destino fica preso ao horário mais próximo, de 15 em 15 minutos', () => {
+    expect(alvoNoPonto(grade, 150, naGrade(9, 7), 30)?.destino).toEqual({
+      inicio: '2026-10-15T09:00',
+      fim: '2026-10-15T09:30'
+    })
+    expect(alvoNoPonto(grade, 150, naGrade(9, 8), 30)?.destino).toEqual({
+      inicio: '2026-10-15T09:15',
+      fim: '2026-10-15T09:45'
+    })
+    expect(alvoNoPonto(grade, 250, naGrade(9, 8), 45)).toEqual({
+      coluna: 1,
+      minuto: 9 * 60 + 15,
+      destino: { inicio: '2026-10-16T09:15', fim: '2026-10-16T10:00' }
+    })
+  })
+
+  it('não passa do começo nem do fim da grade e fora das colunas não tem destino', () => {
+    expect(alvoNoPonto(grade, 150, 0, 30)?.destino.inicio).toBe('2026-10-15T07:00')
+    expect(alvoNoPonto(grade, 150, 2000, 60)?.destino).toEqual({
+      inicio: '2026-10-15T19:00',
+      fim: '2026-10-15T20:00'
+    })
+    expect(alvoNoPonto(grade, 99, naGrade(9, 0), 30)).toBeNull()
+    expect(alvoNoPonto(grade, 300, naGrade(9, 0), 30)).toBeNull()
+  })
+
+  it('com a agenda rolada o destino acompanha a grade', () => {
+    const rolada = { ...grade, topo: grade.topo - 60 }
+    expect(alvoNoPonto(rolada, 150, naGrade(9, 0), 30)?.destino.inicio).toBe('2026-10-15T10:00')
+    expect(topoDoMinuto(grade, 9 * 60)).toBe(naGrade(9, 0))
+    expect(topoDoMinuto(rolada, 10 * 60)).toBe(naGrade(9, 0))
+  })
+
+  it('a escala acompanha as faixas de uma hora do calendário', () => {
+    const dia = (h: number, m = 0): Date => new Date(2026, 9, 15, h, m)
+    expect(minutosDaGrade(dia(7), dia(20), 60)).toEqual({ abre: 420, minutos: 780 })
+    expect(minutosDaGrade(dia(7), dia(23, 59), 60)).toEqual({ abre: 420, minutos: 1020 })
+  })
+
+  it('perto da borda a agenda rola sozinha', () => {
+    const area = { topo: 100, baixo: 500, esquerda: 0, direita: 400 }
+    expect(rolagemNaBorda({ x: 200, y: 300 }, area)).toBe(0)
+    expect(rolagemNaBorda({ x: 200, y: 130 }, area)).toBeLessThan(0)
+    expect(rolagemNaBorda({ x: 200, y: 20 }, area)).toBe(-14)
+    expect(rolagemNaBorda({ x: 200, y: 495 }, area)).toBeGreaterThan(0)
+    expect(rolagemNaBorda({ x: 500, y: 495 }, area)).toBe(0)
+  })
+
+  it('ao soltar remarca, recusa ou volta para o lugar', () => {
+    const item = sessao({ inicio: '2026-10-15T09:00' })
+    const soltar = (destino: Parameters<typeof aoSoltar>[1]): ReturnType<typeof aoSoltar> =>
+      aoSoltar(item, destino, FUNCIONAMENTO_PADRAO, AGORA)
+    expect(soltar(null)).toEqual({ tipo: 'volta' })
+    expect(soltar(horarioDe(item))).toEqual({ tipo: 'volta' })
+    expect(soltar({ inicio: '2026-10-14T09:00', fim: '2026-10-14T09:30' })).toEqual({
+      tipo: 'recusa',
+      problema: HORARIO_PASSADO
+    })
+    const destino = { inicio: '2026-10-16T10:15', fim: '2026-10-16T10:45' }
+    expect(soltar(destino)).toEqual({ tipo: 'move', destino })
   })
 })
 
