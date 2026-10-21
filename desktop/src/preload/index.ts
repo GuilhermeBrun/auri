@@ -17,6 +17,7 @@ import {
   type UpdateState
 } from '../shared/api'
 import type { AgendaNotice } from '../shared/agenda-notice'
+import type { TextSize } from '../shared/aparencia'
 import type { UiPrefs } from '../shared/schemas'
 
 async function invoke<T>(channel: string, ...args: unknown[]): Promise<T> {
@@ -219,7 +220,8 @@ const prefs: AuriPrefs = {
   save: (value) => ipcRenderer.send('prefs:save', value),
   onChange: (listener) => subscribe<UiPrefs>('prefs:changed', listener),
   enableReception: () => invoke('reception:enable'),
-  disableReception: (secret) => invoke('reception:disable', secret)
+  disableReception: (secret) => invoke('reception:disable', secret),
+  onFit: (listener) => subscribe<TextSize>('prefs:fit', listener)
 }
 
 const transfer: AuriTransfer = {

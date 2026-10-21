@@ -17,8 +17,16 @@ import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import trayIcon from '../../resources/trayTemplate.png?asset'
 import { noticeText, type AgendaNotice } from '../shared/agenda-notice'
+import {
+  DEFAULT_COLORS,
+  largestTextSize,
+  MIN_WINDOW,
+  surfaceColor,
+  TEXT_SIZES,
+  type TextSize
+} from '../shared/aparencia'
 import { PREFS_ARG } from '../shared/api'
-import type { Theme, UiPrefs } from '../shared/schemas'
+import type { UiPrefs } from '../shared/schemas'
 import { createBackupService, type BackupService } from './backup-service'
 import { detectProviders, systemProbe } from './backup/providers'
 import { QUIT_BACKUP_MS } from './backup/scheduler'
@@ -58,12 +66,14 @@ let quitBackupDone = false
 let skipQuitBackup = false
 
 function windowBackground(): string {
-  return nativeTheme.shouldUseDarkColors ? '#17171c' : '#ffffff'
+  const colors = prefs?.get().colors ?? DEFAULT_COLORS
+  return surfaceColor(colors, nativeTheme.shouldUseDarkColors ? 'dark' : 'light')
 }
 
-function applyTheme(theme: Theme): void {
-  nativeTheme.themeSource = theme
+function applyAppearance(next: UiPrefs): void {
+  nativeTheme.themeSource = next.theme
   syncWindowBackgrounds()
+  for (const window of BrowserWindow.getAllWindows()) applyTextSize(window, next.textSize)
 }
 
 function appWindows(): BrowserWindow[] {
@@ -74,7 +84,56 @@ function syncWindowBackgrounds(): void {
   for (const window of BrowserWindow.getAllWindows()) window.setBackgroundColor(windowBackground())
 }
 
-function createWindow(prefs: UiPrefs): void {
+function applyTextSize(window: BrowserWindow, wanted: TextSize): void {
+  const area = screen.getDisplayMatching(window.getBounds()).workArea
+  const largest = largestTextSize(area)
+  const size = Math.min(wanted, largest)
+  const min = {
+    width: Math.round(MIN_WINDOW.width * size),
+    height: Math.round(MIN_WINDOW.height * size)
+  }
+  window.setMinimumSize(min.width, min.height)
+  const bounds = window.getBounds()
+  if (!window.isFullScreen() && (bounds.width < min.width || bounds.height < min.height)) {
+    const width = Math.max(bounds.width, min.width)
+    const height = Math.max(bounds.height, min.height)
+    window.setBounds({
+      width,
+      height,
+      x: Math.max(area.x, Math.min(bounds.x, area.x + area.width - width)),
+      y: Math.max(area.y, Math.min(bounds.y, area.y + area.height - height))
+    })
+  }
+  if (window.webContents.getZoomFactor() !== size) window.webContents.setZoomFactor(size)
+  if (process.platform === 'darwin') {
+    window.setWindowButtonPosition({ x: 22, y: Math.round(24 * size - 7) })
+  }
+  window.webContents.send('prefs:fit', largest)
+}
+
+function refitWindows(): void {
+  const size = prefs?.get().textSize
+  if (size) for (const window of BrowserWindow.getAllWindows()) applyTextSize(window, size)
+}
+
+function stepTextSize(window: BrowserWindow, input: Electron.Input): TextSize | null {
+  if (
+    input.type !== 'keyDown' ||
+    input.alt ||
+    !(process.platform === 'darwin' ? input.meta : input.control)
+  ) {
+    return null
+  }
+  const largest = largestTextSize(screen.getDisplayMatching(window.getBounds()).workArea)
+  const sizes = TEXT_SIZES.filter((size) => size <= largest)
+  const index = sizes.indexOf(Math.min(prefs?.get().textSize ?? 1, largest) as TextSize)
+  if (input.key === '=' || input.key === '+') return sizes[Math.min(index + 1, sizes.length - 1)]
+  if (input.key === '-' || input.key === '_') return sizes[Math.max(index - 1, 0)]
+  if (input.key === '0') return sizes[0]
+  return null
+}
+
+function createWindow(initial: UiPrefs): void {
   const mainWindow = new BrowserWindow({
     ...tamanhoDaJanela(screen.getPrimaryDisplay().workAreaSize),
     title: 'Auri',
@@ -82,12 +141,16 @@ function createWindow(prefs: UiPrefs): void {
     autoHideMenuBar: true,
     backgroundColor: windowBackground(),
     ...(process.platform === 'darwin'
-      ? { titleBarStyle: 'hiddenInset' as const, trafficLightPosition: { x: 22, y: 17 } }
+      ? {
+          titleBarStyle: 'hiddenInset' as const,
+          trafficLightPosition: { x: 22, y: Math.round(24 * initial.textSize - 7) }
+        }
       : {}),
     ...(process.platform !== 'darwin' ? { icon } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
-      additionalArguments: [`${PREFS_ARG}${JSON.stringify(prefs)}`],
+      zoomFactor: initial.textSize,
+      additionalArguments: [`${PREFS_ARG}${JSON.stringify(initial)}`],
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true
@@ -97,6 +160,19 @@ function createWindow(prefs: UiPrefs): void {
   mainWindow.on('ready-to-show', () => {
     mainWindow.show()
   })
+
+  applyTextSize(mainWindow, initial.textSize)
+  mainWindow.webContents.on('did-finish-load', () => {
+    applyTextSize(mainWindow, prefs?.get().textSize ?? initial.textSize)
+  })
+  mainWindow.on('moved', refitWindows)
+  mainWindow.webContents.on('before-input-event', (event, input) => {
+    const size = stepTextSize(mainWindow, input)
+    if (size === null) return
+    event.preventDefault()
+    prefs?.save({ textSize: size })
+  })
+
   mainWindow.webContents.setWindowOpenHandler((details) => {
     if (details.url.startsWith('https://')) void shell.openExternal(details.url)
     return { action: 'deny' }
@@ -336,7 +412,7 @@ void app.whenReady().then(async () => {
   })
   syncTray()
   prefs = createPrefsStore(join(app.getPath('userData'), 'preferencias.json'), (next) => {
-    applyTheme(next.theme)
+    applyAppearance(next)
     void whatsapp?.setEnabled(next.whatsapp)
     sendToWindows('prefs:changed', next)
   })
@@ -364,8 +440,10 @@ void app.whenReady().then(async () => {
     whatsapp,
     receptionLock: createReceptionLock(prefs, backup)
   })
-  applyTheme(prefs.get().theme)
+  applyAppearance(prefs.get())
   nativeTheme.on('updated', syncWindowBackgrounds)
+  screen.on('display-metrics-changed', refitWindows)
+  screen.on('display-removed', refitWindows)
 
   createWindow(prefs.get())
   verificarPrazos()

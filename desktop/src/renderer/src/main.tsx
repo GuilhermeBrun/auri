@@ -8,6 +8,7 @@ import { createRoot } from 'react-dom/client'
 import { HashRouter } from 'react-router'
 import App from './App'
 import { ErrorBoundary } from './components/ErrorBoundary'
+import { startAppearance } from './lib/theme'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -64,6 +65,7 @@ window.prefs.onChange((prefs) => {
 })
 
 document.documentElement.dataset.platform = window.platform
+startAppearance()
 
 function report(error: unknown): void {
   const value = (error instanceof Error ? error : { message: String(error) }) as Error

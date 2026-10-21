@@ -20,6 +20,7 @@ import type {
   TermSendResult,
   UiPrefs
 } from './schemas'
+import { DEFAULT_COLORS, type TextSize } from './aparencia'
 import type { Commitment, CommitmentInput } from './commitments'
 import type {
   AvisosDaConfirmacao,
@@ -208,13 +209,16 @@ export interface AuriPrefs {
   onChange(listener: (prefs: UiPrefs) => void): () => void
   enableReception(): Promise<void>
   disableReception(secret?: BackupSecret): Promise<void>
+  onFit(listener: (largest: TextSize) => void): () => void
 }
 
 export const DEFAULT_UI_PREFS: UiPrefs = {
   sidebarOpen: true,
   theme: 'system',
   whatsapp: true,
-  recepcao: false
+  recepcao: false,
+  textSize: 1,
+  colors: DEFAULT_COLORS
 }
 
 export type WhatsAppBounds = { x: number; y: number; width: number; height: number }

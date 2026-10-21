@@ -64,7 +64,9 @@ export function createTransferService(options: {
     return {
       appearance: {
         theme: options.prefs.get().theme,
-        sidebarOpen: options.prefs.get().sidebarOpen
+        sidebarOpen: options.prefs.get().sidebarOpen,
+        textSize: options.prefs.get().textSize,
+        colors: options.prefs.get().colors
       },
       connection: {
         role: c.role,
