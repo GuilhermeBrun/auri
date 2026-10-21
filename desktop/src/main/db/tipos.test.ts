@@ -580,12 +580,12 @@ describe('excluir etiqueta', () => {
     expect(getCommitment(db, c.id).etiqueta_nome).toBe('Reunião')
   })
 
-  it('quem já saiu da lista de espera não segura a etiqueta', () => {
+  it('quem já saiu da lista de espera não segura a etiqueta e fica com a padrão', () => {
     const entry = addToWaitlist(db, { patient_id: patientId, duracao: 60, tipo_id: 3 })
     closeWaitlist(db, entry.id, { motivo: 'removido' })
     expect(usoDoTipo(db, 3)).toEqual({ agendamentos: 0, compromissos: 0, espera: 0 })
     removeTipo(db, 3, null)
-    expect(db.prepare('SELECT tipo_id FROM waitlist_entries').get()).toEqual({ tipo_id: null })
+    expect(db.prepare('SELECT tipo_id FROM waitlist_entries').get()).toEqual({ tipo_id: 1 })
   })
 
   it('o banco não apaga etiqueta em uso por fora da troca', () => {

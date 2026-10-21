@@ -50,6 +50,7 @@ import { ErrorText, FormSection } from '@renderer/components/ui/section'
 import { Segmented } from '@renderer/components/ui/segmented'
 import { Select } from '@renderer/components/ui/select'
 import { TimeField } from '@renderer/components/ui/time-field'
+import { useSalvar } from '@renderer/lib/atalhos'
 import { useDraft } from '@renderer/lib/drafts'
 import { patientQuery } from '@renderer/lib/queries'
 import { PATIENTS_CRUMB, patientTrail } from '@renderer/lib/session'
@@ -618,6 +619,7 @@ function PatientFormPage({ patientId }: { patientId: number | null }): React.JSX
   const idade = formatAge(nascimento)
   const adulto = isAdult(nascimento)
   const contatoPaciente = celularPaciente !== '' || emailPaciente !== ''
+  const salvar = useSalvar()
 
   if (!isNew && !patient) {
     return (
@@ -643,7 +645,12 @@ function PatientFormPage({ patientId }: { patientId: number | null }): React.JSX
   const nomeAtual = nome.trim() || (isNew ? '' : (patient?.nome ?? ''))
 
   return (
-    <form onSubmit={handleSubmit((values) => save.mutate(values))} noValidate className="h-full">
+    <form
+      ref={salvar}
+      onSubmit={handleSubmit((values) => save.mutate(values))}
+      noValidate
+      className="h-full"
+    >
       <Page
         trail={
           isNew

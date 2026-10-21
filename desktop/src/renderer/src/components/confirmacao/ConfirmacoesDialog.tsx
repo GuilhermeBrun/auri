@@ -16,8 +16,13 @@ import { Dialog, DialogBody, DialogFooter } from '@renderer/components/ui/dialog
 import { abrirResposta, horaDe } from '@renderer/lib/confirmacoes'
 import { useEnviarConfirmacao, type Via } from './useEnviar'
 
-const precisaEnviar = (s: ConfirmacaoLinha): boolean =>
-  !s.confirmado && s.pedido === null && Boolean(s.contato?.celular) && s.bloqueio === null
+const pendente = (s: ConfirmacaoLinha): boolean =>
+  !s.confirmado && s.pedido === null && Boolean(s.contato?.celular)
+
+const precisaEnviar = (s: ConfirmacaoLinha): boolean => pendente(s) && s.bloqueio === null
+
+const foraDaJanela = (s: ConfirmacaoLinha): string | null =>
+  pendente(s) && s.bloqueio !== PERTO_DEMAIS ? s.bloqueio : null
 
 const nomeDoDia = (grupo: GrupoParaConfirmar): string =>
   grupo.hoje
@@ -27,9 +32,9 @@ const nomeDoDia = (grupo: GrupoParaConfirmar): string =>
 const capitalizar = (texto: string): string => texto.charAt(0).toUpperCase() + texto.slice(1)
 
 function avisoDoGrupo(grupo: GrupoParaConfirmar): string | null {
-  const [primeiro] = grupo.sessoes
-  if (!primeiro?.bloqueio || primeiro.bloqueio === PERTO_DEMAIS) return null
-  return grupo.sessoes.every((s) => s.bloqueio === primeiro.bloqueio) ? primeiro.bloqueio : null
+  const pendentes = grupo.sessoes.filter((s) => pendente(s) && s.bloqueio !== PERTO_DEMAIS)
+  const motivo = pendentes.at(0)?.bloqueio ?? null
+  return motivo && pendentes.every((s) => s.bloqueio === motivo) ? motivo : null
 }
 
 export function ConfirmacoesDialog({
@@ -108,27 +113,33 @@ function Conteudo({
                 </Callout>
               )}
               <ul aria-label={nomeDoDia(grupo)} className="-mx-2 flex flex-col">
-                {grupo.sessoes.map((s) => (
-                  <li
-                    key={s.appointment_id}
-                    className="flex items-center gap-3 rounded-control px-2 py-2 hover:bg-canvas"
-                  >
-                    <span className="w-11 shrink-0 text-[13px] font-medium tabular-nums">
-                      {formatTime(parseIsoLocalDateTime(s.inicio))}
-                    </span>
-                    <span className="flex min-w-0 flex-1 flex-col">
-                      <span className="truncate text-[13px] font-medium">
-                        {shortName(s.patient_nome)}
+                {grupo.sessoes.map((s) => {
+                  const motivo = foraDaJanela(s)
+                  return (
+                    <li
+                      key={s.appointment_id}
+                      className="flex items-center gap-3 rounded-control px-2 py-2 hover:bg-canvas"
+                    >
+                      <span className="w-11 shrink-0 text-[13px] font-medium tabular-nums">
+                        {formatTime(parseIsoLocalDateTime(s.inicio))}
                       </span>
-                      <span className="truncate text-xs text-ink-soft">
-                        {s.contato
-                          ? `${s.contato.nome.split(' ')[0]} (${s.contato.parentesco}) · ${s.contato.celular || 'sem celular na ficha'}`
-                          : 'Sem contato principal na ficha'}
+                      <span className="flex min-w-0 flex-1 flex-col">
+                        <span className="truncate text-[13px] font-medium">
+                          {shortName(s.patient_nome)}
+                        </span>
+                        <span className="truncate text-xs text-ink-soft">
+                          {s.contato
+                            ? `${s.contato.nome.split(' ')[0]} (${s.contato.parentesco}) · ${s.contato.celular || 'sem celular na ficha'}`
+                            : 'Sem contato principal na ficha'}
+                        </span>
+                        {motivo && motivo !== aviso && (
+                          <span className="text-xs text-warning">{motivo}</span>
+                        )}
                       </span>
-                    </span>
-                    <Situacao sessao={s} ocupada={ocupada} onEnviar={enviarUma} />
-                  </li>
-                ))}
+                      <Situacao sessao={s} ocupada={ocupada} onEnviar={enviarUma} />
+                    </li>
+                  )
+                })}
               </ul>
             </section>
           )

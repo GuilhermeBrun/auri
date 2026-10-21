@@ -172,4 +172,19 @@ describe.skipIf(!url)('tabela links', () => {
     `
     expect(n).toBe(0)
   })
+
+  it('recusa gravar quando o dia já passou de 3 MB', async () => {
+    const links = linksEm(funcao)
+    const agora = new Date()
+    const bloco = 'x'.repeat(6000)
+    await admin`
+      INSERT INTO links (id, dados, expira_em)
+      SELECT 'm' || lpad(n::text, ${contrato.tamanhoDoId - 1}, '0'), ${bloco}, now() + interval '1 day'
+      FROM generate_series(1, 500) AS n
+    `
+    await expect(
+      links.guardar('f'.repeat(contrato.tamanhoDoId), DADOS, new Date(agora.getTime() + 1000))
+    ).rejects.toThrow(/3 MB/)
+    await admin`DELETE FROM links WHERE id LIKE 'm%'`
+  })
 })

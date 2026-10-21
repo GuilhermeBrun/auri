@@ -6,14 +6,15 @@ import {
   Wallet,
   type LucideIcon
 } from 'lucide-react'
-import { createContext, useContext, useMemo, useSyncExternalStore } from 'react'
+import { createContext, useContext, useMemo } from 'react'
 import {
   arrangeSidebar,
-  DEFAULT_SIDEBAR_ITEMS,
+  visibleItems,
   type ArrangedItem,
   type SidebarItemId,
   type SidebarItems
 } from '@shared/sidebar'
+import { prefsField, usePrefsField } from '@renderer/lib/prefs-field'
 import { useReception } from '@renderer/lib/reception'
 import { useWhatsAppEnabled } from '@renderer/lib/whatsapp'
 
@@ -39,35 +40,14 @@ export const NAV_GAP = 6
 export const navItemClass =
   'relative flex h-[34px] items-center gap-2.5 rounded-control px-3 text-[13px] font-medium text-ink-soft transition-colors hover:bg-fill hover:text-ink [&_svg]:size-4 [&_svg]:stroke-[1.75]'
 
-let items: SidebarItems = window.prefs.initial?.sidebarItems ?? DEFAULT_SIDEBAR_ITEMS
-let watching = false
-const listeners = new Set<() => void>()
-
-function notify(): void {
-  for (const listener of listeners) listener()
-}
-
-function subscribe(listener: () => void): () => void {
-  if (!watching) {
-    watching = true
-    window.prefs.onChange((prefs) => {
-      if (JSON.stringify(prefs.sidebarItems) === JSON.stringify(items)) return
-      items = prefs.sidebarItems
-      notify()
-    })
-  }
-  listeners.add(listener)
-  return () => listeners.delete(listener)
-}
+const sidebarItems = prefsField('sidebarItems')
 
 export function useSidebarItems(): SidebarItems {
-  return useSyncExternalStore(subscribe, () => items)
+  return usePrefsField(sidebarItems)
 }
 
 export function saveSidebarItems(next: SidebarItems): void {
-  items = next
-  window.prefs.save({ sidebarItems: next })
-  notify()
+  sidebarItems.set(next)
 }
 
 export function useAvailableItems(): ArrangedItem[] {
@@ -89,6 +69,11 @@ export function useWhatsAppActive(): boolean {
   return enabled && !prefs.hidden.includes('whatsapp')
 }
 
+export function useVisibleItems(): ArrangedItem[] {
+  const available = useAvailableItems()
+  return useMemo(() => visibleItems(available), [available])
+}
+
 export function useHomePath(): string {
-  return useAvailableItems().find((item) => !item.hidden)?.path ?? '/agenda'
+  return useVisibleItems().at(0)?.path ?? '/agenda'
 }

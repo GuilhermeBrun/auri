@@ -2,7 +2,6 @@ import { sha256 } from '../../contrato/assinatura/cifra'
 import {
   LinkInvalido,
   PAPEIS,
-  VERSAO,
   idDaVolta,
   lerIda,
   venceu,
@@ -91,7 +90,7 @@ export async function abrir(
 ): Promise<Estado> {
   if (!temSuporte(ambiente)) return { tela: 'sem-suporte' }
   try {
-    const expandido = await expandir(fragmento, VERSAO, rede)
+    const expandido = await expandir(fragmento, rede)
     if ('falha' in expandido) return { tela: expandido.falha }
     const { termo, chave } = await lerIda(expandido.fragmento)
     const rascunho = lerRascunho(termo.id, armazenamento)

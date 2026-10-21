@@ -121,8 +121,9 @@ function ErrorReports(): React.JSX.Element | null {
 
 function ThisComputer(): React.JSX.Element {
   const reception = useReception()
-  const hasPassword = useBackup()?.hasPassword === true
-  const [asking, setAsking] = useState<'desligar' | 'criar' | null>(null)
+  const backup = useBackup()
+  const hasPassword = backup?.hasPassword === true
+  const [asking, setAsking] = useState<'desligar' | 'criar' | 'proteger' | null>(null)
   const toggle = useMutation({
     mutationFn: async (on: boolean) => {
       if (on) await window.prefs.enableReception()
@@ -131,7 +132,7 @@ function ThisComputer(): React.JSX.Element {
   })
   return (
     <PageSection id="computador" title="Este computador">
-      <SettingsGroup>
+      <SettingsGroup rows>
         <SwitchField
           label="Computador da recepção"
           description={
@@ -147,10 +148,24 @@ function ThisComputer(): React.JSX.Element {
             else toggle.mutate(on)
           }}
         />
+        {reception && backup && !hasPassword && (
+          <SettingRow
+            title="Sem senha"
+            description="Qualquer pessoa desliga a recepção. Crie uma senha para proteger."
+          >
+            <Button variant="secondary" onClick={() => setAsking('proteger')}>
+              Criar senha
+            </Button>
+          </SettingRow>
+        )}
         {toggle.error && <ErrorText>{toggle.error.message}</ErrorText>}
       </SettingsGroup>
       <ReceptionDialog open={asking === 'desligar'} onClose={() => setAsking(null)} />
-      <ReceptionPasswordDialog open={asking === 'criar'} onClose={() => setAsking(null)} />
+      <ReceptionPasswordDialog
+        open={asking === 'criar' || asking === 'proteger'}
+        on={asking === 'proteger'}
+        onClose={() => setAsking(null)}
+      />
     </PageSection>
   )
 }

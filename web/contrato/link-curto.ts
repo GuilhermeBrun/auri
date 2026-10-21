@@ -110,9 +110,18 @@ export async function buscarGuardado(
   return dados
 }
 
-export async function expandirIda(codigo: string, versao: number, opcoes: Opcoes): Promise<string> {
-  const [dados, chave] = await Promise.all([buscarGuardado(codigo, opcoes), chaveDoCodigo(codigo)])
-  return `${versao}.${paraBase64url(chave)}.${dados}`
+export function guardadoDaIda(fragmento: string): string {
+  const [versao = '', , dados = ''] = fragmento.split('.')
+  return `${versao}.${dados}`
+}
+
+export async function expandirIda(codigo: string, opcoes: Opcoes): Promise<string> {
+  const [guardado, chave] = await Promise.all([
+    buscarGuardado(codigo, opcoes),
+    chaveDoCodigo(codigo)
+  ])
+  const ponto = guardado.indexOf('.')
+  return `${guardado.slice(0, ponto + 1)}${paraBase64url(chave)}.${guardado.slice(ponto + 1)}`
 }
 
 export function partesDoLink(link: string): { inicio: string; fragmento: string } {

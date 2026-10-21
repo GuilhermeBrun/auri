@@ -88,17 +88,24 @@ describe('Personalizar a barra lateral', () => {
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Mover Agenda' }))
   })
 
-  it('oculta e mostra, sem deixar a barra vazia', async () => {
+  it('oculta e mostra, sempre deixando um item que não some com a recepção', async () => {
     await abrir()
-    for (const label of ['Agenda', 'Pacientes', 'Financeiro']) {
+    for (const label of ['Agenda', 'Pacientes']) {
       await userEvent.click(screen.getByRole('switch', { name: `Mostrar ${label}` }))
     }
-    expect(screen.getByRole('switch', { name: 'Mostrar Clínica' })).toHaveProperty('disabled', true)
+    expect(screen.getByRole('switch', { name: 'Mostrar Financeiro' })).toHaveProperty(
+      'disabled',
+      true
+    )
+    expect(screen.getByRole('switch', { name: 'Mostrar Clínica' })).toHaveProperty(
+      'disabled',
+      false
+    )
     expect(prefs.save).toHaveBeenLastCalledWith({
-      sidebarItems: { order: [], hidden: ['agenda', 'pacientes', 'financeiro'] }
+      sidebarItems: { order: [], hidden: ['agenda', 'pacientes'] }
     })
     await userEvent.click(screen.getByRole('switch', { name: 'Mostrar Agenda' }))
-    expect(screen.getByRole('switch', { name: 'Mostrar Clínica' })).toHaveProperty(
+    expect(screen.getByRole('switch', { name: 'Mostrar Financeiro' })).toHaveProperty(
       'disabled',
       false
     )

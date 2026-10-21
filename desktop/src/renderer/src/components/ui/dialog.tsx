@@ -11,6 +11,7 @@ type DialogProps = {
   description?: string
   media?: ReactNode
   size?: 'default' | 'wide'
+  dismissible?: boolean
   children: ReactNode
 }
 
@@ -21,6 +22,7 @@ export function Dialog({
   description,
   media,
   size = 'default',
+  dismissible = true,
   children
 }: DialogProps): React.JSX.Element {
   const content = useRef<HTMLDivElement>(null)
@@ -37,11 +39,15 @@ export function Dialog({
           onEscapeKeyDown={(e) => {
             const active = document.activeElement
             if (
-              active?.getAttribute('role') === 'combobox' &&
-              active.getAttribute('aria-expanded') === 'true'
+              !dismissible ||
+              (active?.getAttribute('role') === 'combobox' &&
+                active.getAttribute('aria-expanded') === 'true')
             ) {
               e.preventDefault()
             }
+          }}
+          onInteractOutside={(e) => {
+            if (!dismissible) e.preventDefault()
           }}
           className="pointer-events-none! fixed inset-0 z-50 flex flex-col items-center p-4 before:flex-[2] after:flex-[3] focus:outline-none data-[state=closed]:animate-pop-out data-[state=open]:animate-pop-in"
         >
@@ -67,11 +73,18 @@ export function Dialog({
                   </DialogPrimitive.Description>
                 )}
               </div>
-              <DialogPrimitive.Close asChild>
-                <Button variant="ghost" size="icon-sm" className="-mt-1 -mr-2" aria-label="Fechar">
-                  <X />
-                </Button>
-              </DialogPrimitive.Close>
+              {dismissible && (
+                <DialogPrimitive.Close asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    className="-mt-1 -mr-2"
+                    aria-label="Fechar"
+                  >
+                    <X />
+                  </Button>
+                </DialogPrimitive.Close>
+              )}
             </div>
             <div className="flex min-h-0 flex-col [&>form]:flex [&>form]:min-h-0 [&>form]:flex-col">
               {children}

@@ -83,7 +83,6 @@ const amanha = (bloqueio: string | null = null) =>
   ].map((s) => ({ ...s, bloqueio }))
 
 const lista = (over: Partial<ConfirmacaoLista> = {}): ConfirmacaoLista => ({
-  janela: { aberta: true, ate: '18:00' },
   grupos: [{ dia: '2026-10-20', hoje: false, sessoes: amanha() }],
   semAtendimento: false,
   ...over
@@ -138,7 +137,6 @@ describe('confirmações do próximo dia', () => {
   it('fora da janela, explica e não deixa enviar', async () => {
     confirmacoes.lista.mockResolvedValue(
       lista({
-        janela: { aberta: false, motivo: 'A clínica fecha às 18:00.' },
         grupos: [{ dia: '2026-10-20', hoje: false, sessoes: amanha('A clínica fecha às 18:00.') }]
       })
     )
@@ -175,6 +173,36 @@ describe('confirmações de hoje', () => {
     expect(within(listaDeHoje).getByText('Começa logo: ligue')).toBeTruthy()
     await userEvent.click(screen.getByRole('button', { name: 'Enviar a próxima (2)' }))
     await waitFor(() => expect(confirmacoes.enviar).toHaveBeenCalledWith(7, expect.any(String)))
+  })
+
+  it('com motivos diferentes no mesmo dia, cada sessão bloqueada mostra o seu', async () => {
+    const fecha = 'A clínica fecha às 18:00: o prazo venceria com ela fechada.'
+    const hoje = [
+      linha({
+        appointment_id: 8,
+        inicio: '2026-10-19T16:50',
+        patient_nome: 'Fabi Fictícia',
+        bloqueio: 'A sessão começa em menos de 30 minutos. Confirme com a família por telefone.'
+      }),
+      linha({ appointment_id: 9, inicio: '2026-10-19T17:30', patient_nome: 'Gabi Fictícia' }),
+      linha({
+        appointment_id: 10,
+        inicio: '2026-10-19T17:45',
+        patient_nome: 'Hugo Fictício',
+        bloqueio: fecha
+      })
+    ]
+    confirmacoes.lista.mockResolvedValue(
+      lista({ grupos: [{ dia: '2026-10-19', hoje: true, sessoes: hoje }] })
+    )
+    renderRoute('/', '/', <ConfirmacoesDialog open onClose={() => {}} />)
+    const linhas = await screen.findAllByRole('listitem')
+    expect(screen.queryByText('Fora da janela de envio')).toBeNull()
+    expect(within(linhas[2]).getByText(fecha)).toBeTruthy()
+    expect(within(linhas[1]).queryByText(fecha)).toBeNull()
+    expect(
+      (within(linhas[2]).getByLabelText('Abrir no WhatsApp') as HTMLButtonElement).disabled
+    ).toBe(true)
   })
 })
 

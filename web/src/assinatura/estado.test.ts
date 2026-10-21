@@ -3,7 +3,13 @@ import { novaChave, sha256 } from '../../contrato/assinatura/cifra'
 import { CPF_FICTICIO, assinaturaFicticia, termoFicticio } from '../../contrato/assinatura/ficticio'
 import { lerVolta, montarIda, montarVolta, type Termo } from '../../contrato/assinatura/formato'
 import { simplificar } from '../../contrato/assinatura/traco'
-import { chaveDoCodigo, guardar, novoCodigo, type Buscar } from '../../contrato/link-curto'
+import {
+  chaveDoCodigo,
+  guardadoDaIda,
+  guardar,
+  novoCodigo,
+  type Buscar
+} from '../../contrato/link-curto'
 import { abrir, avaliarRecebido, guardarRascunho, lerRascunho, temSuporte } from './estado'
 import { resposta, type Preenchido } from './textos'
 
@@ -123,8 +129,7 @@ describe('link curto', () => {
     const codigo = novoCodigo()
     const chave = await chaveDoCodigo(codigo)
     const ida = await montarIda(termoFicticio(), chave)
-    const dados = ida.slice(ida.indexOf('#') + 1).split('.')[2]!
-    await guardar(codigo, dados, 2_000_000_000, rede)
+    await guardar(codigo, guardadoDaIda(ida.slice(ida.indexOf('#') + 1)), 2_000_000_000, rede)
     const estado = await abrir(`#${codigo}`, memoria(), ANTES_DO_PRAZO, globalThis, rede)
     expect(estado).toMatchObject({ tela: 'termo', aberto: { termo: termoFicticio(), chave } })
   })

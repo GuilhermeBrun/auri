@@ -23,14 +23,17 @@ Do código (16 bytes aleatórios, em base64url) saem duas coisas, por SHA-256 co
 Quem vê o banco ou o tráfego do site tem o `id` e o conteúdo cifrado, nunca o código, e do `id` não
 dá para voltar ao código.
 
-**Ida (Auri → família):** o Auri sorteia o código, cifra com a chave dele, guarda o conteúdo em
-`PUT /api/links?id=…` e manda o link curto. Se o site não responder em 8 s, manda o link longo de
-antes, que continua valendo. A página busca com `GET`, monta o link longo e segue igual.
+**Ida (Auri → família):** o Auri sorteia o código, cifra com a chave dele, guarda `versão.conteúdo`
+em `PUT /api/links?id=…` e manda o link curto. Se o site não responder em 3 s, manda o link longo
+de antes, que continua valendo. A página busca com `GET`, põe a chave entre a versão e o conteúdo e
+segue igual; com a versão guardada, um link de outra versão mostra a tela de versão, não "link
+adulterado".
 
 **Volta (família → clínica):** ao tocar em enviar, a página monta a resposta como antes (cifrada
-com a chave da ida), sorteia outro código, guarda a resposta e põe o link curto na mensagem. Sem
-internet, vai o link longo. No Auri, "Colar resposta" e o `auri://` aceitam os dois: o curto é
-buscado no site antes de ler.
+com a chave da ida), sorteia outro código, guarda a resposta e põe o link curto na mensagem. Se o
+site não responder em 1,5 s (para o toque ainda abrir o app do WhatsApp) ou sem internet, vai o
+link longo. No Auri, "Colar resposta" e o `auri://` aceitam os dois: o curto é buscado no site
+antes de ler, e a conferência e o guardar usam a mesma busca.
 
 | Guardado | Some do site |
 | --- | --- |
@@ -43,9 +46,11 @@ buscado no site antes de ler.
 relatórios de erro (`002_links_curtos.sql`). O papel `links_uso` (ler e gravar, sem apagar) entra no
 `erros_gravacao`, então o usuário da função não muda.
 
-O banco cuida dos limites a cada gravação: apaga os vencidos, recusa mais de 3000 links por dia
-(`53400` → `503`), até 6000 caracteres só de base64url e pontos, e no máximo 60 dias de vida. O
-primeiro a gravar um `id` fica; um segundo `PUT` igual não muda nada.
+O banco cuida dos limites a cada gravação: apaga os vencidos, recusa mais de 3000 links ou mais de
+3 MB por dia (`53400` → `503`; `003_links_teto.sql`), até 6000 caracteres só de base64url e
+pontos, e no máximo 60 dias de vida. Com o teto diário, a tabela não passa de uns 180 MB mesmo com
+alguém gravando o máximo todo dia. O primeiro a gravar um `id` fica; um segundo `PUT` igual não muda
+nada.
 
 Em produção a migração roda sozinha pelo workflow **Banco do site** quando o `main` recebe um
 arquivo novo em `web/db/migracoes/` (ver `docs/relatorios-de-erro.md`, seção Migrações). A

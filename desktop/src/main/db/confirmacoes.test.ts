@@ -245,7 +245,7 @@ describe('link curto', () => {
 
     const rede = { origem: 'https://auri.dev.br', buscar: site.buscar }
     const codigo = envio.link.slice(envio.link.indexOf('#') + 1)
-    const longo = `https://auri.dev.br/confirmar#${await expandirIda(codigo, 1, rede)}`
+    const longo = `https://auri.dev.br/confirmar#${await expandirIda(codigo, rede)}`
     const volta = (await responder(longo, 'confirmada', minutos(10))).split('\n')[1]!
     const curta = await encurtarVolta(volta, minutos(10).getTime(), rede)
     expect(curta).toMatch(/^https:\/\/auri\.dev\.br\/resposta#[\w-]{22}$/)

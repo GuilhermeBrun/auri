@@ -28,6 +28,7 @@ import { ErrorText, FormSection } from '@renderer/components/ui/section'
 import { Select } from '@renderer/components/ui/select'
 import { Switch } from '@renderer/components/ui/switch'
 import { TimeField } from '@renderer/components/ui/time-field'
+import { useSalvar } from '@renderer/lib/atalhos'
 import { clinicQuery, termModelsQuery } from '@renderer/lib/queries'
 import { useToast } from '@renderer/lib/toast'
 
@@ -225,9 +226,15 @@ function ClinicForm({ clinic }: { clinic: Clinic }): React.JSX.Element {
 
   const err = (field: keyof ClinicValues): string | undefined => errors[field]?.message
   const invalid = (field: keyof ClinicValues): boolean => Boolean(errors[field])
+  const salvar = useSalvar()
 
   return (
-    <form onSubmit={handleSubmit((values) => save.mutate(values))} noValidate className="h-full">
+    <form
+      ref={salvar}
+      onSubmit={handleSubmit((values) => save.mutate(values))}
+      noValidate
+      className="h-full"
+    >
       <Page
         trail={TRAIL}
         actions={

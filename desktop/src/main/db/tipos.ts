@@ -180,7 +180,10 @@ export function removeTipo(
       categoriaDaquiPraFrente(db, destino, agora)
       db.prepare('UPDATE commitments SET etiqueta_id = ? WHERE etiqueta_id = ?').run(destino, id)
     }
-    db.prepare('UPDATE waitlist_entries SET tipo_id = ? WHERE tipo_id = ?').run(destino, id)
+    db.prepare('UPDATE waitlist_entries SET tipo_id = ? WHERE tipo_id = ?').run(
+      destino ?? tipoPadrao(db),
+      id
+    )
   })()
 }
 

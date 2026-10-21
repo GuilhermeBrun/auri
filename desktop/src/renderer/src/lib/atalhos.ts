@@ -1,4 +1,11 @@
-import { useEffect, useEffectEvent, useMemo, useSyncExternalStore } from 'react'
+import {
+  useEffect,
+  useEffectEvent,
+  useMemo,
+  useRef,
+  useSyncExternalStore,
+  type RefObject
+} from 'react'
 import {
   escreverTecla,
   teclasDosAtalhos,
@@ -8,60 +15,50 @@ import {
   type TeclasDosAtalhos
 } from '@shared/atalhos'
 import { isMac } from '@renderer/lib/platform'
+import { prefsField, usePrefsField } from '@renderer/lib/prefs-field'
 
 export const PLATAFORMA: Plataforma = isMac ? 'mac' : 'pc'
 
-let trocas: Record<string, string | null> = window.prefs.initial?.atalhos ?? {}
+const trocas = prefsField('atalhos')
+
 let mapa: Map<string, string> | null = null
-let watching = false
-const listeners = new Set<() => void>()
+let pedido = false
+const ouvintesDoMapa = new Set<() => void>()
 
-function notify(): void {
-  for (const listener of listeners) listener()
-}
-
-function subscribe(listener: () => void): () => void {
-  if (!watching) {
-    watching = true
-    window.prefs.onChange((prefs) => {
-      if (JSON.stringify(prefs.atalhos) === JSON.stringify(trocas)) return
-      trocas = prefs.atalhos
-      notify()
-    })
+function assinarMapa(listener: () => void): () => void {
+  if (!pedido) {
+    pedido = true
     void (
       navigator as Navigator & { keyboard?: { getLayoutMap(): Promise<Map<string, string>> } }
     ).keyboard
       ?.getLayoutMap()
       .then((layout) => {
         mapa = layout
-        notify()
+        for (const ouvinte of ouvintesDoMapa) ouvinte()
       })
       .catch(() => {})
   }
-  listeners.add(listener)
-  return () => listeners.delete(listener)
+  ouvintesDoMapa.add(listener)
+  return () => ouvintesDoMapa.delete(listener)
 }
 
 export function useTrocas(): Record<string, string | null> {
-  return useSyncExternalStore(subscribe, () => trocas)
+  return usePrefsField(trocas)
 }
 
 export function useTeclas(): TeclasDosAtalhos {
   const atuais = useTrocas()
+  useSyncExternalStore(assinarMapa, () => mapa)
   return useMemo(() => teclasDosAtalhos(PLATAFORMA, atuais), [atuais])
 }
 
 export function salvarAtalho(id: AtalhoId, tecla: Tecla | null | undefined): void {
-  const { [id]: _, ...resto } = trocas
-  trocas = tecla === undefined ? resto : { ...resto, [id]: tecla && escreverTecla(tecla) }
-  window.prefs.save({ atalhos: trocas })
-  notify()
+  const { [id]: _, ...resto } = trocas.get()
+  trocas.set(tecla === undefined ? resto : { ...resto, [id]: tecla && escreverTecla(tecla) })
 }
 
 export function restaurarAtalhos(): void {
-  trocas = {}
-  window.prefs.save({ atalhos: trocas })
-  notify()
+  trocas.set({})
 }
 
 const NOMES: Record<string, string> = {
@@ -168,4 +165,15 @@ export function useAtalhos(acoes: Partial<Record<AtalhoId, () => void>>, ativo =
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [ligados, ativo])
+}
+
+export function useSalvar(): RefObject<HTMLFormElement | null> {
+  const form = useRef<HTMLFormElement>(null)
+  useAtalhos({
+    salvar: () =>
+      form.current
+        ?.querySelector<HTMLButtonElement>('button[type="submit"]:not(:disabled)')
+        ?.click()
+  })
+  return form
 }

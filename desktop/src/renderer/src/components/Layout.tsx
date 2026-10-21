@@ -47,7 +47,8 @@ import {
   SidebarContext,
   useAvailableItems,
   useHomePath,
-  useSidebar
+  useSidebar,
+  useVisibleItems
 } from '@renderer/lib/sidebar'
 import { useZoom } from '@renderer/lib/theme'
 import { useToast } from '@renderer/lib/toast'
@@ -142,7 +143,7 @@ function SidebarBody(): React.JSX.Element {
   const attention = needsAttention(useBackup())
   const whatsapp = useWhatsAppEnabled()
   const unread = useWhatsAppUnread(whatsapp)
-  const visible = useAvailableItems().filter((item) => !item.hidden)
+  const visible = useVisibleItems()
   const teclas = useTeclas()
   const settingsShortcut = useTextoDoAtalho('configuracoes')
   const backTo = useRef(useHomePath())
@@ -285,10 +286,6 @@ export function Layout(): React.JSX.Element {
     'barra-lateral': toggle,
     configuracoes: () => void navigate(SETTINGS_PATH),
     'buscar-paciente': () => void navigate('/pacientes', { state: { buscar: Date.now() } }),
-    salvar: () =>
-      document
-        .querySelector<HTMLButtonElement>('main form button[type="submit"]:not(:disabled)')
-        ?.click(),
     voltar: () => void navigate(-1),
     avancar: () => void navigate(1),
     'ir-agenda': goTo('agenda'),
