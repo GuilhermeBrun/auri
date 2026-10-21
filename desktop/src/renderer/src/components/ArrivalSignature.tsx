@@ -9,12 +9,13 @@ import { pessoasDaFicha, responsavelDe, type Pessoa } from '@shared/responsavel'
 import type { Appointment } from '@shared/schemas'
 import { SignaturePad, type SignatureValue } from '@renderer/components/SignaturePad'
 import { Button } from '@renderer/components/ui/button'
-import { ChoiceButton } from '@renderer/components/ui/choice-button'
 import { Callout } from '@renderer/components/ui/callout'
 import { Field, Input } from '@renderer/components/ui/input'
 import { useConnection } from '@renderer/lib/connection'
+import { useThumb } from '@renderer/lib/hooks'
 import { patientQuery } from '@renderer/lib/queries'
 import { useToast } from '@renderer/lib/toast'
+import { cn } from '@renderer/lib/utils'
 import { paraBase64url } from '../../../../../web/contrato/assinatura/base64url'
 
 const OUTRA = 'outra'
@@ -23,6 +24,57 @@ type Escolha = { key: string; pessoa: Pessoa | null }
 
 function chave(pessoa: Pessoa): string {
   return pessoa.papel
+}
+
+type Opcao = { key: string; nome: string; papel?: string }
+
+function QuemAssina({
+  opcoes,
+  value,
+  onChange
+}: {
+  opcoes: Opcao[]
+  value: string
+  onChange: (key: string) => void
+}): React.JSX.Element {
+  const [trackRef, thumb] = useThumb(`${value}:${opcoes.length}`)
+  return (
+    <div ref={trackRef} className="relative flex gap-1 overflow-x-auto rounded-card bg-fill p-1">
+      {thumb && (
+        <span
+          aria-hidden="true"
+          className="absolute inset-y-1 left-0 rounded-control bg-selected shadow-lift transition-[translate,width] duration-250 ease-slide"
+          style={{ translate: `${thumb.x}px 0`, width: thumb.width }}
+        />
+      )}
+      {opcoes.map((opcao) => {
+        const pressed = opcao.key === value
+        return (
+          <button
+            key={opcao.key}
+            type="button"
+            aria-pressed={pressed}
+            onClick={() => onChange(opcao.key)}
+            className={cn(
+              'relative flex h-14 flex-col items-start justify-center rounded-control px-3.5 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
+              opcao.papel ? 'min-w-24 flex-1 basis-0' : 'flex-none',
+              pressed ? 'text-ink' : 'text-ink-soft hover:text-ink'
+            )}
+          >
+            <span
+              title={opcao.papel && opcao.nome}
+              className="max-w-full truncate text-[14px] font-medium"
+            >
+              {opcao.nome}
+            </span>
+            {opcao.papel && (
+              <span className="max-w-full truncate text-[13px] text-ink-soft">{opcao.papel}</span>
+            )}
+          </button>
+        )
+      })}
+    </div>
+  )
 }
 
 export function ArrivalSignature({
@@ -142,25 +194,18 @@ function ArrivalForm({
       </header>
 
       <div className="mx-auto flex w-full max-w-[900px] min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-10 py-8">
-        <fieldset className="flex flex-col gap-3">
+        <fieldset className="flex min-w-0 flex-col gap-3">
           <legend className="mb-3 text-[15px] font-semibold tracking-tight">
             Quem está assinando
           </legend>
-          <div className="flex flex-wrap gap-2">
-            {pessoas.map((p) => (
-              <ChoiceButton
-                key={chave(p)}
-                pressed={atual.key === chave(p)}
-                onClick={() => setEscolhida(chave(p))}
-              >
-                <span className="font-medium">{p.nome}</span>
-                <span className="text-ink-soft">{p.parentesco}</span>
-              </ChoiceButton>
-            ))}
-            <ChoiceButton pressed={atual.key === OUTRA} onClick={() => setEscolhida(OUTRA)}>
-              <span className="font-medium">Outra pessoa</span>
-            </ChoiceButton>
-          </div>
+          <QuemAssina
+            opcoes={[
+              ...pessoas.map((p) => ({ key: chave(p), nome: p.nome, papel: p.parentesco })),
+              { key: OUTRA, nome: 'Outra pessoa' }
+            ]}
+            value={atual.key}
+            onChange={setEscolhida}
+          />
           {atual.key === OUTRA && (
             <div className="grid grid-cols-[2fr_1fr] gap-3 animate-fade-in">
               <Field label="Nome de quem assina" htmlFor={`${ids}-nome`}>
@@ -187,12 +232,10 @@ function ArrivalForm({
           <h2 id={`${ids}-assine`} className="text-[15px] font-semibold tracking-tight">
             Assinatura
           </h2>
-          <SignaturePad onChange={setAssinatura} />
-          <p className="text-[13px] text-ink-soft">
-            {quem
-              ? `Ao assinar, ${quem} confirma que ${shortName(appointment.patient_nome)} chegou para a sessão de hoje.`
-              : `Ao assinar, a pessoa confirma que ${shortName(appointment.patient_nome)} chegou para a sessão de hoje.`}
-          </p>
+          <SignaturePad
+            onChange={setAssinatura}
+            note={`Ao assinar, ${quem || 'a pessoa'} confirma que ${shortName(appointment.patient_nome)} chegou para a sessão de hoje.`}
+          />
         </section>
 
         {sign.error && (
