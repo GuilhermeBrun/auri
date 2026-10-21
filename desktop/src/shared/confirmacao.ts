@@ -1,3 +1,5 @@
+import type { LinkCurto } from './link-curto'
+
 export const PRAZO_DA_CONFIRMACAO_MS = 2 * 60 * 60 * 1000
 export const ANTES_DA_SESSAO_MS = 15 * 60 * 1000
 export const MENOR_PRAZO_MS = 15 * 60 * 1000
@@ -73,6 +75,7 @@ export type ConfirmacaoEnvio = {
   mensagem: string
   prazo: string
   reenvio: boolean
+  curto?: LinkCurto
 }
 
 export type Vaga = { inicio: string; fim: string }

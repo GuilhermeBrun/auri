@@ -7,6 +7,7 @@ import {
   Menu,
   nativeImage,
   nativeTheme,
+  net,
   Notification,
   powerMonitor,
   screen,
@@ -34,6 +35,7 @@ import { createConnection, type Connection } from './connection'
 import { DatabaseTooNewError } from './db/migrations'
 import { createErrorReports, type ErrorReportService } from './error-reports'
 import { registerIpc } from './ipc'
+import { createLinksCurtos } from './links-curtos'
 import { trustRenderer } from './ipc-security'
 import { pathToFileURL } from 'node:url'
 import { createPrefsStore, type PrefsStore } from './prefs'
@@ -438,7 +440,11 @@ void app.whenReady().then(async () => {
     reports: reports!,
     inbox,
     whatsapp,
-    receptionLock: createReceptionLock(prefs, backup)
+    receptionLock: createReceptionLock(prefs, backup),
+    links: createLinksCurtos({
+      buscar: (endereco, opcoes) => net.fetch(endereco, opcoes),
+      origem: process.env.AURI_SITE_URL || undefined
+    })
   })
   applyAppearance(prefs.get())
   nativeTheme.on('updated', syncWindowBackgrounds)

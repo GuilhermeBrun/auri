@@ -37,7 +37,8 @@ import {
 } from '../../../../web/contrato/confirmacao/formato'
 import { hora, mensagemDaIda, quando } from '../../../../web/contrato/confirmacao/textos'
 import { lerVolta, montarIda } from '../confirmacao/link'
-import { novaChave, novoEnvio } from '../terms/link'
+import { chaveDoCodigo, linkCurto, novoCodigo } from '../links-curtos'
+import { novoEnvio } from '../terms/link'
 import { getAppointment, listAppointments } from './appointments'
 import { busyIn } from './busy'
 import { getClinic, getFuncionamento } from './clinic'
@@ -123,6 +124,7 @@ type RequestRow = {
   confirmacao: string
   chave: Buffer | null
   link: string | null
+  codigo: string | null
   estado: 'aguardando' | 'respondido' | 'cancelado' | 'vencido'
   resposta: Decisao | null
   outra_resposta: Decisao | null
@@ -131,13 +133,16 @@ type RequestRow = {
 
 function envioDe(row: RequestRow, reenvio: boolean): ConfirmacaoEnvio {
   const confirmacao = JSON.parse(row.confirmacao) as Confirmacao
+  const link = row.link ?? ''
+  const mensagem = (endereco: string): string => mensagemDaIda(confirmacao, endereco)
   return {
     appointment_id: row.appointment_id,
-    link: row.link ?? '',
+    link,
     numero: row.destino_numero,
-    mensagem: mensagemDaIda(confirmacao, row.link ?? ''),
+    mensagem: mensagem(link),
     prazo: row.prazo,
-    reenvio
+    reenvio,
+    ...(row.codigo && row.link && { curto: linkCurto(link, row.codigo, confirmacao.ate, mensagem) })
   }
 }
 
@@ -195,14 +200,15 @@ export function enviarConfirmacao(
       },
       cob: getBilling(db, patient.id)?.service_id != null
     })
-    const chave = novaChave()
+    const codigo = novoCodigo()
+    const chave = chaveDoCodigo(codigo)
     const link = montarIda(confirmacao, chave)
     const criado = db
       .prepare(
         `INSERT INTO confirmation_requests (envio, appointment_id, inicio, destino_nome,
-           destino_numero, prazo, computador, confirmacao, chave, link)
+           destino_numero, prazo, computador, confirmacao, chave, link, codigo)
          VALUES (@envio, @appointment_id, @inicio, @destino_nome, @destino_numero, @prazo,
-           @computador, @confirmacao, @chave, @link)`
+           @computador, @confirmacao, @chave, @link, @codigo)`
       )
       .run({
         envio: confirmacao.id,
@@ -214,7 +220,8 @@ export function enviarConfirmacao(
         computador,
         confirmacao: JSON.stringify(confirmacao),
         chave,
-        link
+        link,
+        codigo
       })
     const row = db
       .prepare('SELECT * FROM confirmation_requests WHERE id = ?')
@@ -254,7 +261,7 @@ function vencer(db: Db, pendente: Pendente, computador: string): void {
   }
   db.prepare(
     `UPDATE confirmation_requests
-     SET estado = 'vencido', vencido_em = prazo, link = NULL, charge_id = ?, cobranca_erro = ?
+     SET estado = 'vencido', vencido_em = prazo, link = NULL, codigo = NULL, charge_id = ?, cobranca_erro = ?
      WHERE id = ?`
   ).run(chargeId, erro, pendente.id)
 }
@@ -274,13 +281,13 @@ export function processarPrazos(db: Db, computador: string, agora: Date = new Da
     for (const p of pendentes) {
       if (p.a_inicio !== p.inicio || p.presenca !== null) {
         db.prepare(
-          `UPDATE confirmation_requests SET estado = 'cancelado', chave = NULL, link = NULL
+          `UPDATE confirmation_requests SET estado = 'cancelado', chave = NULL, link = NULL, codigo = NULL
            WHERE id = ?`
         ).run(p.id)
       } else if (p.confirmado_em !== null) {
         db.prepare(
           `UPDATE confirmation_requests
-           SET estado = 'respondido', resposta = 'confirmada', recebido_em = ?, link = NULL
+           SET estado = 'respondido', resposta = 'confirmada', recebido_em = ?, link = NULL, codigo = NULL
            WHERE id = ?`
         ).run(iso, p.id)
       } else if (p.prazo <= iso) {
@@ -291,7 +298,7 @@ export function processarPrazos(db: Db, computador: string, agora: Date = new Da
       mudou++
     }
     db.prepare(
-      `UPDATE confirmation_requests SET chave = NULL, link = NULL
+      `UPDATE confirmation_requests SET chave = NULL, link = NULL, codigo = NULL
        WHERE estado <> 'aguardando' AND chave IS NOT NULL AND inicio < ?`
     ).run(toIsoLocalDateTime(agora))
     return mudou
@@ -389,7 +396,7 @@ export function receberConfirmacao(
     const registrar = (): void => {
       db.prepare(
         `UPDATE confirmation_requests
-         SET estado = 'respondido', resposta = ?, respondido_em = ?, recebido_em = ?, link = NULL
+         SET estado = 'respondido', resposta = ?, respondido_em = ?, recebido_em = ?, link = NULL, codigo = NULL
          WHERE id = ?`
       ).run(res, em, agora.toISOString(), row.id)
     }
@@ -503,7 +510,7 @@ export function aplicarOutraResposta(
     db.prepare(
       `UPDATE confirmation_requests
        SET estado = 'respondido', resposta = outra_resposta, outra_resposta = NULL,
-           recebido_em = coalesce(recebido_em, ?), link = NULL, aviso_visto_em = NULL
+           recebido_em = coalesce(recebido_em, ?), link = NULL, codigo = NULL, aviso_visto_em = NULL
        WHERE id = ?`
     ).run(agora.toISOString(), requestId)
     return {

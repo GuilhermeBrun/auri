@@ -1,7 +1,8 @@
 export const ESQUEMA = 'auri'
 
 const MAXIMO = 8 * 1024
-const ENDERECO = /^auri:(?:\/\/)?(receber|confirmacao)(?:\/|#|\?r=)+(\d+\.[\w-]+\.[\w-]+)\/?$/i
+const ENDERECO =
+  /^auri:(?:\/\/)?(receber|confirmacao)(?:\/|#|\?r=)+(\d+\.[\w-]+\.[\w-]+|[\w-]{22})\/?$/i
 
 export type Recebido = { tipo: 'termo' | 'confirmacao'; fragmento: string }
 

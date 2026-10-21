@@ -26,6 +26,7 @@ import {
   type Termo
 } from '../../../../web/contrato/assinatura/formato'
 import { assinaturaMinima, codificar } from '../../../../web/contrato/assinatura/traco'
+import { chaveDoCodigo, linkCurto, novoCodigo } from '../links-curtos'
 import { lerVolta, montarIda, novaChave, novoEnvio, sha256 } from '../terms/link'
 import { getClinic } from './clinic'
 import type { Db } from './connection'
@@ -153,6 +154,7 @@ type RequestRow = {
   estado_em: string | null
   chave: Buffer | null
   link: string | null
+  codigo: string | null
   signed_id: number | null
   signed_nome: string | null
   signed_parentesco: string | null
@@ -222,7 +224,7 @@ export function listPatientTerms(db: Db, patientId: number, now: Date = new Date
 
 function forgetExpiredKeys(db: Db, now: Date): void {
   db.prepare(
-    `UPDATE term_requests SET chave = NULL, link = NULL
+    `UPDATE term_requests SET chave = NULL, link = NULL, codigo = NULL
      WHERE estado = 'aguardando' AND chave IS NOT NULL AND prazo < ?`
   ).run(now.toISOString())
 }
@@ -280,11 +282,12 @@ export function sendTerm(
       prof: { nome: clinic.profissional, reg: clinic.registro },
       txt: texto
     })
-    const chave = novaChave()
+    const codigo = novoCodigo()
+    const chave = chaveDoCodigo(codigo)
     const link = montarIda(termo, chave)
 
     db.prepare(
-      `UPDATE term_requests SET estado = 'trocado', estado_em = ${NOW}, chave = NULL, link = NULL
+      `UPDATE term_requests SET estado = 'trocado', estado_em = ${NOW}, chave = NULL, link = NULL, codigo = NULL
        WHERE patient_id = ? AND estado = 'aguardando'
          AND version_id IN (SELECT id FROM term_versions WHERE model_id = ?)`
     ).run(patientId, model.id)
@@ -293,10 +296,10 @@ export function sendTerm(
       .prepare(
         `INSERT INTO term_requests (envio, patient_id, version_id, termo, texto_sha256, destino_nome,
            destino_papel, destino_parentesco, destino_cpf, destino_numero, prazo, computador,
-           chave, link)
+           chave, link, codigo)
          VALUES (@envio, @patient_id, @version_id, @termo, @texto_sha256, @destino_nome,
            @destino_papel, @destino_parentesco, @destino_cpf, @destino_numero, @prazo, @computador,
-           @chave, @link)`
+           @chave, @link, @codigo)`
       )
       .run({
         envio: termo.id,
@@ -312,24 +315,28 @@ export function sendTerm(
         prazo: prazo.toISOString(),
         computador,
         chave,
-        link
+        link,
+        codigo
       })
     const request = getRequest(db, Number(created.lastInsertRowid), now)
-    return { request, ...linkOf(request, termo, link) }
+    return { request, ...linkOf(request, termo, link, codigo) }
   })()
 }
 
-function linkOf(request: TermRequest, termo: Termo, link: string): TermLink {
-  return {
-    link,
-    numero: request.destino_numero,
-    mensagem: mensagemDaIda({
+function linkOf(request: TermRequest, termo: Termo, link: string, codigo: string | null): TermLink {
+  const mensagem = (endereco: string): string =>
+    mensagemDaIda({
       destino: request.destino_nome,
       titulo: request.titulo,
       paciente: termo.pac.nome.trim().split(/\s+/)[0],
       clinica: termo.cli.nome,
-      link
+      link: endereco
     })
+  return {
+    link,
+    numero: request.destino_numero,
+    mensagem: mensagem(link),
+    ...(codigo && { curto: linkCurto(link, codigo, termo.ate, mensagem) })
   }
 }
 
@@ -339,7 +346,7 @@ export function termLink(db: Db, requestId: number, now: Date = new Date()): Ter
   const request = requestFromRow(row, now)
   if (request.estado !== 'aguardando' || !row.link)
     throw new Error('Este envio não está mais aguardando assinatura.')
-  return linkOf(request, JSON.parse(row.termo) as Termo, row.link)
+  return linkOf(request, JSON.parse(row.termo) as Termo, row.link, row.codigo)
 }
 
 export function cancelTerm(db: Db, requestId: number, now: Date = new Date()): TermRequest {
@@ -347,7 +354,7 @@ export function cancelTerm(db: Db, requestId: number, now: Date = new Date()): T
   if (request.estado !== 'aguardando' && request.estado !== 'vencido')
     throw new Error('Este envio não está mais aguardando assinatura.')
   db.prepare(
-    `UPDATE term_requests SET estado = 'cancelado', estado_em = ${NOW}, chave = NULL, link = NULL
+    `UPDATE term_requests SET estado = 'cancelado', estado_em = ${NOW}, chave = NULL, link = NULL, codigo = NULL
      WHERE id = ?`
   ).run(requestId)
   return getRequest(db, requestId, now)
@@ -524,7 +531,7 @@ export function acceptResponse(
       )
     })
     db.prepare(
-      `UPDATE term_requests SET estado = 'assinado', estado_em = ?, chave = NULL, link = NULL
+      `UPDATE term_requests SET estado = 'assinado', estado_em = ?, chave = NULL, link = NULL, codigo = NULL
        WHERE id = ?`
     ).run(recebido_em, row.id)
     return getRequest(db, row.id, now)

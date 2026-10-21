@@ -893,7 +893,11 @@ ${onlyVoid('finance_payments', ['id', 'patient_id', 'data', 'valor_centavos', 'f
     END;
     `)
     }
-  }
+  },
+  `
+  ALTER TABLE term_requests ADD COLUMN codigo TEXT;
+  ALTER TABLE confirmation_requests ADD COLUMN codigo TEXT;
+  `
 ]
 
 export class DatabaseTooNewError extends Error {
