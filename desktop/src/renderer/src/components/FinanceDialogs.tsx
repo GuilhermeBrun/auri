@@ -591,64 +591,57 @@ function BillingForm({
             </Field>
           </div>
         )}
-        {forma === 'pacote' && (
-          <div className="flex animate-fade-in flex-col gap-3">
-            <div className="grid grid-cols-[1fr_160px] gap-3">
-              <Field label="Pacote" htmlFor={`${ids}-pacote`} error={errors.plan_id}>
-                <Select
-                  id={`${ids}-pacote`}
-                  value={planId}
-                  onValueChange={setPlanId}
-                  options={plans}
-                  invalid={Boolean(errors.plan_id)}
-                />
-              </Field>
-              {contratarAgora && (
-                <Field label="Início" htmlFor={`${ids}-inicio`} error={errors.inicio}>
-                  <DateField
-                    id={`${ids}-inicio`}
-                    value={inicio}
-                    onChange={setInicio}
-                    invalid={Boolean(errors.inicio)}
-                  />
-                </Field>
-              )}
-            </div>
-            {semPacote && (
-              <SwitchField
-                label="Contratar agora"
-                checked={contratarAgora}
-                onCheckedChange={setContratar}
+        <div className="grid grid-cols-2 gap-3">
+          {forma === 'pacote' && (
+            <Field label="Pacote" htmlFor={`${ids}-pacote`} error={errors.plan_id}>
+              <Select
+                id={`${ids}-pacote`}
+                value={planId}
+                onValueChange={setPlanId}
+                options={plans}
+                invalid={Boolean(errors.plan_id)}
               />
-            )}
-          </div>
+            </Field>
+          )}
+          <Field label={SERVICE_LABEL[forma]} htmlFor={`${ids}-servico`} error={errors.service_id}>
+            <Select
+              id={`${ids}-servico`}
+              value={service}
+              onValueChange={setService}
+              options={
+                forma === 'convenio'
+                  ? [{ value: NENHUM, label: 'Não cobrar' }, ...services]
+                  : services
+              }
+              invalid={Boolean(errors.service_id)}
+            />
+          </Field>
+          <Field label="Lançar sessões a partir de" htmlFor={`${ids}-desde`} error={errors.desde}>
+            <DateField
+              id={`${ids}-desde`}
+              value={desde}
+              onChange={setDesde}
+              invalid={Boolean(errors.desde)}
+            />
+          </Field>
+          {contratarAgora && (
+            <Field label="Início do pacote" htmlFor={`${ids}-inicio`} error={errors.inicio}>
+              <DateField
+                id={`${ids}-inicio`}
+                value={inicio}
+                onChange={setInicio}
+                invalid={Boolean(errors.inicio)}
+              />
+            </Field>
+          )}
+        </div>
+        {forma === 'pacote' && semPacote && (
+          <SwitchField
+            label="Contratar agora"
+            checked={contratarAgora}
+            onCheckedChange={setContratar}
+          />
         )}
-        <Field label={SERVICE_LABEL[forma]} htmlFor={`${ids}-servico`} error={errors.service_id}>
-          <Select
-            id={`${ids}-servico`}
-            value={service}
-            onValueChange={setService}
-            options={
-              forma === 'convenio'
-                ? [{ value: NENHUM, label: 'Não cobrar' }, ...services]
-                : services
-            }
-            invalid={Boolean(errors.service_id)}
-          />
-        </Field>
-        <Field
-          label="Lançar sessões a partir de"
-          htmlFor={`${ids}-desde`}
-          error={errors.desde}
-          hint="as anteriores ficam de fora"
-        >
-          <DateField
-            id={`${ids}-desde`}
-            value={desde}
-            onChange={setDesde}
-            invalid={Boolean(errors.desde)}
-          />
-        </Field>
         {save.error && <ErrorText>{save.error.message}</ErrorText>}
       </DialogBody>
       <Footer
