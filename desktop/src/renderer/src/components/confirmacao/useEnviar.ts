@@ -18,11 +18,11 @@ export function useEnviarConfirmacao() {
       return { envio, via }
     },
     onSuccess: ({ envio, via }) => {
-      const prazo = `O prazo para responder vai até as ${horaDe(envio.prazo)}.`
+      const prazo = `Prazo até as ${horaDe(envio.prazo)}.`
       toast(
         via === 'whatsapp'
           ? { title: 'Confira o WhatsApp e toque em enviar', description: prazo }
-          : { title: 'Mensagem copiada', description: `Cole na conversa do WhatsApp. ${prazo}` }
+          : { title: 'Mensagem copiada', description: prazo }
       )
     }
   })

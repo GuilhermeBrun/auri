@@ -36,7 +36,7 @@ export function ConfirmacoesDialog({
           ? `Confirmações de ${format(parseIsoDate(dia), 'EEEE, dd/MM', { locale: ptBR })}`
           : 'Confirmações'
       }
-      description="Cada paciente tem 2 horas para responder a partir do envio. Sem resposta, o horário fica livre e a falta é cobrada."
+      description="2 horas para responder. Sem resposta, a falta é cobrada."
     >
       {open && (
         <Conteudo

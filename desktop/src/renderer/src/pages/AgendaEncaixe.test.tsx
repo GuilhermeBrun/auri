@@ -237,7 +237,7 @@ describe('painel da lista de espera na semana', () => {
     open()
     const painel = await screen.findByRole('complementary', { name: 'Encaixe' })
     expect(await within(painel).findByText('Caio Fictício Prado')).toBeTruthy()
-    expect(within(painel).getByText(/Clique num horário vago/)).toBeTruthy()
+
     const user = userEvent.setup()
     await user.click(screen.getByRole('button', { name: 'Lista de espera' }))
     expect(screen.queryByRole('complementary', { name: 'Encaixe' })).toBeNull()

@@ -128,11 +128,10 @@ describe('painel da lista de espera', () => {
     expect(screen.queryByRole('button', { name: /qua, 21 de out/ })).toBeNull()
   })
 
-  it('lista vazia explica como pôr alguém', async () => {
+  it('lista vazia diz que ninguém espera', async () => {
     api.waitlist.list.mockResolvedValue([])
     renderRoute('/', '/', <WaitlistPanel />)
     expect(await screen.findByText('Ninguém esperando horário')).toBeTruthy()
-    expect(screen.getByText(/abra a ficha dele/)).toBeTruthy()
   })
 
   it('com uma vaga mostra quem cabe nela', async () => {

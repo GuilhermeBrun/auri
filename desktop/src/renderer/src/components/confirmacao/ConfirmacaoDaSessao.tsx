@@ -18,10 +18,10 @@ export function ConfirmacaoDaSessao({
   if (appointment.confirmado_em !== null && pedido?.estado !== 'confirmado') return null
   const aguardando = pedido?.estado === 'aguardando'
   const descricao = aguardando
-    ? `Enviado pelo WhatsApp. Responde até as ${horaDe(pedido.prazo)}; sem resposta, o horário fica livre e a falta é cobrada.`
+    ? `Prazo até as ${horaDe(pedido.prazo)}. Sem resposta, a falta é cobrada.`
     : pedido
       ? PEDIDO_LABELS[pedido.estado]
-      : 'A família recebe o link e tem 2 horas para confirmar ou desmarcar.'
+      : 'A família tem 2 horas para responder.'
   const botao = (via: Via) => (
     <Button
       variant={via === 'whatsapp' ? 'secondary' : 'ghost'}

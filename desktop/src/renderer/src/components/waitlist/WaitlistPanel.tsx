@@ -106,11 +106,7 @@ function FullList({
       </PanelHeader>
       {list.error ? (
         <Note tone="danger">Não foi possível abrir a lista. {list.error.message}</Note>
-      ) : list.data?.length === 0 ? (
-        <Note>
-          Para pôr um paciente na lista, abra a ficha dele e use “Pôr na lista de espera”.
-        </Note>
-      ) : (
+      ) : list.data?.length === 0 ? null : (
         <ul className="flex flex-col gap-1">
           {list.data?.map((entry) => (
             <EntryRow key={entry.id} entry={entry} now={now} onEdit={onEdit}>

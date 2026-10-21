@@ -102,10 +102,7 @@ function RescheduleBody({
       noValidate
     >
       <DialogBody className="flex flex-col gap-3">
-        <p className="text-xs text-ink-soft">
-          Horários livres de {duracao} min, sem bater com as atividades do paciente. Os do mesmo
-          período da sessão vêm primeiro.
-        </p>
+        <p className="text-xs text-ink-soft">Horários livres de {duracao} min.</p>
         {sugestoes.error ? (
           <Callout tone="danger" title="Não foi possível procurar horários">
             {sugestoes.error.message}
