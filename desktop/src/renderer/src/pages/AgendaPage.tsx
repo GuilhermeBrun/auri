@@ -1025,7 +1025,8 @@ export function AgendaPage(): React.JSX.Element {
       mode: 'create',
       inicio: parseIsoLocalDateTime(horario.inicio),
       duracao: entry.duracao,
-      patient: { id: entry.patient_id, nome: entry.patient_nome }
+      patient: { id: entry.patient_id, nome: entry.patient_nome },
+      tipo_id: entry.tipo_id
     })
   }, [])
 
