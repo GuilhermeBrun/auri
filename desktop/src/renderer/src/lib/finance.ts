@@ -1,7 +1,18 @@
+import { useMutation, type UseMutationResult } from '@tanstack/react-query'
 import { format } from 'date-fns'
 import { parseIsoDate } from '@shared/dates'
-import type { ChargeEntry, PatientFinance, SituacaoCobranca } from '@shared/finance'
+import {
+  FORA_DO_PACOTE,
+  type ChargeEntry,
+  type PatientFinance,
+  type Renovacao,
+  type SituacaoCobranca,
+  type SituacaoRenovacao
+} from '@shared/finance'
+import { formatBRL } from '@shared/money'
+import { shortName } from '@shared/names'
 import { useConnection } from '@renderer/lib/connection'
+import { useToast } from '@renderer/lib/toast'
 
 export function useComputador(): string {
   return useConnection().info?.name || 'Este computador'
@@ -19,6 +30,18 @@ export const SITUACAO_LABELS: Record<SituacaoCobranca, string> = {
   em_aberto: 'Em aberto'
 }
 
+export const RENOVACAO_TITLES: Record<SituacaoRenovacao, string> = {
+  acabando: 'Resta 1 sessão do pacote',
+  acabou: 'O pacote acabou',
+  venceu: 'O pacote venceu'
+}
+
+export const RENOVACAO_LABELS: Record<SituacaoRenovacao, string> = {
+  acabando: 'Resta 1',
+  acabou: 'Acabou',
+  venceu: 'Venceu'
+}
+
 export function plural(n: number, singular: string, pluralForm: string): string {
   return `${n} ${n === 1 ? singular : pluralForm}`
 }
@@ -32,6 +55,7 @@ export type SessionPay =
       pago_centavos: number
       situacao: SituacaoCobranca
       convenio: string | null
+      fora: boolean
     }
   | { kind: 'nenhum' }
 
@@ -47,7 +71,8 @@ export function sessionPay(finance: PatientFinance, appointmentId: number): Sess
       valor_centavos: charge.valor_centavos,
       pago_centavos: charge.pago_centavos,
       situacao: charge.situacao ?? 'em_aberto',
-      convenio: charge.insurer_nome
+      convenio: charge.insurer_nome,
+      fora: charge.descricao.endsWith(FORA_DO_PACOTE)
     }
   return { kind: 'nenhum' }
 }
@@ -57,4 +82,20 @@ export function sessionPayLabel(pay: SessionPay): string | null {
   if (pay.kind === 'nenhum') return null
   if (pay.convenio) return pay.situacao === 'pago' ? 'Pago pelo convênio' : 'Convênio'
   return SITUACAO_LABELS[pay.situacao]
+}
+
+export function useRenewPackage(patient: {
+  id: number
+  nome: string
+}): UseMutationResult<number, Error, Renovacao> {
+  const toast = useToast()
+  const computador = useComputador()
+  return useMutation({
+    mutationFn: (_: Renovacao) => window.api.finance.renewPackage(patient.id, computador),
+    onSuccess: (_, renovacao) =>
+      toast({
+        title: 'Pacote renovado',
+        description: `${shortName(patient.nome)} · ${renovacao.nome} · ${formatBRL(renovacao.valor_centavos)}`
+      })
+  })
 }

@@ -13,6 +13,7 @@ import {
   paymentInputSchema,
   type Billing,
   type FinanceCatalog,
+  type FinancePlan,
   type FormaCobranca,
   type FormaPagamento,
   type Lancamento,
@@ -29,6 +30,7 @@ import { Field, Input, Textarea } from '@renderer/components/ui/input'
 import { ErrorText } from '@renderer/components/ui/section'
 import { Segmented } from '@renderer/components/ui/segmented'
 import { Select } from '@renderer/components/ui/select'
+import { SwitchField } from '@renderer/components/ui/switch'
 import { formatDay, formatShortDay, plural, useComputador } from '@renderer/lib/finance'
 import { financeCatalogQuery, patientFinanceQuery } from '@renderer/lib/queries'
 import { useToast } from '@renderer/lib/toast'
@@ -395,6 +397,32 @@ function serviceOptions(
     .map((s) => ({ value: String(s.id), label: `${s.nome} · ${formatBRL(s.valor_centavos)}` }))
 }
 
+function planOptions(
+  catalog: FinanceCatalog,
+  keep: number | null
+): { value: string; label: string }[] {
+  return catalog.plans
+    .filter((p) => !p.arquivado || p.id === keep)
+    .map((p) => ({ value: String(p.id), label: `${p.nome} · ${formatBRL(p.valor_centavos)}` }))
+}
+
+function validadeDe(plan: FinancePlan, inicio: string): string | null {
+  return plan.validade_dias && isIsoDate(inicio)
+    ? formatDay(toIsoDate(addDays(parseIsoDate(inicio), plan.validade_dias - 1)))
+    : null
+}
+
+function PlanSummary({ plan, inicio }: { plan: FinancePlan; inicio: string }): React.JSX.Element {
+  const validade = validadeDe(plan, inicio)
+  return (
+    <p className="animate-fade-in text-[13px] text-ink-soft">
+      {plural(plan.sessoes, 'sessão', 'sessões')} por {formatBRL(plan.valor_centavos)}
+      {validade ? `, válido até ${validade}` : ', sem validade'}. A cobrança de{' '}
+      {formatBRL(plan.valor_centavos)} entra no extrato.
+    </p>
+  )
+}
+
 function MissingCatalog({ what }: { what: string }): React.JSX.Element {
   const navigate = useNavigate()
   return (
@@ -459,24 +487,46 @@ function BillingForm({
 }): React.JSX.Element {
   const ids = useId()
   const toast = useToast()
+  const computador = useComputador()
   const catalog = useQuery(financeCatalogQuery())
+  const finance = useQuery(patientFinanceQuery(patientId))
   const [forma, setForma] = useState<FormaCobranca>(billing?.forma ?? 'particular')
   const [service, setService] = useState(billing?.service_id ? String(billing.service_id) : '')
   const [insurer, setInsurer] = useState(billing?.insurer_id ? String(billing.insurer_id) : '')
+  const [planId, setPlanId] = useState(billing?.plan_id ? String(billing.plan_id) : '')
   const [carteirinha, setCarteirinha] = useState(billing?.carteirinha ?? '')
   const [desde, setDesde] = useState(billing?.desde ?? today())
+  const [contratar, setContratar] = useState<boolean | null>(null)
+  const [inicio, setInicio] = useState(today)
   const [errors, setErrors] = useState<Errors>({})
+
+  const semPacote = finance.data ? !finance.data.packages.some((p) => p.em_vigor) : false
+  const contratarAgora =
+    forma === 'pacote' &&
+    semPacote &&
+    (contratar ?? finance.data?.packages.every((p) => p.estorno !== null) ?? false)
 
   const save = useMutation({
     mutationFn: (input: Parameters<typeof window.api.finance.setBilling>[1]) =>
-      window.api.finance.setBilling(patientId, input, billing?.updated_at),
+      window.api.finance.setBilling(
+        patientId,
+        input,
+        billing?.updated_at,
+        contratarAgora ? { inicio, computador } : null
+      ),
     onSuccess: (saved) => {
-      toast({ title: 'Forma de cobrança salva', description: FORMA_COBRANCA_LABELS[saved.forma] })
+      toast({
+        title: contratarAgora ? 'Pacote contratado' : 'Forma de cobrança salva',
+        description: saved.plan
+          ? `${FORMA_COBRANCA_LABELS[saved.forma]} · ${saved.plan.nome}`
+          : FORMA_COBRANCA_LABELS[saved.forma]
+      })
       onClose()
     }
   })
 
   const services = catalog.data ? serviceOptions(catalog.data, billing?.service_id ?? null) : []
+  const plans = catalog.data ? planOptions(catalog.data, billing?.plan_id ?? null) : []
   const insurers = (catalog.data?.insurers ?? [])
     .filter((i) => !i.arquivado || i.id === billing?.insurer_id)
     .map((i) => ({
@@ -489,16 +539,23 @@ function BillingForm({
       forma,
       service_id: service === '' || service === NENHUM ? null : Number(service),
       insurer_id: forma === 'convenio' && insurer !== '' ? Number(insurer) : null,
+      plan_id: forma === 'pacote' && planId !== '' ? Number(planId) : null,
       carteirinha: forma === 'convenio' ? carteirinha : '',
       desde
     })
-    setErrors(parsed.success ? {} : issues(parsed.error))
-    if (parsed.success) save.mutate(parsed.data)
+    const next = parsed.success ? {} : issues(parsed.error)
+    if (contratarAgora && !isIsoDate(inicio)) next.inicio = 'Data inválida'
+    setErrors(next)
+    if (parsed.success && Object.keys(next).length === 0) save.mutate(parsed.data)
   }
 
   const missing =
     catalog.data &&
-    (forma === 'convenio' ? insurers.length === 0 && 'convênio' : services.length === 0 && 'valor')
+    (forma === 'convenio'
+      ? insurers.length === 0 && 'convênio'
+      : forma === 'pacote' && plans.length === 0
+        ? 'pacote'
+        : services.length === 0 && 'valor')
 
   return (
     <form
@@ -534,12 +591,39 @@ function BillingForm({
             </Field>
           </div>
         )}
-        <Field
-          label={SERVICE_LABEL[forma]}
-          htmlFor={`${ids}-servico`}
-          error={errors.service_id}
-          hint={forma === 'pacote' ? 'quando não houver pacote em vigor' : undefined}
-        >
+        {forma === 'pacote' && (
+          <div className="flex animate-fade-in flex-col gap-3">
+            <div className="grid grid-cols-[1fr_160px] gap-3">
+              <Field label="Pacote" htmlFor={`${ids}-pacote`} error={errors.plan_id}>
+                <Select
+                  id={`${ids}-pacote`}
+                  value={planId}
+                  onValueChange={setPlanId}
+                  options={plans}
+                  invalid={Boolean(errors.plan_id)}
+                />
+              </Field>
+              {contratarAgora && (
+                <Field label="Início" htmlFor={`${ids}-inicio`} error={errors.inicio}>
+                  <DateField
+                    id={`${ids}-inicio`}
+                    value={inicio}
+                    onChange={setInicio}
+                    invalid={Boolean(errors.inicio)}
+                  />
+                </Field>
+              )}
+            </div>
+            {semPacote && (
+              <SwitchField
+                label="Contratar agora"
+                checked={contratarAgora}
+                onCheckedChange={setContratar}
+              />
+            )}
+          </div>
+        )}
+        <Field label={SERVICE_LABEL[forma]} htmlFor={`${ids}-servico`} error={errors.service_id}>
           <Select
             id={`${ids}-servico`}
             value={service}
@@ -567,7 +651,11 @@ function BillingForm({
         </Field>
         {save.error && <ErrorText>{save.error.message}</ErrorText>}
       </DialogBody>
-      <Footer onCancel={onClose} submit="Salvar" loading={save.isPending} />
+      <Footer
+        onCancel={onClose}
+        submit={contratarAgora ? 'Salvar e contratar' : 'Salvar'}
+        loading={save.isPending}
+      />
     </form>
   )
 }
@@ -582,12 +670,7 @@ export function ChargeDialog({
   patient: PatientOption
 }): React.JSX.Element {
   return (
-    <FormDialog
-      open={open}
-      onOpenChange={onOpenChange}
-      title="Cobrar"
-      description="Um serviço fora das sessões, como avaliação ou relatório."
-    >
+    <FormDialog open={open} onOpenChange={onOpenChange} title="Cobrar" description={patient.nome}>
       <ChargeForm patient={patient} onClose={() => onOpenChange(false)} />
     </FormDialog>
   )
@@ -604,11 +687,14 @@ function ChargeForm({
   const toast = useToast()
   const computador = useComputador()
   const catalog = useQuery(financeCatalogQuery())
-  const [service, setService] = useState('')
+  const [item, setItem] = useState('')
   const [descricao, setDescricao] = useState('')
   const [valor, setValor] = useState('')
   const [data, setData] = useState(today)
   const [errors, setErrors] = useState<Errors>({})
+  const plan = item.startsWith('p')
+    ? (catalog.data?.plans.find((p) => `p${p.id}` === item) ?? null)
+    : null
   const charge = useMutation({
     mutationFn: (input: Parameters<typeof window.api.finance.charge>[1]) =>
       window.api.finance.charge(patient.id, input, computador),
@@ -620,11 +706,35 @@ function ChargeForm({
       onClose()
     }
   })
-  const services = catalog.data ? serviceOptions(catalog.data, null) : []
+  const contract = useMutation({
+    mutationFn: (p: FinancePlan) =>
+      window.api.finance.contractPackage(patient.id, { plan_id: p.id, inicio: data }, computador),
+    onSuccess: (_, p) => {
+      toast({
+        title: 'Pacote contratado',
+        description: `${shortName(patient.nome)} · ${p.nome} · ${formatBRL(p.valor_centavos)}`
+      })
+      onClose()
+    }
+  })
+  const options = catalog.data
+    ? [
+        ...serviceOptions(catalog.data, null).map((o) => ({ ...o, value: `s${o.value}` })),
+        ...planOptions(catalog.data, null).map((o) => ({
+          value: `p${o.value}`,
+          label: `Pacote ${o.label}`
+        }))
+      ]
+    : []
+  const error = charge.error ?? contract.error
   return (
     <form
       onSubmit={(e) => {
         e.preventDefault()
+        if (plan) {
+          if (isIsoDate(data)) contract.mutate(plan)
+          return
+        }
         const parsed = chargeInputSchema.safeParse({
           descricao,
           valor_centavos: parseBRL(valor) ?? 0,
@@ -636,46 +746,67 @@ function ChargeForm({
       noValidate
     >
       <DialogBody className="flex flex-col gap-4">
-        {services.length > 0 && (
-          <Field label="Serviço" htmlFor={`${ids}-servico`}>
+        {options.length > 0 && (
+          <Field label="Serviço ou pacote" htmlFor={`${ids}-servico`}>
             <Select
               id={`${ids}-servico`}
-              value={service}
+              value={item}
               onValueChange={(value) => {
-                setService(value)
-                const s = catalog.data?.services.find((x) => String(x.id) === value)
+                setItem(value)
+                const s = catalog.data?.services.find((x) => `s${x.id}` === value)
                 if (s) {
                   setDescricao(s.nome)
                   setValor(centavosToInput(s.valor_centavos))
                 }
               }}
-              options={services}
+              options={options}
             />
           </Field>
         )}
-        <Field label="Descrição" error={errors.descricao}>
-          <Input
-            value={descricao}
-            onChange={(e) => setDescricao(e.target.value)}
-            aria-invalid={Boolean(errors.descricao) || undefined}
-          />
-        </Field>
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Valor" htmlFor={`${ids}-valor`} error={errors.valor_centavos}>
-            <MoneyInput
-              id={`${ids}-valor`}
-              value={valor}
-              onChange={setValor}
-              invalid={Boolean(errors.valor_centavos)}
-            />
-          </Field>
-          <Field label="Data" htmlFor={`${ids}-data`} error={errors.data}>
-            <DateField id={`${ids}-data`} value={data} onChange={setData} />
-          </Field>
-        </div>
-        {charge.error && <ErrorText>{charge.error.message}</ErrorText>}
+        {plan ? (
+          <>
+            <Field label="Início" htmlFor={`${ids}-inicio`} className="w-40">
+              <DateField
+                id={`${ids}-inicio`}
+                value={data}
+                onChange={setData}
+                invalid={!isIsoDate(data)}
+              />
+            </Field>
+            <PlanSummary plan={plan} inicio={data} />
+          </>
+        ) : (
+          <>
+            <Field label="Descrição" error={errors.descricao}>
+              <Input
+                value={descricao}
+                onChange={(e) => setDescricao(e.target.value)}
+                aria-invalid={Boolean(errors.descricao) || undefined}
+              />
+            </Field>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Valor" htmlFor={`${ids}-valor`} error={errors.valor_centavos}>
+                <MoneyInput
+                  id={`${ids}-valor`}
+                  value={valor}
+                  onChange={setValor}
+                  invalid={Boolean(errors.valor_centavos)}
+                />
+              </Field>
+              <Field label="Data" htmlFor={`${ids}-data`} error={errors.data}>
+                <DateField id={`${ids}-data`} value={data} onChange={setData} />
+              </Field>
+            </div>
+          </>
+        )}
+        {error && <ErrorText>{error.message}</ErrorText>}
       </DialogBody>
-      <Footer onCancel={onClose} submit="Lançar cobrança" loading={charge.isPending} />
+      <Footer
+        onCancel={onClose}
+        submit={plan ? 'Contratar' : 'Lançar cobrança'}
+        loading={charge.isPending || contract.isPending}
+        disabled={plan !== null && !isIsoDate(data)}
+      />
     </form>
   )
 }
@@ -727,10 +858,6 @@ function PackageForm({
       onClose()
     }
   })
-  const validade =
-    plan?.validade_dias && isIsoDate(inicio)
-      ? formatDay(toIsoDate(addDays(parseIsoDate(inicio), plan.validade_dias - 1)))
-      : null
   return (
     <form
       onSubmit={(e) => {
@@ -765,13 +892,7 @@ function PackageForm({
             </Field>
           </div>
         )}
-        {plan && (
-          <p className="animate-fade-in text-[13px] text-ink-soft">
-            {plural(plan.sessoes, 'sessão', 'sessões')} por {formatBRL(plan.valor_centavos)}
-            {validade ? `, válido até ${validade}` : ', sem validade'}. A cobrança de{' '}
-            {formatBRL(plan.valor_centavos)} entra no extrato.
-          </p>
-        )}
+        {plan && <PlanSummary plan={plan} inicio={inicio} />}
         {contract.error && <ErrorText>{contract.error.message}</ErrorText>}
       </DialogBody>
       <Footer
