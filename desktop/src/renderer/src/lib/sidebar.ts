@@ -83,6 +83,12 @@ export function useAvailableItems(): ArrangedItem[] {
   )
 }
 
+export function useWhatsAppActive(): boolean {
+  const enabled = useWhatsAppEnabled()
+  const prefs = useSidebarItems()
+  return enabled && !prefs.hidden.includes('whatsapp')
+}
+
 export function useHomePath(): string {
   return useAvailableItems().find((item) => !item.hidden)?.path ?? '/agenda'
 }

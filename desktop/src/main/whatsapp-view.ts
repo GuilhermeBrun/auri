@@ -17,6 +17,7 @@ const ALLOWED_PERMISSIONS = new Set(['notifications', 'clipboard-sanitized-write
 export type WhatsAppView = {
   attach(window: BrowserWindow): void
   setEnabled(enabled: boolean): Promise<void>
+  setPaused(paused: boolean): void
   open(phone: string, text: string): boolean
   show(bounds: WhatsAppBounds): void
   hide(): void
@@ -98,14 +99,17 @@ function stopWorkers(partition: Session): void {
 
 export function createWhatsAppView({
   enabled: initiallyEnabled,
+  paused: initiallyPaused = false,
   onUnread,
   onOpen
 }: {
   enabled: boolean
+  paused?: boolean
   onUnread: (count: number) => void
   onOpen: () => void
 }): WhatsAppView {
   let enabled = initiallyEnabled
+  let paused = initiallyPaused
   let window: BrowserWindow | null = null
   let view: WebContentsView | null = null
   let prepared = false
@@ -165,7 +169,7 @@ export function createWhatsAppView({
   }
 
   function ensure(): WebContentsView | null {
-    if (!enabled || !window || window.isDestroyed()) return null
+    if (!enabled || paused || !window || window.isDestroyed()) return null
     view ??= build(window)
     return view
   }
@@ -196,6 +200,16 @@ export function createWhatsAppView({
       await partition.clearStorageData()
       await partition.clearCache()
       stopWorkers(partition)
+    },
+    setPaused(next) {
+      if (next === paused) return
+      paused = next
+      if (!paused) {
+        ensure()
+        return
+      }
+      teardown()
+      stopWorkers(session.fromPartition(PARTITION))
     },
     open(phone, text) {
       const current = ensure()

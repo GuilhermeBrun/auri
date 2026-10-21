@@ -14,6 +14,7 @@ import { SETTINGS_CRUMB } from '@renderer/lib/settings'
 import { useSettingsImport } from '@renderer/lib/settings-import'
 import { useToast } from '@renderer/lib/toast'
 import { setUpdateState, useUpdates } from '@renderer/lib/updates'
+import { useWhatsAppActive } from '@renderer/lib/sidebar'
 import { setWhatsAppEnabled, useWhatsAppEnabled } from '@renderer/lib/whatsapp'
 import type { UpdateChannel, UpdateState } from '@shared/api'
 
@@ -43,6 +44,7 @@ const CHANNELS = [
 
 function WhatsApp(): React.JSX.Element {
   const enabled = useWhatsAppEnabled()
+  const active = useWhatsAppActive()
   const toast = useToast()
   return (
     <PageSection id="whatsapp" title="WhatsApp">
@@ -50,9 +52,11 @@ function WhatsApp(): React.JSX.Element {
         <SwitchField
           label="WhatsApp no Auri"
           description={
-            enabled
-              ? 'No menu lateral, sempre aberto. Desligado, sai da conta e some do Auri.'
-              : 'As conversas abrem fora do Auri.'
+            !enabled
+              ? 'As conversas abrem fora do Auri.'
+              : active
+                ? 'No menu lateral, sempre aberto. Desligado, sai da conta e some do Auri.'
+                : 'Escondido na barra lateral: fica parado, sem sair da conta. Desligado, sai da conta.'
           }
           checked={enabled}
           onCheckedChange={(on) => {

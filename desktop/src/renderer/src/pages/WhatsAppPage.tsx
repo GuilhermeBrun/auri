@@ -1,12 +1,13 @@
 import { useLayoutEffect, useRef } from 'react'
 import { Navigate } from 'react-router'
 import { Page } from '@renderer/components/Layout'
-import { useWhatsAppEnabled } from '@renderer/lib/whatsapp'
+import { useHomePath, useWhatsAppActive } from '@renderer/lib/sidebar'
 
 const SETTLE_MS = 250
 
 export function WhatsAppPage(): React.JSX.Element {
-  const enabled = useWhatsAppEnabled()
+  const enabled = useWhatsAppActive()
+  const home = useHomePath()
   const area = useRef<HTMLDivElement>(null)
 
   useLayoutEffect(() => {
@@ -46,7 +47,7 @@ export function WhatsAppPage(): React.JSX.Element {
     }
   }, [enabled])
 
-  if (!enabled) return <Navigate to="/agenda" replace />
+  if (!enabled) return <Navigate to={home} replace />
   return (
     <Page trail={[{ label: 'WhatsApp' }]} bodyClassName="overflow-hidden">
       <div ref={area} className="h-full w-full bg-fill" />

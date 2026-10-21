@@ -31,7 +31,7 @@ import { SETTINGS_CRUMB } from '@renderer/lib/settings'
 import { cn } from '@renderer/lib/utils'
 
 const DESCRICOES: Partial<Record<GrupoDeAtalho, string>> = {
-  ir: 'Abrem a tela mesmo quando ela está oculta na barra lateral.',
+  ir: 'Abrem a tela mesmo quando ela está oculta na barra lateral; o WhatsApp oculto fica parado.',
   agenda: 'Valem na tela da Agenda, fora dos campos de texto.',
   pacientes: 'Novo paciente vale na lista; as abas, na tela do paciente.'
 }

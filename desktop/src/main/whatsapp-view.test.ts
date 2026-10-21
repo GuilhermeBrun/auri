@@ -222,6 +222,36 @@ describe('WhatsApp dentro do Auri', () => {
     expect(mocks.views).toHaveLength(2)
   })
 
+  it('escondido na barra lateral fica parado sem sair da conta; mostrar carrega de novo', () => {
+    const { whatsapp, main } = setup()
+    main.loaded()
+    const [view] = mocks.views
+    mocks.running[1] = { renderProcessId: 7 }
+    whatsapp.setPaused(true)
+    expect(view.closed).toBe(true)
+    expect(main.children).toEqual([])
+    expect(mocks.kill).toHaveBeenCalledWith(12)
+    expect(mocks.fakeSession.clearStorageData).not.toHaveBeenCalled()
+    expect(whatsapp.open('5565900000000', 'Oi')).toBe(false)
+    whatsapp.show({ x: 0, y: 0, width: 10, height: 10 })
+    expect(mocks.views).toHaveLength(1)
+    whatsapp.setPaused(false)
+    expect(mocks.views).toHaveLength(2)
+  })
+
+  it('abre parado quando já estava escondido', () => {
+    const whatsapp = createWhatsAppView({
+      enabled: true,
+      paused: true,
+      onUnread: vi.fn(),
+      onOpen: vi.fn()
+    })
+    const main = fakeWindow()
+    whatsapp.attach(main.window as never)
+    main.loaded()
+    expect(mocks.views).toHaveLength(0)
+  })
+
   it('acha o processo em segundo plano do WhatsApp só quando a conta bate', () => {
     const processes = [
       { pid: 1, type: 'Browser' },

@@ -442,6 +442,7 @@ void app.whenReady().then(async () => {
     applyAppearance(next)
     applyMenu(next.atalhos)
     void whatsapp?.setEnabled(next.whatsapp)
+    whatsapp?.setPaused(next.sidebarItems.hidden.includes('whatsapp'))
     sendToWindows('prefs:changed', next)
   })
   const channel = channelFile(join(app.getPath('userData'), 'atualizacoes.json'))
@@ -454,6 +455,7 @@ void app.whenReady().then(async () => {
   })
   whatsapp = createWhatsAppView({
     enabled: prefs.get().whatsapp,
+    paused: prefs.get().sidebarItems.hidden.includes('whatsapp'),
     onUnread: (count) => sendToWindows('whatsapp:unread', count),
     onOpen: () => sendToWindows('whatsapp:open', undefined)
   })
