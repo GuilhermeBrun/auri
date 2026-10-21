@@ -60,4 +60,4 @@ o Auri manda o link longo.
 | Adivinhar links | O código tem 128 bits sorteados; o `id` é um SHA-256 dele. |
 | Trocar o termo de alguém | Só quem tem o código calcula o `id`, e o primeiro `PUT` de um `id` fica. |
 | Forjar uma resposta | A resposta continua cifrada e conferida com a chave da ida, como no link longo. |
-| Encher o banco | Limites acima, no próprio banco. O Firewall da Vercel limita `/api/erros`; para valer também em `/api/links`, a regra precisa cobrir `/api/`. |
+| Encher o banco | Limites acima, no próprio banco, e o Firewall da Vercel: no máximo 60 pedidos por minuto por IP em `/api/` (desde 21/10). |
