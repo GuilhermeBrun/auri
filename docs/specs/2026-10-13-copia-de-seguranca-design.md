@@ -1,20 +1,13 @@
 # Cópia de segurança na nuvem e configurações — design
 
-Data: 13/10/2026. Estado: fases 1 a 4 implementadas e verificadas (13 e 14/10/2026).
+Data: 13/10/2026. Estado: implementado.
 
-- Mac, com o app aberto: assistente, cópia, restauração (inclusive em computador novo), senha,
-  exportar/importar configurações e a instalação real do Google Drive (Instalador da Apple, login e
-  o Auri avançando sozinho).
-- Windows e Mac no CI, com o app aberto (`scripts/e2e.mjs`, job `e2e`): o mesmo fluxo e, no
-  Windows, a instalação real do Google Drive pelo botão "Instalar" (download, assinatura
-  Authenticode, instalador aceito) e "Abrir o Google Drive" abrindo o app; o mesmo com o OneDrive.
-- Nuvem que para de funcionar (pedido do usuário em 13/10, depois de desinstalar o Google Drive):
-  a aba mostra o que houve e o caminho para resolver; verificado no Mac (desinstalar e reinstalar).
-- Nuvem real (14/10, autorizado pelo usuário): cópia gravada no iCloud Drive dele, enviada pelo
-  macOS em 6 s, restaurada num "computador novo" com a senha; a pasta foi apagada no fim.
-- Windows no CI: OneDrive instalado pelo "Instalar" e aberto pelo "Abrir o OneDrive". O instalador
-  grava a pasta da conta no registro antes do login (sem `UserEmail`): só conta como pronto com
-  e-mail e pasta.
+- E2E com o app aberto (`scripts/e2e.mjs`, `npm run test:e2e`): assistente, cópia, restauração
+  (inclusive em computador novo), senha e exportar/importar configurações. Roda no Mac pelo
+  `npm run ci:mac` (local) e no Windows pelo workflow manual `windows.yml`; o CI do PR não roda E2E.
+- No `windows.yml`, o passo "E2E com instalação real" (`AURI_E2E_INSTALAR`) instala o Google Drive
+  e o OneDrive pelo botão "Instalar" (download, assinatura Authenticode, instalador aceito) e abre
+  cada app pelo botão "Abrir".
 
 ## Objetivo
 
@@ -56,33 +49,37 @@ computador quebrar, um computador novo com o Auri restaura tudo com a senha ou o
   pendente, com limite de 20 s e sem diálogo; no desligamento do sistema e na atualização fica
   para a próxima abertura) ou só quando pedir. "Fazer cópia agora" sempre. Mais de 3 dias sem cópia vira
   aviso.
-- **Retenção escalonada (20/10).** De cada computador ficam as 2 mais recentes, a mais nova de
+- **Retenção escalonada** (`RETENTION` em `backup/backup.ts`). De cada computador ficam as 2 mais recentes, a mais nova de
   cada um dos últimos 7 dias com cópia, de cada uma das últimas 8 semanas e de cada um dos últimos
   12 meses: no máximo 29 arquivos (uns 23 no uso diário), cobrindo cerca de um ano. Os dias são os
-  do relógio local; cópias de outra chave na mesma pasta nunca são apagadas. A aba mostra
+  do relógio local; cópias de outra chave na mesma pasta nunca são apagadas. A seção mostra
   "N cópias · tamanho" e só avisa do espaço a partir de 2 GB.
 - **Restaurar substitui só os dados**, nunca as configurações. Antes guarda o estado atual neste
   computador e oferece "Desfazer restauração". Copias deste mesmo computador abrem sem senha (a
   chave está no cofre); de outro, com a senha ou o código.
-- **Configurações separadas dos dados**, em outra aba e outro arquivo (`.auriconfig`), sem senha e
-  só manual: aparência, opções da Conexão (papel, nome, compartilhar, manter rodando, abrir ao
-  ligar, acesso de fora) e as escolhas da cópia (nuvem, frequência, horário). Nunca vão chaves,
-  computadores pareados, a senha ou a chave da cópia. Ao importar, mostra o que muda e só aplica
-  depois de confirmar.
+- **Configurações separadas dos dados**, num arquivo próprio (`.auriconfig`), sem senha e só
+  manual. A cópia fica em Configurações › Armazenamento (seção Cópia de segurança); exportar e
+  importar configurações, em Configurações › Geral. O arquivo leva aparência, opções da Conexão
+  (papel, nome, compartilhar, manter rodando, abrir ao ligar, acesso de fora, avisos da agenda), as
+  escolhas da cópia (nuvem, frequência, horário), os dados da clínica, os modelos de termo e as
+  etiquetas (`settings-transfer.ts`). Nunca vão chaves, computadores pareados, a senha ou a chave
+  da cópia. Ao importar, mostra o que muda e só aplica depois de confirmar; modelos de termo e
+  etiquetas só entram os que ainda não existem, e etiquetas da categoria Marca são ignoradas.
 - **Primeira abertura** (banco vazio, ainda sem escolha): "Já usa o Auri?" com passos separados
   para restaurar dados e importar configurações, e a saída "Começar do zero".
-- **Só o computador que guarda os dados faz cópias.** No consultório (papel cliente) a aba explica
+- **Só o computador que guarda os dados faz cópias.** No consultório (papel cliente) a seção explica
   isso; exportar e importar configurações funciona nos dois.
 
 ## Nuvem que para de funcionar
 
-A nuvem escolhida é conferida a cada minuto (e a cada 4 s com a aba aberta): desinstalada,
-fechada, fora da conta, desligada, bloqueada ou em outra conta vira um aviso na aba com o botão do
-assistente (Instalar, Abrir o app, Abrir Ajustes, Usar esta conta) e "Escolher outra nuvem"; marca
-em Configurações (que leva direto à aba) e aviso ao abrir o Auri. Com a nuvem fora do ar o Auri
-não tenta copiar; quando ela volta, faz a cópia parada na hora. A pasta só conta como pronta se o
-"Meu Drive" abre de verdade: desinstalado ou fechado, o Google Drive deixa a pasta da conta para
-trás, sem responder.
+A nuvem escolhida é conferida a cada minuto (e a cada 4 s com o aviso aberto): desinstalada,
+fechada, fora da conta, desligada, bloqueada ou em outra conta vira um aviso na seção com o botão
+do assistente (Instalar, Abrir o app, Abrir Ajustes, Usar esta conta) e "Escolher outra nuvem";
+marca em Configurações (que leva direto à seção, `?secao=copia`) e aviso ao abrir o Auri. Com a
+nuvem fora do ar o Auri não tenta copiar; quando ela volta, faz a cópia parada na hora. A pasta só
+conta como pronta se o "Meu Drive" abre de verdade: desinstalado ou fechado, o Google Drive deixa
+a pasta da conta para trás, sem responder. O instalador do OneDrive grava a pasta da conta no
+registro antes do login (sem `UserEmail`): o OneDrive só conta como pronto com e-mail e pasta.
 
 ## Arquivo da cópia (`.auribackup`)
 
@@ -111,7 +108,7 @@ src/main/backup/
   store.ts             copias.json: destino, frequência, envelopes, chave (cofre), última cópia
   providers.ts         Google Drive / OneDrive / iCloud: estado e pasta, por sistema
   installer.ts         baixar e abrir instaladores, abrir app ou Ajustes para entrar na conta
-  backup.ts            fazer cópia, guardar as 30 últimas, listar, preparar restauração
+  backup.ts            fazer cópia, retenção escalonada, listar, preparar restauração
   scheduler.ts         quando copiar (diária, a cada alteração, manual)
 src/main/backup-service.ts     junta tudo e expõe para o IPC (window.backup)
 src/main/settings-transfer.ts  formato do .auriconfig e o que muda ao importar
@@ -129,17 +126,9 @@ src/main/transfer-service.ts   janelas de salvar/abrir e aplicar (window.transfe
 - As telas leem o estado por um store como o da Conexão (`useBackup`), com aviso do main a cada
   mudança.
 
-## Fases
-
-1. Cópia cifrada para uma pasta escolhida, frequência, restauração com desfazer, alterar senha,
-   esqueci a senha, novo código.
-2. Detecção das nuvens e o assistente de escolha (cartões com estado).
-3. Instalação conduzida (baixar instalador, abrir app/Ajustes, esperar a pasta aparecer).
-4. Exportar e importar configurações e a tela de primeira abertura.
-
 ## Erros
 
-- Pasta sumiu (nuvem desligada, pendrive fora): a cópia falha, o erro aparece na aba e a próxima
+- Pasta sumiu (nuvem desligada, pendrive fora): a cópia falha, o erro aparece na seção e a próxima
   tentativa é no próximo ciclo (5 minutos).
 - Senha ou código errado: "Senha incorreta" (a etiqueta GCM do envelope não confere).
 - Arquivo corrompido ou adulterado: "Este arquivo está danificado" (etiqueta dos dados).
@@ -149,7 +138,7 @@ src/main/transfer-service.ts   janelas de salvar/abrir e aplicar (window.transfe
 ## Testes
 
 - `crypto`/`archive`: ida e volta; senha errada; código de recuperação; cabeçalho adulterado.
-- `backup`: cópia de um banco real (better-sqlite3), retenção de 30, listar, restaurar o conteúdo.
+- `backup`: cópia de um banco real (better-sqlite3), retenção escalonada, listar, restaurar o conteúdo.
 - `providers`: Mac e Windows com sistema de arquivos e registro falsos.
 - `scheduler`: horário diário, computador desligado no horário, a cada alteração.
 - `settings-transfer`: ida e volta, arquivo inválido, campos que faltam.
