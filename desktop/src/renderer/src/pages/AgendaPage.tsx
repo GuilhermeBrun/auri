@@ -79,6 +79,7 @@ import { PEDIDO_LABELS, type Vaga } from '@shared/confirmacao'
 import { vagaEm, type Intervalo } from '@shared/encaixe'
 import type { Appointment } from '@shared/schemas'
 import type { WaitlistEntry } from '@shared/waitlist'
+import { AniversariantesHoje, BoloAniversario } from '@renderer/components/Aniversariantes'
 import { AppointmentDialog, type AppointmentDraft } from '@renderer/components/AppointmentDialog'
 import { AvisosDaConfirmacao } from '@renderer/components/confirmacao/AvisosDaConfirmacao'
 import { ConfirmacoesDialog } from '@renderer/components/confirmacao/ConfirmacoesDialog'
@@ -307,6 +308,7 @@ function EventContent({ event }: EventProps<CalendarEvent>): React.JSX.Element {
           </span>
           <span className="name-short">{shortName(event.title)}</span>
           <span className="name-full">{event.title}</span>
+          <BoloAniversario patientId={event.appointment.patient_id} dia={event.start} />
           {assinatura && (
             <PenLine
               aria-label="Chegada assinada"
@@ -1026,6 +1028,7 @@ export function AgendaPage(): React.JSX.Element {
       }
       actions={
         <>
+          <AniversariantesHoje />
           <Button
             variant="ghost"
             size="icon"
