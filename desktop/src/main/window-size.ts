@@ -1,7 +1,8 @@
+import { MIN_WINDOW } from '../shared/aparencia'
+
 type Tamanho = { width: number; height: number }
 
 const PADRAO: Tamanho = { width: 1280, height: 820 }
-const MINIMO: Tamanho = { width: 1000, height: 540 }
 
 export function tamanhoDaJanela(area: Tamanho): Tamanho & {
   minWidth: number
@@ -11,7 +12,7 @@ export function tamanhoDaJanela(area: Tamanho): Tamanho & {
   return {
     width: caber(PADRAO.width, area.width),
     height: caber(PADRAO.height, area.height),
-    minWidth: caber(MINIMO.width, area.width),
-    minHeight: caber(MINIMO.height, area.height)
+    minWidth: caber(MIN_WINDOW.width, area.width),
+    minHeight: caber(MIN_WINDOW.height, area.height)
   }
 }

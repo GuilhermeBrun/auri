@@ -7,7 +7,7 @@ describe('tamanho da janela', () => {
       width: 1280,
       height: 820,
       minWidth: 1000,
-      minHeight: 540
+      minHeight: 640
     })
   })
 
@@ -16,7 +16,7 @@ describe('tamanho da janela', () => {
       width: 1092,
       height: 582,
       minWidth: 1000,
-      minHeight: 540
+      minHeight: 582
     })
   })
 })
