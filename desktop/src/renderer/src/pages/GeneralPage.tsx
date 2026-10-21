@@ -8,7 +8,6 @@ import { ErrorText, PageSection, SettingsGroup } from '@renderer/components/ui/s
 import { Select } from '@renderer/components/ui/select'
 import { SwitchField } from '@renderer/components/ui/switch'
 import { formatWhen } from '@renderer/lib/backup'
-import { isMac } from '@renderer/lib/platform'
 import { SETTINGS_CRUMB } from '@renderer/lib/settings'
 import { useSettingsImport } from '@renderer/lib/settings-import'
 import { useToast } from '@renderer/lib/toast'
@@ -18,21 +17,19 @@ import type { UpdateChannel, UpdateState } from '@shared/api'
 function describe(state: UpdateState): string {
   switch (state.status) {
     case 'unavailable':
-      return isMac
-        ? 'No Mac, a versão nova é instalada por cima desta. Os pacientes e a agenda continuam.'
-        : 'Esta instalação não procura versões novas sozinha. A versão nova é instalada por cima desta.'
+      return 'Instale a versão nova por cima desta. Os dados continuam.'
     case 'checking':
       return 'Procurando versão nova…'
     case 'downloading':
       return `Baixando a versão ${state.next}${state.progress ? ` (${state.progress}%)` : ''}…`
     case 'ready':
-      return `A versão ${state.next} está pronta. Ela entra quando o Auri reiniciar ou na próxima vez que for fechado.`
+      return `A versão ${state.next} entra quando o Auri reiniciar.`
     case 'error':
       return state.error ?? 'Não foi possível procurar a versão nova.'
     default:
       return state.checkedAt
         ? `Esta é a versão mais nova. Procurado ${formatWhen(state.checkedAt)}.`
-        : 'O Auri procura versões novas sozinho enquanto está aberto.'
+        : ''
   }
 }
 
@@ -47,14 +44,14 @@ function Row({
   children
 }: {
   title: React.ReactNode
-  description: React.ReactNode
+  description?: React.ReactNode
   children?: React.ReactNode
 }): React.JSX.Element {
   return (
     <div className="flex items-center justify-between gap-6">
       <div className="min-w-0">
         <div className="text-[13px] font-medium">{title}</div>
-        <p className="mt-0.5 text-xs text-ink-soft">{description}</p>
+        {description && <p className="mt-0.5 text-xs text-ink-soft">{description}</p>}
       </div>
       {children && <div className="shrink-0">{children}</div>}
     </div>
@@ -75,24 +72,19 @@ function ErrorReports(): React.JSX.Element | null {
   })
   const copy = useMutation({
     mutationFn: () => window.reports.copy(),
-    onSuccess: () =>
-      toast({ title: 'Relatório copiado', description: 'Cole na conversa com o suporte.' })
+    onSuccess: () => toast({ title: 'Relatório copiado' })
   })
   if (!info.data) return null
   const { enabled, count } = info.data
   return (
-    <PageSection
-      id="relatorios"
-      title="Relatórios de erro"
-      description="O que o Auri avisa à equipe quando algo dá errado."
-    >
+    <PageSection id="relatorios" title="Relatórios de erro">
       <SettingsGroup className="flex flex-col gap-5">
         <SwitchField
           label="Enviar relatórios de erro"
           description={
             enabled
-              ? 'Quando algo falha, o Auri manda sozinho para a equipe o tipo do erro e o ponto do código onde ele aconteceu. Nenhum dado de paciente vai junto.'
-              : 'Desligado: as falhas ficam só neste computador.'
+              ? 'Só o tipo do erro e onde aconteceu. Nenhum dado de paciente.'
+              : 'As falhas ficam só neste computador.'
           }
           checked={enabled}
           disabled={enable.isPending}
@@ -101,7 +93,7 @@ function ErrorReports(): React.JSX.Element | null {
         {count > 0 && (
           <Row
             title="Falhas neste computador"
-            description={`${count === 1 ? '1 falha guardada' : `${count} falhas guardadas`}. O texto copiado também não tem dados de pacientes.`}
+            description={count === 1 ? '1 falha guardada' : `${count} falhas guardadas`}
           >
             <Button variant="secondary" loading={copy.isPending} onClick={() => copy.mutate()}>
               <Copy /> Copiar relatório
@@ -128,16 +120,9 @@ function Transfer(): React.JSX.Element {
     }
   })
   return (
-    <PageSection
-      id="levar"
-      title="Levar para outro computador"
-      description="As configurações deste computador num arquivo, para abrir no outro."
-    >
+    <PageSection id="levar" title="Levar para outro computador">
       <SettingsGroup className="flex flex-col gap-5">
-        <Row
-          title="Exportar configurações"
-          description="Aparência, conexão, cópia de segurança, dados da clínica e modelos de termo. Não vão pacientes, senhas, chaves nem a lista de computadores conectados."
-        >
+        <Row title="Exportar configurações" description="Não vão pacientes, senhas nem chaves.">
           <Button
             variant="secondary"
             loading={exportFile.isPending}
@@ -147,10 +132,7 @@ function Transfer(): React.JSX.Element {
           </Button>
         </Row>
         <div>
-          <Row
-            title="Importar configurações"
-            description="De um arquivo exportado por outro Auri. Antes de aplicar, aparece o que vai mudar."
-          >
+          <Row title="Importar configurações">
             {!importing.preview && <ImportButton state={importing} label="Importar…" />}
           </Row>
           <ImportPreview state={importing} className="mt-4 bg-surface" />
@@ -181,15 +163,8 @@ export function GeneralPage(): React.JSX.Element {
   return (
     <Page trail={[SETTINGS_CRUMB, { label: 'Geral' }]}>
       <div className="mx-auto max-w-[720px] px-8 pt-8 pb-16">
-        <p className="text-[13px] text-ink-soft">
-          O que vale para o Auri todo: versão, configurações e relatórios de erro.
-        </p>
-        <div className="mt-8 flex flex-col gap-14">
-          <PageSection
-            id="atualizacoes"
-            title="Atualizações"
-            description="A versão instalada e como as novas chegam."
-          >
+        <div className="flex flex-col gap-14">
+          <PageSection id="atualizacoes" title="Atualizações">
             {state && (
               <SettingsGroup className="flex flex-col gap-5">
                 <Row
@@ -222,9 +197,7 @@ export function GeneralPage(): React.JSX.Element {
                   <Row
                     title={<label htmlFor={channelId}>Canal de atualização</label>}
                     description={
-                      state.channel === 'alpha'
-                        ? 'Uma versão nova por dia, com as novidades antes. Pode ter erros: volte para Estável quando quiser.'
-                        : 'Só as versões estáveis, que já foram usadas no alpha.'
+                      state.channel === 'alpha' ? 'Novidades antes, mas pode ter erros.' : undefined
                     }
                   >
                     <div className="w-36">

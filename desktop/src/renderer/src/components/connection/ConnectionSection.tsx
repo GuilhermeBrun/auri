@@ -56,15 +56,13 @@ const ROLE_OPTIONS: {
   {
     value: 'server',
     label: 'Este computador guarda os dados',
-    description:
-      'Os pacientes e a agenda ficam aqui. Outros computadores da rede podem usar, se você permitir.',
+    description: 'Os pacientes e a agenda ficam aqui.',
     icon: <HardDrive />
   },
   {
     value: 'client',
     label: 'Usar os dados de outro computador',
-    description:
-      'Mostra e salva os dados de outro computador, como o da recepção. Precisa estar conectado a ele.',
+    description: 'Como o consultório usando os da recepção.',
     icon: <Laptop />
   }
 ]
@@ -168,8 +166,7 @@ function PairingPanel({ devices }: { devices: PairedDevice[] }): React.JSX.Eleme
   return (
     <div className="mt-4 animate-fade-in rounded-card bg-surface p-5">
       <p className="text-xs text-ink-soft">
-        No outro computador, abra Configurações / Armazenamento, escolha “Usar os dados de outro
-        computador” e digite o código abaixo (clique nele para mostrar):
+        No outro computador, em Armazenamento, escolha “Usar os dados de outro computador”.
       </p>
       <Sensitive
         label="Código de conexão"
@@ -257,11 +254,7 @@ function ServerSection({ info }: { info: ConnectionInfo }): React.JSX.Element {
       <SettingsGroup label="Rede">
         <SwitchField
           label="Compartilhar com outros computadores da rede"
-          description={
-            info.sharing
-              ? 'Só computadores conectados com um código conseguem ver e salvar os dados. Tudo viaja cifrado.'
-              : 'Desligado: nenhum outro computador consegue acessar os dados deste.'
-          }
+          description={info.sharing ? 'Só com código, e tudo viaja cifrado.' : undefined}
           checked={info.sharing}
           disabled={sharing.isPending}
           onCheckedChange={(on) => sharing.mutate(on)}
@@ -285,7 +278,7 @@ function ServerSection({ info }: { info: ConnectionInfo }): React.JSX.Element {
                   .{' '}
                 </>
               )}
-              {!isMac && 'Se o Windows perguntar, permita o acesso do Auri em redes privadas.'}
+              {!isMac && 'Se o Windows perguntar, permita em redes privadas.'}
             </p>
             <PairingPanel devices={info.devices} />
           </>
@@ -297,7 +290,6 @@ function ServerSection({ info }: { info: ConnectionInfo }): React.JSX.Element {
           <div>
             <SwitchField
               label="Permitir acesso de fora da clínica"
-              description="Os computadores conectados também chegam aos dados pela internet, de qualquer lugar, sem abrir porta no roteador. Desligado, só dentro desta rede."
               checked={info.remoteAccess}
               disabled={remoteAccess.isPending}
               onCheckedChange={(on) => remoteAccess.mutate(on)}
@@ -306,14 +298,13 @@ function ServerSection({ info }: { info: ConnectionInfo }): React.JSX.Element {
           </div>
           <SwitchField
             label="Continuar rodando ao fechar a janela"
-            description={`O Auri fica ${isMac ? 'na barra de menus' : 'na bandeja, perto do relógio'}, para os outros computadores não perderem o acesso.`}
+            description={isMac ? 'Fica na barra de menus.' : 'Fica na bandeja, perto do relógio.'}
             checked={info.keepRunning}
             disabled={keepRunning.isPending}
             onCheckedChange={(on) => keepRunning.mutate(on)}
           />
           <SwitchField
             label="Abrir ao ligar o computador"
-            description="Assim os dados ficam disponíveis assim que o computador liga."
             checked={info.openAtLogin}
             disabled={openAtLogin.isPending}
             onCheckedChange={(on) => openAtLogin.mutate(on)}
@@ -326,10 +317,9 @@ function ServerSection({ info }: { info: ConnectionInfo }): React.JSX.Element {
 
 const REACH_TEXT: Record<RemoteReach, string> = {
   starting: 'Verificando a internet desta rede…',
-  open: 'Disponível: a rede desta clínica aceita conexões de fora.',
+  open: 'Disponível de fora da clínica.',
   likely: 'Disponível de fora da clínica na maioria das redes.',
-  restricted:
-    'A rede desta clínica é restritiva: de fora, só deve conectar a partir de redes mais abertas. Use “Testar acesso pela internet” no outro computador para conferir.',
+  restricted: 'Rede restritiva: de fora, pode não conectar.',
   offline: 'Sem internet agora. Dentro da clínica continua funcionando.'
 }
 
@@ -343,15 +333,12 @@ function RemoteReachText({ reach }: { reach: RemoteReach }): React.JSX.Element {
   )
 }
 
-function RemoteTest({ server }: { server: string }): React.JSX.Element {
+function RemoteTest(): React.JSX.Element {
   const test = useMutation({ mutationFn: () => window.connection.testRemote() })
   const result = test.data
   return (
     <SettingsGroup label="Acesso de fora da clínica">
-      <GroupText>
-        Testa a conexão com {server} só pela internet. Para valer, ligue este computador em outra
-        rede antes (por exemplo, o celular roteando internet).
-      </GroupText>
+      <GroupText>Para valer, ligue este computador em outra rede antes.</GroupText>
       <Button
         variant="secondary"
         className="mt-3"
@@ -364,8 +351,7 @@ function RemoteTest({ server }: { server: string }): React.JSX.Element {
         <p role="status" className="mt-2 flex animate-fade-in items-center gap-1.5 text-xs">
           <Check className="size-3.5 stroke-[2]" aria-hidden="true" />
           Conectou pela internet em{' '}
-          {(result.ms / 1000).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} s. De fora da
-          clínica deve funcionar igual.
+          {(result.ms / 1000).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} s.
         </p>
       )}
       {result && !result.ok && <ErrorText>{result.error}</ErrorText>}
@@ -380,8 +366,8 @@ const STATUS_TEXT: Record<LinkStatus, string> = {
   connecting: 'Conectando…',
   connected: 'Conectado',
   offline: 'Sem conexão. Tentando de novo…',
-  version: 'Versões diferentes do Auri. Atualize os dois computadores para a mesma versão.',
-  revoked: 'Este computador foi removido lá. Desconecte e conecte de novo com um código novo.'
+  version: 'Versões diferentes do Auri. Atualize os dois.',
+  revoked: 'Removido lá. Conecte de novo com um código novo.'
 }
 
 function LinkedServer({
@@ -435,7 +421,7 @@ function LinkedServer({
         {confirming && (
           <div className="mt-4 animate-fade-in rounded-card bg-surface p-4">
             <p className="text-xs text-ink-soft">
-              Para conectar de novo vai ser preciso gerar um código novo em {server.name}.
+              Para voltar, precisa de um código novo de {server.name}.
             </p>
             <div className="mt-3 flex justify-end gap-2">
               <Button variant="secondary" onClick={() => setConfirming(false)}>
@@ -449,7 +435,7 @@ function LinkedServer({
         )}
         {forget.error && <ErrorText>{forget.error.message}</ErrorText>}
       </SettingsGroup>
-      <RemoteTest server={server.name} />
+      <RemoteTest />
     </>
   )
 }
@@ -485,16 +471,13 @@ function FindServer(): React.JSX.Element {
 
   return (
     <SettingsGroup label="Computadores na rede">
-      <GroupText>Aparecem aqui os que estão com o compartilhamento ligado.</GroupText>
-
       {!manual && (
-        <div className="mt-3">
+        <div>
           {found === null ? (
             <p className="text-xs text-ink-soft">Procurando…</p>
           ) : found.length === 0 ? (
             <p className="text-xs text-ink-soft">
-              Nenhum encontrado. Confira se o compartilhamento está ligado no outro computador e se
-              os dois estão na mesma rede.
+              Nenhum encontrado. Confira o compartilhamento no outro computador.
             </p>
           ) : (
             <div role="radiogroup" aria-label="Computador" className="flex flex-col gap-1">
@@ -542,7 +525,7 @@ function FindServer(): React.JSX.Element {
 
       <form onSubmit={submit} className="mt-8 flex flex-col gap-4">
         {manual && (
-          <Field label="Endereço" hint="aparece em Armazenamento, no outro computador">
+          <Field label="Endereço" hint="em Armazenamento, no outro computador">
             <Input
               value={address}
               onChange={(e) => setAddress(e.target.value)}
@@ -553,7 +536,7 @@ function FindServer(): React.JSX.Element {
           </Field>
         )}
         {chosen && (
-          <Field label="Código" hint="mostrado em “Conectar computador” no outro computador">
+          <Field label="Código" hint="em “Conectar computador”, no outro">
             <Input
               value={code}
               onChange={(e) => setCode(e.target.value.toUpperCase())}
@@ -589,7 +572,7 @@ function NameField({ name }: { name: string }): React.JSX.Element {
   }
   return (
     <SettingsGroup label="Este computador">
-      <Field label="Nome" hint="como os outros computadores o veem" error={save.error?.message}>
+      <Field label="Nome" error={save.error?.message}>
         <Input
           value={value}
           maxLength={60}
@@ -607,19 +590,14 @@ function NameField({ name }: { name: string }): React.JSX.Element {
 export function ConnectionSection(): React.JSX.Element {
   const { info } = useConnection()
   return (
-    <PageSection
-      id="conexao"
-      title="Conexão"
-      description="Qual computador guarda os pacientes e a agenda, e quais outros podem usá-los."
-    >
+    <PageSection id="conexao" title="Conexão">
       {info ? (
         <>
           <SettingsGroup label="Onde ficam os dados">
             <RolePicker role={info.role} />
             {info.role === 'client' && (
               <p className="mt-3 text-xs text-ink-soft">
-                Os dados que já estavam neste computador continuam guardados aqui e voltam a
-                aparecer se você escolher “Este computador guarda os dados”.
+                Os dados que já estavam aqui continuam guardados.
               </p>
             )}
           </SettingsGroup>

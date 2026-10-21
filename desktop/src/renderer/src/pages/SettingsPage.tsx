@@ -2,7 +2,6 @@ import { Check } from 'lucide-react'
 import type { CSSProperties } from 'react'
 import { Page } from '@renderer/components/Layout'
 import { PageSection, SettingsGroup } from '@renderer/components/ui/section'
-import { isMac } from '@renderer/lib/platform'
 import { SETTINGS_CRUMB } from '@renderer/lib/settings'
 import { setTheme, useTheme } from '@renderer/lib/theme'
 import { cn } from '@renderer/lib/utils'
@@ -139,10 +138,6 @@ function ThemePicker(): React.JSX.Element {
           )
         })}
       </div>
-      <p className="mt-3 text-xs text-ink-soft">
-        Em Sistema, o Auri acompanha a aparência do {isMac ? 'macOS' : 'Windows'}, inclusive quando
-        ela muda sozinha ao longo do dia.
-      </p>
     </fieldset>
   )
 }
@@ -151,14 +146,11 @@ export function AppearancePage(): React.JSX.Element {
   return (
     <Page trail={[SETTINGS_CRUMB, { label: 'Aparência' }]}>
       <div className="mx-auto max-w-[720px] px-8 pt-8 pb-16">
-        <p className="text-[13px] text-ink-soft">Como o Auri aparece neste computador.</p>
-        <div className="mt-8">
-          <PageSection id="tema" title="Tema" description="Claro, escuro ou igual ao sistema.">
-            <SettingsGroup>
-              <ThemePicker />
-            </SettingsGroup>
-          </PageSection>
-        </div>
+        <PageSection id="tema" title="Tema">
+          <SettingsGroup>
+            <ThemePicker />
+          </SettingsGroup>
+        </PageSection>
       </div>
     </Page>
   )

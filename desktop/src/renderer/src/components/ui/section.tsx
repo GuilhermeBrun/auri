@@ -40,7 +40,7 @@ export function PageSection({
 }: {
   id: string
   title: string
-  description: string
+  description?: string
   children: ReactNode
 }): React.JSX.Element {
   return (
@@ -48,8 +48,8 @@ export function PageSection({
       <h2 id={`${id}-titulo`} className="text-[15px] font-semibold tracking-tight">
         {title}
       </h2>
-      <p className="mt-1 text-[13px] text-ink-soft">{description}</p>
-      <div className="mt-6 flex flex-col gap-8">{children}</div>
+      {description && <p className="mt-1 text-[13px] text-ink-soft">{description}</p>}
+      <div className={cn(description ? 'mt-6' : 'mt-4', 'flex flex-col gap-8')}>{children}</div>
     </section>
   )
 }

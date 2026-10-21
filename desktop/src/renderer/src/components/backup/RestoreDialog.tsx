@@ -33,7 +33,7 @@ export function RestoreDialog({
       open={request !== null}
       onOpenChange={(open) => !open && onClose()}
       title="Restaurar dados de uma cópia"
-      description="Os pacientes e a agenda deste computador são trocados pelos da cópia. As configurações não mudam."
+      description="Troca os pacientes e a agenda pelos da cópia."
     >
       <RestoreForm key={last?.id} onClose={onClose} onRestored={onRestored} />
     </Dialog>
@@ -101,10 +101,7 @@ function RestoreForm({
         {list.isPending ? (
           <p className="text-xs text-ink-soft">Procurando cópias…</p>
         ) : entries.length === 0 ? (
-          <p className="text-xs text-ink-soft">
-            Nenhuma cópia encontrada nas nuvens deste computador. Se a cópia estiver em outro lugar
-            (pendrive, e-mail), escolha o arquivo.
-          </p>
+          <p className="text-xs text-ink-soft">Nenhuma cópia encontrada nas nuvens.</p>
         ) : (
           <div
             role="radiogroup"
@@ -186,16 +183,14 @@ function RestoreForm({
               />
             </Field>
             <p className="mt-1.5 text-xs text-ink-soft">
-              Esta cópia foi feita em outro computador. Use a senha de lá.
+              Use a senha do computador que fez a cópia.
             </p>
           </div>
         )}
 
         {entry && (
           <p className="mt-6 text-xs text-ink-soft">
-            Os dados deste computador vão ser trocados pelos desta cópia ({summary(entry)}, de{' '}
-            {formatWhen(entry.createdAt)}). Os dados de agora ficam guardados: dá para desfazer
-            depois.
+            {summary(entry)}, de {formatWhen(entry.createdAt)}. Dá para desfazer depois.
           </p>
         )}
         {restore.error && <ErrorText>{restore.error.message}</ErrorText>}

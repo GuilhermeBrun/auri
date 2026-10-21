@@ -75,7 +75,7 @@ describe('Configurações › Geral', () => {
     const toast = renderPage()
     show({})
     expect(screen.getByText('1.0.0')).toBeTruthy()
-    expect(screen.getByText(/procura versões novas sozinho/)).toBeTruthy()
+
     updates.check.mockResolvedValue({ ...base, status: 'checking' })
     await userEvent.click(screen.getByRole('button', { name: /Procurar atualizações/ }))
     expect(updates.check).toHaveBeenCalledOnce()
@@ -91,7 +91,7 @@ describe('Configurações › Geral', () => {
       (screen.getByRole('button', { name: /Procurar atualizações/ }) as HTMLButtonElement).disabled
     ).toBe(true)
     show({ status: 'ready', next: '1.1.0' })
-    expect(screen.getByText(/A versão 1.1.0 está pronta/)).toBeTruthy()
+    expect(screen.getByText('A versão 1.1.0 entra quando o Auri reiniciar.')).toBeTruthy()
     await userEvent.click(screen.getByRole('button', { name: /Reiniciar e atualizar/ }))
     expect(updates.install).toHaveBeenCalledOnce()
   })
@@ -106,7 +106,7 @@ describe('Configurações › Geral', () => {
     await userEvent.click(screen.getByRole('button', { name: /Procurar atualizações/ }))
     expect((await screen.findByRole('alert')).textContent).toContain('não autorizada')
     show({ status: 'unavailable' })
-    expect(screen.getByText(/não procura versões novas sozinha/)).toBeTruthy()
+    expect(screen.getByText(/Instale a versão nova por cima desta/)).toBeTruthy()
     expect(screen.queryByRole('button', { name: /atualiz/ })).toBeNull()
     expect(screen.queryByRole('combobox')).toBeNull()
   })
@@ -120,7 +120,7 @@ describe('Configurações › Geral', () => {
     await userEvent.click(channel)
     await userEvent.click(await screen.findByRole('option', { name: 'Alpha' }))
     expect(updates.setChannel).toHaveBeenCalledExactlyOnceWith('alpha')
-    expect(screen.getByText(/Pode ter erros/)).toBeTruthy()
+    expect(screen.getByText(/pode ter erros/)).toBeTruthy()
 
     show({ channel: 'alpha', status: 'ready', next: '1.1.1' })
     expect(
@@ -133,13 +133,13 @@ describe('Configurações › Geral', () => {
     const toast = renderPage()
     const toggle = await screen.findByRole('switch', { name: 'Enviar relatórios de erro' })
     expect(toggle.getAttribute('aria-checked')).toBe('true')
-    expect(screen.getByText(/Nenhum dado de paciente vai junto/)).toBeTruthy()
+    expect(screen.getByText(/Nenhum dado de paciente/)).toBeTruthy()
     expect(screen.queryByRole('button', { name: /Copiar relatório/ })).toBeNull()
 
     reports.setEnabled.mockResolvedValue({ enabled: false, count: 2 })
     await userEvent.click(toggle)
     expect(reports.setEnabled).toHaveBeenCalledExactlyOnceWith(false)
-    expect(await screen.findByText(/as falhas ficam só neste computador/)).toBeTruthy()
+    expect(await screen.findByText(/As falhas ficam só neste computador/)).toBeTruthy()
     expect(toggle.getAttribute('aria-checked')).toBe('false')
     expect(screen.getByText(/2 falhas guardadas/)).toBeTruthy()
 
