@@ -29,6 +29,30 @@ export function nextSlot(now: Date, funcionamento: Funcionamento = FUNCIONAMENTO
 
 export const PATIENTS_CRUMB = { label: 'Pacientes', to: '/pacientes' }
 
+export type PatientTab = 'ficha' | 'anamnese' | 'sessoes' | 'evolucoes' | 'termos' | 'financeiro'
+
+export const PATIENT_TABS: [PatientTab, string][] = [
+  ['ficha', 'Ficha'],
+  ['anamnese', 'Anamnese'],
+  ['sessoes', 'Sessões'],
+  ['evolucoes', 'Evoluções'],
+  ['termos', 'Termos'],
+  ['financeiro', 'Financeiro']
+]
+
+export function patientTrail(
+  patientId: number,
+  nome: string | undefined,
+  tab: PatientTab
+): { label: string; to?: string }[] {
+  const label = PATIENT_TABS.find(([t]) => t === tab)?.[1] ?? ''
+  return [
+    PATIENTS_CRUMB,
+    ...(nome ? [{ label: nome, to: tab === 'ficha' ? undefined : `/pacientes/${patientId}` }] : []),
+    { label }
+  ]
+}
+
 export function timeRange(a: Pick<Appointment, 'inicio' | 'fim'>): string {
   return `${formatTime(parseIsoLocalDateTime(a.inicio))}–${formatTime(parseIsoLocalDateTime(a.fim))}`
 }

@@ -445,7 +445,26 @@ type PageProps = {
   bodyClassName?: string
 }
 
-function Breadcrumbs({ trail }: { trail: Crumb[] }): React.JSX.Element {
+const crumbLinkClass =
+  'no-drag -mx-1 min-w-0 truncate rounded-chip px-1 py-0.5 text-ink-faint transition-colors hover:bg-fill hover:text-ink'
+
+function Separator(): React.JSX.Element {
+  return (
+    <li aria-hidden="true" className="shrink-0 text-ink-faint/60 select-none">
+      /
+    </li>
+  )
+}
+
+function Breadcrumbs({
+  trail,
+  section,
+  onTop
+}: {
+  trail: Crumb[]
+  section: string | null
+  onTop: () => void
+}): React.JSX.Element {
   return (
     <nav aria-label="Caminho" className="min-w-0">
       <ol className="flex min-w-0 items-center gap-1.5 text-sm">
@@ -453,36 +472,99 @@ function Breadcrumbs({ trail }: { trail: Crumb[] }): React.JSX.Element {
           const current = i === trail.length - 1
           return (
             <Fragment key={i}>
-              {i > 0 && (
-                <li aria-hidden="true" className="shrink-0 text-ink-faint/60 select-none">
-                  /
-                </li>
-              )}
-              <li className={cn('flex', current ? 'min-w-0' : 'shrink-0')}>
+              {i > 0 && <Separator />}
+              <li className={cn('flex', i > 0 ? 'min-w-0' : 'shrink-0')}>
                 {current ? (
                   <h1
-                    aria-current="page"
-                    className="truncate font-medium text-ink first-letter:uppercase"
+                    aria-current={section ? undefined : 'page'}
+                    className={cn(
+                      'min-w-0',
+                      section ? 'flex' : 'truncate font-medium text-ink first-letter:uppercase'
+                    )}
                   >
-                    {crumb.label}
+                    {section ? (
+                      <button type="button" onClick={onTop} className={crumbLinkClass}>
+                        {crumb.label}
+                      </button>
+                    ) : (
+                      crumb.label
+                    )}
                   </h1>
                 ) : crumb.to ? (
-                  <Link
-                    to={crumb.to}
-                    className="no-drag -mx-1 rounded-chip px-1 py-0.5 text-ink-faint transition-colors hover:bg-fill hover:text-ink"
-                  >
+                  <Link to={crumb.to} className={crumbLinkClass}>
                     {crumb.label}
                   </Link>
                 ) : (
-                  <span className="text-ink-faint">{crumb.label}</span>
+                  <span className="min-w-0 truncate text-ink-faint">{crumb.label}</span>
                 )}
               </li>
             </Fragment>
           )
         })}
+        {section && (
+          <>
+            <Separator />
+            <li className="flex min-w-0">
+              <span
+                key={section}
+                aria-current="location"
+                className="animate-fade-in truncate font-medium text-ink"
+              >
+                {section}
+              </span>
+            </li>
+          </>
+        )}
       </ol>
     </nav>
   )
+}
+
+const SECTION_LINE = 64
+
+function useSectionCrumb(body: React.RefObject<HTMLDivElement | null>): string | null {
+  const [section, setSection] = useState<string | null>(null)
+  useEffect(() => {
+    const el = body.current
+    if (!el) return
+    let frame = 0
+    let sections: HTMLElement[] = []
+    const update = (): void => {
+      frame = 0
+      if (sections.length === 0) {
+        setSection(null)
+        return
+      }
+      const max = el.scrollHeight - el.clientHeight
+      const progress = max > 1 ? Math.min(el.scrollTop / max, 1) : 0
+      const line =
+        el.getBoundingClientRect().top + SECTION_LINE + progress * (el.clientHeight - SECTION_LINE)
+      let current = sections[0]
+      for (const s of sections) {
+        if (s.getBoundingClientRect().top <= line) current = s
+      }
+      setSection(current.dataset.crumb ?? null)
+    }
+    const schedule = (): void => {
+      if (!frame && sections.length > 0) frame = requestAnimationFrame(update)
+    }
+    const collect = (): void => {
+      sections = [...el.querySelectorAll<HTMLElement>('[data-crumb]')]
+      if (sections.length === 0) setSection(null)
+      schedule()
+    }
+    collect()
+    el.addEventListener('scroll', schedule, { passive: true })
+    const resize = new ResizeObserver(collect)
+    resize.observe(el)
+    for (const child of el.children) resize.observe(child)
+    return () => {
+      el.removeEventListener('scroll', schedule)
+      resize.disconnect()
+      cancelAnimationFrame(frame)
+    }
+  }, [body])
+  return section
 }
 
 export function Page({
@@ -494,6 +576,12 @@ export function Page({
 }: PageProps): React.JSX.Element {
   const { open } = useSidebar()
   const toggleLeft = useToggleLeft()
+  const body = useRef<HTMLDivElement>(null)
+  const section = useSectionCrumb(body)
+  const toTop = useCallback(() => {
+    const smooth = window.matchMedia('(prefers-reduced-motion: no-preference)').matches
+    body.current?.scrollTo({ top: 0, behavior: smooth ? 'smooth' : 'auto' })
+  }, [])
   return (
     <div className="flex h-full flex-col">
       <header
@@ -507,13 +595,15 @@ export function Page({
             style={{ left: toggleLeft - 4, width: TOGGLE_SIZE + 8 }}
           />
         )}
-        <Breadcrumbs trail={trail} />
+        <Breadcrumbs trail={trail} section={section} onTop={toTop} />
         <div className="no-drag ml-auto flex shrink-0 items-center gap-2">
           {toolbar}
           {actions}
         </div>
       </header>
-      <div className={cn('min-h-0 flex-1 overflow-auto', bodyClassName)}>{children}</div>
+      <div ref={body} className={cn('min-h-0 flex-1 overflow-auto', bodyClassName)}>
+        {children}
+      </div>
     </div>
   )
 }

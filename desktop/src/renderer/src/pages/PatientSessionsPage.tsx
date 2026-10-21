@@ -28,7 +28,7 @@ import {
 import {
   DEFAULT_DURATION,
   nextSlot,
-  PATIENTS_CRUMB,
+  patientTrail,
   PRESENCA_LABELS,
   spokenDate,
   timeRange
@@ -76,7 +76,7 @@ function PatientSessionsPage({ patientId }: { patientId: number }): React.JSX.El
 
   return (
     <Page
-      trail={[PATIENTS_CRUMB, { label: patient.data?.nome ?? 'Sessões' }]}
+      trail={patientTrail(patientId, patient.data?.nome, 'sessoes')}
       actions={
         <>
           <Button

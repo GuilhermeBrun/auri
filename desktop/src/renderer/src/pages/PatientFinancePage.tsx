@@ -28,6 +28,7 @@ import {
 } from '@renderer/components/FinanceDialogs'
 import { Page } from '@renderer/components/Layout'
 import { PATIENT_COLUMN, PatientHeader } from '@renderer/components/PatientHeader'
+import { patientTrail } from '@renderer/lib/session'
 import { Button } from '@renderer/components/ui/button'
 import { Callout } from '@renderer/components/ui/callout'
 import { EmptyState } from '@renderer/components/ui/empty'
@@ -44,7 +45,6 @@ import {
   useRenewPackage
 } from '@renderer/lib/finance'
 import { patientFinanceQuery, patientQuery } from '@renderer/lib/queries'
-import { PATIENTS_CRUMB } from '@renderer/lib/session'
 import { useToast } from '@renderer/lib/toast'
 import { cn } from '@renderer/lib/utils'
 
@@ -69,7 +69,7 @@ function PatientFinancePage({ patientId }: { patientId: number }): React.JSX.Ele
   })
 
   return (
-    <Page trail={[PATIENTS_CRUMB, { label: patient.data?.nome ?? 'Financeiro' }]}>
+    <Page trail={patientTrail(patientId, patient.data?.nome, 'financeiro')}>
       <div className={PATIENT_COLUMN}>
         {patient.data && (
           <PatientHeader

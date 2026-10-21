@@ -5,6 +5,12 @@ import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 import type { UpdateState } from '@shared/api'
 import { renderRoute } from '@renderer/testing'
 
+globalThis.ResizeObserver ??= class {
+  observe(): void {}
+  disconnect(): void {}
+  unobserve(): void {}
+}
+
 const { updates, reports, emit } = vi.hoisted(() => {
   const bridge = (): unknown =>
     new Proxy({} as Record<string, unknown>, {

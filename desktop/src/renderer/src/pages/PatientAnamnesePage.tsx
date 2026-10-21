@@ -18,6 +18,7 @@ import {
 } from '@shared/schemas'
 import { Page } from '@renderer/components/Layout'
 import { PATIENT_COLUMN, PatientHeader } from '@renderer/components/PatientHeader'
+import { patientTrail } from '@renderer/lib/session'
 import { PrintButton } from '@renderer/components/PrintButton'
 import { Button } from '@renderer/components/ui/button'
 import { Callout } from '@renderer/components/ui/callout'
@@ -27,7 +28,6 @@ import { Field, Textarea } from '@renderer/components/ui/input'
 import { Loading } from '@renderer/components/ui/loading'
 import { useDraft } from '@renderer/lib/drafts'
 import { anamneseQuery, patientQuery } from '@renderer/lib/queries'
-import { PATIENTS_CRUMB } from '@renderer/lib/session'
 import { useToast } from '@renderer/lib/toast'
 import { cn } from '@renderer/lib/utils'
 
@@ -127,7 +127,7 @@ function PatientAnamnesePage({ patientId }: { patientId: number }): React.JSX.El
       <Loading />
     )
     return (
-      <Page trail={[PATIENTS_CRUMB, { label: patient.data?.nome ?? 'Anamnese' }]}>
+      <Page trail={patientTrail(patientId, patient.data?.nome, 'anamnese')}>
         {patient.data ? (
           <div className={PATIENT_COLUMN}>
             <PatientHeader
@@ -236,7 +236,7 @@ function AnamneseForm({
       className="h-full"
     >
       <Page
-        trail={[PATIENTS_CRUMB, { label: patient.nome }]}
+        trail={patientTrail(patient.id, patient.nome, 'anamnese')}
         actions={
           <>
             <PrintButton

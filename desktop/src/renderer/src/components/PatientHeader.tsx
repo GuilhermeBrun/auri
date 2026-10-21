@@ -5,6 +5,7 @@ import { Avatar } from '@renderer/components/ui/avatar'
 import { Badge } from '@renderer/components/ui/badge'
 import { WaitlistButton } from '@renderer/components/waitlist/WaitlistButton'
 import { useReception } from '@renderer/lib/reception'
+import { PATIENT_TABS, type PatientTab } from '@renderer/lib/session'
 import { cn } from '@renderer/lib/utils'
 
 export const PATIENT_COLUMN = 'mx-auto max-w-[840px] px-8 pt-6 pb-16'
@@ -52,17 +53,6 @@ export function PatientHeader({
   )
 }
 
-export type PatientTab = 'ficha' | 'anamnese' | 'sessoes' | 'evolucoes' | 'termos' | 'financeiro'
-
-const TABS: [PatientTab, string][] = [
-  ['ficha', 'Ficha'],
-  ['anamnese', 'Anamnese'],
-  ['sessoes', 'Sessões'],
-  ['evolucoes', 'Evoluções'],
-  ['termos', 'Termos'],
-  ['financeiro', 'Financeiro']
-]
-
 const CLINICAL_TABS: readonly PatientTab[] = ['anamnese', 'evolucoes']
 
 const TAB_PATH: Record<PatientTab, string> = {
@@ -82,7 +72,9 @@ function PatientTabs({
   value: PatientTab
 }): React.JSX.Element {
   const reception = useReception()
-  const tabs = reception ? TABS.filter(([tab]) => !CLINICAL_TABS.includes(tab)) : TABS
+  const tabs = reception
+    ? PATIENT_TABS.filter(([tab]) => !CLINICAL_TABS.includes(tab))
+    : PATIENT_TABS
   return (
     <nav aria-label="Partes do paciente" className="flex gap-1">
       {tabs.map(([tab, label]) => (

@@ -44,7 +44,7 @@ export function PageSection({
   children: ReactNode
 }): React.JSX.Element {
   return (
-    <section id={id} aria-labelledby={`${id}-titulo`} className="scroll-mt-8">
+    <section id={id} aria-labelledby={`${id}-titulo`} data-crumb={title} className="scroll-mt-8">
       <h2 id={`${id}-titulo`} className="text-[15px] font-semibold tracking-tight">
         {title}
       </h2>

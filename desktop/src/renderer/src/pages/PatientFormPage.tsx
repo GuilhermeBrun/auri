@@ -52,7 +52,7 @@ import { Select } from '@renderer/components/ui/select'
 import { TimeField } from '@renderer/components/ui/time-field'
 import { useDraft } from '@renderer/lib/drafts'
 import { patientQuery } from '@renderer/lib/queries'
-import { PATIENTS_CRUMB } from '@renderer/lib/session'
+import { PATIENTS_CRUMB, patientTrail } from '@renderer/lib/session'
 import { useToast } from '@renderer/lib/toast'
 import { cn } from '@renderer/lib/utils'
 
@@ -621,7 +621,7 @@ function PatientFormPage({ patientId }: { patientId: number | null }): React.JSX
 
   if (!isNew && !patient) {
     return (
-      <Page trail={[PATIENTS_CRUMB, { label: 'Ficha do paciente' }]}>
+      <Page trail={patientTrail(patientId!, undefined, 'ficha')}>
         {loadError ? (
           <ErrorState
             title="Não foi possível abrir a ficha"
@@ -645,10 +645,11 @@ function PatientFormPage({ patientId }: { patientId: number | null }): React.JSX
   return (
     <form onSubmit={handleSubmit((values) => save.mutate(values))} noValidate className="h-full">
       <Page
-        trail={[
-          PATIENTS_CRUMB,
-          { label: isNew ? 'Novo paciente' : (patient?.nome ?? 'Ficha do paciente') }
-        ]}
+        trail={
+          isNew
+            ? [PATIENTS_CRUMB, { label: 'Novo paciente' }]
+            : patientTrail(patientId!, patient?.nome, 'ficha')
+        }
         actions={
           <>
             {!isNew && patient && (
