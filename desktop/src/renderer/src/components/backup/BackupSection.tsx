@@ -27,6 +27,7 @@ import {
   setBackupInfo,
   useBackup
 } from '@renderer/lib/backup'
+import { formatSize, SPACE_WARNING_BYTES, storedText } from '@renderer/lib/backup-size'
 import { useToast } from '@renderer/lib/toast'
 import type { BackupDestination, BackupFrequency, BackupInfo } from '@shared/api'
 
@@ -35,12 +36,6 @@ const FREQUENCY_OPTIONS = [
   ['change', 'A cada alteração'],
   ['manual', 'Só quando eu pedir']
 ] as const
-
-const FREQUENCY_SHORT: Record<BackupFrequency, string> = {
-  daily: 'Todo dia',
-  change: 'A cada alteração',
-  manual: 'Só quando você pedir'
-}
 
 const TIME_OPTIONS = Array.from({ length: 18 }, (_, i) => {
   const value = `${String(i + 6).padStart(2, '0')}:00`
@@ -52,7 +47,7 @@ function frequencyText(frequency: BackupFrequency, time: string): string {
     case 'daily':
       return `Uma cópia por dia às ${time}. Se o computador estiver desligado nesse horário, a cópia sai assim que o Auri abrir.`
     case 'change':
-      return 'Uma cópia alguns minutos depois de cada alteração em pacientes ou na agenda.'
+      return 'Uma cópia alguns minutos depois de alterar pacientes ou a agenda, no máximo uma a cada 2 horas.'
     case 'manual':
       return 'Só quando você clicar em “Fazer cópia agora”. O Auri avisa depois de 3 dias sem cópia.'
   }
@@ -208,8 +203,8 @@ function Status({ info }: { info: BackupInfo }): React.JSX.Element {
                 : 'Nenhuma cópia ainda'}
           </p>
           <p className="text-xs text-ink-soft">
-            {DESTINATION_LABEL[info.destination!.kind]} · {FREQUENCY_SHORT[info.frequency]}
-            {info.frequency === 'daily' && ` às ${info.dailyTime}`}
+            {label}
+            {info.stored && info.stored.count > 0 && ` · ${storedText(info.stored)}`}
           </p>
         </div>
         <div className="flex gap-2">
@@ -233,6 +228,15 @@ function Status({ info }: { info: BackupInfo }): React.JSX.Element {
       )}
       {run.error && <ErrorText>{run.error.message}</ErrorText>}
       {open.error && <ErrorText>{open.error.message}</ErrorText>}
+      {info.stored && info.stored.bytes >= SPACE_WARNING_BYTES && (
+        <Callout
+          tone="warning"
+          title={`As cópias já ocupam ${formatSize(info.stored.bytes)}`}
+          className="mt-4"
+        >
+          Confira se o plano da nuvem ainda tem espaço livre.
+        </Callout>
+      )}
       {!failed && info.stale && info.lastSuccessAt && !info.running && (
         <Callout tone="warning" title="Faz mais de 3 dias sem cópia" className="mt-4">
           Confira se a pasta está disponível ou faça uma cópia agora.

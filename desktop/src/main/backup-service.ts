@@ -17,6 +17,7 @@ import type {
 import { createKeyring, keyFromSecret, readHeaderFromFile, type Keyring } from './backup/archive'
 import {
   backupFolder,
+  backupUsage,
   createBackup,
   describeBackup,
   extractBackup,
@@ -88,6 +89,7 @@ export function createBackupService(options: {
   const known = new Set<string>()
   let running = 0
   let problem: DestinationProblem | null = null
+  let stored: BackupInfo['stored'] = null
   let queue: Promise<unknown> = Promise.resolve()
 
   function keyring(): Keyring | null {
@@ -147,7 +149,8 @@ export function createBackupService(options: {
       undo: s.undo ? { at: s.undo.at } : null,
       welcome: !s.welcomeDone && !on && available() && emptyDatabase(),
       suggested: s.suggested,
-      destinationProblem: on ? problem : null
+      destinationProblem: on ? problem : null,
+      stored: on ? stored : null
     }
   }
 
@@ -244,6 +247,21 @@ export function createBackupService(options: {
     return `Não foi possível fazer a cópia: ${(error as Error).message}`
   }
 
+  async function measure(): Promise<void> {
+    const destination = store.get().destination
+    const next =
+      destination && configured() && existsSync(destination.folder)
+        ? backupUsage(await listBackups(backupFolder(destination.folder)))
+        : null
+    if (JSON.stringify(next) === JSON.stringify(stored)) return
+    stored = next
+    changed()
+  }
+
+  const remeasure = (): void => {
+    measure().catch((error) => console.error(`[cópia] tamanho: ${(error as Error).message}`))
+  }
+
   function backup(): Promise<void> {
     return exclusive(async () => {
       const s = store.get()
@@ -265,6 +283,7 @@ export function createBackupService(options: {
           lastError: null
         })
         console.log('[cópia] feita')
+        remeasure()
       } catch (error) {
         const message = failureMessage(error, s.destination)
         store.update({ lastError: { at: new Date().toISOString(), message } })
@@ -295,7 +314,10 @@ export function createBackupService(options: {
     tick().catch((error) => console.error(`[cópia] verificação: ${(error as Error).message}`))
   }
 
-  const firstTick = setTimeout(safeTick, FIRST_TICK_MS)
+  const firstTick = setTimeout(() => {
+    remeasure()
+    safeTick()
+  }, FIRST_TICK_MS)
   const interval = setInterval(safeTick, TICK_MS)
 
   async function toEntry(file: FileEntry, location: string): Promise<BackupEntry> {
@@ -395,6 +417,7 @@ export function createBackupService(options: {
       store.update({ destination, lastError: null })
       problem = null
       changed()
+      remeasure()
       if (configured()) void backup()
       return info()
     },
@@ -514,6 +537,7 @@ export function createBackupService(options: {
         lastChangeAt: null
       })
       problem = null
+      stored = null
       changed()
       return info()
     },
@@ -579,6 +603,7 @@ export function createBackupService(options: {
         }
         store.update({ undo: { file: undoFile, at: new Date().toISOString() }, welcomeDone: true })
         await adopt(file, key)
+        remeasure()
         console.log('[cópia] restaurada')
         return info()
       })
