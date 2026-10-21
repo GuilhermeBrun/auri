@@ -134,6 +134,41 @@ describe('compatibilidade do banco', () => {
     expect(db.prepare('SELECT COUNT(*) AS n FROM patient_activities').get()).toEqual({ n: 0 })
   })
 
+  it('a forma de cobrança por pacote ganha o pacote do último contratado', () => {
+    const hasPlan = (db: Database.Database): boolean =>
+      (db.pragma('table_info(finance_billing)') as { name: string }[]).some(
+        (c) => c.name === 'plan_id'
+      )
+    const probe = new Database(':memory:')
+    opened.push(probe)
+    probe.function('normalize_text', (v: unknown) => v)
+    let version = 0
+    while (!hasPlan(probe)) migrate(probe, ++version)
+
+    const db = new Database(':memory:')
+    opened.push(db)
+    db.function('normalize_text', (v: unknown) => v)
+    migrate(db, version - 1)
+    db.exec(`
+      INSERT INTO patients (id, nome) VALUES (1, 'Ana'), (2, 'Bia');
+      INSERT INTO finance_services (id, nome, valor_centavos) VALUES (1, 'Sessão', 19000);
+      INSERT INTO finance_plans (id, nome, sessoes, valor_centavos) VALUES
+        (1, '4 sessões', 4, 70000), (2, '8 sessões', 8, 152000);
+      INSERT INTO finance_billing (patient_id, forma, service_id, desde) VALUES
+        (1, 'pacote', 1, '2026-10-01'), (2, 'particular', 1, '2026-10-01');
+      INSERT INTO finance_packages (patient_id, plan_id, nome, sessoes, valor_centavos, inicio,
+        computador) VALUES
+        (1, 1, '4 sessões', 4, 70000, '2026-09-01', 'Recepção'),
+        (1, 2, '8 sessões', 8, 152000, '2026-10-01', 'Recepção'),
+        (2, 2, '8 sessões', 8, 152000, '2026-10-01', 'Recepção');
+    `)
+    migrate(db)
+    expect(db.prepare('SELECT patient_id, plan_id FROM finance_billing ORDER BY 1').all()).toEqual([
+      { patient_id: 1, plan_id: 2 },
+      { patient_id: 2, plan_id: null }
+    ])
+  })
+
   it('recusa versão futura sem modificar o arquivo', () => {
     const file = join(dir, 'futuro.db')
     const db = new Database(file)

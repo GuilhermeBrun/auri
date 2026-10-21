@@ -165,7 +165,13 @@ export interface AuriApi {
     saveInsurer(id: number | null, input: InsurerInput): Promise<FinanceInsurer>
     archiveInsurer(id: number, arquivado: boolean): Promise<FinanceInsurer>
     patient(patientId: number): Promise<PatientFinance>
-    setBilling(patientId: number, input: BillingInput, expected?: string): Promise<Billing>
+    setBilling(
+      patientId: number,
+      input: BillingInput,
+      expected?: string,
+      contratar?: { inicio: string; computador: string } | null
+    ): Promise<Billing>
+    renewPackage(patientId: number, computador: string): Promise<number>
     contractPackage(patientId: number, input: PackageInput, computador: string): Promise<number>
     charge(patientId: number, input: ChargeInput, computador: string): Promise<number>
     pay(patientId: number, input: PaymentInput, computador: string): Promise<number>

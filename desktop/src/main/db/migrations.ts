@@ -651,6 +651,18 @@ ${onlyVoid('finance_payments', ['id', 'patient_id', 'data', 'valor_centavos', 'f
   BEGIN
     SELECT RAISE(ABORT, 'O conteúdo de um pedido de confirmação não muda.');
   END;
+  `,
+  `
+  ALTER TABLE finance_billing ADD COLUMN plan_id INTEGER
+    REFERENCES finance_plans (id) ON DELETE RESTRICT;
+
+  UPDATE finance_billing SET plan_id = (
+    SELECT k.plan_id FROM finance_packages k
+    WHERE k.patient_id = finance_billing.patient_id AND k.plan_id IS NOT NULL
+      AND k.estornado_em IS NULL
+    ORDER BY k.inicio DESC, k.id DESC LIMIT 1
+  )
+  WHERE forma = 'pacote';
   `
 ]
 

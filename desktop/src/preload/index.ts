@@ -128,8 +128,9 @@ const api: AuriApi = {
     saveInsurer: (id, input) => invoke('finance:saveInsurer', id, input),
     archiveInsurer: (id, arquivado) => invoke('finance:archiveInsurer', id, arquivado),
     patient: (patientId) => invoke('finance:patient', patientId),
-    setBilling: (patientId, input, expected) =>
-      invoke('finance:setBilling', patientId, input, expected),
+    setBilling: (patientId, input, expected, contratar) =>
+      invoke('finance:setBilling', patientId, input, expected, contratar),
+    renewPackage: (patientId, computador) => invoke('finance:renewPackage', patientId, computador),
     contractPackage: (patientId, input, computador) =>
       invoke('finance:contractPackage', patientId, input, computador),
     charge: (patientId, input, computador) =>
