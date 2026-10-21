@@ -456,7 +456,7 @@ export function AppointmentForm({
         )}
         <div className="flex flex-wrap items-end gap-x-6 gap-y-4">
           {!signed && (
-            <Field label="Tipo" htmlFor={`${ids}-tipo`} className="w-52">
+            <Field label="Etiqueta" htmlFor={`${ids}-tipo`} className="w-52">
               <Controller
                 control={control}
                 name="tipo_id"
@@ -467,7 +467,8 @@ export function AppointmentForm({
                     tipos={tipos}
                     onChange={(tipo) => {
                       field.onChange(tipo.id)
-                      if (!started) setValue('duracao', tipo.duracao, { shouldValidate: true })
+                      if (!started && tipo.duracao)
+                        setValue('duracao', tipo.duracao, { shouldValidate: true })
                     }}
                   />
                 )}
@@ -537,7 +538,7 @@ export function AppointmentForm({
                 </span>
                 <span className="text-xs text-ink-soft">
                   Por {signed.signer_nome} ({signed.signer_parentesco.toLowerCase()}). Paciente,
-                  horário, tipo e presença não mudam mais.
+                  horário, etiqueta e presença não mudam mais.
                 </span>
               </span>
               {!voiding && (

@@ -162,13 +162,13 @@ function WaitlistForm({
     >
       <DialogBody className="flex flex-col gap-4">
         <div className="flex flex-wrap items-end gap-x-6 gap-y-4">
-          <Field label="Tipo" htmlFor={`${ids}-tipo`} className="w-48">
+          <Field label="Etiqueta" htmlFor={`${ids}-tipo`} className="w-48">
             <TipoSelect
               id={`${ids}-tipo`}
               value={tipoId}
               tipos={tipos}
               onChange={(tipo) =>
-                setValues((v) => ({ ...v, tipo_id: tipo.id, duracao: tipo.duracao }))
+                setValues((v) => ({ ...v, tipo_id: tipo.id, duracao: tipo.duracao ?? v.duracao }))
               }
             />
           </Field>

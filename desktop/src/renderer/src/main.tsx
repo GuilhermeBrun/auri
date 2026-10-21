@@ -49,7 +49,6 @@ window.api.onChanged((topics) => {
   }
   if (topics.includes('types')) {
     void queryClient.invalidateQueries({ queryKey: ['tipos'] })
-    void queryClient.invalidateQueries({ queryKey: ['etiquetas'] })
   }
   if (topics.includes('anamneses')) {
     void queryClient.invalidateQueries({ queryKey: ['anamnese'], refetchType: 'none' })

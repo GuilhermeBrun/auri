@@ -74,7 +74,7 @@ import {
 } from '@shared/agenda'
 import { formatTime, parseIsoLocalDateTime, toIsoLocalDateTime } from '@shared/dates'
 import { shortName } from '@shared/names'
-import { COMMITMENT_LABELS, type Commitment } from '@shared/commitments'
+import { commitmentName, type Commitment } from '@shared/commitments'
 import { PEDIDO_LABELS, type Vaga } from '@shared/confirmacao'
 import { vagaEm, type Intervalo } from '@shared/encaixe'
 import type { Appointment } from '@shared/schemas'
@@ -91,12 +91,7 @@ import { ErrorState } from '@renderer/components/ui/error'
 import { CorPonto } from '@renderer/components/ui/cor'
 import { Segmented } from '@renderer/components/ui/segmented'
 import { Select } from '@renderer/components/ui/select'
-import {
-  appointmentsQuery,
-  clinicQuery,
-  commitmentsQuery,
-  etiquetasQuery
-} from '@renderer/lib/queries'
+import { appointmentsQuery, clinicQuery, commitmentsQuery, tiposQuery } from '@renderer/lib/queries'
 import { DEFAULT_DURATION, nextSlot, PRESENCA_LABELS } from '@renderer/lib/session'
 import { aoPedirEncaixe, horaDe } from '@renderer/lib/confirmacoes'
 import { cn } from '@renderer/lib/utils'
@@ -279,7 +274,7 @@ function visibleRange(date: Date, view: View): { de: string; ate: string } {
 }
 
 function BlockContent({ event }: { event: CommitmentEvent | VagaEvent }): React.JSX.Element {
-  const label = event.kind === 'vaga' ? 'Vaga' : COMMITMENT_LABELS[event.commitment.tipo]
+  const label = event.kind === 'vaga' ? 'Vaga' : event.commitment.etiqueta_nome
   const titulo = event.kind === 'commitment' ? event.commitment.titulo : ''
   return (
     <span className="flex min-w-0 flex-col">
@@ -422,8 +417,10 @@ function AgendaControls({
   etiqueta,
   onEtiqueta
 }: AgendaControlsProps): React.JSX.Element {
-  const { data = [] } = useQuery(etiquetasQuery())
-  const opcoes = data.filter((e) => !e.arquivado || e.id === etiqueta)
+  const { data = [] } = useQuery(tiposQuery())
+  const opcoes = data.filter(
+    (e) => e.categoria !== 'compromisso' && (!e.arquivado || e.id === etiqueta)
+  )
   return (
     <>
       {opcoes.length > 0 && (
@@ -495,8 +492,8 @@ const CALENDAR_STYLE = { height: '100%' }
 function tooltip(event: CalendarEvent): string {
   if (event.kind === 'vaga') return `Vaga · ${timeRange(event)}`
   if (event.kind === 'commitment') {
-    const { tipo, titulo, observacao } = event.commitment
-    const nome = titulo ? `${COMMITMENT_LABELS[tipo]}: ${titulo}` : COMMITMENT_LABELS[tipo]
+    const { observacao } = event.commitment
+    const nome = commitmentName(event.commitment)
     return `${timeRange(event)} · ${nome}${observacao ? `\n${observacao}` : ''}`
   }
   const { tipo_nome, presenca, observacao, etiquetas } = event.appointment
@@ -760,7 +757,10 @@ const AgendaCalendar = memo(function AgendaCalendar({
 
   const eventPropGetter = useCallback(
     (event: CalendarEvent): { className?: string; style?: CSSProperties } => {
-      if (event.kind === 'commitment') return { className: 'event-block' }
+      if (event.kind === 'commitment') {
+        const style = { '--tipo-cor': corVar(event.commitment.cor) } as CSSProperties
+        return { className: 'event-block', style }
+      }
       if (event.kind === 'vaga') return { className: 'event-vaga' }
       const missed =
         event.appointment.presenca === 'falta' || event.appointment.presenca === 'desmarcou'
@@ -883,7 +883,7 @@ export function AgendaPage(): React.JSX.Element {
       ...(commitments.data ?? []).map((c): CalendarEvent => ({
         kind: 'commitment',
         id: `c${c.id}`,
-        title: COMMITMENT_LABELS[c.tipo],
+        title: c.etiqueta_nome,
         start: parseIsoLocalDateTime(c.inicio),
         end: parseIsoLocalDateTime(c.fim),
         commitment: c
@@ -897,7 +897,9 @@ export function AgendaPage(): React.JSX.Element {
         ? allEvents
         : allEvents.filter(
             (e) =>
-              e.kind !== 'appointment' || e.appointment.etiquetas.some((x) => x.id === etiqueta)
+              e.kind !== 'appointment' ||
+              e.appointment.tipo_id === etiqueta ||
+              e.appointment.etiquetas.some((x) => x.id === etiqueta)
           ),
     [allEvents, etiqueta]
   )

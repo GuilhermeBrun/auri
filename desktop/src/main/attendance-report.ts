@@ -176,7 +176,7 @@ ${
   report.sessions.length === 0
     ? '<p class="empty">Nenhuma sessão neste período.</p>'
     : `<div class="summary">${summary(totals(report))}</div>
-<table><thead><tr><th>Data</th><th>Horário</th><th>Tipo</th><th>Presença</th><th>Chegada assinada</th></tr></thead>
+<table><thead><tr><th>Data</th><th>Horário</th><th>Etiqueta</th><th>Presença</th><th>Chegada assinada</th></tr></thead>
 <tbody>${report.sessions.map(sessionRow).join('')}</tbody></table>`
 }
 ${

@@ -11,7 +11,7 @@ import type { Commitment } from '@shared/commitments'
 import type { Sugestao } from '@shared/encaixe'
 import type { EncaixeNaVaga, SugestaoPedido, Vaga, WaitlistEntry } from '@shared/waitlist'
 import type { FinanceCatalog, FinanceOverview, PatientFinance } from '@shared/finance'
-import type { Etiqueta, TipoAtendimento } from '@shared/tipos'
+import type { TipoAtendimento } from '@shared/tipos'
 
 type Query<T> = { queryKey: readonly unknown[]; queryFn: () => Promise<T> }
 
@@ -53,10 +53,6 @@ export function patientAttendanceQuery(patientId: number): Query<AttendanceRecor
 
 export function tiposQuery(): Query<TipoAtendimento[]> {
   return { queryKey: ['tipos'], queryFn: () => window.api.tipos.list() }
-}
-
-export function etiquetasQuery(): Query<Etiqueta[]> {
-  return { queryKey: ['etiquetas'], queryFn: () => window.api.etiquetas.list() }
 }
 
 export function clinicQuery(): Query<Clinic> {

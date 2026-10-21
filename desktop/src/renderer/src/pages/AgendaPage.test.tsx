@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { FUNCIONAMENTO_PADRAO, type Funcionamento } from '@shared/agenda'
 import type { Appointment, Clinic } from '@shared/schemas'
-import type { Etiqueta, TipoAtendimento } from '@shared/tipos'
+import type { TipoAtendimento } from '@shared/tipos'
 import { AppointmentDialog, type AppointmentDraft } from '@renderer/components/AppointmentDialog'
 import { fakeAppointment, fakePatient, renderRoute, AVALIACAO } from '@renderer/testing'
 
@@ -80,18 +80,57 @@ let api: {
   patients: Record<string, ReturnType<typeof vi.fn>>
   attendance: Record<string, ReturnType<typeof vi.fn>>
   tipos: Record<string, ReturnType<typeof vi.fn>>
-  etiquetas: Record<string, ReturnType<typeof vi.fn>>
 }
 
+const marca = (id: number, nome: string, cor: string): TipoAtendimento => ({
+  id,
+  nome,
+  categoria: 'marca',
+  cor,
+  duracao: null,
+  sistema: null,
+  arquivado: false
+})
+const CONVENIO = { id: 7, nome: 'Convênio', cor: '#db2777' } as const
 const TIPOS: TipoAtendimento[] = [
-  { id: 1, nome: 'Sessão', categoria: 'sessao', cor: 'grafite', duracao: 30, arquivado: false },
-  { id: 2, nome: 'Avaliação', categoria: 'avaliacao', cor: 'azul', duracao: 60, arquivado: false },
-  { id: 4, nome: 'Audiometria', categoria: 'exame', cor: 'violeta', duracao: 45, arquivado: false }
-]
-const CONVENIO = { id: 7, nome: 'Convênio', cor: 'rosa' } as const
-const ETIQUETAS: Etiqueta[] = [
-  { ...CONVENIO, arquivado: false },
-  { id: 8, nome: 'Primeira vez', cor: 'areia', arquivado: false }
+  {
+    id: 1,
+    nome: 'Sessão',
+    categoria: 'sessao',
+    cor: '#6b7280',
+    duracao: 30,
+    sistema: null,
+    arquivado: false
+  },
+  {
+    id: 2,
+    nome: 'Avaliação',
+    categoria: 'avaliacao',
+    cor: '#2563eb',
+    duracao: 60,
+    sistema: null,
+    arquivado: false
+  },
+  {
+    id: 4,
+    nome: 'Audiometria',
+    categoria: 'exame',
+    cor: '#7c3aed',
+    duracao: 45,
+    sistema: null,
+    arquivado: false
+  },
+  {
+    id: 12,
+    nome: 'Reunião',
+    categoria: 'compromisso',
+    cor: '#0d9488',
+    duracao: 60,
+    sistema: null,
+    arquivado: false
+  },
+  marca(CONVENIO.id, CONVENIO.nome, CONVENIO.cor),
+  marca(8, 'Primeira vez', '#d97706')
 ]
 
 function setup(appointments: Appointment[], funcionamento = FUNCIONAMENTO_PADRAO): void {
@@ -104,8 +143,7 @@ function setup(appointments: Appointment[], funcionamento = FUNCIONAMENTO_PADRAO
     },
     patients: { list: vi.fn(async () => [fakePatient()]) },
     attendance: { listByPatient: vi.fn(async () => []) },
-    tipos: { list: vi.fn(async () => TIPOS) },
-    etiquetas: { list: vi.fn(async () => ETIQUETAS) }
+    tipos: { list: vi.fn(async () => TIPOS) }
   }
   Object.assign(window, { api })
 }
@@ -242,7 +280,7 @@ describe('tipos e etiquetas na agenda', () => {
     patient_nome: 'Eva Fictícia',
     tipo_id: 4,
     tipo_nome: 'Audiometria',
-    tipo_cor: 'violeta',
+    tipo_cor: '#7c3aed',
     categoria: 'exame',
     etiquetas: [CONVENIO]
   })
@@ -255,10 +293,10 @@ describe('tipos e etiquetas na agenda', () => {
     expect(within(card).getByText(/Audiometria/)).toBeTruthy()
     expect(within(card).getByRole('img', { name: 'Etiquetas: Convênio' })).toBeTruthy()
     const wrapper = card.closest<HTMLElement>('.rbc-event') ?? card
-    expect(wrapper.style.getPropertyValue('--tipo-cor')).toBe('var(--color-tipo-violeta)')
+    expect(wrapper.style.getPropertyValue('--tipo-cor')).toBe('#7c3aed')
   })
 
-  it('filtra a agenda por etiqueta', async () => {
+  it('filtra a agenda por marca e por etiqueta principal', async () => {
     setup([exame, comum])
     renderRoute('/agenda', '/agenda', <AgendaPage />)
     await eventOf('Fábio Fictício')
@@ -268,6 +306,13 @@ describe('tipos e etiquetas na agenda', () => {
       expect(screen.queryByText('Fábio Fictício', { selector: '.name-full' })).toBeNull()
     )
     expect(await eventOf('Eva Fictícia')).toBeTruthy()
+    await userEvent.click(screen.getByRole('combobox', { name: 'Filtrar por etiqueta' }))
+    expect(screen.queryByRole('option', { name: 'Reunião' })).toBeNull()
+    await userEvent.click(await screen.findByRole('option', { name: 'Sessão' }))
+    expect(await eventOf('Fábio Fictício')).toBeTruthy()
+    await waitFor(() =>
+      expect(screen.queryByText('Eva Fictícia', { selector: '.name-full' })).toBeNull()
+    )
   })
 
   it('o diálogo usa a duração do tipo e grava tipo e etiquetas', async () => {
@@ -277,7 +322,7 @@ describe('tipos e etiquetas na agenda', () => {
       '/agenda',
       <AppointmentDialog draft={draftAt(new Date(2026, 9, 15, 9, 0))} onClose={() => {}} />
     )
-    const tipo = await screen.findByRole('combobox', { name: 'Tipo' })
+    const tipo = await screen.findByRole('combobox', { name: 'Etiqueta' })
     await waitFor(() => expect(tipo.textContent).toContain('Sessão'))
     await userEvent.click(tipo)
     await userEvent.click(await screen.findByRole('option', { name: 'Audiometria' }))
