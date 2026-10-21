@@ -3,6 +3,7 @@ import {
   chromeUserAgent,
   createWhatsAppView,
   isWhatsAppPage,
+  orphanWorkers,
   unreadFromTitle,
   whatsAppUrl
 } from './whatsapp-view'
@@ -12,7 +13,10 @@ type Listener = (...args: unknown[]) => void
 const mocks = vi.hoisted(() => {
   const views: FakeView[] = []
   const openExternal = vi.fn()
+  const running: Record<number, { renderProcessId: number }> = {}
+  const kill = vi.fn()
   const fakeSession = {
+    serviceWorkers: { getAllRunning: () => running },
     setUserAgent: vi.fn(),
     setPermissionRequestHandler: vi.fn(),
     setPermissionCheckHandler: vi.fn(),
@@ -52,10 +56,18 @@ const mocks = vi.hoisted(() => {
       this.bounds = bounds
     }
   }
-  return { views, openExternal, fakeSession, FakeView }
+  return { views, openExternal, fakeSession, FakeView, running, kill }
 })
 
 vi.mock('electron', () => ({
+  app: {
+    getAppMetrics: () => [
+      { pid: 10, type: 'Browser' },
+      { pid: 11, type: 'Tab' },
+      { pid: 12, type: 'Tab' }
+    ]
+  },
+  webContents: { getAllWebContents: () => [{ getOSProcessId: () => 11 }] },
   WebContentsView: mocks.FakeView,
   session: { fromPartition: vi.fn(() => mocks.fakeSession) },
   shell: { openExternal: mocks.openExternal }
@@ -93,6 +105,8 @@ function setup(enabled = true) {
 beforeEach(() => {
   vi.clearAllMocks()
   mocks.views.length = 0
+  for (const key of Object.keys(mocks.running)) delete mocks.running[Number(key)]
+  vi.spyOn(process, 'kill').mockImplementation(mocks.kill as never)
 })
 
 describe('WhatsApp dentro do Auri', () => {
@@ -192,6 +206,30 @@ describe('WhatsApp dentro do Auri', () => {
     expect(whatsapp.unread()).toBe(0)
     await whatsapp.setEnabled(true)
     expect(mocks.views).toHaveLength(2)
+  })
+
+  it('acha o processo em segundo plano do WhatsApp só quando a conta bate', () => {
+    const processes = [
+      { pid: 1, type: 'Browser' },
+      { pid: 2, type: 'Tab' },
+      { pid: 3, type: 'Tab' },
+      { pid: 4, type: 'GPU' }
+    ]
+    expect(orphanWorkers([{ renderProcessId: 9 }], [2], processes)).toEqual([3])
+    expect(orphanWorkers([], [2], processes)).toEqual([])
+    expect(orphanWorkers([{ renderProcessId: 9 }], [], processes)).toEqual([])
+    expect(orphanWorkers([{ renderProcessId: 9 }, { renderProcessId: 9 }], [2], processes)).toEqual(
+      [3]
+    )
+  })
+
+  it('desligar encerra o processo do WhatsApp que ficou em segundo plano', async () => {
+    const { whatsapp, main } = setup()
+    main.loaded()
+    mocks.running[1] = { renderProcessId: 7 }
+    await whatsapp.setEnabled(false)
+    expect(mocks.kill).toHaveBeenCalledWith(12)
+    expect(mocks.kill).toHaveBeenCalledTimes(1)
   })
 
   it('libera só notificações e cópia; bloqueia navegação fora do WhatsApp Web', () => {

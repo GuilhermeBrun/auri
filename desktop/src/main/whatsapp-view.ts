@@ -1,4 +1,12 @@
-import { session, shell, WebContentsView, type BrowserWindow, type Session } from 'electron'
+import {
+  app,
+  session,
+  shell,
+  webContents,
+  WebContentsView,
+  type BrowserWindow,
+  type Session
+} from 'electron'
 import type { WhatsAppBounds } from '../shared/api'
 
 const HOST = 'web.whatsapp.com'
@@ -59,6 +67,33 @@ function prepareSession(target: Session): void {
     callback(ALLOWED_PERMISSIONS.has(permission))
   )
   target.setPermissionCheckHandler((_contents, permission) => ALLOWED_PERMISSIONS.has(permission))
+}
+
+export function orphanWorkers(
+  workers: { renderProcessId: number }[],
+  pages: number[],
+  processes: { pid: number; type: string }[]
+): number[] {
+  const expected = new Set(workers.map((w) => w.renderProcessId)).size
+  if (expected === 0) return []
+  const owned = new Set(pages)
+  const orphans = processes.filter((p) => p.type === 'Tab' && !owned.has(p.pid)).map((p) => p.pid)
+  return orphans.length === expected ? orphans : []
+}
+
+function stopWorkers(partition: Session): void {
+  const pids = orphanWorkers(
+    Object.values(partition.serviceWorkers.getAllRunning()),
+    webContents.getAllWebContents().map((contents) => contents.getOSProcessId()),
+    app.getAppMetrics()
+  )
+  for (const pid of pids) {
+    try {
+      process.kill(pid)
+    } catch (error) {
+      console.error('[whatsapp] processo em segundo plano não fechou', error)
+    }
+  }
 }
 
 export function createWhatsAppView({
@@ -160,6 +195,7 @@ export function createWhatsAppView({
       const partition = session.fromPartition(PARTITION)
       await partition.clearStorageData()
       await partition.clearCache()
+      stopWorkers(partition)
     },
     open(phone, text) {
       const current = ensure()
