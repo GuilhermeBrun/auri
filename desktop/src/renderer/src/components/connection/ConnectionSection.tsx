@@ -62,7 +62,7 @@ const ROLE_OPTIONS: {
   {
     value: 'client',
     label: 'Usar os dados de outro computador',
-    description: 'Como o consultório usando os da recepção.',
+    description: 'Como o consultório, com os dados da recepção.',
     icon: <Laptop />
   }
 ]
