@@ -47,7 +47,9 @@ Não há cores decorativas, nem verde, nem cor de sucesso. O âmbar (`warning`) 
 
 ### Cores da clínica
 
-Em **Configurações → Aparência → Cores** cada clínica escolhe duas cores: **destaque** e **fundo**. O resto sai delas (`shared/aparencia.ts`), nos dois temas e no "Aumentar contraste":
+**Configurações → Aparência → Cores** é um bloco só, porque é uma escolha só: as prontas, depois destaque e fundo, e "Ajustar cada cor" recolhido no fim, separados por espaço, sem rótulo para cada parte.
+
+Cada clínica escolhe duas cores: **destaque** e **fundo**. O resto sai delas (`shared/aparencia.ts`), nos dois temas e no "Aumentar contraste":
 
 - **Destaque** vira `solid-*` (botões principais, "Hoje"), `accent` (foco e contornos), `accent-soft` e `chart-strong`. Se a cor deixar o texto do botão abaixo de 4,5:1, o tom é escurecido (claro) ou ajustado (escuro); o foco fica com pelo menos 3:1 sobre o fundo. O texto do botão é branco ou grafite, o que contrastar.
 - **Fundo** dá a matiz de todos os neutros (superfícies, linhas, texto), com croma baixo. Se a cor for clara, ela vira o `surface` do tema claro (entre L 0,94 e 1 em OKLCH) e o resto acompanha; se for escura, vira o `surface` do escuro. O outro tema só herda a matiz. O texto secundário é corrigido até 4,5:1 sobre qualquer fundo.
