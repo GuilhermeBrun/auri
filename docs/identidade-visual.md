@@ -67,7 +67,7 @@ A interface é de **produtividade**, não de toque: tudo foi dimensionado para u
 | Barra lateral                       | 216px                                             |
 | Linha da lista de pacientes         | 56px; avatar de 32px                              |
 | Hora na agenda                      | 56px; número do dia em quadrado de 32px           |
-| Diálogo                             | 480px de largura                                  |
+| Diálogo                             | 560px (`size="wide"`: 720px); no máximo a tela menos 16px de cada lado, só o corpo rola |
 | Alvo mínimo (WCAG 2.5.8)            | 24px, também no número do dia e em "+N mais"      |
 
 Para mexer na escala inteira, os pontos são: `body` e os tamanhos de `ui/button.tsx`, `ui/input.tsx` e `ui/avatar.tsx`; `SIDEBAR_WIDTH`, `TOGGLE_SIZE` e `h-12` do cabeçalho em `Layout.tsx` (e `trafficLightPosition` em `src/main/index.ts`, que depende da altura do cabeçalho); e `.rbc-timeslot-group` em `main.css`.

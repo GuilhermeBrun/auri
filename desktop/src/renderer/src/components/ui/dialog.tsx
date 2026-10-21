@@ -10,6 +10,7 @@ type DialogProps = {
   title: string
   description?: string
   media?: ReactNode
+  size?: 'default' | 'wide'
   children: ReactNode
 }
 
@@ -19,6 +20,7 @@ export function Dialog({
   title,
   description,
   media,
+  size = 'default',
   children
 }: DialogProps): React.JSX.Element {
   const content = useRef<HTMLDivElement>(null)
@@ -41,31 +43,40 @@ export function Dialog({
               e.preventDefault()
             }
           }}
-          className="fixed top-[44%] left-1/2 z-50 w-[min(480px,calc(100vw-32px))] -translate-x-1/2 -translate-y-1/2 rounded-sheet bg-raised shadow-pop focus:outline-none data-[state=closed]:animate-pop-out data-[state=open]:animate-pop-in"
+          className="pointer-events-none! fixed inset-0 z-50 flex flex-col items-center p-4 before:flex-[2] after:flex-[3] focus:outline-none data-[state=closed]:animate-pop-out data-[state=open]:animate-pop-in"
         >
-          {media && <div className="px-5 pt-5">{media}</div>}
-          <div className="flex items-start justify-between gap-4 px-5 pt-5">
-            <div key={title} className="animate-fade-in">
-              <DialogPrimitive.Title className="text-[17px] font-semibold tracking-tight">
-                {title}
-              </DialogPrimitive.Title>
-              {description ? (
-                <DialogPrimitive.Description className="mt-0.5 text-[13px] text-ink-soft">
-                  {description}
-                </DialogPrimitive.Description>
-              ) : (
-                <DialogPrimitive.Description className="sr-only">
+          <div
+            className={cn(
+              'pointer-events-auto flex max-h-full min-h-0 w-full flex-col rounded-sheet bg-raised shadow-pop',
+              size === 'wide' ? 'max-w-[720px]' : 'max-w-[560px]'
+            )}
+          >
+            {media && <div className="shrink-0 px-5 pt-5">{media}</div>}
+            <div className="flex shrink-0 items-start justify-between gap-4 px-5 pt-5">
+              <div key={title} className="animate-fade-in">
+                <DialogPrimitive.Title className="text-[17px] font-semibold tracking-tight">
                   {title}
-                </DialogPrimitive.Description>
-              )}
+                </DialogPrimitive.Title>
+                {description ? (
+                  <DialogPrimitive.Description className="mt-0.5 text-[13px] text-ink-soft">
+                    {description}
+                  </DialogPrimitive.Description>
+                ) : (
+                  <DialogPrimitive.Description className="sr-only">
+                    {title}
+                  </DialogPrimitive.Description>
+                )}
+              </div>
+              <DialogPrimitive.Close asChild>
+                <Button variant="ghost" size="icon-sm" className="-mt-1 -mr-2" aria-label="Fechar">
+                  <X />
+                </Button>
+              </DialogPrimitive.Close>
             </div>
-            <DialogPrimitive.Close asChild>
-              <Button variant="ghost" size="icon-sm" className="-mt-1 -mr-2" aria-label="Fechar">
-                <X />
-              </Button>
-            </DialogPrimitive.Close>
+            <div className="flex min-h-0 flex-col [&>form]:flex [&>form]:min-h-0 [&>form]:flex-col">
+              {children}
+            </div>
           </div>
-          {children}
         </DialogPrimitive.Content>
       </DialogPrimitive.Portal>
     </DialogPrimitive.Root>
@@ -79,9 +90,17 @@ export function DialogBody({
   children: ReactNode
   className?: string
 }): React.JSX.Element {
-  return <div className={cn('px-5 pt-4 pb-5', className)}>{children}</div>
+  return (
+    <div className={cn('min-h-0 overflow-y-auto overscroll-contain px-5 pt-4 pb-5', className)}>
+      {children}
+    </div>
+  )
 }
 
 export function DialogFooter({ children }: { children: ReactNode }): React.JSX.Element {
-  return <div className="flex items-center justify-between gap-2 px-5 pt-1 pb-5">{children}</div>
+  return (
+    <div className="flex shrink-0 items-center justify-between gap-2 px-5 pt-1 pb-5">
+      {children}
+    </div>
+  )
 }

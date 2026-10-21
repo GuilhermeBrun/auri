@@ -1,7 +1,7 @@
 type Tamanho = { width: number; height: number }
 
 const PADRAO: Tamanho = { width: 1280, height: 820 }
-const MINIMO: Tamanho = { width: 1000, height: 640 }
+const MINIMO: Tamanho = { width: 1000, height: 540 }
 
 export function tamanhoDaJanela(area: Tamanho): Tamanho & {
   minWidth: number
