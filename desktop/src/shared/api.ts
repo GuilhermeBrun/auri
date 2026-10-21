@@ -119,7 +119,7 @@ export interface AuriApi {
     cancel(requestId: number): Promise<TermRequest>
     check(texto: string): Promise<TermCheck>
     accept(texto: string, computador: string): Promise<TermRequest>
-    openWhatsApp(numero: string, texto: string): Promise<void>
+    openWhatsApp(numero: string, texto: string): Promise<WhatsAppEnvio>
     openPdf(signedId: number): Promise<void>
     takeIncoming(): Promise<string[]>
     onIncoming(listener: () => void): () => void
@@ -227,6 +227,8 @@ export const DEFAULT_UI_PREFS: UiPrefs = {
 }
 
 export type WhatsAppBounds = { x: number; y: number; width: number; height: number }
+
+export type WhatsAppEnvio = 'pronta' | 'copiada' | 'sem-copia'
 
 export interface AuriWhatsApp {
   show(bounds: WhatsAppBounds): Promise<void>

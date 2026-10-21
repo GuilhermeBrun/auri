@@ -1,31 +1,45 @@
 import {
   app,
+  clipboard,
   session,
   shell,
   webContents,
   WebContentsView,
   type BrowserWindow,
-  type Session
+  type Session,
+  type WebContents
 } from 'electron'
-import type { WhatsAppBounds } from '../shared/api'
+import type { WhatsAppBounds, WhatsAppEnvio } from '../shared/api'
 
 const HOST = 'web.whatsapp.com'
 const HOME = `https://${HOST}/`
 const PARTITION = 'persist:whatsapp'
 const ALLOWED_PERMISSIONS = new Set(['notifications', 'clipboard-sanitized-write'])
+export const COMPOSER = `(() => {
+  const campo = document.querySelector('#main footer [contenteditable="true"]')
+  if (!campo) return false
+  const vazio = campo.hasAttribute('data-lexical-editor')
+    ? !campo.querySelector('[data-lexical-text]')
+    : campo.textContent.trim() === ''
+  if (!vazio) return false
+  campo.focus()
+  return document.activeElement === campo
+})()`
+const PASTE_TRIES = 60
+const PASTE_INTERVAL = 500
 
 export type WhatsAppView = {
   attach(window: BrowserWindow): void
   setEnabled(enabled: boolean): Promise<void>
   setPaused(paused: boolean): void
-  open(phone: string, text: string): boolean
+  open(phone: string, text: string): Promise<WhatsAppEnvio | null>
   show(bounds: WhatsAppBounds): void
   hide(): void
   unread(): number
 }
 
-export function whatsAppUrl(phone: string, text: string): string {
-  return `https://${HOST}/send?phone=${encodeURIComponent(phone)}&text=${encodeURIComponent(text)}`
+export function whatsAppUrl(phone: string): string {
+  return `https://${HOST}/send?phone=${encodeURIComponent(phone)}`
 }
 
 export function isWhatsAppPage(target: string): boolean {
@@ -114,6 +128,7 @@ export function createWhatsAppView({
   let view: WebContentsView | null = null
   let prepared = false
   let count = 0
+  let request = 0
 
   function setCount(next: number): void {
     if (next === count) return
@@ -157,6 +172,21 @@ export function createWhatsAppView({
       console.error('[whatsapp] não abriu', error)
     })
     return created
+  }
+
+  async function pasteWhenReady(contents: WebContents, mine: number, text: string): Promise<void> {
+    for (let tries = 0; tries < PASTE_TRIES; tries++) {
+      if (mine !== request || contents.isDestroyed()) return
+      if (await contents.executeJavaScript(COMPOSER).catch(() => false)) {
+        const copied = await clipboard.readText()
+        if (mine !== request || contents.isDestroyed() || copied !== text) return
+        contents.paste()
+        await new Promise((resolve) => setTimeout(resolve, PASTE_INTERVAL))
+        if ((await clipboard.readText()) === text) clipboard.clear()
+        return
+      }
+      await new Promise((resolve) => setTimeout(resolve, PASTE_INTERVAL))
+    }
   }
 
   function teardown(): void {
@@ -211,14 +241,27 @@ export function createWhatsAppView({
       teardown()
       stopWorkers(session.fromPartition(PARTITION))
     },
-    open(phone, text) {
+    async open(phone, text) {
       const current = ensure()
-      if (!current) return false
-      current.webContents.loadURL(whatsAppUrl(phone, text)).catch((error: unknown) => {
-        console.error('[whatsapp] conversa não abriu', error)
-      })
+      if (!current) return null
+      const contents = current.webContents
+      const mine = ++request
       onOpen()
-      return true
+      const copied = await clipboard.writeText(text).then(
+        () => true,
+        (error: unknown) => {
+          console.error('[whatsapp] mensagem não foi copiada', error)
+          return false
+        }
+      )
+      if (mine === request && !contents.isDestroyed())
+        contents
+          .loadURL(whatsAppUrl(phone))
+          .then(() => (copied ? pasteWhenReady(contents, mine, text) : undefined))
+          .catch((error: unknown) => {
+            console.error('[whatsapp] conversa não abriu', error)
+          })
+      return copied ? 'copiada' : 'sem-copia'
     },
     show(bounds) {
       const current = ensure()

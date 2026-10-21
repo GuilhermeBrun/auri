@@ -24,7 +24,7 @@ import { callAsReception, RECEPTION_LOCKED, RECEPTION_STORAGE_BLOCKED } from './
 import type { ReceptionLock } from './reception-lock'
 import type { UpdateService } from './updates'
 import { assertTrustedSender } from './ipc-security'
-import type { WhatsAppView } from './whatsapp-view'
+import { whatsAppUrl, type WhatsAppView } from './whatsapp-view'
 import type { LinksCurtos } from './links-curtos'
 import { chooseLogo } from './logo'
 import { documentFont, htmlToPdf, openPdf, savePdf } from './pdf'
@@ -202,14 +202,18 @@ export function registerIpc({
       .regex(/^\d{10,15}$/)
       .parse(numero)
     const message = z.string().max(6000).parse(texto)
-    if (whatsapp.open(phone, message)) return
-    const text = encodeURIComponent(message)
-    const desktop = app.getApplicationNameForProtocol('whatsapp://') !== ''
-    await shell.openExternal(
-      desktop
-        ? `whatsapp://send?phone=${phone}&text=${text}`
-        : `https://wa.me/${phone}?text=${text}`
+    const inside = await whatsapp.open(phone, message)
+    if (inside) return inside
+    if (app.getApplicationNameForProtocol('whatsapp://') !== '') {
+      await shell.openExternal(`whatsapp://send?phone=${phone}&text=${encodeURIComponent(message)}`)
+      return 'pronta'
+    }
+    const copied = await clipboard.writeText(message).then(
+      () => true,
+      () => false
     )
+    await shell.openExternal(whatsAppUrl(phone))
+    return copied ? 'copiada' : 'sem-copia'
   })
   const bounds = z.object({
     x: z.number().finite(),

@@ -22,6 +22,7 @@ import { useConnection } from '@renderer/lib/connection'
 import { clinicQuery } from '@renderer/lib/queries'
 import { useReception } from '@renderer/lib/reception'
 import { useToast } from '@renderer/lib/toast'
+import { abrirOuCopiar, avisoDoWhatsApp } from '@renderer/lib/whatsapp'
 
 const OUTRA = 'outra'
 
@@ -112,15 +113,16 @@ function SendForm({
         info?.name || 'Este computador'
       )
       void queryClient.invalidateQueries({ queryKey: ['terms'] })
-      if (via === 'whatsapp') await window.api.terms.openWhatsApp(sent.numero, sent.mensagem)
-      else await navigator.clipboard.writeText(sent.mensagem)
-      return via
+      return abrirOuCopiar(via, sent.numero, sent.mensagem)
     },
-    onSuccess: (via) => {
+    onSuccess: (aberto) => {
       toast(
-        via === 'whatsapp'
-          ? { title: 'Termo enviado', description: 'Confira o WhatsApp e toque em enviar.' }
-          : { title: 'Mensagem copiada' }
+        aberto === null
+          ? { title: 'Mensagem copiada' }
+          : {
+              title: 'Termo enviado',
+              description: avisoDoWhatsApp(aberto) ?? 'Confira o WhatsApp e toque em enviar.'
+            }
       )
       onClose()
     }

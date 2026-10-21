@@ -97,7 +97,7 @@ beforeEach(() => {
     prazo: PRAZO,
     reenvio: false
   })
-  terms.openWhatsApp.mockResolvedValue(undefined)
+  terms.openWhatsApp.mockResolvedValue('pronta')
 })
 
 afterEach(() => {
@@ -130,8 +130,39 @@ describe('confirmações do próximo dia', () => {
     )
     expect(confirmacoes.enviar).toHaveBeenCalledWith(1, expect.any(String))
     expect(toast).toHaveBeenCalledWith(
-      expect.objectContaining({ title: 'Confira o WhatsApp e toque em enviar' })
+      expect.objectContaining({
+        title: 'Confira o WhatsApp e toque em enviar',
+        description: expect.not.stringContaining('cole')
+      })
     )
+  })
+
+  it('com a mensagem copiada para a conversa, avisa que pode ser preciso colar', async () => {
+    confirmacoes.lista.mockResolvedValue(lista())
+    terms.openWhatsApp.mockResolvedValue('copiada')
+    const toast = vi.fn()
+    renderRoute('/', '/', <ConfirmacoesDialog open onClose={() => {}} />, toast)
+    await userEvent.click(await screen.findByRole('button', { name: 'Enviar a próxima' }))
+    await waitFor(() =>
+      expect(toast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Confira o WhatsApp e toque em enviar',
+          description: expect.stringContaining('cole: ela está copiada')
+        })
+      )
+    )
+  })
+
+  it('se a cópia falhou, não diz que copiou e manda usar Copiar mensagem', async () => {
+    confirmacoes.lista.mockResolvedValue(lista())
+    terms.openWhatsApp.mockResolvedValue('sem-copia')
+    const toast = vi.fn()
+    renderRoute('/', '/', <ConfirmacoesDialog open onClose={() => {}} />, toast)
+    await userEvent.click(await screen.findByRole('button', { name: 'Enviar a próxima' }))
+    await waitFor(() => expect(toast).toHaveBeenCalled())
+    const { description } = toast.mock.calls[0][0] as { description: string }
+    expect(description).toContain('não foi copiada: use "Copiar mensagem"')
+    expect(description).not.toContain('está copiada')
   })
 
   it('fora da janela, explica e não deixa enviar', async () => {

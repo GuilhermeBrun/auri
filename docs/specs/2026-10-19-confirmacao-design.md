@@ -67,7 +67,8 @@ saem sempre no fuso da clínica (ver "Fuso").
 
 O WhatsApp não manda nada sozinho sem a API paga, então "em lote" quer dizer uma fila na tela, não
 um disparo: cada envio são dois toques (Enviar no Auri, Enter no WhatsApp). O WhatsApp abre como
-nos termos: no WhatsApp do Auri, se ligado, senão `whatsapp://send` ou `wa.me`.
+nos termos: no WhatsApp do Auri, se ligado, senão `whatsapp://send` ou o WhatsApp Web no navegador,
+sem a mensagem na URL (ver "Abrir o WhatsApp" na assinatura de termos).
 
 - **Quais sessões:** as de hoje que ainda não começaram e as do próximo dia de atendimento (o
   próximo dia com a clínica aberta, até 7 dias à frente), sem presença marcada
