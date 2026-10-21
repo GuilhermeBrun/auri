@@ -23,6 +23,8 @@ import { openDatabase, type Db } from './connection'
 import { getPatientFinance, saveService, setBilling } from './finance'
 import { createPatient } from './patients'
 import { FUNCIONAMENTO_PADRAO } from '../../shared/agenda'
+import { expandirIda, encurtarVolta, type Buscar } from '../../../../web/contrato/link-curto'
+import { createLinksCurtos } from '../links-curtos'
 
 const PC = 'Recepção'
 const AGORA = new Date(2026, 9, 19, 8, 30)
@@ -198,6 +200,49 @@ describe('envio', () => {
   it('pede os dados da clínica', () => {
     db.prepare('UPDATE clinic SET whatsapp = NULL').run()
     expect(() => enviarConfirmacao(db, sessaoId, PC, AGORA)).toThrow(/WhatsApp da clínica/)
+  })
+})
+
+function siteFalso() {
+  const guardados = new Map<string, string>()
+  const buscar: Buscar = async (endereco, opcoes) => {
+    const id = new URL(endereco).searchParams.get('id') ?? ''
+    if (opcoes?.method === 'PUT') {
+      guardados.set(id, (JSON.parse(opcoes.body as string) as { dados: string }).dados)
+      return new Response(null, { status: 204 })
+    }
+    const dados = guardados.get(id)
+    return dados ? new Response(dados) : new Response(null, { status: 404 })
+  }
+  return { buscar }
+}
+
+describe('link curto', () => {
+  it('a família abre pelo código, responde com outro código e o Auri aplica', async () => {
+    const site = siteFalso()
+    const links = createLinksCurtos({ buscar: site.buscar })
+    const envio = await links.encurtar(enviarConfirmacao(db, sessaoId, PC, AGORA))
+    expect(envio.link).toMatch(/^https:\/\/auri\.dev\.br\/confirmar#[\w-]{22}$/)
+    expect(envio.mensagem).toContain(envio.link)
+    expect(envio).not.toHaveProperty('curto')
+
+    const rede = { origem: 'https://auri.dev.br', buscar: site.buscar }
+    const codigo = envio.link.slice(envio.link.indexOf('#') + 1)
+    const longo = `https://auri.dev.br/confirmar#${await expandirIda(codigo, 1, rede)}`
+    const volta = (await responder(longo, 'confirmada', minutos(10))).split('\n')[1]!
+    const curta = await encurtarVolta(volta, minutos(10).getTime(), rede)
+    expect(curta).toMatch(/^https:\/\/auri\.dev\.br\/resposta#[\w-]{22}$/)
+
+    const texto = await links.expandir(`Confirmo a sessão.\n${curta}`)
+    expect(receberConfirmacao(db, texto, PC, minutos(12))).toMatchObject({
+      ok: true,
+      tipo: 'confirmada'
+    })
+  })
+
+  it('reenviar devolve o mesmo código', () => {
+    const primeiro = enviarConfirmacao(db, sessaoId, PC, AGORA)
+    expect(enviarConfirmacao(db, sessaoId, PC, minutos(5)).curto).toEqual(primeiro.curto)
   })
 })
 

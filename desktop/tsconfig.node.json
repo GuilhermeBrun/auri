@@ -7,6 +7,7 @@
     "src/preload/**/*",
     "src/shared/**/*",
     "../web/contrato/*.json",
+    "../web/contrato/link-curto.ts",
     "../web/contrato/assinatura/*.ts",
     "../web/contrato/confirmacao/*.ts"
   ],

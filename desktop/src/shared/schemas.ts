@@ -6,6 +6,7 @@ import { isValidCpf } from './cpf'
 import { isIsoDate, isIsoLocalDateTime } from './dates'
 import { isValidPhone } from './masks'
 import { HEX_COLOR, ROLE_TOKENS, TEXT_SIZES } from './aparencia'
+import type { LinkCurto } from './link-curto'
 
 const text = (max = 200): z.ZodString =>
   z.string().trim().max(max, `Use no máximo ${max} caracteres`)
@@ -484,7 +485,7 @@ export type TermRequest = {
   assinado: SignedTermSummary | null
 }
 
-export type TermLink = { link: string; mensagem: string; numero: string }
+export type TermLink = { link: string; mensagem: string; numero: string; curto?: LinkCurto }
 
 export type TermSendResult = TermLink & { request: TermRequest }
 

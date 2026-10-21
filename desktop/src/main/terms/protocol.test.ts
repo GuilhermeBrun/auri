@@ -52,6 +52,15 @@ describe('endereço auri://', () => {
     ]) {
       expect(lerEndereco(endereco)).toEqual({ tipo: 'confirmacao', fragmento: F })
     }
+    expect(lerEndereco('auri://confirmacao#AAECAwQFBgcICQoLDA0ODw')).toEqual({
+      tipo: 'confirmacao',
+      fragmento: 'AAECAwQFBgcICQoLDA0ODw'
+    })
+    expect(lerEndereco('auri://receber#AAECAwQFBgcICQoLDA0ODw')).toEqual({
+      tipo: 'termo',
+      fragmento: 'AAECAwQFBgcICQoLDA0ODw'
+    })
+    expect(lerEndereco('auri://receber#AAECAwQFBgcICQoLDA0OD')).toBeNull()
     expect(lerEndereco(`auri://confirmar#${F}`)).toBeNull()
     expect(lerEndereco(`auri://confirmacao#${F}&x=1`)).toBeNull()
     expect(lerEndereco(`https://auri.dev.br/resposta#${F}`)).toBeNull()

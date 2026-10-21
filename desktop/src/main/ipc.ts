@@ -25,6 +25,7 @@ import type { ReceptionLock } from './reception-lock'
 import type { UpdateService } from './updates'
 import { assertTrustedSender } from './ipc-security'
 import type { WhatsAppView } from './whatsapp-view'
+import type { LinksCurtos } from './links-curtos'
 import { chooseLogo } from './logo'
 import { documentFont, htmlToPdf, openPdf, savePdf } from './pdf'
 
@@ -38,6 +39,7 @@ export type IpcServices = {
   inbox: Caixa
   whatsapp: WhatsAppView
   receptionLock: ReceptionLock
+  links?: LinksCurtos
 }
 
 const cut = (max: number) =>
@@ -58,6 +60,9 @@ const secretSchema = z.union([
   z.object({ recoveryCode: z.string().max(100) })
 ])
 
+const ENCURTAR = new Set(['terms:send', 'terms:link', 'confirmacoes:enviar'])
+const LER_VOLTA = new Set(['terms:check', 'terms:accept', 'confirmacoes:receber'])
+
 export function registerIpc({
   connection,
   prefs,
@@ -67,7 +72,8 @@ export function registerIpc({
   reports,
   inbox,
   whatsapp,
-  receptionLock
+  receptionLock,
+  links
 }: IpcServices): void {
   const forward = (channel: string, args: unknown[]) => connection.call(channel, args)
   const call = (channel: string, args: unknown[]) =>
@@ -93,10 +99,17 @@ export function registerIpc({
   }
 
   for (const channel of DATA_CHANNELS) {
-    ipcMain.handle(channel, (event, ...args) => {
+    ipcMain.handle(channel, async (event, ...args) => {
       try {
         assertTrustedSender(event)
-        return call(channel, args)
+        if (links && LER_VOLTA.has(channel) && typeof args[0] === 'string')
+          args[0] = await links.expandir(args[0])
+        const result = await call(channel, args)
+        if (!links || !ENCURTAR.has(channel) || !result.ok) return result
+        return {
+          ok: true,
+          data: await links.encurtar(result.data as Parameters<typeof links.encurtar>[0])
+        }
       } catch (error) {
         return { ok: false, error: errorMessage(error) }
       }

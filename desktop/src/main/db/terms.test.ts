@@ -123,6 +123,12 @@ describe('envio', () => {
     })
     expect(enviado.request).toMatchObject({ estado: 'aguardando', destino_nome: 'Marina Fictícia' })
     expect(termLink(db, enviado.request.id, AGORA).link).toBe(enviado.link)
+    expect(termLink(db, enviado.request.id, AGORA).curto).toEqual(enviado.curto)
+    const curto = enviado.curto!
+    expect(curto.link).toMatch(/^https:\/\/auri\.dev\.br\/assinar#[\w-]{22}$/)
+    expect(curto.mensagem).toBe(enviado.mensagem.replace(enviado.link, curto.link))
+    expect(enviado.link.endsWith(`.${curto.dados}`)).toBe(true)
+    expect(curto.expira).toBe(termo.ate + 86_400)
   })
 
   it('enviar de novo troca o envio anterior, que deixa de valer', async () => {
