@@ -80,7 +80,7 @@ function initialBounds(file: string): Partial<Rectangle> & { width: number; heig
 }
 
 function prepareSession(target: Session): void {
-  target.setUserAgent(chromeUserAgent(process.platform, process.versions.chrome))
+  target.setUserAgent(chromeUserAgent(process.platform, process.versions.chrome), 'pt-BR,pt')
   target.setPermissionRequestHandler((_contents, permission, callback) =>
     callback(ALLOWED_PERMISSIONS.has(permission))
   )

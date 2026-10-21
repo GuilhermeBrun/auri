@@ -149,6 +149,10 @@ describe('janela do WhatsApp', () => {
 
   it('libera só notificações e cópia; o resto é negado', () => {
     createWhatsAppWindow({ boundsFile }).open('5565900000000', 'Oi')
+    expect(mocks.fakeSession.setUserAgent).toHaveBeenCalledWith(
+      expect.stringContaining('Chrome/'),
+      'pt-BR,pt'
+    )
     const request = mocks.fakeSession.setPermissionRequestHandler.mock.calls[0][0] as (
       contents: unknown,
       permission: string,
