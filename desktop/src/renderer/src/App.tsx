@@ -17,6 +17,7 @@ import { GeneralPage } from './pages/GeneralPage'
 import { AppearancePage } from './pages/SettingsPage'
 import { WhatsAppPage } from './pages/WhatsAppPage'
 import { useReception } from './lib/reception'
+import { useHomePath } from './lib/sidebar'
 
 function Clinical({ children }: { children: React.JSX.Element }): React.JSX.Element {
   const reception = useReception()
@@ -34,11 +35,15 @@ function NotInReception({
   return useReception() ? <Navigate to={fallback} replace /> : children
 }
 
+function Home(): React.JSX.Element {
+  return <Navigate to={useHomePath()} replace />
+}
+
 function App(): React.JSX.Element {
   return (
     <Routes>
       <Route element={<Layout />}>
-        <Route index element={<Navigate to="/agenda" replace />} />
+        <Route index element={<Home />} />
         <Route path="agenda" element={<AgendaPage />} />
         <Route path="pacientes" element={<PatientsPage />} />
         <Route path="pacientes/novo" element={<PatientFormRoute />} />
@@ -100,7 +105,7 @@ function App(): React.JSX.Element {
         <Route path="configuracoes/geral" element={<GeneralPage />} />
         <Route path="configuracoes/aparencia" element={<AppearancePage />} />
         <Route path="configuracoes/armazenamento" element={<StoragePage />} />
-        <Route path="*" element={<Navigate to="/agenda" replace />} />
+        <Route path="*" element={<Home />} />
       </Route>
     </Routes>
   )

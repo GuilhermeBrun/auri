@@ -19,6 +19,7 @@ const RECEPCAO: SettingsSnapshot = {
   appearance: {
     theme: 'dark',
     sidebarOpen: true,
+    sidebarItems: { order: ['pacientes', 'agenda'], hidden: ['whatsapp'] },
     textSize: 1.2,
     colors: { accent: '#bf5530', canvas: '#fbf6f2', overrides: { light: {}, dark: {} } }
   },
@@ -58,6 +59,7 @@ const NOVO: SettingsSnapshot = {
   appearance: {
     theme: 'system',
     sidebarOpen: true,
+    sidebarItems: { order: [], hidden: [] },
     textSize: 1,
     colors: { accent: null, canvas: null, overrides: { light: {}, dark: {} } }
   },
@@ -120,6 +122,11 @@ describe('arquivo de configurações', () => {
     const file = parseSettingsFile(buildSettingsFile(RECEPCAO))
     expect(describeChanges(NOVO, file)).toEqual([
       { label: 'Tema', from: 'Sistema', to: 'Escuro' },
+      {
+        label: 'Itens da barra lateral',
+        from: 'Agenda, Pacientes, Financeiro, Clínica, WhatsApp',
+        to: 'Pacientes, Agenda, Financeiro, Clínica'
+      },
       { label: 'Tamanho do texto', from: 'Padrão', to: 'Grande' },
       { label: 'Cores', from: 'Grafite', to: 'Terracota' },
       { label: 'Nome deste computador', from: 'DESKTOP-4F2K', to: 'Recepção' },

@@ -1,9 +1,6 @@
 import {
   ArrowLeft,
-  Building2,
-  CalendarDays,
   Database,
-  MessageCircle,
   Network,
   PanelLeft,
   PanelLeftClose,
@@ -11,8 +8,6 @@ import {
   SlidersHorizontal,
   SunMoon,
   TriangleAlert,
-  Users,
-  Wallet,
   WifiOff
 } from 'lucide-react'
 import { Fragment, useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
@@ -33,19 +28,22 @@ import { useIncomingConfirmacoes } from '@renderer/lib/confirmacoes'
 import { useIncomingTerms } from '@renderer/lib/terms'
 import { needsAttention, useBackup } from '@renderer/lib/backup'
 import { useConnection } from '@renderer/lib/connection'
-import { useReception } from '@renderer/lib/reception'
 import { isMac, SETTINGS_SHORTCUT, SIDEBAR_SHORTCUT } from '@renderer/lib/platform'
-import { SidebarContext, useSidebar } from '@renderer/lib/sidebar'
+import { SidebarEditor } from '@renderer/components/SidebarEditor'
+import {
+  NAV_GAP,
+  NAV_ITEM_HEIGHT,
+  navItemClass,
+  SIDEBAR_ICONS,
+  SidebarContext,
+  useAvailableItems,
+  useHomePath,
+  useSidebar
+} from '@renderer/lib/sidebar'
 import { useZoom } from '@renderer/lib/theme'
 import { useToast } from '@renderer/lib/toast'
 import { useWhatsAppEnabled, useWhatsAppUnread } from '@renderer/lib/whatsapp'
 import { cn } from '@renderer/lib/utils'
-
-const NAV_ITEM_HEIGHT = 34
-const NAV_GAP = 6
-
-const navItemClass =
-  'relative flex h-[34px] items-center gap-2.5 rounded-control px-3 text-[13px] font-medium text-ink-soft transition-colors hover:bg-fill hover:text-ink [&_svg]:size-4 [&_svg]:stroke-[1.75]'
 
 type NavItem = {
   to: string
@@ -63,13 +61,6 @@ function AlertDot(): React.JSX.Element {
     </>
   )
 }
-
-const NAV_ITEMS: NavItem[] = [
-  { to: '/agenda', label: 'Agenda', icon: <CalendarDays /> },
-  { to: '/pacientes', label: 'Pacientes', icon: <Users /> },
-  { to: '/financeiro', label: 'Financeiro', icon: <Wallet /> },
-  { to: '/clinica', label: 'Clínica', icon: <Building2 /> }
-]
 
 const WHATSAPP_PATH = '/whatsapp'
 
@@ -139,8 +130,8 @@ function SidebarBody(): React.JSX.Element {
   const attention = needsAttention(useBackup())
   const whatsapp = useWhatsAppEnabled()
   const unread = useWhatsAppUnread(whatsapp)
-  const reception = useReception()
-  const backTo = useRef('/agenda')
+  const visible = useAvailableItems().filter((item) => !item.hidden)
+  const backTo = useRef(useHomePath())
   useEffect(() => {
     if (!inSettings) backTo.current = pathname
   }, [inSettings, pathname])
@@ -173,15 +164,19 @@ function SidebarBody(): React.JSX.Element {
   return (
     <div key="principal" className="flex flex-1 animate-fade-in flex-col">
       <SidebarNav
-        items={[
-          ...(reception ? NAV_ITEMS.filter((item) => item.to !== '/clinica') : NAV_ITEMS),
-          ...(whatsapp
-            ? [{ to: WHATSAPP_PATH, label: 'WhatsApp', icon: <MessageCircle />, badge: unread }]
-            : [])
-        ]}
+        items={visible.map((item) => {
+          const Icon = SIDEBAR_ICONS[item.id]
+          return {
+            to: item.path,
+            label: item.label,
+            icon: <Icon />,
+            badge: item.id === 'whatsapp' ? unread : undefined
+          }
+        })}
         label="Principal"
         pathname={pathname}
       />
+      <SidebarEditor />
       <Link
         to={attention ? BACKUP_PATH : SETTINGS_PATH}
         title={`Configurações (${SETTINGS_SHORTCUT})`}

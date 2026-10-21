@@ -21,6 +21,7 @@ import type {
   UiPrefs
 } from './schemas'
 import { DEFAULT_COLORS, type TextSize } from './aparencia'
+import { DEFAULT_SIDEBAR_ITEMS } from './sidebar'
 import type { Commitment, CommitmentInput } from './commitments'
 import type {
   AvisosDaConfirmacao,
@@ -216,6 +217,7 @@ export interface AuriPrefs {
 
 export const DEFAULT_UI_PREFS: UiPrefs = {
   sidebarOpen: true,
+  sidebarItems: DEFAULT_SIDEBAR_ITEMS,
   theme: 'system',
   whatsapp: true,
   recepcao: false,
