@@ -668,14 +668,9 @@ export function AppointmentForm({
             </span>
           )}
         </div>
-        <div className="flex gap-2">
-          <Button variant="secondary" onClick={onClose}>
-            Cancelar
-          </Button>
-          <Button type="submit" loading={save.isPending}>
-            {editing ? 'Salvar alterações' : 'Agendar'}
-          </Button>
-        </div>
+        <Button type="submit" loading={save.isPending}>
+          {editing ? 'Salvar alterações' : 'Agendar'}
+        </Button>
       </DialogFooter>
       {editing && !signed && (
         <RescheduleDialog

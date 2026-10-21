@@ -233,14 +233,9 @@ function EtiquetaForm({
             {etiqueta.arquivado ? 'Reativar' : 'Arquivar'}
           </Button>
         )}
-        <div className="flex gap-2">
-          <Button variant="secondary" onClick={onClose}>
-            Cancelar
-          </Button>
-          <Button type="submit" loading={save.isPending}>
-            Salvar
-          </Button>
-        </div>
+        <Button type="submit" loading={save.isPending}>
+          Salvar
+        </Button>
       </DialogFooter>
     </form>
   )

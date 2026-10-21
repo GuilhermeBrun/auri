@@ -70,14 +70,9 @@ function Paste({
       </DialogBody>
       <DialogFooter>
         <span />
-        <div className="flex gap-2">
-          <Button variant="secondary" onClick={closeReceive}>
-            Cancelar
-          </Button>
-          <Button type="submit" disabled={!texto.trim()}>
-            Conferir
-          </Button>
-        </div>
+        <Button type="submit" disabled={!texto.trim()}>
+          Conferir
+        </Button>
       </DialogFooter>
     </form>
   )

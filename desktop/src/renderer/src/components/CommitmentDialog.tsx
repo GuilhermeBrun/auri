@@ -304,14 +304,9 @@ export function CommitmentForm({
               </Button>
             ))}
         </div>
-        <div className="flex gap-2">
-          <Button variant="secondary" onClick={onClose}>
-            Cancelar
-          </Button>
-          <Button type="submit" loading={save.isPending}>
-            {editing ? 'Salvar alterações' : 'Bloquear horário'}
-          </Button>
-        </div>
+        <Button type="submit" loading={save.isPending}>
+          {editing ? 'Salvar alterações' : 'Bloquear horário'}
+        </Button>
       </DialogFooter>
     </form>
   )

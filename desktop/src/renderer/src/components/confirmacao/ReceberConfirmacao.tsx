@@ -65,14 +65,9 @@ function Colar({
       </DialogBody>
       <DialogFooter>
         <span />
-        <div className="flex gap-2">
-          <Button variant="secondary" onClick={fecharResposta}>
-            Cancelar
-          </Button>
-          <Button type="submit" disabled={!texto.trim()}>
-            Aplicar
-          </Button>
-        </div>
+        <Button type="submit" disabled={!texto.trim()}>
+          Aplicar
+        </Button>
       </DialogFooter>
     </form>
   )

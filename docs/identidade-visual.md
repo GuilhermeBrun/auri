@@ -196,7 +196,7 @@ Grupos de opções (**‹ Hoje ›** e Dia/Semana/Mês) ficam num trilho `fill`,
 - `ui/time-field.tsx`: hora digitada com máscara ("9" vira 09, "930" vira 09:30) ou escolhida numa lista de 15 em 15 minutos do horário de funcionamento daquele dia (`horariosDoDia`, em `shared/agenda.ts`). Combobox: o foco fica no campo; Enter escolhe o destacado pelas setas, e sem setas só confirma o digitado.
 - `ui/select.tsx`: escolha entre poucas opções (Radix Select), no lugar do `<select>` nativo.
 - `ui/avatar.tsx`: monograma cinza em quadrado arredondado, com o raio proporcional ao tamanho.
-- `ui/dialog.tsx`: folha sólida em `raised`, escurecendo o resto da janela (`scrim`). Rodapé em faixa cinza, sem filete: atalho ⌘/Ctrl+↵ à esquerda, botões à direita.
+- `ui/dialog.tsx`: folha sólida em `raised`, escurecendo o resto da janela (`scrim`). Rodapé em faixa cinza, sem filete: atalho ⌘/Ctrl+↵ ou ações secundárias (Excluir, Remarcar) à esquerda, botão principal à direita. Sem "Cancelar" que só fecha: o X do cabeçalho e o Esc já fecham. "Cancelar" fica só onde não há X (confirmação no lugar, painel passageiro) ou onde ele desfaz algo.
 - `ui/empty.tsx`: `EmptyState` (título, explicação e próximo passo).
 - `ui/error.tsx`: `ErrorState` (ícone vermelho, título, texto técnico em cinza e "Tentar de novo"). Falha de tela inteira usa este componente, nunca um parágrafo solto. Não promete que os dados estão salvos: a falha de leitura não garante isso.
 - `ui/brand.tsx`: `AuriLogo` e `AuriSymbol`.

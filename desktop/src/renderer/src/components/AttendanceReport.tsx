@@ -134,14 +134,9 @@ function ReportForm({
       </DialogBody>
       <DialogFooter>
         <span />
-        <div className="flex gap-2">
-          <Button variant="secondary" onClick={onClose}>
-            Cancelar
-          </Button>
-          <Button type="submit" disabled={!valid} loading={report.isPending}>
-            <FileDown /> Gerar PDF
-          </Button>
-        </div>
+        <Button type="submit" disabled={!valid} loading={report.isPending}>
+          <FileDown /> Gerar PDF
+        </Button>
       </DialogFooter>
     </form>
   )

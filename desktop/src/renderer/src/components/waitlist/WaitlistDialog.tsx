@@ -242,14 +242,9 @@ function WaitlistForm({
             </ConfirmAction>
           )}
         </div>
-        <div className="flex gap-2">
-          <Button variant="secondary" onClick={onClose}>
-            Cancelar
-          </Button>
-          <Button type="submit" loading={save.isPending}>
-            {entry ? 'Salvar alterações' : 'Pôr na lista'}
-          </Button>
-        </div>
+        <Button type="submit" loading={save.isPending}>
+          {entry ? 'Salvar alterações' : 'Pôr na lista'}
+        </Button>
       </DialogFooter>
     </form>
   )
