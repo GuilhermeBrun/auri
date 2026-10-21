@@ -1,7 +1,8 @@
 import type { BackupFrequency } from '../../shared/api'
 
 export const CHANGE_DELAY_MS = 5 * 60_000
-export const CHANGE_SPACING_MS = 2 * 60 * 60_000
+export const CHANGE_SPACING_MS = 60 * 60_000
+export const QUIT_BACKUP_MS = 20_000
 export const RETRY_MS = 5 * 60_000
 export const STALE_MS = 3 * 24 * 60 * 60_000
 
@@ -37,6 +38,18 @@ export function isBackupDue(state: ScheduleState, now: Date): boolean {
         now.getTime() - last >= CHANGE_SPACING_MS
       )
     }
+    case 'manual':
+      return false
+  }
+}
+
+export function isBackupDueOnQuit(state: ScheduleState, now: Date): boolean {
+  const last = time(state.lastSuccessAt)
+  switch (state.frequency) {
+    case 'daily':
+      return last < lastDailySlot(now, state.dailyTime).getTime()
+    case 'change':
+      return time(state.lastChangeAt) > last
     case 'manual':
       return false
   }

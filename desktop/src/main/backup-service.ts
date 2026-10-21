@@ -33,7 +33,7 @@ import {
   WrongSecretError
 } from './backup/crypto'
 import { installProvider, openProvider } from './backup/installer'
-import { isBackupDue, isStale } from './backup/scheduler'
+import { isBackupDue, isBackupDueOnQuit, isStale, type ScheduleState } from './backup/scheduler'
 import { createBackupStore, type BackupStore } from './backup/store'
 import type { Connection } from './connection'
 
@@ -51,6 +51,8 @@ export type BackupService = {
   info(): BackupInfo
   refresh(): void
   dataWritten(): void
+  pendingOnQuit(): boolean
+  backupBeforeQuit(limitMs: number): Promise<void>
   setup(destination: BackupDestination, password: string): Promise<{ recoveryCode: string }>
   setDestination(destination: BackupDestination): Promise<BackupInfo>
   setFrequency(frequency: BackupFrequency, dailyTime: string): Promise<BackupInfo>
@@ -292,22 +294,22 @@ export function createBackupService(options: {
     })
   }
 
+  function schedule(s: BackupStore): ScheduleState {
+    return {
+      frequency: s.frequency,
+      dailyTime: s.dailyTime,
+      lastSuccessAt: s.lastSuccessAt,
+      lastChangeAt: s.lastChangeAt,
+      lastErrorAt: s.lastError?.at ?? null
+    }
+  }
+
   async function tick(): Promise<void> {
     const s = store.get()
     if (!available() || !configured(s) || running > 0) return
     await checkDestination()
     if (problem) return
-    const due = isBackupDue(
-      {
-        frequency: s.frequency,
-        dailyTime: s.dailyTime,
-        lastSuccessAt: s.lastSuccessAt,
-        lastChangeAt: s.lastChangeAt,
-        lastErrorAt: s.lastError?.at ?? null
-      },
-      new Date()
-    )
-    if (due) void backup()
+    if (isBackupDue(schedule(s), new Date())) void backup()
   }
 
   const safeTick = (): void => {
@@ -392,6 +394,28 @@ export function createBackupService(options: {
     dataWritten(): void {
       if (store.get().frequency !== 'change') return
       store.update({ lastChangeAt: new Date().toISOString() })
+    },
+
+    pendingOnQuit() {
+      const s = store.get()
+      if (!available() || !configured(s) || problem) return false
+      if (!options.connection.database() || !existsSync(s.destination!.folder)) return false
+      return isBackupDueOnQuit(schedule(s), new Date())
+    },
+
+    async backupBeforeQuit(limitMs) {
+      let timer: NodeJS.Timeout | undefined
+      const limit = new Promise<void>((resolve) => {
+        timer = setTimeout(() => {
+          console.error('[cópia] ao sair: tempo esgotado')
+          resolve()
+        }, limitMs)
+      })
+      try {
+        await Promise.race([backup(), limit])
+      } finally {
+        clearTimeout(timer)
+      }
     },
 
     async setup(destination, password) {

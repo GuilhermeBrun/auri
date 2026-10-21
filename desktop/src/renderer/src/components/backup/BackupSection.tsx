@@ -47,7 +47,7 @@ function frequencyText(frequency: BackupFrequency, time: string): string {
     case 'daily':
       return `Uma cópia por dia às ${time}. Se o computador estiver desligado nesse horário, a cópia sai assim que o Auri abrir.`
     case 'change':
-      return 'Uma cópia alguns minutos depois de alterar pacientes ou a agenda, no máximo uma a cada 2 horas.'
+      return 'Uma cópia alguns minutos depois de alterar pacientes ou a agenda, no máximo uma por hora, e outra ao fechar o Auri.'
     case 'manual':
       return 'Só quando você clicar em “Fazer cópia agora”. O Auri avisa depois de 3 dias sem cópia.'
   }
