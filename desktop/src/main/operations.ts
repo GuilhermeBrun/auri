@@ -24,7 +24,7 @@ import {
   type WaitlistClose,
   type WaitlistInput
 } from '../shared/waitlist'
-import { etiquetaInputSchema, tipoInputSchema } from '../shared/tipos'
+import { tipoInputSchema } from '../shared/tipos'
 import {
   billingInputSchema,
   chargeInputSchema,
@@ -79,14 +79,7 @@ import {
   signedTermRecord,
   termLink
 } from './db/terms'
-import {
-  archiveEtiqueta,
-  archiveTipo,
-  listEtiquetas,
-  listTipos,
-  saveEtiqueta,
-  saveTipo
-} from './db/tipos'
+import { archiveTipo, listTipos, saveTipo } from './db/tipos'
 import {
   createAppointment,
   moveAppointment,
@@ -289,21 +282,10 @@ const OPERATIONS: Record<string, Operation> = {
   'tipos:save': {
     run: (db, [id, input]) =>
       saveTipo(db, idSchema.nullable().parse(id), tipoInputSchema.parse(input)),
-    changes: ['types', 'appointments']
+    changes: ['types', 'appointments', 'commitments']
   },
   'tipos:archive': {
     run: (db, [id, arquivado]) => archiveTipo(db, idSchema.parse(id), z.boolean().parse(arquivado)),
-    changes: ['types']
-  },
-  'etiquetas:list': { run: (db) => listEtiquetas(db) },
-  'etiquetas:save': {
-    run: (db, [id, input]) =>
-      saveEtiqueta(db, idSchema.nullable().parse(id), etiquetaInputSchema.parse(input)),
-    changes: ['types', 'appointments']
-  },
-  'etiquetas:archive': {
-    run: (db, [id, arquivado]) =>
-      archiveEtiqueta(db, idSchema.parse(id), z.boolean().parse(arquivado)),
     changes: ['types']
   },
 

@@ -5,7 +5,7 @@ import { readFile, stat, writeFile } from 'fs/promises'
 import { basename, join } from 'path'
 import type { AuriTransfer } from '../shared/api'
 import type { Clinic, TermModel } from '../shared/schemas'
-import type { Etiqueta, TipoAtendimento } from '../shared/tipos'
+import type { TipoAtendimento } from '../shared/tipos'
 import type { BackupService } from './backup-service'
 import type { Connection } from './connection'
 import type { PrefsStore } from './prefs'
@@ -14,7 +14,6 @@ import {
   describeChanges,
   parseSettingsFile,
   SETTINGS_EXTENSION,
-  newEtiquetas,
   newTermModels,
   newTipos,
   type SettingsFile,
@@ -42,18 +41,15 @@ export function createTransferService(options: {
     clinic: Clinic
     termModels: TermModel[]
     tipos: TipoAtendimento[]
-    etiquetas: Etiqueta[]
   }> {
     try {
       const clinic = await call<Clinic>('clinic:get')
       const models = await call<TermModel[]>('terms:models')
       const tipos = await call<TipoAtendimento[]>('tipos:list')
-      const etiquetas = await call<Etiqueta[]>('etiquetas:list')
       return {
         clinic,
         termModels: models.filter((model) => !model.arquivado),
-        tipos: tipos.filter((tipo) => !tipo.arquivado),
-        etiquetas: etiquetas.filter((etiqueta) => !etiqueta.arquivado)
+        tipos: tipos.filter((tipo) => !tipo.arquivado)
       }
     } catch {
       throw new Error(UNREACHABLE)
@@ -63,7 +59,7 @@ export function createTransferService(options: {
   async function snapshot(): Promise<SettingsSnapshot> {
     const c = options.connection.info()
     const b = options.backup.info()
-    const { clinic, termModels, tipos, etiquetas } = await clinicData()
+    const { clinic, termModels, tipos } = await clinicData()
     const { updated_at: _, ...clinicFields } = clinic
     return {
       appearance: options.prefs.get(),
@@ -82,8 +78,7 @@ export function createTransferService(options: {
       },
       clinic: clinicFields,
       termModels,
-      tipos,
-      etiquetas
+      tipos
     }
   }
 
@@ -161,7 +156,7 @@ export function createTransferService(options: {
         )
       }
       if (b.kind && !current.configured) options.backup.suggest(b.kind)
-      const { clinic, termModels, tipos, etiquetas } = await clinicData()
+      const { clinic, termModels, tipos } = await clinicData()
       if (Object.keys(settings.clinic).length > 0) {
         const { updated_at: expected, ...fields } = clinic
         await call('clinic:save', [{ ...fields, ...settings.clinic }, expected])
@@ -170,9 +165,6 @@ export function createTransferService(options: {
         await call('terms:saveModel', [null, model])
       }
       for (const tipo of newTipos(tipos, settings)) await call('tipos:save', [null, tipo])
-      for (const etiqueta of newEtiquetas(etiquetas, settings)) {
-        await call('etiquetas:save', [null, etiqueta])
-      }
     }
   }
 }

@@ -36,7 +36,7 @@ import type {
   WaitlistEntry,
   WaitlistInput
 } from './waitlist'
-import type { Etiqueta, EtiquetaInput, TipoAtendimento, TipoInput } from './tipos'
+import type { TipoAtendimento, TipoInput } from './tipos'
 import type {
   Billing,
   BillingInput,
@@ -139,11 +139,6 @@ export interface AuriApi {
     list(): Promise<TipoAtendimento[]>
     save(id: number | null, input: TipoInput): Promise<TipoAtendimento>
     archive(id: number, arquivado: boolean): Promise<TipoAtendimento>
-  }
-  etiquetas: {
-    list(): Promise<Etiqueta[]>
-    save(id: number | null, input: EtiquetaInput): Promise<Etiqueta>
-    archive(id: number, arquivado: boolean): Promise<Etiqueta>
   }
   waitlist: {
     list(): Promise<WaitlistEntry[]>

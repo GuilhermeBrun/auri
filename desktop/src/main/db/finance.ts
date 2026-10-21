@@ -882,7 +882,8 @@ function packageUses(db: Db, patientId: number): PackageUseEntry[] {
 function pendingSessions(db: Db, patientId: number, desde: string): PendingSession[] {
   return db
     .prepare(
-      `SELECT a.id AS appointment_id, a.inicio, t.nome AS tipo_nome, t.categoria
+      `SELECT a.id AS appointment_id, a.inicio, t.nome AS tipo_nome,
+              coalesce(a.categoria, t.categoria) AS categoria
        FROM appointments a
        ${TIPO_JOIN}
        WHERE a.patient_id = ? AND a.presenca = 'presente' AND substr(a.inicio, 1, 10) >= ?

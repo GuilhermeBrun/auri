@@ -1,4 +1,4 @@
-import { commitmentName, type CommitmentTipo } from '../../shared/commitments'
+import { commitmentName } from '../../shared/commitments'
 import { formatTime, parseIsoLocalDateTime } from '../../shared/dates'
 import type { Intervalo } from '../../shared/encaixe'
 import type { Db } from './connection'
@@ -7,20 +7,20 @@ type Ignore = { appointment?: number | null; commitment?: number | null }
 
 type BusyRow = Intervalo & {
   patient_nome: string | null
-  tipo: CommitmentTipo | null
+  etiqueta_nome: string | null
   titulo: string | null
 }
 
 export function busyIn(db: Db, de: string, ate: string, ignore: Ignore = {}): BusyRow[] {
   return db
     .prepare(
-      `SELECT a.inicio, a.fim, p.nome AS patient_nome, NULL AS tipo, NULL AS titulo
+      `SELECT a.inicio, a.fim, p.nome AS patient_nome, NULL AS etiqueta_nome, NULL AS titulo
        FROM appointments a JOIN patients p ON p.id = a.patient_id
        WHERE a.inicio < @ate AND a.fim > @de AND a.id IS NOT @appointment
          AND a.presenca IS NOT 'desmarcou'
        UNION ALL
-       SELECT c.inicio, c.fim, NULL, c.tipo, c.titulo
-       FROM commitments c
+       SELECT c.inicio, c.fim, NULL, e.nome, c.titulo
+       FROM commitments c JOIN appointment_types e ON e.id = c.etiqueta_id
        WHERE c.inicio < @ate AND c.fim > @de AND c.id IS NOT @commitment
        ORDER BY 1, 3`
     )
@@ -46,6 +46,9 @@ export function assertAgendaFree(db: Db, slot: Intervalo, ignore: Ignore = {}): 
   if (first.patient_nome !== null) {
     throw new Error(`Esse horário já está ocupado: ${first.patient_nome}, ${hours}${more}.`)
   }
-  const name = commitmentName({ tipo: first.tipo!, titulo: first.titulo ?? '' })
+  const name = commitmentName({
+    etiqueta_nome: first.etiqueta_nome ?? '',
+    titulo: first.titulo ?? ''
+  })
   throw new Error(`Esse horário está bloqueado: ${name}, ${hours}${more}.`)
 }

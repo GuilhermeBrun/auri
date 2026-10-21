@@ -1,57 +1,102 @@
 import { z } from 'zod'
 
-export const CATEGORIAS = ['sessao', 'avaliacao', 'exame'] as const
-export type Categoria = (typeof CATEGORIAS)[number]
+export const CATEGORIAS_PRINCIPAIS = ['sessao', 'avaliacao', 'exame'] as const
+export type Categoria = (typeof CATEGORIAS_PRINCIPAIS)[number]
 
-export const CATEGORIA_LABELS: Record<Categoria, string> = {
+export const CATEGORIAS = [...CATEGORIAS_PRINCIPAIS, 'compromisso', 'marca'] as const
+export type CategoriaEtiqueta = (typeof CATEGORIAS)[number]
+
+export const CATEGORIA_LABELS: Record<CategoriaEtiqueta, string> = {
   sessao: 'Sessão',
   avaliacao: 'Avaliação',
-  exame: 'Exame'
+  exame: 'Exame',
+  compromisso: 'Compromisso',
+  marca: 'Marca'
 }
 
-export const CORES = ['grafite', 'ardosia', 'azul', 'violeta', 'rosa', 'areia'] as const
-export type Cor = (typeof CORES)[number]
+export function ehPrincipal(categoria: CategoriaEtiqueta): categoria is Categoria {
+  return (CATEGORIAS_PRINCIPAIS as readonly string[]).includes(categoria)
+}
 
-export const COR_LABELS: Record<Cor, string> = {
-  grafite: 'Grafite',
-  ardosia: 'Ardósia',
-  azul: 'Azul',
-  violeta: 'Violeta',
-  rosa: 'Rosa',
-  areia: 'Areia'
+export type Cor = string
+
+export const COR_HEX = /^#[0-9a-f]{6}$/i
+
+export const corSchema = z
+  .string()
+  .trim()
+  .regex(COR_HEX, 'Escolha uma cor válida')
+  .transform((cor) => cor.toLowerCase())
+
+export const CORES_PRONTAS = [
+  { cor: '#e11d48', nome: 'Vermelho' },
+  { cor: '#ea580c', nome: 'Laranja' },
+  { cor: '#d97706', nome: 'Âmbar' },
+  { cor: '#eab308', nome: 'Amarelo' },
+  { cor: '#16a34a', nome: 'Verde' },
+  { cor: '#0d9488', nome: 'Verde-água' },
+  { cor: '#0ea5e9', nome: 'Céu' },
+  { cor: '#2563eb', nome: 'Azul' },
+  { cor: '#4f46e5', nome: 'Índigo' },
+  { cor: '#7c3aed', nome: 'Violeta' },
+  { cor: '#db2777', nome: 'Rosa' },
+  { cor: '#6b7280', nome: 'Grafite' }
+] as const
+
+export const COR_ANTIGA: Record<string, string> = {
+  grafite: '#6b7280',
+  ardosia: '#0ea5e9',
+  azul: '#2563eb',
+  violeta: '#7c3aed',
+  rosa: '#db2777',
+  areia: '#d97706'
+}
+
+export const COR_PADRAO: Record<CategoriaEtiqueta, string> = {
+  sessao: '#6b7280',
+  avaliacao: '#2563eb',
+  exame: '#7c3aed',
+  compromisso: '#0d9488',
+  marca: '#0ea5e9'
 }
 
 export const DURACOES = [15, 30, 45, 60, 75, 90, 120] as const
 
+export const SISTEMAS = ['reserva'] as const
+export type Sistema = (typeof SISTEMAS)[number]
+
 const nome = (max: number, vazio: string): z.ZodString =>
   z.string().trim().min(1, vazio).max(max, `Use no máximo ${max} caracteres`)
 
-export const tipoInputSchema = z.object({
-  nome: nome(40, 'Dê um nome ao tipo'),
-  categoria: z.enum(CATEGORIAS),
-  cor: z.enum(CORES),
-  duracao: z
-    .number()
-    .int()
-    .min(15, 'Use pelo menos 15 minutos')
-    .max(240, 'Use no máximo 240 minutos')
-    .multipleOf(15, 'Use múltiplos de 15 minutos')
-})
+export const duracaoEtiquetaSchema = z
+  .number()
+  .int()
+  .min(15, 'Use pelo menos 15 minutos')
+  .max(240, 'Use no máximo 240 minutos')
+  .multipleOf(15, 'Use múltiplos de 15 minutos')
 
-export type TipoInput = z.infer<typeof tipoInputSchema>
+export const tipoInputSchema = z
+  .object({
+    nome: nome(40, 'Dê um nome à etiqueta'),
+    categoria: z.enum(CATEGORIAS),
+    cor: corSchema,
+    duracao: duracaoEtiquetaSchema.nullable()
+  })
+  .transform((t) => ({ ...t, duracao: t.categoria === 'marca' ? null : t.duracao }))
+  .refine((t) => t.categoria === 'marca' || t.duracao !== null, {
+    message: 'Escolha a duração padrão',
+    path: ['duracao']
+  })
 
-export type TipoAtendimento = TipoInput & { id: number; arquivado: boolean }
+export type TipoInput = z.input<typeof tipoInputSchema>
 
-export const etiquetaInputSchema = z.object({
-  nome: nome(30, 'Dê um nome à etiqueta'),
-  cor: z.enum(CORES)
-})
+export type TipoAtendimento = z.output<typeof tipoInputSchema> & {
+  id: number
+  sistema: Sistema | null
+  arquivado: boolean
+}
 
-export type EtiquetaInput = z.infer<typeof etiquetaInputSchema>
-
-export type Etiqueta = EtiquetaInput & { id: number; arquivado: boolean }
-
-export type EtiquetaResumo = Pick<Etiqueta, 'id' | 'nome' | 'cor'>
+export type EtiquetaResumo = { id: number; nome: string; cor: Cor }
 
 export function consomePacote(categoria: Categoria): boolean {
   return categoria === 'sessao'
