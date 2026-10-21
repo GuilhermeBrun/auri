@@ -45,7 +45,7 @@ import { getAppointment, listAppointments } from './appointments'
 import { busyIn } from './busy'
 import { getClinic, getFuncionamento } from './clinic'
 import type { Db } from './connection'
-import { cobrarFalta, estornar, getBilling } from './finance'
+import { billingFor, cobrarFalta, estornar } from './finance'
 import { getPatient } from './patients'
 
 const NOW = "strftime('%Y-%m-%dT%H:%M:%fZ', 'now')"
@@ -218,7 +218,7 @@ export function enviarConfirmacao(
         dur: differenceInMinutes(parseIsoLocalDateTime(a.fim), inicio),
         prof: shortName(clinic.profissional).slice(0, 120)
       },
-      cob: getBilling(db, patient.id)?.service_id != null
+      cob: billingFor(db, patient.id)?.service_id != null
     })
     const codigo = novoCodigo()
     const chave = chaveDoCodigo(codigo)

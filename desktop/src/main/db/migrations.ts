@@ -1037,7 +1037,13 @@ ${onlyVoid('finance_payments', ['id', 'patient_id', 'data', 'valor_centavos', 'f
       UPDATE waitlist_entries SET tipo_id = ${padrao} WHERE id = NEW.id;
     END;
     `)
-  }
+  },
+  `
+  ALTER TABLE finance_services ADD COLUMN padrao_desde TEXT;
+
+  CREATE UNIQUE INDEX finance_services_um_padrao
+    ON finance_services ((padrao_desde IS NOT NULL)) WHERE padrao_desde IS NOT NULL;
+  `
 ]
 
 export class DatabaseTooNewError extends Error {

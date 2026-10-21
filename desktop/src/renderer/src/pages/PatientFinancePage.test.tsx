@@ -54,7 +54,8 @@ const finance: PatientFinance = {
     updated_at: '2026-10-01T12:00:00.000Z',
     service: { nome: 'Sessão', valor_centavos: 19000 },
     insurer: null,
-    plan: { nome: '8 sessões', sessoes: 8, valor_centavos: 152000 }
+    plan: { nome: '8 sessões', sessoes: 8, valor_centavos: 152000 },
+    padrao: false
   },
   saldo_centavos: 38000,
   convenios: [],
@@ -141,7 +142,10 @@ const finance: PatientFinance = {
 }
 
 const catalog = {
-  services: [{ id: 1, nome: 'Sessão', valor_centavos: 19000, arquivado: false }],
+  services: [
+    { id: 1, nome: 'Sessão', valor_centavos: 19000, arquivado: false, padrao: true },
+    { id: 2, nome: 'Sessão social', valor_centavos: 9000, arquivado: false, padrao: false }
+  ],
   plans: [
     {
       id: 3,
@@ -338,6 +342,45 @@ describe('aba Financeiro da ficha', () => {
         expect.objectContaining({ forma: 'pacote', plan_id: 3, service_id: 1 }),
         undefined,
         { inicio: expect.any(String), computador: 'Este computador' }
+      )
+    )
+  })
+
+  it('sem forma de cobrança mostra o valor padrão e troca pelo do paciente', async () => {
+    const toast = vi.fn()
+    api.finance.catalog.mockResolvedValue(catalog)
+    api.finance.patient.mockResolvedValue({
+      ...finance,
+      billing: {
+        forma: 'particular',
+        service_id: 1,
+        insurer_id: null,
+        plan_id: null,
+        carteirinha: '',
+        desde: '2026-10-05',
+        updated_at: '',
+        service: { nome: 'Sessão', valor_centavos: 19000 },
+        insurer: null,
+        plan: null,
+        padrao: true
+      },
+      packages: [],
+      pendentes: []
+    })
+    renderPage(toast)
+    expect(await screen.findByText('Particular por sessão')).toBeTruthy()
+    expect(screen.getByText('Sessão R$ 190,00 · valor padrão')).toBeTruthy()
+    await userEvent.click(screen.getByRole('button', { name: 'Alterar' }))
+    const dialog = await screen.findByRole('dialog')
+    await userEvent.click(within(dialog).getByLabelText('Valor da sessão'))
+    await userEvent.click(await screen.findByRole('option', { name: 'Sessão social · R$ 90,00' }))
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Salvar' }))
+    await waitFor(() =>
+      expect(api.finance.setBilling).toHaveBeenCalledWith(
+        1,
+        expect.objectContaining({ forma: 'particular', service_id: 2, desde: '2026-10-05' }),
+        '',
+        null
       )
     )
   })

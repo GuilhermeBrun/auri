@@ -163,7 +163,7 @@ function billingText(billing: Billing): string {
   const service = billing.service
     ? `${billing.service.nome} ${formatBRL(billing.service.valor_centavos)}`
     : ''
-  if (billing.forma !== 'pacote') return service
+  if (billing.forma !== 'pacote') return billing.padrao ? `${service} · valor padrão` : service
   const plan = billing.plan ? `${formatBRL(billing.plan.valor_centavos)} · ` : ''
   return `${plan}Sessão fora do pacote: ${service}`
 }

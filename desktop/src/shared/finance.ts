@@ -42,7 +42,8 @@ export type MotivoCobranca = (typeof MOTIVOS_COBRANCA)[number]
 
 export const serviceInputSchema = z.object({
   nome: text(80).min(1, 'Dê um nome ao serviço'),
-  valor_centavos: centavos
+  valor_centavos: centavos,
+  padrao: z.boolean().optional()
 })
 export type ServiceInput = z.infer<typeof serviceInputSchema>
 
@@ -125,7 +126,11 @@ export const financeRangeSchema = z
 
 export type Estorno = { em: string; motivo: string; computador: string } | null
 
-export type FinanceService = ServiceInput & { id: number; arquivado: boolean }
+export type FinanceService = Omit<ServiceInput, 'padrao'> & {
+  id: number
+  arquivado: boolean
+  padrao: boolean
+}
 export type FinancePlan = PlanInput & { id: number; arquivado: boolean }
 export type FinanceInsurer = InsurerInput & { id: number; arquivado: boolean }
 
@@ -140,6 +145,7 @@ export type Billing = Omit<BillingInput, 'plan_id'> & {
   plan: { nome: string; sessoes: number; valor_centavos: number } | null
   service: { nome: string; valor_centavos: number } | null
   insurer: { nome: string; valor_sessao_centavos: number } | null
+  padrao: boolean
   updated_at: string
 }
 
