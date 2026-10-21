@@ -153,6 +153,18 @@ describe('confirmações do próximo dia', () => {
     )
   })
 
+  it('se a cópia falhou, não diz que copiou e manda usar Copiar mensagem', async () => {
+    confirmacoes.lista.mockResolvedValue(lista())
+    terms.openWhatsApp.mockResolvedValue('sem-copia')
+    const toast = vi.fn()
+    renderRoute('/', '/', <ConfirmacoesDialog open onClose={() => {}} />, toast)
+    await userEvent.click(await screen.findByRole('button', { name: 'Enviar a próxima' }))
+    await waitFor(() => expect(toast).toHaveBeenCalled())
+    const { description } = toast.mock.calls[0][0] as { description: string }
+    expect(description).toContain('não foi copiada: use "Copiar mensagem"')
+    expect(description).not.toContain('está copiada')
+  })
+
   it('fora da janela, explica e não deixa enviar', async () => {
     confirmacoes.lista.mockResolvedValue(
       lista({

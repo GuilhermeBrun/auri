@@ -228,7 +228,7 @@ export const DEFAULT_UI_PREFS: UiPrefs = {
 
 export type WhatsAppBounds = { x: number; y: number; width: number; height: number }
 
-export type WhatsAppEnvio = 'pronta' | 'copiada'
+export type WhatsAppEnvio = 'pronta' | 'copiada' | 'sem-copia'
 
 export interface AuriWhatsApp {
   show(bounds: WhatsAppBounds): Promise<void>

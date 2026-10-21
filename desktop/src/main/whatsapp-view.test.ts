@@ -187,7 +187,7 @@ describe('WhatsApp dentro do Auri', () => {
     expect(view.visible).toBe(true)
     whatsapp.hide()
     expect(view.visible).toBe(false)
-    expect(whatsapp.open('5565900000000', 'Oi')).toBe(true)
+    expect(await whatsapp.open('5565900000000', 'Oi')).toBe('copiada')
     expect(mocks.views).toHaveLength(1)
     expect(onOpen).toHaveBeenCalled()
     await vi.waitFor(() =>
@@ -209,7 +209,7 @@ describe('WhatsApp dentro do Auri', () => {
         .mockResolvedValueOnce(false)
         .mockResolvedValueOnce(false)
         .mockResolvedValueOnce(true)
-      whatsapp.open('5565900000000', message)
+      void whatsapp.open('5565900000000', message)
       expect(mocks.writeText).toHaveBeenCalledExactlyOnceWith(message)
       await vi.advanceTimersByTimeAsync(0)
       expect(view.webContents.loadURL).toHaveBeenLastCalledWith(
@@ -225,7 +225,7 @@ describe('WhatsApp dentro do Auri', () => {
       await vi.advanceTimersByTimeAsync(500)
       expect(mocks.clipboardText.value).toBe('')
       view.webContents.executeJavaScript.mockResolvedValue(true)
-      whatsapp.open('5565900000000', message)
+      void whatsapp.open('5565900000000', message)
       await vi.advanceTimersByTimeAsync(0)
       mocks.clipboardText.value = 'a pessoa copiou outra coisa depois'
       await vi.advanceTimersByTimeAsync(500)
@@ -235,20 +235,19 @@ describe('WhatsApp dentro do Auri', () => {
     }
   })
 
-  it('abre a conversa mesmo se a mensagem não foi copiada, e aí não cola nada', async () => {
+  it('sem conseguir copiar, abre a conversa, não tenta colar e avisa que não copiou', async () => {
     const { whatsapp, main } = setup()
     main.loaded()
     const [view] = mocks.views
     const error = vi.spyOn(console, 'error').mockImplementation(() => undefined)
-    mocks.clipboardText.value = 'outra coisa'
     mocks.writeText.mockRejectedValueOnce(new Error('área ocupada'))
-    whatsapp.open('5565900000000', 'Oi')
+    expect(await whatsapp.open('5565900000000', 'Oi')).toBe('sem-copia')
     await vi.waitFor(() =>
       expect(view.webContents.loadURL).toHaveBeenLastCalledWith(
         'https://web.whatsapp.com/send?phone=5565900000000'
       )
     )
-    await vi.waitFor(() => expect(view.webContents.executeJavaScript).toHaveBeenCalled())
+    expect(view.webContents.executeJavaScript).not.toHaveBeenCalled()
     expect(view.webContents.paste).not.toHaveBeenCalled()
     error.mockRestore()
   })
@@ -260,9 +259,9 @@ describe('WhatsApp dentro do Auri', () => {
       main.loaded()
       const [view] = mocks.views
       view.webContents.executeJavaScript.mockResolvedValue(false)
-      whatsapp.open('5565900000000', 'Primeira')
+      void whatsapp.open('5565900000000', 'Primeira')
       await vi.advanceTimersByTimeAsync(500)
-      whatsapp.open('5565911111111', 'Segunda')
+      void whatsapp.open('5565911111111', 'Segunda')
       view.webContents.executeJavaScript.mockResolvedValue(true)
       await vi.advanceTimersByTimeAsync(0)
       expect(view.webContents.paste).toHaveBeenCalledTimes(1)
@@ -270,11 +269,11 @@ describe('WhatsApp dentro do Auri', () => {
       expect(view.webContents.paste).toHaveBeenCalledTimes(1)
       view.webContents.executeJavaScript.mockClear()
       view.webContents.executeJavaScript.mockResolvedValue(false)
-      whatsapp.open('5565900000000', 'Terceira')
+      void whatsapp.open('5565900000000', 'Terceira')
       await vi.advanceTimersByTimeAsync(60_000)
       expect(view.webContents.executeJavaScript).toHaveBeenCalledTimes(60)
       expect(view.webContents.paste).toHaveBeenCalledTimes(1)
-      whatsapp.open('5565900000000', 'Quarta')
+      void whatsapp.open('5565900000000', 'Quarta')
       mocks.clipboardText.value = 'outra coisa que a pessoa copiou'
       view.webContents.executeJavaScript.mockResolvedValue(true)
       await vi.advanceTimersByTimeAsync(1000)
@@ -303,11 +302,11 @@ describe('WhatsApp dentro do Auri', () => {
     expect(onUnread.mock.calls).toEqual([[2], [0]])
   })
 
-  it('desligado não carrega nada e o envio fica para fora do Auri', () => {
+  it('desligado não carrega nada e o envio fica para fora do Auri', async () => {
     const { whatsapp, main } = setup(false)
     main.loaded()
     expect(mocks.views).toHaveLength(0)
-    expect(whatsapp.open('5565900000000', 'Oi')).toBe(false)
+    expect(await whatsapp.open('5565900000000', 'Oi')).toBeNull()
     whatsapp.show({ x: 0, y: 0, width: 10, height: 10 })
     expect(mocks.views).toHaveLength(0)
   })
@@ -325,7 +324,7 @@ describe('WhatsApp dentro do Auri', () => {
     expect(mocks.views).toHaveLength(2)
   })
 
-  it('escondido na barra lateral fica parado sem sair da conta; mostrar carrega de novo', () => {
+  it('escondido na barra lateral fica parado sem sair da conta; mostrar carrega de novo', async () => {
     const { whatsapp, main } = setup()
     main.loaded()
     const [view] = mocks.views
@@ -335,7 +334,7 @@ describe('WhatsApp dentro do Auri', () => {
     expect(main.children).toEqual([])
     expect(mocks.kill).toHaveBeenCalledWith(12)
     expect(mocks.fakeSession.clearStorageData).not.toHaveBeenCalled()
-    expect(whatsapp.open('5565900000000', 'Oi')).toBe(false)
+    expect(await whatsapp.open('5565900000000', 'Oi')).toBeNull()
     whatsapp.show({ x: 0, y: 0, width: 10, height: 10 })
     expect(mocks.views).toHaveLength(1)
     whatsapp.setPaused(false)
@@ -409,11 +408,11 @@ describe('WhatsApp dentro do Auri', () => {
     expect(mocks.openExternal).toHaveBeenCalledTimes(1)
   })
 
-  it('a vista morre com a janela e volta quando outra janela abre', () => {
+  it('a vista morre com a janela e volta quando outra janela abre', async () => {
     const { whatsapp, main } = setup()
     main.loaded()
     main.close()
-    expect(whatsapp.open('5565900000000', 'Oi')).toBe(false)
+    expect(await whatsapp.open('5565900000000', 'Oi')).toBeNull()
     const other = fakeWindow()
     whatsapp.attach(other.window as never)
     other.loaded()

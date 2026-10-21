@@ -4,7 +4,12 @@ import type { WhatsAppEnvio } from '@shared/api'
 
 const whatsapp = prefsField('whatsapp')
 
-export const COLAR_NO_WHATSAPP = 'Se a mensagem não aparecer na conversa, cole: ela está copiada.'
+export function avisoDoWhatsApp(aberto: WhatsAppEnvio): string | null {
+  if (aberto === 'copiada') return 'Se a mensagem não aparecer na conversa, cole: ela está copiada.'
+  if (aberto === 'sem-copia')
+    return 'A mensagem não foi copiada: use "Copiar mensagem" e cole na conversa.'
+  return null
+}
 
 export async function abrirOuCopiar(
   via: 'whatsapp' | 'copiar',

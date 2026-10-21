@@ -22,7 +22,7 @@ import { useConnection } from '@renderer/lib/connection'
 import { clinicQuery } from '@renderer/lib/queries'
 import { useReception } from '@renderer/lib/reception'
 import { useToast } from '@renderer/lib/toast'
-import { abrirOuCopiar, COLAR_NO_WHATSAPP } from '@renderer/lib/whatsapp'
+import { abrirOuCopiar, avisoDoWhatsApp } from '@renderer/lib/whatsapp'
 
 const OUTRA = 'outra'
 
@@ -121,8 +121,7 @@ function SendForm({
           ? { title: 'Mensagem copiada' }
           : {
               title: 'Termo enviado',
-              description:
-                aberto === 'pronta' ? 'Confira o WhatsApp e toque em enviar.' : COLAR_NO_WHATSAPP
+              description: avisoDoWhatsApp(aberto) ?? 'Confira o WhatsApp e toque em enviar.'
             }
       )
       onClose()

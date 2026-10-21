@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useComputador } from '@renderer/lib/finance'
 import { horaDe } from '@renderer/lib/confirmacoes'
 import { useToast } from '@renderer/lib/toast'
-import { abrirOuCopiar, COLAR_NO_WHATSAPP } from '@renderer/lib/whatsapp'
+import { abrirOuCopiar, avisoDoWhatsApp } from '@renderer/lib/whatsapp'
 
 export type Via = 'whatsapp' | 'copiar'
 
@@ -23,7 +23,7 @@ export function useEnviarConfirmacao() {
           ? { title: 'Mensagem copiada', description: prazo }
           : {
               title: 'Confira o WhatsApp e toque em enviar',
-              description: aberto === 'pronta' ? prazo : `${COLAR_NO_WHATSAPP} ${prazo}`
+              description: [avisoDoWhatsApp(aberto), prazo].filter(Boolean).join(' ')
             }
       )
     }

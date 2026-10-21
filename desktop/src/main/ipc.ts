@@ -202,14 +202,18 @@ export function registerIpc({
       .regex(/^\d{10,15}$/)
       .parse(numero)
     const message = z.string().max(6000).parse(texto)
-    if (whatsapp.open(phone, message)) return 'copiada'
+    const inside = await whatsapp.open(phone, message)
+    if (inside) return inside
     if (app.getApplicationNameForProtocol('whatsapp://') !== '') {
       await shell.openExternal(`whatsapp://send?phone=${phone}&text=${encodeURIComponent(message)}`)
       return 'pronta'
     }
-    await clipboard.writeText(message)
+    const copied = await clipboard.writeText(message).then(
+      () => true,
+      () => false
+    )
     await shell.openExternal(whatsAppUrl(phone))
-    return 'copiada'
+    return copied ? 'copiada' : 'sem-copia'
   })
   const bounds = z.object({
     x: z.number().finite(),

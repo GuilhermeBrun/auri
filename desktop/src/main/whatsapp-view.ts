@@ -9,7 +9,7 @@ import {
   type Session,
   type WebContents
 } from 'electron'
-import type { WhatsAppBounds } from '../shared/api'
+import type { WhatsAppBounds, WhatsAppEnvio } from '../shared/api'
 
 const HOST = 'web.whatsapp.com'
 const HOME = `https://${HOST}/`
@@ -32,7 +32,7 @@ export type WhatsAppView = {
   attach(window: BrowserWindow): void
   setEnabled(enabled: boolean): Promise<void>
   setPaused(paused: boolean): void
-  open(phone: string, text: string): boolean
+  open(phone: string, text: string): Promise<WhatsAppEnvio | null>
   show(bounds: WhatsAppBounds): void
   hide(): void
   unread(): number
@@ -241,21 +241,27 @@ export function createWhatsAppView({
       teardown()
       stopWorkers(session.fromPartition(PARTITION))
     },
-    open(phone, text) {
+    async open(phone, text) {
       const current = ensure()
-      if (!current) return false
+      if (!current) return null
       const contents = current.webContents
       const mine = ++request
-      clipboard
-        .writeText(text)
-        .catch((error: unknown) => console.error('[whatsapp] mensagem não foi copiada', error))
-        .then(() => contents.loadURL(whatsAppUrl(phone)))
-        .then(() => pasteWhenReady(contents, mine, text))
-        .catch((error: unknown) => {
-          console.error('[whatsapp] conversa não abriu', error)
-        })
       onOpen()
-      return true
+      const copied = await clipboard.writeText(text).then(
+        () => true,
+        (error: unknown) => {
+          console.error('[whatsapp] mensagem não foi copiada', error)
+          return false
+        }
+      )
+      if (mine === request && !contents.isDestroyed())
+        contents
+          .loadURL(whatsAppUrl(phone))
+          .then(() => (copied ? pasteWhenReady(contents, mine, text) : undefined))
+          .catch((error: unknown) => {
+            console.error('[whatsapp] conversa não abriu', error)
+          })
+      return copied ? 'copiada' : 'sem-copia'
     },
     show(bounds) {
       const current = ensure()
