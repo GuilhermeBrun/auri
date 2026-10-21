@@ -129,19 +129,19 @@ describe('cores do tema', () => {
 
   it('no modo avançado usa a cor exata de cada papel e deriva as vizinhas', () => {
     const c = cores('#bf5530', '#fbf6f2', {
-      session: '#dbeafe',
+      now: '#dbeafe',
       solid: '#0f172a',
       danger: '#7c3aed'
     })
     const p = palette(c, 'light')
-    expect(p['--color-session']).toBe('#dbeafe')
-    expect(p['--color-session-hover']).not.toBe('#dbeafe')
+    expect(p['--color-now']).toBe('#dbeafe')
+    expect(p['--color-attention']).toBe('#dbeafe')
     expect(p['--color-solid']).toBe('#0f172a')
     expect(contrast(p['--color-on-solid'], '#0f172a')).toBeGreaterThanOrEqual(4.5)
     expect(contrast(p['--color-solid-hover'], p['--color-on-solid'])).toBeGreaterThanOrEqual(4.5)
     expect(p['--color-danger']).toBe('#7c3aed')
     expect(contrast(p['--color-danger'], p['--color-danger-soft'])).toBeGreaterThanOrEqual(4.5)
-    expect(palette(c, 'dark')['--color-session']).not.toBe('#dbeafe')
+    expect(palette(c, 'dark')['--color-now']).not.toBe('#dbeafe')
   })
 
   it('barra lateral escura num tema claro ganha texto próprio legível', () => {

@@ -34,10 +34,6 @@
   --color-attention: #e5484d;
   --color-now: #e5484d;
 
-  --color-chart-strong: #1b1b22;
-  --color-chart: #8e8e9c;
-  --color-chart-faint: #dcdce5;
-
   --color-fill: rgba(27, 27, 34, 0.055);
   --color-fill-hover: rgba(27, 27, 34, 0.09);
   --color-scrim: rgba(27, 27, 34, 0.45);
@@ -259,10 +255,6 @@
       --color-warning-soft: #33270f;
       --color-attention: #ff5a5f;
       --color-now: #ff5a5f;
-
-      --color-chart-strong: #ececf1;
-      --color-chart: #6c6c7a;
-      --color-chart-faint: #36363f;
 
       --color-fill: rgba(236, 236, 245, 0.06);
       --color-fill-hover: rgba(236, 236, 245, 0.1);

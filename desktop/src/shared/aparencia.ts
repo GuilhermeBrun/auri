@@ -27,9 +27,7 @@ export const COLOR_ROLES = [
   { token: 'on-solid', label: 'Texto do botão principal', group: 'Ações' },
   { token: 'accent', label: 'Foco e seleção', group: 'Ações' },
   { token: 'accent-soft', label: 'Realce suave', group: 'Ações' },
-  { token: 'session', label: 'Sessões', group: 'Agenda' },
   { token: 'now', label: 'Linha de agora', group: 'Agenda' },
-  { token: 'chart-strong', label: 'Gráficos', group: 'Agenda' },
   { token: 'danger', label: 'Erro e exclusão', group: 'Avisos' },
   { token: 'warning', label: 'Atenção', group: 'Avisos' }
 ] as const
@@ -150,20 +148,12 @@ const SURFACE_TOKENS = [
   'line-strong',
   'session',
   'session-hover',
-  'chart-faint',
   'accent-soft'
 ] as const
 
-const INK_TOKENS = ['ink', 'ink-soft', 'ink-faint', 'control', 'chart'] as const
+const INK_TOKENS = ['ink', 'ink-soft', 'ink-faint', 'control'] as const
 
-const SOLID_TOKENS = [
-  'accent',
-  'solid',
-  'solid-hover',
-  'solid-active',
-  'on-solid',
-  'chart-strong'
-] as const
+const SOLID_TOKENS = ['accent', 'solid', 'solid-hover', 'solid-active', 'on-solid'] as const
 
 const STATUS_TOKENS = [
   'danger',
@@ -193,19 +183,16 @@ export const BASE_TOKENS: Record<Scheme, Record<Token, string>> = {
     'line-strong': '#c9c9d4',
     session: '#e6e6ec',
     'session-hover': '#dcdce5',
-    'chart-faint': '#dcdce5',
     'accent-soft': '#eeeef3',
     ink: '#1b1b22',
     'ink-soft': '#5b5b68',
     'ink-faint': '#6e6e7c',
     control: '#8e8e9c',
-    chart: '#8e8e9c',
     accent: '#1b1b22',
     solid: '#1b1b22',
     'solid-hover': '#34343f',
     'solid-active': '#000000',
     'on-solid': '#ffffff',
-    'chart-strong': '#1b1b22',
     danger: '#c4271b',
     'danger-soft': '#fdeeec',
     'danger-soft-hover': '#f9d5d1',
@@ -225,19 +212,16 @@ export const BASE_TOKENS: Record<Scheme, Record<Token, string>> = {
     'line-strong': '#42424d',
     session: '#2f2f38',
     'session-hover': '#36363f',
-    'chart-faint': '#36363f',
     'accent-soft': '#2a2a32',
     ink: '#ececf1',
     'ink-soft': '#a9a9b7',
     'ink-faint': '#8a8a98',
     control: '#6c6c7a',
-    chart: '#6c6c7a',
     accent: '#ececf1',
     solid: '#42424d',
     'solid-hover': '#4b4b57',
     'solid-active': '#55555f',
     'on-solid': '#ececf1',
-    'chart-strong': '#ececf1',
     danger: '#f0675b',
     'danger-soft': '#3a1b1a',
     'danger-soft-hover': '#562826',
@@ -352,7 +336,6 @@ function accentTokens(
       'solid-hover': shade(solid, -0.05, on),
       'solid-active': shade(solid, -0.1, on),
       'on-solid': on,
-      'chart-strong': focus,
       'accent-soft': toHex({
         l: 0.955 + Math.min(0, toOklch(surface).l - 1),
         c: Math.min(pick.c, 0.035),
@@ -372,7 +355,6 @@ function accentTokens(
     'solid-hover': shade(solid, 0.04 * lift, on),
     'solid-active': shade(solid, 0.08 * lift, on),
     'on-solid': on,
-    'chart-strong': focus,
     'accent-soft': toHex({ l: 0.3, c: Math.min(pick.c, 0.06), h: pick.h })
   }
 }
@@ -455,10 +437,6 @@ function tokensFor(colors: ThemeColors, scheme: Scheme, highContrast: boolean) {
     tokens['solid-hover'] = shade(overrides.solid, 0.04 * lift, on)
     tokens['solid-active'] = shade(overrides.solid, 0.08 * lift, on)
   }
-  if (overrides.session) {
-    const s = toOklch(overrides.session)
-    tokens['session-hover'] = toHex({ ...s, l: s.l + (s.l > 0.5 ? -0.03 : 0.04) })
-  }
   if (overrides.danger) {
     tokens['danger-soft'] = softFrom(overrides.danger, scheme === 'light' ? 0.96 : 0.27)
     tokens['danger-soft-hover'] = softFrom(overrides.danger, scheme === 'light' ? 0.91 : 0.33)
@@ -540,8 +518,7 @@ const CHECKS: [ColorRole, ColorRole, number, string][] = [
   ['control', 'surface', 3, 'o fundo das telas'],
   ['danger', 'surface', 4.5, 'o fundo das telas'],
   ['warning', 'surface', 4.5, 'o fundo das telas'],
-  ['now', 'surface', 3, 'o fundo das telas'],
-  ['chart-strong', 'surface', 3, 'o fundo das telas']
+  ['now', 'surface', 3, 'o fundo das telas']
 ]
 
 const ratio = (n: number): string => `${(Math.floor(n * 10) / 10).toFixed(1).replace('.', ',')}:1`

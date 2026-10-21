@@ -329,9 +329,16 @@ export const textSizeSchema = z.union(TEXT_SIZES.map((size) => z.literal(size)))
 
 const hexColorSchema = z.string().toLowerCase().regex(HEX_COLOR).nullable()
 
-const roleOverridesSchema = z.partialRecord(
-  z.enum(ROLE_TOKENS),
-  z.string().toLowerCase().regex(HEX_COLOR)
+const RETIRED_ROLES = ['session', 'chart-strong']
+
+const withoutRetiredRoles = (value: unknown): unknown =>
+  value && typeof value === 'object' && !Array.isArray(value)
+    ? Object.fromEntries(Object.entries(value).filter(([role]) => !RETIRED_ROLES.includes(role)))
+    : value
+
+const roleOverridesSchema = z.preprocess(
+  withoutRetiredRoles,
+  z.partialRecord(z.enum(ROLE_TOKENS), z.string().toLowerCase().regex(HEX_COLOR))
 )
 
 export const themeColorsSchema = z.object({
