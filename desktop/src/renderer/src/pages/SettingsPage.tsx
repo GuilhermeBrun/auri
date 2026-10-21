@@ -372,7 +372,10 @@ function ThemePreview({
         const role = (e.target as HTMLElement).closest<HTMLElement>('[data-role]')?.dataset.role
         if (role) onPick(role as ColorRole)
       }}
-      style={{ ...vars(palette(colors, scheme)), colorScheme: scheme }}
+      style={{
+        ...vars({ ...palette(colors, scheme), '--tinta': scheme === 'dark' ? '30%' : '22%' }),
+        colorScheme: scheme
+      }}
       className="flex h-60 cursor-pointer overflow-hidden rounded-control bg-surface text-xs text-ink shadow-[0_0_0_1px_var(--color-line)] select-none [&_[data-role]]:transition-shadow [&_[data-role]:hover]:shadow-[0_0_0_2px_var(--color-accent)]"
       {...part('surface')}
     >
@@ -415,8 +418,8 @@ function ThemePreview({
           {['Ana Moreira', 'João Pedro'].map((nome, i) => (
             <div
               key={nome}
-              className="min-w-0 flex-1 rounded-chip bg-session px-2 py-1.5 shadow-[inset_0_0_0_1px_var(--session-edge)]"
-              {...part('session')}
+              className="min-w-0 flex-1 rounded-chip bg-[color-mix(in_oklab,var(--color-control)_var(--tinta),var(--color-surface))] py-1.5 pr-2 pl-2.5 shadow-[inset_4px_0_0_var(--color-control)]"
+              {...part('control')}
             >
               <div className="truncate font-medium">{nome}</div>
               <div className="truncate text-ink-soft" {...part('ink-soft')}>
@@ -439,15 +442,6 @@ function ThemePreview({
           >
             Foco
           </span>
-          <div className="flex h-7 items-end gap-0.5" {...part('chart-strong')}>
-            {[40, 70, 55, 90, 65].map((h, i) => (
-              <span
-                key={h}
-                className={cn('w-1.5 rounded-t-[2px]', i === 3 ? 'bg-chart-strong' : 'bg-chart')}
-                style={{ height: `${h}%` }}
-              />
-            ))}
-          </div>
         </div>
         <div className="flex flex-wrap gap-1.5">
           <span className="rounded-chip bg-danger-soft px-2 py-1 text-danger" {...part('danger')}>

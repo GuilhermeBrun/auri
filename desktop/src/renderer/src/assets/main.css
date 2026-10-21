@@ -10,7 +10,6 @@
   --color-solid-active: #000000;
   --color-on-solid: #ffffff;
   --color-session: #e6e6ec;
-  --color-session-hover: #dcdce5;
 
   --color-ink: #1b1b22;
   --color-ink-soft: #5b5b68;
@@ -33,10 +32,6 @@
   --color-warning-soft: #fdf3dc;
   --color-attention: #e5484d;
   --color-now: #e5484d;
-
-  --color-chart-strong: #1b1b22;
-  --color-chart: #8e8e9c;
-  --color-chart-faint: #dcdce5;
 
   --color-fill: rgba(27, 27, 34, 0.055);
   --color-fill-hover: rgba(27, 27, 34, 0.09);
@@ -236,7 +231,6 @@
       --color-solid-active: #55555f;
       --color-on-solid: #ececf1;
       --color-session: #2f2f38;
-      --color-session-hover: #36363f;
 
       --color-ink: #ececf1;
       --color-ink-soft: #a9a9b7;
@@ -259,10 +253,6 @@
       --color-warning-soft: #33270f;
       --color-attention: #ff5a5f;
       --color-now: #ff5a5f;
-
-      --color-chart-strong: #ececf1;
-      --color-chart: #6c6c7a;
-      --color-chart-faint: #36363f;
 
       --color-fill: rgba(236, 236, 245, 0.06);
       --color-fill-hover: rgba(236, 236, 245, 0.1);

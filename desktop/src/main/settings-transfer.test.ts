@@ -202,4 +202,14 @@ describe('arquivo de configurações', () => {
     expect(file.tipos).toEqual(RECEPCAO.tipos)
     expect(describeChanges(RECEPCAO, file)).toEqual([])
   })
+
+  it('ignora as cores de Sessões e Gráficos de um arquivo de versão anterior', () => {
+    const antigo = JSON.parse(buildSettingsFile(RECEPCAO))
+    antigo.appearance.colors.overrides = {
+      light: { session: '#dbeafe', ink: '#1a1a1a' },
+      dark: { 'chart-strong': '#ffffff' }
+    }
+    const file = parseSettingsFile(JSON.stringify(antigo))
+    expect(file.appearance.colors?.overrides).toEqual({ light: { ink: '#1a1a1a' }, dark: {} })
+  })
 })
