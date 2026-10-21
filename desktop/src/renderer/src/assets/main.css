@@ -10,7 +10,6 @@
   --color-solid-active: #000000;
   --color-on-solid: #ffffff;
   --color-session: #e6e6ec;
-  --color-session-hover: #dcdce5;
 
   --color-ink: #1b1b22;
   --color-ink-soft: #5b5b68;
@@ -232,7 +231,6 @@
       --color-solid-active: #55555f;
       --color-on-solid: #ececf1;
       --color-session: #2f2f38;
-      --color-session-hover: #36363f;
 
       --color-ink: #ececf1;
       --color-ink-soft: #a9a9b7;

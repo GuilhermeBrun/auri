@@ -147,7 +147,6 @@ const SURFACE_TOKENS = [
   'line',
   'line-strong',
   'session',
-  'session-hover',
   'accent-soft'
 ] as const
 
@@ -182,7 +181,6 @@ export const BASE_TOKENS: Record<Scheme, Record<Token, string>> = {
     line: '#e6e6ec',
     'line-strong': '#c9c9d4',
     session: '#e6e6ec',
-    'session-hover': '#dcdce5',
     'accent-soft': '#eeeef3',
     ink: '#1b1b22',
     'ink-soft': '#5b5b68',
@@ -211,7 +209,6 @@ export const BASE_TOKENS: Record<Scheme, Record<Token, string>> = {
     line: '#2a2a32',
     'line-strong': '#42424d',
     session: '#2f2f38',
-    'session-hover': '#36363f',
     'accent-soft': '#2a2a32',
     ink: '#ececf1',
     'ink-soft': '#a9a9b7',
