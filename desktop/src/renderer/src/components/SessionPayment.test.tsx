@@ -39,7 +39,8 @@ const billing: PatientFinance['billing'] = {
   desde: '2026-10-01',
   updated_at: '2026-10-01T12:00:00.000Z',
   service: { nome: 'Sessão', valor_centavos: 19000 },
-  insurer: null
+  insurer: null,
+  padrao: false
 }
 
 const charge = (over: Partial<ChargeEntry>): ChargeEntry => ({

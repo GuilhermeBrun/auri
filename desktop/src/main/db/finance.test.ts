@@ -119,6 +119,100 @@ describe('catálogo', () => {
   })
 })
 
+describe('valor padrão', () => {
+  it('só um valor é o padrão; trocar mantém a data de início e o padrão não arquiva', () => {
+    expect(
+      saveService(db, sessao, { nome: 'Sessão', valor_centavos: 19000, padrao: true }, '2026-10-05')
+        .padrao
+    ).toBe(true)
+    const social = saveService(
+      db,
+      null,
+      { nome: 'Sessão social', valor_centavos: 9000, padrao: true },
+      '2026-10-12'
+    )
+    expect(
+      getCatalog(db)
+        .services.filter((s) => s.padrao)
+        .map((s) => s.id)
+    ).toEqual([social.id])
+    expect(fin().billing).toMatchObject({
+      service_id: social.id,
+      desde: '2026-10-05',
+      padrao: true
+    })
+    expect(() => archiveService(db, social.id, true)).toThrow('valor padrão')
+    archiveService(db, avaliacao, true)
+    expect(() =>
+      saveService(db, avaliacao, { nome: 'Avaliação', valor_centavos: 40000, padrao: true })
+    ).toThrow('Reative')
+    expect(getCatalog(db).services.find((s) => s.padrao)?.id).toBe(social.id)
+    saveService(db, social.id, { nome: 'Sessão social', valor_centavos: 9000, padrao: false })
+    expect(getCatalog(db).services.some((s) => s.padrao)).toBe(false)
+    expect(fin().billing).toBeNull()
+    saveService(db, sessao, { nome: 'Sessão', valor_centavos: 19000, padrao: true }, '2026-10-19')
+    expect(fin().billing?.desde).toBe('2026-10-19')
+  })
+
+  it('sem forma de cobrança, a sessão e a falta são cobradas pelo padrão', () => {
+    saveService(db, sessao, { nome: 'Sessão', valor_centavos: 19000, padrao: true }, '2026-10-10')
+    const antiga = atendimento('2026-10-02')
+    const a = atendimento('2026-10-14')
+    const f = atendimento('2026-10-15', 'falta')
+    expect(fin()).toMatchObject({
+      billing: { forma: 'particular', service: { nome: 'Sessão', valor_centavos: 19000 } },
+      pendentes: [{ appointment_id: a }]
+    })
+    expect(fin().pendentes.map((p) => p.appointment_id)).not.toContain(antiga)
+    lancarSessao(db, a, PC)
+    cobrarFalta(db, f, PC)
+    expect(fin().charges.map((c) => [c.motivo, c.valor_centavos])).toEqual([
+      ['falta_cobrada', 19000],
+      ['sessao', 19000]
+    ])
+  })
+
+  it('o valor do paciente vence o padrão e mudar não mexe no que já foi lançado', () => {
+    saveService(db, sessao, { nome: 'Sessão', valor_centavos: 19000, padrao: true }, '2026-10-01')
+    const social = saveService(db, null, { nome: 'Sessão social', valor_centavos: 9000 }).id
+    const a = atendimento('2026-10-14')
+    lancarSessao(db, a, PC)
+    setBilling(
+      db,
+      patientId,
+      {
+        forma: 'particular',
+        service_id: social,
+        insurer_id: null,
+        carteirinha: '',
+        desde: '2026-10-01'
+      },
+      ''
+    )
+    expect(fin().billing).toMatchObject({ service_id: social, padrao: false })
+    const b = atendimento('2026-10-16')
+    lancarSessao(db, b, PC)
+    expect(fin().charges.map((c) => [c.appointment_id, c.descricao, c.valor_centavos])).toEqual([
+      [b, 'Sessão de 16/10 · Sessão social', 9000],
+      [a, 'Sessão de 14/10', 19000]
+    ])
+    expect(() =>
+      setBilling(
+        db,
+        patientId,
+        {
+          forma: 'particular',
+          service_id: sessao,
+          insurer_id: null,
+          carteirinha: '',
+          desde: '2026-10-01'
+        },
+        ''
+      )
+    ).toThrow('alterado em outro computador')
+  })
+})
+
 describe('particular por sessão', () => {
   it('sem forma de cobrança não lança nada', () => {
     const a = atendimento('2026-10-14')

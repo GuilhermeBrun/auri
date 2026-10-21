@@ -100,6 +100,14 @@ describe('lançamento na chegada', () => {
     expect(fin()).toMatchObject({ charges: [], uses: [], billing: null })
   })
 
+  it('sem forma de cobrança, a chegada lança pelo valor padrão', () => {
+    saveService(db, sessao, { nome: 'Sessão', valor_centavos: 19000, padrao: true }, '2026-10-01')
+    const a = agendar()
+    assinatura(a)
+    expect(fin()).toMatchObject({ saldo_centavos: 19000, pendentes: [] })
+    expect(fin().charges[0]).toMatchObject({ appointment_id: a, valor_centavos: 19000 })
+  })
+
   it('anular a assinatura estorna o lançamento com o mesmo motivo', () => {
     cobranca('particular')
     const a = agendar()

@@ -19,6 +19,7 @@ import { ErrorState } from '@renderer/components/ui/error'
 import { Field, Input } from '@renderer/components/ui/input'
 import { Loading } from '@renderer/components/ui/loading'
 import { ErrorText, FormSection } from '@renderer/components/ui/section'
+import { SwitchField } from '@renderer/components/ui/switch'
 import { FINANCE_CRUMB, plural } from '@renderer/lib/finance'
 import { financeCatalogQuery } from '@renderer/lib/queries'
 import { useToast } from '@renderer/lib/toast'
@@ -36,7 +37,10 @@ const NAMES: Record<Kind, { novo: string; titulo: string; salvo: string }> = {
 }
 
 function detail(kind: Kind, item: FinanceService | FinancePlan | FinanceInsurer): string {
-  if (kind === 'service') return formatBRL((item as FinanceService).valor_centavos)
+  if (kind === 'service') {
+    const service = item as FinanceService
+    return `${service.padrao ? 'Padrão · ' : ''}${formatBRL(service.valor_centavos)}`
+  }
   if (kind === 'insurer')
     return `${formatBRL((item as FinanceInsurer).valor_sessao_centavos)} por sessão`
   const plan = item as FinancePlan
@@ -156,30 +160,35 @@ function Catalog({ catalog }: { catalog: FinanceCatalog }): React.JSX.Element {
 
 type Saved = { nome: string; arquivado: boolean }
 
-type Draft = { nome: string; valor: string; sessoes: string; validade: string }
+type Draft = { nome: string; valor: string; sessoes: string; validade: string; padrao: boolean }
 
 function initialDraft({ kind, item }: Editing): Draft {
-  if (!item) return { nome: '', valor: '', sessoes: '', validade: '' }
-  if (kind === 'service')
+  if (!item) return { nome: '', valor: '', sessoes: '', validade: '', padrao: false }
+  if (kind === 'service') {
+    const service = item as FinanceService
     return {
-      nome: item.nome,
-      valor: centavosToInput((item as FinanceService).valor_centavos),
+      nome: service.nome,
+      valor: centavosToInput(service.valor_centavos),
       sessoes: '',
-      validade: ''
+      validade: '',
+      padrao: service.padrao
     }
+  }
   if (kind === 'insurer')
     return {
       nome: item.nome,
       valor: centavosToInput((item as FinanceInsurer).valor_sessao_centavos),
       sessoes: '',
-      validade: ''
+      validade: '',
+      padrao: false
     }
   const plan = item as FinancePlan
   return {
     nome: plan.nome,
     valor: centavosToInput(plan.valor_centavos),
     sessoes: String(plan.sessoes),
-    validade: plan.validade_dias ? String(plan.validade_dias) : ''
+    validade: plan.validade_dias ? String(plan.validade_dias) : '',
+    padrao: false
   }
 }
 
@@ -188,7 +197,11 @@ const toInt = (text: string): number => (text.trim() === '' ? NaN : Number(text)
 function parse(kind: Kind, draft: Draft) {
   const valor = parseBRL(draft.valor) ?? NaN
   if (kind === 'service')
-    return serviceInputSchema.safeParse({ nome: draft.nome, valor_centavos: valor })
+    return serviceInputSchema.safeParse({
+      nome: draft.nome,
+      valor_centavos: valor,
+      padrao: draft.padrao
+    })
   if (kind === 'insurer')
     return insurerInputSchema.safeParse({ nome: draft.nome, valor_sessao_centavos: valor })
   return planInputSchema.safeParse({
@@ -211,7 +224,8 @@ function CatalogForm({
   const { kind, item } = editing
   const [draft, setDraft] = useState(() => initialDraft(editing))
   const [errors, setErrors] = useState<Record<string, string>>({})
-  const set = (field: keyof Draft) => (value: string) => setDraft((d) => ({ ...d, [field]: value }))
+  const set = (field: Exclude<keyof Draft, 'padrao'>) => (value: string) =>
+    setDraft((d) => ({ ...d, [field]: value }))
 
   const save = useMutation({
     mutationFn: (input: unknown): Promise<Saved> => {
@@ -316,6 +330,14 @@ function CatalogForm({
             </>
           )}
         </div>
+        {kind === 'service' && (
+          <SwitchField
+            label="Valor padrão"
+            description="Para quem não tem forma de cobrança."
+            checked={draft.padrao}
+            onCheckedChange={(padrao) => setDraft((d) => ({ ...d, padrao }))}
+          />
+        )}
         {(save.error ?? archive.error) && (
           <ErrorText>{(save.error ?? archive.error)!.message}</ErrorText>
         )}

@@ -73,15 +73,22 @@ function archived<T extends Archivable>({
 }
 
 const CATALOG = {
-  service: { table: 'finance_services', columns: ['nome', 'valor_centavos'], name: 'Serviço' },
+  service: {
+    table: 'finance_services',
+    columns: ['nome', 'valor_centavos'],
+    extra: ['padrao_desde'],
+    name: 'Serviço'
+  },
   plan: {
     table: 'finance_plans',
     columns: ['nome', 'sessoes', 'valor_centavos', 'validade_dias'],
+    extra: [],
     name: 'Pacote'
   },
   insurer: {
     table: 'finance_insurers',
     columns: ['nome', 'valor_sessao_centavos'],
+    extra: [],
     name: 'Convênio'
   }
 } as const
@@ -89,9 +96,11 @@ const CATALOG = {
 type CatalogKind = keyof typeof CATALOG
 
 function catalogRow(db: Db, kind: CatalogKind, id: number): Record<string, unknown> & Archivable {
-  const { table, columns, name } = CATALOG[kind]
+  const { table, columns, extra, name } = CATALOG[kind]
   const row = db
-    .prepare(`SELECT id, ${columns.join(', ')}, arquivado_em FROM ${table} WHERE id = ?`)
+    .prepare(
+      `SELECT id, ${[...columns, ...extra].join(', ')}, arquivado_em FROM ${table} WHERE id = ?`
+    )
     .get(id) as (Record<string, unknown> & Archivable) | undefined
   if (!row) throw new Error(`${name} não encontrado`)
   return row
@@ -130,8 +139,13 @@ function archiveCatalog(db: Db, kind: CatalogKind, id: number, arquivado: boolea
   ).run(id)
 }
 
+function toService(row: Record<string, unknown> & Archivable): FinanceService {
+  const { padrao_desde, ...rest } = archived(row)
+  return { ...rest, padrao: padrao_desde !== null } as unknown as FinanceService
+}
+
 export const getService = (db: Db, id: number): FinanceService =>
-  archived(catalogRow(db, 'service', id)) as unknown as FinanceService
+  toService(catalogRow(db, 'service', id))
 export const getPlan = (db: Db, id: number): FinancePlan =>
   archived(catalogRow(db, 'plan', id)) as unknown as FinancePlan
 export const getInsurer = (db: Db, id: number): FinanceInsurer =>
@@ -147,14 +161,50 @@ export function getCatalog(db: Db): FinanceCatalog {
     return rest as T
   }
   return {
-    services: list('finance_services').map((r) => clean<FinanceService>(r)),
+    services: list('finance_services').map(({ created_at: _, updated_at: __, ...r }) =>
+      toService(r as Record<string, unknown> & Archivable)
+    ),
     plans: list('finance_plans').map((r) => clean<FinancePlan>(r)),
     insurers: list('finance_insurers').map((r) => clean<FinanceInsurer>(r))
   }
 }
 
-export function saveService(db: Db, id: number | null, input: ServiceInput): FinanceService {
-  return getService(db, saveCatalog(db, 'service', id, input))
+export function saveService(
+  db: Db,
+  id: number | null,
+  input: ServiceInput,
+  today: string = toIsoDate(new Date())
+): FinanceService {
+  return db.transaction((): FinanceService => {
+    const saved = saveCatalog(db, 'service', id, input)
+    if (input.padrao !== undefined) marcarPadrao(db, saved, input.padrao, today)
+    return getService(db, saved)
+  })()
+}
+
+type PadraoRow = { id: number; nome: string; valor_centavos: number; padrao_desde: string }
+
+function padraoRow(db: Db): PadraoRow | null {
+  return (
+    (db
+      .prepare(
+        `SELECT id, nome, valor_centavos, padrao_desde FROM finance_services
+         WHERE padrao_desde IS NOT NULL`
+      )
+      .get() as PadraoRow | undefined) ?? null
+  )
+}
+
+function marcarPadrao(db: Db, id: number, padrao: boolean, today: string): void {
+  const atual = padraoRow(db)
+  if (padrao === (atual?.id === id)) return
+  const set = db.prepare(
+    `UPDATE finance_services SET padrao_desde = ?, updated_at = ${NOW} WHERE id = ?`
+  )
+  if (atual) set.run(null, atual.id)
+  if (!padrao) return
+  if (getService(db, id).arquivado) throw new Error('Reative este valor antes de deixá-lo padrão.')
+  set.run(atual?.padrao_desde ?? today, id)
 }
 
 export function savePlan(db: Db, id: number | null, input: PlanInput): FinancePlan {
@@ -166,6 +216,8 @@ export function saveInsurer(db: Db, id: number | null, input: InsurerInput): Fin
 }
 
 export function archiveService(db: Db, id: number, arquivado: boolean): FinanceService {
+  if (arquivado && getService(db, id).padrao)
+    throw new Error('Este é o valor padrão. Desligue o padrão antes de arquivar.')
   archiveCatalog(db, 'service', id, arquivado)
   return getService(db, id)
 }
@@ -197,7 +249,7 @@ type BillingRow = {
   insurer_valor: number | null
 }
 
-export function getBilling(db: Db, patientId: number): Billing | null {
+function getBilling(db: Db, patientId: number): Billing | null {
   const row = db
     .prepare(
       `SELECT b.forma, b.service_id, b.insurer_id, b.plan_id, b.carteirinha, b.desde, b.updated_at,
@@ -235,7 +287,28 @@ export function getBilling(db: Db, patientId: number): Billing | null {
             nome: row.plan_nome ?? '',
             sessoes: row.plan_sessoes ?? 0,
             valor_centavos: row.plan_valor ?? 0
-          }
+          },
+    padrao: false
+  }
+}
+
+export function billingFor(db: Db, patientId: number): Billing | null {
+  const billing = getBilling(db, patientId)
+  if (billing) return billing
+  const padrao = padraoRow(db)
+  if (!padrao) return null
+  return {
+    forma: 'particular',
+    service_id: padrao.id,
+    insurer_id: null,
+    plan_id: null,
+    carteirinha: '',
+    desde: padrao.padrao_desde,
+    updated_at: '',
+    service: { nome: padrao.nome, valor_centavos: padrao.valor_centavos },
+    insurer: null,
+    plan: null,
+    padrao: true
   }
 }
 
@@ -263,7 +336,7 @@ export function setBilling(
 function saveBilling(db: Db, patientId: number, input: BillingInput, expected?: string): void {
   getPatient(db, patientId)
   const current = getBilling(db, patientId)
-  if (current && expected !== undefined) assertUnchanged(current.updated_at, expected)
+  assertUnchanged(current?.updated_at ?? '', expected)
   const service_id = input.service_id
   const insurer_id = input.forma === 'convenio' ? input.insurer_id : null
   const plan_id = input.forma === 'pacote' ? (input.plan_id ?? null) : null
@@ -575,7 +648,7 @@ export function lancarNaChegada(
   computador: string
 ): LancamentoSessao | null {
   const { patient_id } = getAppointment(db, appointmentId)
-  if (!getBilling(db, patient_id) || activeEntry(db, appointmentId)) return null
+  if (!billingFor(db, patient_id) || activeEntry(db, appointmentId)) return null
   try {
     return lancarSessao(db, appointmentId, computador)
   } catch (error) {
@@ -648,7 +721,7 @@ export function lancarSessao(
     if (!a.assinatura && hasSignature(db, appointmentId))
       throw new Error('A assinatura da chegada desta sessão foi anulada.')
     if (activeEntry(db, appointmentId)) throw new Error('Esta sessão já foi lançada.')
-    const billing = getBilling(db, a.patient_id)
+    const billing = billingFor(db, a.patient_id)
     if (!billing) throw new Error('Defina a forma de cobrança do paciente antes de lançar.')
     const day = sessionDay(a.inicio)
     const label = sessionLabel(a.tipo_nome, a.inicio)
@@ -709,7 +782,7 @@ export function cobrarFalta(db: Db, appointmentId: number, computador: string): 
     if (a.presenca !== 'falta' && a.presenca !== 'desmarcou')
       throw new Error('Só uma falta pode ser cobrada.')
     if (activeEntry(db, appointmentId)) throw new Error('Esta sessão já foi lançada.')
-    const billing = getBilling(db, a.patient_id)
+    const billing = billingFor(db, a.patient_id)
     if (!billing) throw new Error('Defina a forma de cobrança do paciente antes de cobrar.')
     if (billing.service_id === null || !billing.service)
       throw new Error('Escolha o valor da sessão particular na forma de cobrança.')
@@ -920,7 +993,7 @@ export function getPatientFinance(
   today: string = toIsoDate(new Date())
 ): PatientFinance {
   getPatient(db, patientId)
-  const billing = getBilling(db, patientId)
+  const billing = billingFor(db, patientId)
   const { charges, payments } = patientLedger(db, patientId)
   const saldo = saldos(charges, payments)
   const rows = packageRows(db, patientId)

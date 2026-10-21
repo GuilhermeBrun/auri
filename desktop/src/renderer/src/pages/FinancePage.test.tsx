@@ -29,8 +29,9 @@ import { FinancePage } from './FinancePage'
 
 const catalog: FinanceCatalog = {
   services: [
-    { id: 1, nome: 'Sessão', valor_centavos: 19000, arquivado: false },
-    { id: 2, nome: 'Avaliação antiga', valor_centavos: 35000, arquivado: true }
+    { id: 1, nome: 'Sessão', valor_centavos: 19000, arquivado: false, padrao: true },
+    { id: 4, nome: 'Sessão social', valor_centavos: 9000, arquivado: false, padrao: false },
+    { id: 2, nome: 'Avaliação antiga', valor_centavos: 35000, arquivado: true, padrao: false }
   ],
   plans: [
     {
@@ -94,7 +95,8 @@ beforeEach(() => {
     catalog: vi.fn(async () => catalog),
     renewPackage: vi.fn(async () => 12),
     savePlan: vi.fn(async (_id, input) => ({ id: 9, ...input, arquivado: false })),
-    archiveService: vi.fn(async () => ({ ...catalog.services[1], arquivado: false }))
+    saveService: vi.fn(async (id, input) => ({ id, ...input, arquivado: false })),
+    archiveService: vi.fn(async () => ({ ...catalog.services[2], arquivado: false }))
   }
   Object.assign(window, { api: { finance, patients: { list: vi.fn(async () => []) } } })
 })
@@ -155,7 +157,8 @@ describe('tela Financeiro', () => {
 describe('Valores e convênios', () => {
   it('lista com o arquivado e cria um pacote', async () => {
     renderRoute('/financeiro/valores', '/financeiro/valores', <FinanceCatalogPage />)
-    expect(await screen.findByText('R$ 190,00')).toBeTruthy()
+    expect(await screen.findByText('Padrão · R$ 190,00')).toBeTruthy()
+    expect(screen.getByText('R$ 90,00')).toBeTruthy()
     expect(screen.getByText('Arquivado · R$ 350,00')).toBeTruthy()
     expect(screen.getByText('8 sessões por R$ 1.520,00 · vale 60 dias')).toBeTruthy()
 
@@ -175,6 +178,23 @@ describe('Valores e convênios', () => {
         sessoes: 10,
         valor_centavos: 180000,
         validade_dias: null
+      })
+    )
+  })
+
+  it('deixa outro valor como padrão', async () => {
+    renderRoute('/financeiro/valores', '/financeiro/valores', <FinanceCatalogPage />)
+    await userEvent.click(await screen.findByRole('button', { name: /Sessão social/ }))
+    const dialog = await screen.findByRole('dialog')
+    const padrao = within(dialog).getByRole('switch', { name: 'Valor padrão' })
+    expect(padrao.getAttribute('aria-checked')).toBe('false')
+    await userEvent.click(padrao)
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Salvar' }))
+    await waitFor(() =>
+      expect(finance.saveService).toHaveBeenCalledWith(4, {
+        nome: 'Sessão social',
+        valor_centavos: 9000,
+        padrao: true
       })
     )
   })
