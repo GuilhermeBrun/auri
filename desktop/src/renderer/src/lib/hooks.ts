@@ -1,4 +1,4 @@
-import { useLayoutEffect, useState, type RefObject } from 'react'
+import { useLayoutEffect, useRef, useState, type RefObject } from 'react'
 
 const BLOCK = 10
 
@@ -61,4 +61,28 @@ export function useVirtualRows(
   }, [list, count, rowHeight])
 
   return { start: Math.min(range.start, count), end: Math.min(range.end, count) }
+}
+
+type Thumb = { x: number; width: number }
+
+export function useThumb(value: unknown): [RefObject<HTMLDivElement | null>, Thumb | null] {
+  const trackRef = useRef<HTMLDivElement>(null)
+  const [thumb, setThumb] = useState<Thumb | null>(null)
+
+  useLayoutEffect(() => {
+    const track = trackRef.current
+    if (!track) return
+    const measure = (): void => {
+      const active = track.querySelector<HTMLElement>('[aria-pressed="true"]')
+      if (!active) return setThumb(null)
+      const next = { x: active.offsetLeft, width: active.offsetWidth }
+      setThumb((prev) => (prev?.x === next.x && prev.width === next.width ? prev : next))
+    }
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(track)
+    return () => observer.disconnect()
+  }, [value])
+
+  return [trackRef, thumb]
 }

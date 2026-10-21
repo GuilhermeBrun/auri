@@ -202,7 +202,8 @@ Grupos de opções (**‹ Hoje ›** e Dia/Semana/Mês) ficam num trilho `fill`,
 - `ui/brand.tsx`: `AuriLogo` e `AuriSymbol`.
 - `ui/loading.tsx`: `Loading`.
 - `ui/toast.tsx`: `ToastProvider` (já no `Layout`) e, em `lib/toast.ts`, `useToast()`.
-- `ui/segmented.tsx`: `Segmented`, seletor de uma opção entre poucas, com o bloco `selected` deslizante (medido na opção ativa, sem deslize na abertura).
+- `ui/segmented.tsx`: `Segmented`, seletor de uma opção entre poucas, com o bloco `selected` deslizante (medido na opção ativa, sem deslize na abertura, por `useThumb` em `lib/hooks.ts`).
+- Assinatura da chegada (`ArrivalSignature`): "Quem está assinando" é um trilho numa linha só, com o mesmo bloco deslizante. As pessoas da ficha dividem a largura por igual (nome em cima, papel embaixo; nome longo termina em reticências e aparece inteiro no texto da assinatura) e "Outra pessoa" fica no fim, do tamanho do texto. O texto "Ao assinar, …" fica na mesma linha de "Desfazer traço" e "Limpar" (`SignaturePad` com `note`).
 - `ui/badge.tsx`: `Badge`, selo de uma ou duas palavras ("Inativo", idade): `neutral`, `outline`, `strong`, `warning`, `danger`.
 - `ui/callout.tsx`: `Callout`, aviso que fica na página até ser resolvido (`neutral`, `warning`, `danger`), fundo suave inteiro, sem barra lateral. Erros de gravação da ficha, da anamnese e do diálogo de agendamento, e os problemas da cópia de segurança, usam este componente.
 - `ui/search-field.tsx`: `SearchField`, a busca do cabeçalho (`fill`, lupa, limpar próprio; Esc limpa).

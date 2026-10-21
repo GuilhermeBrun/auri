@@ -1,5 +1,5 @@
 import { Eraser, Undo2 } from 'lucide-react'
-import { useCallback, useEffect, useRef, useState, type PointerEvent } from 'react'
+import { useCallback, useEffect, useRef, useState, type PointerEvent, type ReactNode } from 'react'
 import { Button } from '@renderer/components/ui/button'
 import { cn } from '@renderer/lib/utils'
 import {
@@ -18,6 +18,7 @@ export type SignatureValue = { encoded: Uint8Array; minimal: boolean }
 
 type SignaturePadProps = {
   onChange: (value: SignatureValue) => void
+  note?: ReactNode
   className?: string
 }
 
@@ -30,7 +31,7 @@ function samples(event: globalThis.PointerEvent): globalThis.PointerEvent[] {
   return coalesced.length > 0 ? coalesced : [event]
 }
 
-export function SignaturePad({ onChange, className }: SignaturePadProps): React.JSX.Element {
+export function SignaturePad({ onChange, note, className }: SignaturePadProps): React.JSX.Element {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const strokes = useRef<Ponto[][]>([])
   const active = useRef<ActiveStroke | null>(null)
@@ -139,20 +140,26 @@ export function SignaturePad({ onChange, className }: SignaturePadProps): React.
           </span>
         )}
       </div>
-      <div className="flex justify-end gap-1">
-        <Button
-          variant="ghost"
-          size="sm"
-          disabled={empty}
-          onClick={() => commit(strokes.current.slice(0, -1))}
-        >
-          <Undo2 />
-          Desfazer traço
-        </Button>
-        <Button variant="ghost" size="sm" disabled={empty} onClick={() => commit([])}>
-          <Eraser />
-          Limpar
-        </Button>
+      <div className="flex items-start gap-6">
+        {note && (
+          <p className="min-w-0 py-1.5 text-[13px] leading-5 text-pretty text-ink-soft pointer-coarse:py-3">
+            {note}
+          </p>
+        )}
+        <div className="-mr-3.5 ml-auto flex shrink-0 gap-1">
+          <Button
+            variant="ghost"
+            disabled={empty}
+            onClick={() => commit(strokes.current.slice(0, -1))}
+          >
+            <Undo2 />
+            Desfazer traço
+          </Button>
+          <Button variant="ghost" disabled={empty} onClick={() => commit([])}>
+            <Eraser />
+            Limpar
+          </Button>
+        </div>
       </div>
     </div>
   )
