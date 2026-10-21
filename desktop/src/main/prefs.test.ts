@@ -82,4 +82,24 @@ describe('preferências da interface', () => {
     writeFileSync(file, JSON.stringify({ colors: { accent: '#bf5530', canvas: null } }))
     expect(createPrefsStore(file).get().colors.overrides).toEqual({ light: {}, dark: {} })
   })
+
+  it('abre o arquivo de uma versão que ainda tinha as cores de Sessões e Gráficos', () => {
+    writeFileSync(
+      file,
+      JSON.stringify({
+        theme: 'dark',
+        colors: {
+          accent: null,
+          canvas: null,
+          overrides: {
+            light: { session: '#dbeafe', ink: '#1a1a1a' },
+            dark: { 'chart-strong': '#ffffff' }
+          }
+        }
+      })
+    )
+    const prefs = createPrefsStore(file).get()
+    expect(prefs.theme).toBe('dark')
+    expect(prefs.colors.overrides).toEqual({ light: { ink: '#1a1a1a' }, dark: {} })
+  })
 })

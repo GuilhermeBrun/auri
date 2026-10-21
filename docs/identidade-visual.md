@@ -37,18 +37,17 @@ Dois temas, **Claro** e **Escuro**, com os mesmos nomes de token. A escolha fica
 | `control`                                | `#8E8E9C`                         | `#6C6C7A`                         | Contorno dos campos (3:1); cor de uma sessão sem etiqueta                                                                                     |
 | `fill` / `fill-hover`                    | grafite a 5,5% / 9%               | branco a 6% / 10%                 | Botão secundário, trilhos, busca, hover; `fill-hover` no item ativo do menu e na opção destacada das listas                                   |
 | `scrim`                                  | grafite a 45%                     | preto a 60%                       | Fundo atrás de um diálogo                                                                                                                     |
-| `session` / `-hover`                     | `#E6E6EC` / `#DCDCE5`             | `#2F2F38` / `#36363F`             | Linha recém-salva (que se apaga) e a prévia da Aparência. As sessões da agenda usam a cor da etiqueta (abaixo)                                |
+| `session`                                | `#E6E6EC`                         | `#2F2F38`                         | Linha recém-salva (que se apaga). As sessões da agenda usam a cor da etiqueta (abaixo)                                                        |
 | `danger`                                 | `#C4271B`                         | `#F0675B`                         | Erros e exclusão                                                                                                                              |
 | `danger-soft` / `-hover`                 | `#FDEEEC` / `#F9D5D1`             | `#3A1B1A` / `#562826`             | Fundo de botão `danger`, `Callout` e `Badge` de erro                                                                                          |
 | `warning` / `warning-soft`               | `#8A5300` / `#FDF3DC`             | `#F1B54A` / `#33270F`             | Atenção que não é erro (cópia parada, horário livre na confirmação): texto/ícone e fundo                                                      |
 | `now` / `attention`                      | `#E5484D`                         | `#FF5A5F`                         | Linha do horário atual; ponto de "precisa de atenção"                                                                                         |
-| `chart-strong` / `chart` / `chart-faint` | `#1B1B22` / `#8E8E9C` / `#DCDCE5` | `#ECECF1` / `#6C6C7A` / `#36363F` | Reservados para gráficos; hoje só a prévia da Aparência os usa                                                                                |
 
 O escuro **não é o claro invertido**: o conteúdo é um grafite quase preto, a barra lateral fica um tom abaixo e o que flutua, um tom acima; como a sombra quase não aparece no escuro, `shadow-pop` ganha um contorno claro de 1px. Mudam com o tema também, em `main.css`: `--elevation-pop`/`-lift` (sombras), `--selection`, `--scrollbar`, `--grid-faint` (meia hora da grade), `--session-edge`, `--slot-selection` (faixa sendo selecionada na grade e vaga) e `--tinta` (22% no claro, 30% no escuro). **No tema claro não há nenhuma área escura.**
 
 **Aumentar contraste** (`prefers-contrast: more`) troca, nos dois temas, `ink-soft`, `ink-faint`, `line`, `line-strong`, `control`, `danger` e `warning` por versões mais fortes.
 
-Não há cores decorativas, nem verde, nem cor de sucesso: o que deu certo é dito em texto ou num aviso. Exceções à regra de "só tokens": a cor das etiquetas, as amostras e a roda de cor (`ui/cor.tsx`, `ui/roda-de-cor.tsx`, com contorno e ✓ brancos sobre a cor) e as miniaturas da Aparência, que mostram cada tema independente do atual.
+Não há cores decorativas, nem verde, nem cor de sucesso: o que deu certo é dito em texto ou num aviso. O gráfico de frequência fica em grafite (`ink`, `line-strong`, hachura e tracejado): os tipos se distinguem pela forma, não pela cor. Exceções à regra de "só tokens": a cor das etiquetas, as amostras e a roda de cor (`ui/cor.tsx`, `ui/roda-de-cor.tsx`, com contorno e ✓ brancos sobre a cor) e as miniaturas da Aparência, que mostram cada tema independente do atual.
 
 ### Etiquetas
 
@@ -62,10 +61,10 @@ A cor só aparece de três jeitos: ponto de 8px (`CorPonto`, `TipoMarca`, filtro
 
 O resto sai das duas cores (`desktop/src/shared/aparencia.ts`), nos dois temas e no contraste alto:
 
-- **Destaque** vira `solid-*`, `accent`, `accent-soft` e `chart-strong`. Se a cor deixar o texto do botão abaixo de 4,5:1, o tom é ajustado; o foco fica com pelo menos 3:1 sobre o fundo. O texto do botão é branco ou grafite, o que contrastar.
+- **Destaque** vira `solid-*`, `accent` e `accent-soft`. Se a cor deixar o texto do botão abaixo de 4,5:1, o tom é ajustado; o foco fica com pelo menos 3:1 sobre o fundo. O texto do botão é branco ou grafite, o que contrastar.
 - **Fundo** dá a matiz de todos os neutros, com croma baixo. Cor clara vira o `surface` do claro (L entre 0,94 e 1 em OKLCH); escura, o do escuro; o outro tema só herda a matiz. O texto secundário é corrigido até 4,5:1.
 - Sem cor escolhida nada é injetado e vale o `main.css`. Com cor, o renderer põe um `<style id="auri-cores">` fora das camadas, que vence os tokens.
-- **Ajustar cada cor:** 19 papéis em 5 grupos (Telas, Texto, Ações, Agenda, Avisos), separados para o claro e o escuro. A cor escolhida é usada exata; as vizinhas saem dela (botão → hover, pressionado e texto; erro e atenção → fundos suaves; fundo das telas → menus, linhas e texto). Cada linha avisa em âmbar quando o contraste cai abaixo do mínimo, sem bloquear. A prévia acima da lista é uma miniatura do app; clicar numa parte abre a cor dela. Trocar para uma cor pronta apaga os ajustes, com "Desfazer" no aviso.
+- **Ajustar cada cor:** 17 papéis em 5 grupos (Telas, Texto, Ações, Agenda, Avisos), separados para o claro e o escuro. A cor escolhida é usada exata; as vizinhas saem dela (botão → hover, pressionado e texto; linha de agora → ponto do menu lateral; erro e atenção → fundos suaves; fundo das telas → menus, linhas e texto). Cada linha avisa em âmbar quando o contraste cai abaixo do mínimo, sem bloquear. A prévia acima da lista é uma miniatura do app; clicar numa parte abre a cor dela. Trocar para uma cor pronta apaga os ajustes, com "Desfazer" no aviso.
 - **Barra lateral própria:** se a barra lateral ou o texto dela (`sidebar-ink`, que só existe nos ajustes) forem mudados, o CSS redefine texto, preenchimentos e foco só dentro de `#sidebar` e do botão de recolher.
 - A escolha fica em `preferencias.json` (`colors`) e vai junto ao exportar as configurações.
 
