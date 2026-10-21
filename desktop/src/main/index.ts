@@ -1,4 +1,15 @@
-import { app, shell, BrowserWindow, dialog, Menu, nativeImage, nativeTheme, Tray } from 'electron'
+import {
+  app,
+  autoUpdater,
+  shell,
+  BrowserWindow,
+  dialog,
+  Menu,
+  nativeImage,
+  nativeTheme,
+  powerMonitor,
+  Tray
+} from 'electron'
 import { join, resolve } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
@@ -7,6 +18,7 @@ import { PREFS_ARG } from '../shared/api'
 import type { Theme, UiPrefs } from '../shared/schemas'
 import { createBackupService, type BackupService } from './backup-service'
 import { detectProviders, systemProbe } from './backup/providers'
+import { QUIT_BACKUP_MS } from './backup/scheduler'
 import { createConnection, type Connection } from './connection'
 import { DatabaseTooNewError } from './db/migrations'
 import { createErrorReports, type ErrorReportService } from './error-reports'
@@ -35,6 +47,8 @@ let tray: Tray | null = null
 let updates: UpdateService | null = null
 let reports: ErrorReportService | null = null
 let quitConfirmed = false
+let quitBackupDone = false
+let skipQuitBackup = false
 
 function windowBackground(): string {
   return nativeTheme.shouldUseDarkColors ? '#17171c' : '#ffffff'
@@ -239,6 +253,12 @@ void app.whenReady().then(async () => {
 
   if (process.platform === 'darwin') app.dock?.setIcon(icon)
 
+  const skipBackup = (): void => {
+    skipQuitBackup = true
+  }
+  powerMonitor.on('shutdown', skipBackup)
+  autoUpdater.on('before-quit-for-update', skipBackup)
+
   app.on('browser-window-created', (_, window) => {
     optimizer.watchWindowShortcuts(window)
   })
@@ -319,22 +339,28 @@ app.on('window-all-closed', () => {
 
 app.on('before-quit', (event) => {
   const online = connection?.onlineDevices() ?? []
-  if (quitConfirmed || online.length === 0) return
-  event.preventDefault()
-  const names = online.join(' e ')
-  const choice = dialog.showMessageBoxSync({
-    type: 'warning',
-    buttons: ['Sair mesmo assim', 'Cancelar'],
-    defaultId: 1,
-    cancelId: 1,
-    message: `${names} ${online.length === 1 ? 'está conectado' : 'estão conectados'} e vai perder o acesso aos dados.`,
-    detail:
-      'Enquanto o Auri estiver fechado aqui, os outros computadores não conseguem ver nem salvar nada.'
-  })
-  if (choice === 0) {
-    quitConfirmed = true
-    app.quit()
+  if (!quitConfirmed && online.length > 0) {
+    event.preventDefault()
+    const names = online.join(' e ')
+    const choice = dialog.showMessageBoxSync({
+      type: 'warning',
+      buttons: ['Sair mesmo assim', 'Cancelar'],
+      defaultId: 1,
+      cancelId: 1,
+      message: `${names} ${online.length === 1 ? 'está conectado' : 'estão conectados'} e vai perder o acesso aos dados.`,
+      detail:
+        'Enquanto o Auri estiver fechado aqui, os outros computadores não conseguem ver nem salvar nada.'
+    })
+    if (choice === 0) {
+      quitConfirmed = true
+      app.quit()
+    }
+    return
   }
+  if (quitBackupDone || skipQuitBackup || !backup?.pendingOnQuit()) return
+  event.preventDefault()
+  quitBackupDone = true
+  void backup.backupBeforeQuit(QUIT_BACKUP_MS).finally(() => app.quit())
 })
 
 app.on('will-quit', () => {
