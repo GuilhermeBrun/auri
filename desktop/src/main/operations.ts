@@ -28,6 +28,7 @@ import { etiquetaInputSchema, tipoInputSchema } from '../shared/tipos'
 import {
   billingInputSchema,
   chargeInputSchema,
+  contratarSchema,
   estornoMotivoSchema,
   financeRangeSchema,
   insurerInputSchema,
@@ -108,6 +109,7 @@ import {
   getOverview,
   getPatientFinance,
   lancarSessao,
+  renovarPacote,
   saveInsurer,
   savePlan,
   saveService,
@@ -444,13 +446,23 @@ const OPERATIONS: Record<string, Operation> = {
     run: (db, [patientId]) => getPatientFinance(db, idSchema.parse(patientId))
   },
   'finance:setBilling': {
-    run: (db, [patientId, input, expected]) =>
+    run: (db, [patientId, input, expected, contratar]) =>
       setBilling(
         db,
         idSchema.parse(patientId),
         billingInputSchema.parse(input),
-        expectedSchema.parse(expected)
+        expectedSchema.parse(expected),
+        contratarSchema
+          .unwrap()
+          .extend({ computador: computadorSchema })
+          .nullish()
+          .parse(contratar) ?? null
       ),
+    changes: ['finance']
+  },
+  'finance:renewPackage': {
+    run: (db, [patientId, computador]) =>
+      renovarPacote(db, idSchema.parse(patientId), computadorSchema.parse(computador)),
     changes: ['finance']
   },
   'finance:contractPackage': {

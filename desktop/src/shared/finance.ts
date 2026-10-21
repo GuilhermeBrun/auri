@@ -74,10 +74,13 @@ export const billingInputSchema = z
     forma: z.enum(FORMAS_COBRANCA),
     service_id: ref.nullable(),
     insurer_id: ref.nullable(),
+    plan_id: ref.nullable().optional(),
     carteirinha: text(40),
     desde: isoDate
   })
   .superRefine((b, ctx) => {
+    if (b.forma === 'pacote' && (b.plan_id ?? null) === null)
+      ctx.addIssue({ code: 'custom', path: ['plan_id'], message: 'Escolha o pacote' })
     if (b.forma !== 'convenio' && b.service_id === null)
       ctx.addIssue({ code: 'custom', path: ['service_id'], message: 'Escolha o valor da sessão' })
     if (b.forma === 'convenio' && b.insurer_id === null)
@@ -87,6 +90,11 @@ export type BillingInput = z.infer<typeof billingInputSchema>
 
 export const packageInputSchema = z.object({ plan_id: ref, inicio: isoDate })
 export type PackageInput = z.infer<typeof packageInputSchema>
+
+export const contratarSchema = z.object({ inicio: isoDate }).nullable()
+export type Contratar = z.infer<typeof contratarSchema>
+
+export const FORA_DO_PACOTE = ' · fora do pacote'
 
 export const chargeInputSchema = z.object({
   descricao: text(120).min(1, 'Diga o que está sendo cobrado'),
@@ -127,7 +135,9 @@ export type FinanceCatalog = {
   insurers: FinanceInsurer[]
 }
 
-export type Billing = BillingInput & {
+export type Billing = Omit<BillingInput, 'plan_id'> & {
+  plan_id: number | null
+  plan: { nome: string; sessoes: number; valor_centavos: number } | null
   service: { nome: string; valor_centavos: number } | null
   insurer: { nome: string; valor_sessao_centavos: number } | null
   updated_at: string
@@ -197,6 +207,16 @@ export type PendingSession = {
   categoria: Categoria
 }
 
+export type SituacaoRenovacao = 'acabando' | 'acabou' | 'venceu'
+
+export type Renovacao = {
+  plan_id: number
+  nome: string
+  valor_centavos: number
+  situacao: SituacaoRenovacao
+  restantes: number
+}
+
 export type SaldoConvenio = { insurer_id: number; nome: string; saldo_centavos: number }
 
 export type PatientFinance = {
@@ -209,6 +229,7 @@ export type PatientFinance = {
   payments: PaymentEntry[]
   uses: PackageUseEntry[]
   pendentes: PendingSession[]
+  renovacao: Renovacao | null
 }
 
 export type SessionPayStatus =
@@ -233,6 +254,7 @@ export type FinanceOverview = {
   ate: string
   abertos: { patient_id: number; nome: string; saldo_centavos: number; desde: string }[]
   convenios: SaldoConvenio[]
+  renovar: (Renovacao & { patient_id: number; patient_nome: string })[]
   recebimentos: (PaymentEntry & { patient_id: number; patient_nome: string })[]
   total_centavos: number
   por_forma: Record<FormaPagamento, number>

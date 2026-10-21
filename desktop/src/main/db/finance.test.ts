@@ -5,6 +5,7 @@ import { openDatabase, type Db } from './connection'
 import {
   addCharge,
   addPayment,
+  archivePlan,
   archiveService,
   cobrarFalta,
   contractPackage,
@@ -13,6 +14,7 @@ import {
   getOverview,
   getPatientFinance,
   lancarSessao,
+  renovarPacote,
   saveInsurer,
   savePlan,
   saveService,
@@ -212,6 +214,7 @@ describe('pacote', () => {
       forma: 'pacote',
       service_id: sessao,
       insurer_id: null,
+      plan_id: plan,
       carteirinha: '',
       desde: '2026-10-01'
     })
@@ -277,6 +280,170 @@ describe('pacote', () => {
       ['1 sessão', 1, false],
       ['8 sessões', 0, false]
     ])
+  })
+})
+
+describe('pacote na forma de cobrança e renovação', () => {
+  let plan: number
+
+  beforeEach(() => {
+    plan = savePlan(db, null, {
+      nome: '3 sessões',
+      sessoes: 3,
+      valor_centavos: 54000,
+      validade_dias: null
+    }).id
+  })
+
+  function porPacote(contratar: { inicio: string; computador: string } | null = null): void {
+    setBilling(
+      db,
+      patientId,
+      {
+        forma: 'pacote',
+        service_id: sessao,
+        insurer_id: null,
+        plan_id: plan,
+        carteirinha: '',
+        desde: '2026-10-01'
+      },
+      undefined,
+      contratar
+    )
+  }
+
+  it('guarda o pacote do paciente e contrata ao salvar', () => {
+    porPacote({ inicio: '2026-10-05', computador: PC })
+    const f = fin()
+    expect(f.billing).toMatchObject({
+      plan_id: plan,
+      plan: { nome: '3 sessões', sessoes: 3, valor_centavos: 54000 }
+    })
+    expect(f.packages.map((p) => [p.nome, p.inicio, p.em_vigor])).toEqual([
+      ['3 sessões', '2026-10-05', true]
+    ])
+    expect(f.charges.map((c) => [c.motivo, c.valor_centavos, c.data])).toEqual([
+      ['pacote', 54000, '2026-10-05']
+    ])
+    porPacote()
+    expect(fin().packages).toHaveLength(1)
+    particular()
+    expect(fin().billing).toMatchObject({ forma: 'particular', plan_id: null, plan: null })
+  })
+
+  it('não guarda pacote arquivado novo', () => {
+    archivePlan(db, plan, true)
+    expect(() => porPacote()).toThrow('arquivado')
+  })
+
+  it('avisa quando falta uma, acabou ou venceu', () => {
+    porPacote({ inicio: '2026-10-01', computador: PC })
+    lancarSessao(db, atendimento('2026-10-02'), PC)
+    expect(fin().renovacao).toBeNull()
+    lancarSessao(db, atendimento('2026-10-06'), PC)
+    expect(fin().renovacao).toEqual({
+      plan_id: plan,
+      nome: '3 sessões',
+      valor_centavos: 54000,
+      situacao: 'acabando',
+      restantes: 1
+    })
+    lancarSessao(db, atendimento('2026-10-09'), PC)
+    expect(fin().renovacao).toMatchObject({ situacao: 'acabou', restantes: 0 })
+    expect(getOverview(db, '2026-10-01', '2026-10-31', HOJE).renovar).toEqual([
+      expect.objectContaining({
+        patient_id: patientId,
+        patient_nome: 'Helena Fictícia',
+        situacao: 'acabou'
+      })
+    ])
+
+    const curto = savePlan(db, null, {
+      nome: '8 sessões',
+      sessoes: 8,
+      valor_centavos: 152000,
+      validade_dias: 5
+    }).id
+    contractPackage(db, patientId, { plan_id: curto, inicio: '2026-10-10' }, PC)
+    expect(fin().renovacao).toMatchObject({ plan_id: plan, situacao: 'venceu' })
+  })
+
+  it('renovar começa hoje e as próximas sessões consomem o pacote novo', () => {
+    porPacote({ inicio: '2026-10-01', computador: PC })
+    for (const d of ['2026-10-02', '2026-10-06']) lancarSessao(db, atendimento(d), PC)
+    expect(renovarPacote(db, patientId, PC, HOJE)).toEqual(expect.any(Number))
+    const f = fin()
+    expect(f.packages.map((p) => [p.inicio, p.usadas, p.em_vigor])).toEqual([
+      [HOJE, 0, true],
+      ['2026-10-01', 2, true]
+    ])
+    expect(f.renovacao).toBeNull()
+    lancarSessao(db, atendimento('2026-10-20'), PC)
+    lancarSessao(db, atendimento('2026-10-21'), PC)
+    expect(fin().packages.map((p) => p.usadas)).toEqual([1, 3])
+  })
+
+  it('renovar depois do fim traz as sessões fora do pacote para o novo', () => {
+    porPacote({ inicio: '2026-10-01', computador: PC })
+    for (const d of ['2026-10-02', '2026-10-06', '2026-10-09']) lancarSessao(db, atendimento(d), PC)
+    const fora = lancarSessao(db, atendimento('2026-10-13'), PC)
+    expect(fora.kind).toBe('charge')
+    pix(19000, '2026-10-13')
+    lancarSessao(db, atendimento('2026-10-16'), PC)
+
+    const novo = renovarPacote(db, patientId, 'Consultório', HOJE)
+    const f = fin()
+    expect(f.packages[0]).toMatchObject({ id: novo, inicio: '2026-10-13', usadas: 2 })
+    const estornadas = f.charges.filter((c) => c.motivo === 'sessao')
+    expect(estornadas.map((c) => [c.descricao, c.estorno?.motivo])).toEqual([
+      ['Sessão de 16/10 · fora do pacote', 'Passou para o pacote'],
+      ['Sessão de 13/10 · fora do pacote', 'Passou para o pacote']
+    ])
+    expect(f.uses.slice(0, 2).map((u) => [u.package_id, u.numero, u.computador])).toEqual([
+      [novo, 2, 'Consultório'],
+      [novo, 1, 'Consultório']
+    ])
+    expect(f.saldo_centavos).toBe(54000 * 2 - 19000)
+    expect(f.renovacao).toMatchObject({ situacao: 'acabando', restantes: 1 })
+  })
+
+  it('sem pacote anterior ou fora da forma pacote, não há o que renovar', () => {
+    porPacote()
+    expect(fin().renovacao).toBeNull()
+    expect(() => renovarPacote(db, patientId, PC, HOJE)).toThrow('Não há pacote para renovar')
+  })
+
+  it('a operação exige o pacote na forma pacote e renova pelo consultório', () => {
+    const topics: string[][] = []
+    const input = {
+      forma: 'pacote',
+      service_id: sessao,
+      insurer_id: null,
+      carteirinha: '',
+      desde: '2026-10-01'
+    }
+    expect(runOperation(db, 'finance:setBilling', [patientId, input])).toEqual({
+      ok: false,
+      error: 'Escolha o pacote'
+    })
+    expect(
+      runOperation(
+        db,
+        'finance:setBilling',
+        [
+          patientId,
+          { ...input, plan_id: plan },
+          undefined,
+          { inicio: '2026-10-01', computador: PC }
+        ],
+        (t) => topics.push(t)
+      )
+    ).toMatchObject({ ok: true, data: { plan_id: plan } })
+    for (const d of ['2026-10-02', '2026-10-06', '2026-10-09']) lancarSessao(db, atendimento(d), PC)
+    expect(
+      runOperation(db, 'finance:renewPackage', [patientId, 'Consultório'], (t) => topics.push(t))
+    ).toEqual({ ok: true, data: expect.any(Number) })
+    expect(topics).toEqual([['finance'], ['finance']])
   })
 })
 

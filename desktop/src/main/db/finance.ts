@@ -2,11 +2,13 @@ import { addDays, format } from 'date-fns'
 import { parseIsoDate, toIsoDate } from '../../shared/dates'
 import { consomePacote, mesmoNome } from '../../shared/tipos'
 import {
+  FORA_DO_PACOTE,
   FORMAS_PAGAMENTO,
   type Billing,
   type BillingInput,
   type ChargeEntry,
   type ChargeInput,
+  type Contratar,
   type Estorno,
   type FinanceCatalog,
   type FinanceInsurer,
@@ -24,6 +26,7 @@ import {
   type PaymentInput,
   type PendingSession,
   type PlanInput,
+  type Renovacao,
   type SaldoConvenio,
   type ServiceInput,
   type SessionPayStatus,
@@ -181,6 +184,10 @@ type BillingRow = {
   forma: Billing['forma']
   service_id: number | null
   insurer_id: number | null
+  plan_id: number | null
+  plan_nome: string | null
+  plan_sessoes: number | null
+  plan_valor: number | null
   carteirinha: string | null
   desde: string
   updated_at: string
@@ -193,12 +200,14 @@ type BillingRow = {
 export function getBilling(db: Db, patientId: number): Billing | null {
   const row = db
     .prepare(
-      `SELECT b.forma, b.service_id, b.insurer_id, b.carteirinha, b.desde, b.updated_at,
+      `SELECT b.forma, b.service_id, b.insurer_id, b.plan_id, b.carteirinha, b.desde, b.updated_at,
               s.nome AS service_nome, s.valor_centavos AS service_valor,
-              i.nome AS insurer_nome, i.valor_sessao_centavos AS insurer_valor
+              i.nome AS insurer_nome, i.valor_sessao_centavos AS insurer_valor,
+              p.nome AS plan_nome, p.sessoes AS plan_sessoes, p.valor_centavos AS plan_valor
        FROM finance_billing b
        LEFT JOIN finance_services s ON s.id = b.service_id
        LEFT JOIN finance_insurers i ON i.id = b.insurer_id
+       LEFT JOIN finance_plans p ON p.id = b.plan_id
        WHERE b.patient_id = ?`
     )
     .get(patientId) as BillingRow | undefined
@@ -207,6 +216,7 @@ export function getBilling(db: Db, patientId: number): Billing | null {
     forma: row.forma,
     service_id: row.service_id,
     insurer_id: row.insurer_id,
+    plan_id: row.plan_id,
     carteirinha: row.carteirinha ?? '',
     desde: row.desde,
     updated_at: row.updated_at,
@@ -217,7 +227,15 @@ export function getBilling(db: Db, patientId: number): Billing | null {
     insurer:
       row.insurer_id === null
         ? null
-        : { nome: row.insurer_nome ?? '', valor_sessao_centavos: row.insurer_valor ?? 0 }
+        : { nome: row.insurer_nome ?? '', valor_sessao_centavos: row.insurer_valor ?? 0 },
+    plan:
+      row.plan_id === null
+        ? null
+        : {
+            nome: row.plan_nome ?? '',
+            sessoes: row.plan_sessoes ?? 0,
+            valor_centavos: row.plan_valor ?? 0
+          }
   }
 }
 
@@ -225,13 +243,32 @@ export function setBilling(
   db: Db,
   patientId: number,
   input: BillingInput,
-  expected?: string
+  expected?: string,
+  contratar: (NonNullable<Contratar> & { computador: string }) | null = null
 ): Billing {
+  return db.transaction((): Billing => {
+    saveBilling(db, patientId, input, expected)
+    const billing = getBilling(db, patientId)!
+    if (contratar && billing.forma === 'pacote' && billing.plan_id !== null)
+      contractPackage(
+        db,
+        patientId,
+        { plan_id: billing.plan_id, inicio: contratar.inicio },
+        contratar.computador
+      )
+    return billing
+  })()
+}
+
+function saveBilling(db: Db, patientId: number, input: BillingInput, expected?: string): void {
   getPatient(db, patientId)
   const current = getBilling(db, patientId)
   if (current && expected !== undefined) assertUnchanged(current.updated_at, expected)
   const service_id = input.service_id
   const insurer_id = input.forma === 'convenio' ? input.insurer_id : null
+  const plan_id = input.forma === 'pacote' ? (input.plan_id ?? null) : null
+  if (plan_id !== null && getPlan(db, plan_id).arquivado && plan_id !== current?.plan_id)
+    throw new Error('Este pacote está arquivado.')
   if (
     service_id !== null &&
     getService(db, service_id).arquivado &&
@@ -249,26 +286,28 @@ export function setBilling(
     forma: input.forma,
     service_id,
     insurer_id,
+    plan_id,
     carteirinha: input.forma === 'convenio' && input.carteirinha !== '' ? input.carteirinha : null,
     desde: input.desde
   }
   db.prepare(
-    `INSERT INTO finance_billing (patient_id, forma, service_id, insurer_id, carteirinha, desde)
-     VALUES (@patient_id, @forma, @service_id, @insurer_id, @carteirinha, @desde)
+    `INSERT INTO finance_billing (patient_id, forma, service_id, insurer_id, plan_id, carteirinha,
+       desde)
+     VALUES (@patient_id, @forma, @service_id, @insurer_id, @plan_id, @carteirinha, @desde)
      ON CONFLICT (patient_id) DO UPDATE SET forma = excluded.forma,
        service_id = excluded.service_id, insurer_id = excluded.insurer_id,
-       carteirinha = excluded.carteirinha, desde = excluded.desde, updated_at = ${NOW}`
+       plan_id = excluded.plan_id, carteirinha = excluded.carteirinha, desde = excluded.desde,
+       updated_at = ${NOW}`
   ).run(params)
-  return getBilling(db, patientId)!
 }
 
 type PackageRow = Omit<PatientPackage, 'em_vigor' | 'estorno'> &
-  VoidColumns & { patient_id: number }
+  VoidColumns & { patient_id: number; plan_id: number | null }
 
 function packageRows(db: Db, patientId: number): PackageRow[] {
   return db
     .prepare(
-      `SELECT k.id, k.patient_id, k.nome, k.sessoes, k.valor_centavos, k.inicio, k.validade,
+      `SELECT k.id, k.patient_id, k.plan_id, k.nome, k.sessoes, k.valor_centavos, k.inicio, k.validade,
               k.estornado_em, k.estorno_motivo, k.estorno_computador,
               (SELECT count(*) FROM finance_package_uses u
                WHERE u.package_id = k.id AND u.estornado_em IS NULL) AS usadas
@@ -287,7 +326,7 @@ function usedCount(db: Db, packageId: number): number {
 }
 
 function toPackage(row: PackageRow, today: string): PatientPackage {
-  const { patient_id: _, ...rest } = withoutVoid(row)
+  const { patient_id: _, plan_id: __, ...rest } = withoutVoid(row)
   return {
     ...rest,
     em_vigor:
@@ -374,7 +413,93 @@ export function contractPackage(
       },
       computador
     )
+    absorverForaDoPacote(db, patientId, packageId, input.inicio, validade, plan.sessoes, computador)
     return packageId
+  })()
+}
+
+function absorverForaDoPacote(
+  db: Db,
+  patientId: number,
+  packageId: number,
+  inicio: string,
+  validade: string | null,
+  vagas: number,
+  computador: string
+): void {
+  const fora = db
+    .prepare(
+      `SELECT id, appointment_id FROM finance_charges
+       WHERE patient_id = ? AND motivo = 'sessao' AND insurer_id IS NULL AND estornado_em IS NULL
+         AND descricao LIKE ? AND data >= ? AND (? IS NULL OR data <= ?)
+       ORDER BY data, id LIMIT ?`
+    )
+    .all(patientId, `%${FORA_DO_PACOTE}`, inicio, validade, validade, vagas) as {
+    id: number
+    appointment_id: number
+  }[]
+  for (const charge of fora) {
+    estornar(db, 'charge', charge.id, 'Passou para o pacote', computador)
+    db.prepare(
+      'INSERT INTO finance_package_uses (package_id, appointment_id, computador) VALUES (?, ?, ?)'
+    ).run(packageId, charge.appointment_id, computador)
+  }
+}
+
+function lastPackage(rows: PackageRow[]): PackageRow | null {
+  return rows.filter((p) => p.estornado_em === null).at(-1) ?? null
+}
+
+function renovacaoFrom(
+  billing: Billing | null,
+  rows: PackageRow[],
+  plans: (id: number) => FinancePlan | null,
+  today: string
+): Renovacao | null {
+  if (billing?.forma !== 'pacote') return null
+  const last = lastPackage(rows)
+  if (!last) return null
+  const vigentes = rows.map((r) => toPackage(r, today)).filter((p) => p.em_vigor)
+  const restantes = vigentes.reduce((sum, p) => sum + p.sessoes - p.usadas, 0)
+  if (restantes > 1) return null
+  const plan = plans(billing.plan_id ?? last.plan_id ?? 0)
+  if (!plan || plan.arquivado) return null
+  return {
+    plan_id: plan.id,
+    nome: plan.nome,
+    valor_centavos: plan.valor_centavos,
+    situacao: restantes === 1 ? 'acabando' : last.usadas >= last.sessoes ? 'acabou' : 'venceu',
+    restantes
+  }
+}
+
+function planOrNull(db: Db): (id: number) => FinancePlan | null {
+  return (id) => {
+    const row = db.prepare('SELECT id FROM finance_plans WHERE id = ?').get(id)
+    return row ? getPlan(db, id) : null
+  }
+}
+
+export function renovarPacote(
+  db: Db,
+  patientId: number,
+  computador: string,
+  today: string = toIsoDate(new Date())
+): number {
+  return db.transaction(() => {
+    getPatient(db, patientId)
+    const rows = packageRows(db, patientId)
+    const renovacao = renovacaoFrom(getBilling(db, patientId), rows, planOrNull(db), today)
+    if (!renovacao) throw new Error('Não há pacote para renovar.')
+    const fora = db
+      .prepare(
+        `SELECT min(data) AS data FROM finance_charges
+         WHERE patient_id = ? AND motivo = 'sessao' AND insurer_id IS NULL
+           AND estornado_em IS NULL AND descricao LIKE ? AND data >= ?`
+      )
+      .get(patientId, `%${FORA_DO_PACOTE}`, lastPackage(rows)!.inicio) as { data: string | null }
+    const inicio = fora.data !== null && fora.data < today ? fora.data : today
+    return contractPackage(db, patientId, { plan_id: renovacao.plan_id, inicio }, computador)
   })()
 }
 
@@ -567,7 +692,7 @@ export function lancarSessao(
       {
         patient_id: a.patient_id,
         data: day,
-        descricao: `${label}${serviceSuffix(service.nome, a.tipo_nome)}${foraDoPacote ? ' · fora do pacote' : ''}`,
+        descricao: `${label}${serviceSuffix(service.nome, a.tipo_nome)}${foraDoPacote ? FORA_DO_PACOTE : ''}`,
         valor_centavos: service.valor_centavos,
         motivo: 'sessao',
         appointment_id: a.id
@@ -797,18 +922,18 @@ export function getPatientFinance(
   const billing = getBilling(db, patientId)
   const { charges, payments } = patientLedger(db, patientId)
   const saldo = saldos(charges, payments)
+  const rows = packageRows(db, patientId)
   return {
     patient_id: patientId,
     billing,
     saldo_centavos: saldo.familia,
     convenios: saldo.convenios.filter((c) => c.saldo_centavos !== 0),
-    packages: packageRows(db, patientId)
-      .map((row) => toPackage(row, today))
-      .reverse(),
+    packages: rows.map((row) => toPackage(row, today)).reverse(),
     charges: allocate(charges, payments),
     payments: payments.map(paymentFromRow),
     uses: packageUses(db, patientId).reverse(),
-    pendentes: billing ? pendingSessions(db, patientId, billing.desde) : []
+    pendentes: billing ? pendingSessions(db, patientId, billing.desde) : [],
+    renovacao: renovacaoFrom(billing, rows, planOrNull(db), today)
   }
 }
 
@@ -857,7 +982,26 @@ function nomesDos(db: Db, ids: number[]): Map<number, string> {
   return new Map(rows.map((p) => [p.id, p.nome]))
 }
 
-export function getOverview(db: Db, de: string, ate: string): FinanceOverview {
+function aRenovar(db: Db, today: string): FinanceOverview['renovar'] {
+  const plans = planOrNull(db)
+  const pacientes = db
+    .prepare(
+      `SELECT b.patient_id, p.nome FROM finance_billing b JOIN patients p ON p.id = b.patient_id
+       WHERE b.forma = 'pacote' AND p.ativo = 1 ORDER BY p.nome COLLATE NOCASE`
+    )
+    .all() as { patient_id: number; nome: string }[]
+  return pacientes.flatMap(({ patient_id, nome }) => {
+    const r = renovacaoFrom(getBilling(db, patient_id), packageRows(db, patient_id), plans, today)
+    return r ? [{ ...r, patient_id, patient_nome: nome }] : []
+  })
+}
+
+export function getOverview(
+  db: Db,
+  de: string,
+  ate: string,
+  today: string = toIsoDate(new Date())
+): FinanceOverview {
   const saldosRows = db
     .prepare(
       `SELECT patient_id, insurer_id, sum(valor) AS saldo
@@ -931,6 +1075,7 @@ export function getOverview(db: Db, de: string, ate: string): FinanceOverview {
     de,
     ate,
     abertos,
+    renovar: aRenovar(db, today),
     convenios: [...convenios.values()]
       .filter((c) => c.saldo_centavos !== 0)
       .sort((a, b) => a.nome.localeCompare(b.nome)),
