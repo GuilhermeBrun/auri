@@ -106,9 +106,12 @@ o Auri usa `whatsapp://send`, que abre a conversa sem passar pelo navegador.
   antes de fechar, para o prazo nunca vencer com a clínica fechada (ninguém clicaria nas respostas).
 - **Quais sessões:** as do próximo dia de atendimento. Na sexta (ou no último dia útil da semana),
   as de segunda.
-- **Prazo:** `ate = envio + 2 h`, e nunca depois do início da sessão. A hora do envio é a do clique
-  em "Enviar" (o Auri não sabe quando a secretária teclou Enter; a diferença é de segundos).
-- Sessão marcada para dali a menos de 2 horas não recebe pedido de confirmação.
+- **Prazo:** `ate = envio + 2 h`, ou 15 minutos antes do início da sessão, o que vier primeiro
+  (21/10: encaixe e sessão marcada para logo). A hora do envio é a do clique em "Enviar" (o Auri não
+  sabe quando a secretária teclou Enter; a diferença é de segundos). O prazo curto também precisa
+  vencer com a clínica aberta.
+- Sessão que começa em menos de 30 minutos (prazo menor que 15 minutos) não recebe pedido de
+  confirmação: a recepção liga.
 - **Reenviar** abre o WhatsApp de novo com o mesmo link e o mesmo prazo. Remarcar a sessão cancela o
   envio pendente: uma resposta atrasada é recusada.
 

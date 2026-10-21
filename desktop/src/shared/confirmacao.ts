@@ -1,5 +1,18 @@
 export const PRAZO_DA_CONFIRMACAO_MS = 2 * 60 * 60 * 1000
+export const ANTES_DA_SESSAO_MS = 15 * 60 * 1000
+export const MENOR_PRAZO_MS = 15 * 60 * 1000
 export const TOLERANCIA_DA_RESPOSTA_MS = 5 * 60 * 1000
+
+export const prazoDaConfirmacao = (inicio: Date, agora: Date): Date =>
+  new Date(
+    Math.min(agora.getTime() + PRAZO_DA_CONFIRMACAO_MS, inicio.getTime() - ANTES_DA_SESSAO_MS)
+  )
+
+export const prazoCurtoDemais = (inicio: Date, agora: Date): boolean =>
+  prazoDaConfirmacao(inicio, agora).getTime() - agora.getTime() < MENOR_PRAZO_MS
+
+export const PERTO_DEMAIS =
+  'A sessão começa em menos de 30 minutos. Confirme com a família por telefone.'
 
 export type EstadoDoPedido = 'aguardando' | 'confirmado' | 'desmarcado' | 'sem_resposta'
 
