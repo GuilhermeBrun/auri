@@ -13,10 +13,15 @@ beforeEach(() => {
 })
 
 function backup(hasPassword: boolean) {
+  let senha: string | null = hasPassword ? 'senha-da-copia' : null
   return {
-    hasPassword: () => hasPassword,
+    hasPassword: () => senha !== null,
+    createPassword: vi.fn(async (password: string) => {
+      senha = password
+      return { recoveryCode: 'CODIGO' }
+    }),
     checkSecret: vi.fn(async (secret: BackupSecret) => {
-      if ('password' in secret && secret.password !== 'senha-da-copia') {
+      if ('password' in secret && secret.password !== senha) {
         throw new Error('Senha incorreta.')
       }
     })
@@ -24,12 +29,14 @@ function backup(hasPassword: boolean) {
 }
 
 describe('chave da recepção', () => {
-  it('liga sem pedir nada e só desliga com a senha da cópia', async () => {
-    const lock = createReceptionLock(prefs, backup(true), 0)
-    lock.enable()
+  it('com a senha da cópia, liga sem pedir nada e só desliga com ela', async () => {
+    const copia = backup(true)
+    const lock = createReceptionLock(prefs, copia, 0)
+    await expect(lock.enable()).resolves.toBeNull()
     expect(prefs.get().recepcao).toBe(true)
+    expect(copia.createPassword).not.toHaveBeenCalled()
 
-    await expect(lock.disable()).rejects.toThrow('senha da cópia')
+    await expect(lock.disable()).rejects.toThrow('Digite a senha.')
     await expect(lock.disable({ password: 'errada' })).rejects.toThrow('Senha incorreta.')
     expect(prefs.get().recepcao).toBe(true)
 
@@ -37,9 +44,24 @@ describe('chave da recepção', () => {
     expect(prefs.get().recepcao).toBe(false)
   })
 
-  it('sem cópia de segurança neste computador, desliga direto', async () => {
+  it('sem senha neste computador, ligar cria a senha que a cópia também vai usar', async () => {
+    const copia = backup(false)
+    const lock = createReceptionLock(prefs, copia, 0)
+    await expect(lock.enable()).rejects.toThrow('Crie uma senha')
+    expect(prefs.get().recepcao).toBe(false)
+
+    await expect(lock.enable('senha-nova-1')).resolves.toEqual({ recoveryCode: 'CODIGO' })
+    expect(prefs.get().recepcao).toBe(true)
+    expect(copia.hasPassword()).toBe(true)
+
+    await expect(lock.disable()).rejects.toThrow('Digite a senha.')
+    await lock.disable({ password: 'senha-nova-1' })
+    expect(prefs.get().recepcao).toBe(false)
+  })
+
+  it('ligada antes de existir senha, desliga direto', async () => {
+    prefs.save({ recepcao: true })
     const lock = createReceptionLock(prefs, backup(false), 0)
-    lock.enable()
     await lock.disable()
     expect(prefs.get().recepcao).toBe(false)
   })

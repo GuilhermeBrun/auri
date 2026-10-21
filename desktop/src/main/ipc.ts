@@ -217,8 +217,12 @@ export function registerIpc({
   handle('backup:install', (id: unknown) => backup.install(providerId.parse(id)))
   handle('backup:openProvider', (id: unknown) => backup.openProvider(providerId.parse(id)))
   handle('backup:chooseFolder', () => backup.chooseFolder())
-  handle('backup:setup', (destination: unknown, password: unknown) =>
-    backup.setup(destinationSchema.parse(destination), passwordSchema.parse(password))
+  handle('backup:setup', (destination: unknown, password: unknown, replace: unknown) =>
+    backup.setup(
+      destinationSchema.parse(destination),
+      passwordSchema.parse(password),
+      bool.optional().parse(replace)
+    )
   )
   handle('backup:setDestination', (destination: unknown) =>
     backup.setDestination(destinationSchema.parse(destination))
@@ -280,7 +284,9 @@ export function registerIpc({
     }
   })
 
-  handle('reception:enable', () => receptionLock.enable())
+  handle('reception:enable', (password: unknown) =>
+    receptionLock.enable(passwordSchema.optional().parse(password))
+  )
   handle('reception:disable', (secret: unknown) =>
     receptionLock.disable(secretSchema.optional().parse(secret))
   )
