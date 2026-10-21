@@ -101,7 +101,8 @@ das capturas do Windows, geradas pelo workflow Referências visuais (ver [docs/c
 3. **Abrir o PR como rascunho** e marcar como pronto só quando terminar. O CI do Actions (pago)
    roda uma vez quando o PR fica pronto e de novo a cada push depois disso, ou quando o `main`
    andou e o PR precisa de "Update branch". Para rodar só uma vez: um PR pronto de cada vez,
-   mesclado antes de marcar o próximo.
+   mesclado antes de marcar o próximo. Ao ficar pronto, o PR também passa pela revisão do Codex,
+   que segue as regras do [AGENTS.md](AGENTS.md) (ver "Revisão" em [docs/ci.md](docs/ci.md)).
 
 ```bash
 gh pr create --draft

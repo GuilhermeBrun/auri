@@ -41,6 +41,27 @@ commit, o `desktop/.vite-hooks/pre-commit` roda o `vp staged`: formato e lint s�
 commit, corrigindo o que der. `npx vp hooks status` mostra o estado, e `VP_GIT_HOOKS=0` desliga os
 hooks num comando.
 
+## Revisão
+
+O Codex revisa o PR quando ele sai do rascunho: a revisão de código e a de segurança, que roda junto.
+Ele segue as **Code Review Rules** do [AGENTS.md](../AGENTS.md), que dizem o que é erro grave no Auri
+(dado de paciente exposto ou perdido, recepção vendo o que não pode, atualização apontando errado…),
+e só comenta P0 e P1. Sem achados, ele reage com 👍 no PR. `@codex review` e `@codex security review`
+num comentário pedem de novo.
+
+A proteção do `main` exige todas as conversas resolvidas: cada achado é corrigido ou tem a conversa
+resolvida com o motivo. Depois de três rodadas no mesmo PR, a abordagem é repensada em vez de corrigida
+de novo. Quando um bug passa da revisão e chega ao alpha, ele vira um teste e, se for do tipo que a
+revisão deveria pegar, uma regra no `AGENTS.md`.
+
+Antes de marcar o PR como pronto, o agente que escreveu o código roda a própria revisão na máquina
+(`/code-review` e, nas áreas sensíveis, `/security-review`, ver [CLAUDE.md](../CLAUDE.md)). O template
+do PR pede Testes, Risco e Como reverter.
+
+Não há aprovação obrigatória, CODEOWNERS nem fila de merge: com uma pessoa só no projeto, o GitHub não
+deixa aprovar o próprio PR, e a exigência de PR atualizado com o `main` já garante o que a fila
+garantiria.
+
 ## Windows (manual) e Mac (local)
 
 O workflow **Windows** abre o Auri de verdade (E2E), testa a interface, o pacote, o instalador e os
