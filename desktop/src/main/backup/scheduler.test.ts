@@ -53,6 +53,17 @@ describe('a cada alteração', () => {
     expect(isBackupDue(changed, at(13, 14, 5))).toBe(true)
   })
 
+  it('no máximo uma cópia a cada 2 horas, e a última alteração sai depois', () => {
+    const recent = state({
+      frequency: 'change',
+      lastSuccessAt: iso(at(13, 14, 0)),
+      lastChangeAt: iso(at(13, 14, 20))
+    })
+    expect(isBackupDue(recent, at(13, 14, 30))).toBe(false)
+    expect(isBackupDue(recent, at(13, 15, 59))).toBe(false)
+    expect(isBackupDue(recent, at(13, 16, 0))).toBe(true)
+  })
+
   it('sem mudança depois da última cópia, não copia', () => {
     expect(isBackupDue(state({ ...base, lastChangeAt: iso(at(13, 9)) }), at(13, 20))).toBe(false)
     expect(isBackupDue(state(base), at(13, 20))).toBe(false)
