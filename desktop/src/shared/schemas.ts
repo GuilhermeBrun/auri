@@ -203,7 +203,7 @@ export const appointmentInputSchema = z
     observacao: text(1000),
     tipo_id: idSchema.optional(),
     presenca: z.enum([...PRESENCAS, '']).default(''),
-    evolucao: text(10000).default(''),
+    evolucao: text(10000).optional(),
     confirmado: z.boolean().optional(),
     etiquetas: z.array(idSchema).max(10, 'Use no máximo 10 etiquetas').optional()
   })
@@ -223,9 +223,10 @@ export type ArrivalSignature = {
 
 export type Appointment = Omit<
   z.output<typeof appointmentInputSchema>,
-  'confirmado' | 'tipo_id' | 'etiquetas'
+  'confirmado' | 'tipo_id' | 'etiquetas' | 'evolucao'
 > & {
   id: number
+  evolucao: string
   tipo_id: number
   tipo_nome: string
   tipo_cor: Cor
@@ -327,7 +328,8 @@ export type Theme = z.infer<typeof themeSchema>
 export const uiPrefsSchema = z.object({
   sidebarOpen: z.boolean(),
   theme: themeSchema,
-  whatsapp: z.boolean()
+  whatsapp: z.boolean(),
+  recepcao: z.boolean()
 })
 
 export type UiPrefs = z.infer<typeof uiPrefsSchema>

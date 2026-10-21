@@ -33,6 +33,7 @@ import { Select } from '@renderer/components/ui/select'
 import { SwitchField } from '@renderer/components/ui/switch'
 import { formatDay, formatShortDay, plural, useComputador } from '@renderer/lib/finance'
 import { financeCatalogQuery, patientFinanceQuery } from '@renderer/lib/queries'
+import { useReception } from '@renderer/lib/reception'
 import { useToast } from '@renderer/lib/toast'
 import { shortName } from '@shared/names'
 
@@ -422,15 +423,24 @@ function PlanSummary({ plan, inicio }: { plan: FinancePlan; inicio: string }): R
 
 function MissingCatalog({ what }: { what: string }): React.JSX.Element {
   const navigate = useNavigate()
+  const reception = useReception()
   return (
     <Callout
       title={`Nenhum ${what} cadastrado`}
       action={
-        <Button variant="secondary" size="sm" onClick={() => void navigate('/financeiro/valores')}>
-          Cadastrar
-        </Button>
+        !reception && (
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => void navigate('/financeiro/valores')}
+          >
+            Cadastrar
+          </Button>
+        )
       }
-    />
+    >
+      {reception && 'Cadastre no computador do consultório.'}
+    </Callout>
   )
 }
 

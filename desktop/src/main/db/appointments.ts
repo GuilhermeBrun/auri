@@ -98,7 +98,7 @@ function toParams(input: AppointmentInput): Record<string, string | number | nul
     observacao: orNull(full.observacao),
     tipo_id: full.tipo_id ?? null,
     presenca: orNull(full.presenca),
-    evolucao: orNull(full.evolucao)
+    evolucao: orNull(full.evolucao ?? '')
   }
 }
 
@@ -204,7 +204,8 @@ export function updateAppointment(
       .prepare(
         `UPDATE appointments
          SET patient_id = @patient_id, inicio = @inicio, fim = @fim, observacao = @observacao,
-             tipo_id = coalesce(@tipo_id, tipo_id), presenca = @presenca, evolucao = @evolucao,
+             tipo_id = coalesce(@tipo_id, tipo_id), presenca = @presenca,
+             evolucao = CASE WHEN @manter_evolucao = 1 THEN evolucao ELSE @evolucao END,
              confirmado_em = CASE
                WHEN @confirmado IS NULL THEN confirmado_em
                WHEN @confirmado = 1 THEN coalesce(confirmado_em, ${NOW})
@@ -212,7 +213,7 @@ export function updateAppointment(
              updated_at = ${NOW}
          WHERE id = @id`
       )
-      .run({ ...toParams(input), id })
+      .run({ ...toParams(input), manter_evolucao: Number(input.evolucao === undefined), id })
     if (result.changes === 0) throw new Error('Agendamento não encontrado')
     const remarcou =
       input.inicio !== current.inicio ||
@@ -262,7 +263,17 @@ export function moveAppointment(
   })()
 }
 
-export function removeAppointment(db: Db, id: number): void {
+export function removeAppointment(db: Db, id: number, protegerEvolucao = false): void {
+  if (protegerEvolucao) {
+    const row = db.prepare('SELECT evolucao FROM appointments WHERE id = ?').get(id) as
+      | { evolucao: string | null }
+      | undefined
+    if (row?.evolucao) {
+      throw new Error(
+        'Esta sessão tem evolução registrada e não pode ser excluída no computador da recepção.'
+      )
+    }
+  }
   const lancada = db
     .prepare(
       `SELECT 1 FROM finance_charges WHERE appointment_id = @id

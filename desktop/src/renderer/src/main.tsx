@@ -55,6 +55,14 @@ window.api.onChanged((topics) => {
   }
 })
 
+let reception = window.prefs.initial.recepcao
+window.prefs.onChange((prefs) => {
+  if (prefs.recepcao === reception) return
+  reception = prefs.recepcao
+  queryClient.removeQueries({ queryKey: ['anamnese'] })
+  void queryClient.invalidateQueries()
+})
+
 document.documentElement.dataset.platform = window.platform
 
 function report(error: unknown): void {

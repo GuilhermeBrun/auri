@@ -38,6 +38,7 @@ import { useConnection } from '@renderer/lib/connection'
 import { MOD_KEY } from '@renderer/lib/platform'
 import { clinicQuery, patientAttendanceQuery } from '@renderer/lib/queries'
 import { ConfirmacaoDaSessao } from '@renderer/components/confirmacao/ConfirmacaoDaSessao'
+import { useReception } from '@renderer/lib/reception'
 import { PRESENCA_OPTIONS } from '@renderer/lib/session'
 import { useToast } from '@renderer/lib/toast'
 import { useTipos } from '@renderer/lib/tipos'
@@ -363,6 +364,7 @@ export function AppointmentForm({
     ...new Set([...DURATIONS, initialValues(draft).duracao, values.duracao ?? 30])
   ].sort((a, b) => a - b)
   const started = hasStarted(values.data, values.hora, now)
+  const reception = useReception()
   const resumo = started ? null : summary(values, tipoNome)
   const slots = useMemo(() => {
     const day = isIsoDate(values.data ?? '') ? parseIsoLocalDateTime(`${values.data}T00:00`) : now
@@ -598,7 +600,7 @@ export function AppointmentForm({
             placeholder="Opcional"
           />
         </Field>
-        {started && (
+        {started && !reception && (
           <Field label="Evolução" error={errors.evolucao?.message} className="animate-fade-in">
             <Textarea
               {...register('evolucao')}

@@ -1,13 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Copy, Download, FileUp, RotateCcw } from 'lucide-react'
-import { useId } from 'react'
+import { useId, useState } from 'react'
 import { Page } from '@renderer/components/Layout'
+import { ReceptionDialog } from '@renderer/components/ReceptionDialog'
 import { ImportButton, ImportPreview } from '@renderer/components/SettingsImport'
 import { Button } from '@renderer/components/ui/button'
 import { ErrorText, PageSection, SettingsGroup } from '@renderer/components/ui/section'
 import { Select } from '@renderer/components/ui/select'
 import { SwitchField } from '@renderer/components/ui/switch'
-import { formatWhen } from '@renderer/lib/backup'
+import { formatWhen, useBackup } from '@renderer/lib/backup'
+import { useReception } from '@renderer/lib/reception'
 import { SETTINGS_CRUMB } from '@renderer/lib/settings'
 import { useSettingsImport } from '@renderer/lib/settings-import'
 import { useToast } from '@renderer/lib/toast'
@@ -133,9 +135,39 @@ function ErrorReports(): React.JSX.Element | null {
   )
 }
 
+function ThisComputer(): React.JSX.Element {
+  const reception = useReception()
+  const protectedByBackup = useBackup()?.configured === true
+  const [asking, setAsking] = useState(false)
+  const toggle = useMutation({
+    mutationFn: (on: boolean) =>
+      on ? window.prefs.enableReception() : window.prefs.disableReception()
+  })
+  return (
+    <PageSection id="computador" title="Este computador">
+      <SettingsGroup className="flex flex-col gap-5">
+        <SwitchField
+          label="Computador da recepção"
+          description={
+            reception
+              ? `Sem anamnese, evoluções, Clínica e valores.${protectedByBackup ? ' Desligar pede a senha da cópia.' : ''}`
+              : undefined
+          }
+          checked={reception}
+          disabled={toggle.isPending}
+          onCheckedChange={(on) => (!on && protectedByBackup ? setAsking(true) : toggle.mutate(on))}
+        />
+        {toggle.error && <ErrorText>{toggle.error.message}</ErrorText>}
+      </SettingsGroup>
+      <ReceptionDialog open={asking} onClose={() => setAsking(false)} />
+    </PageSection>
+  )
+}
+
 function Transfer(): React.JSX.Element {
   const toast = useToast()
   const importing = useSettingsImport()
+  const reception = useReception()
   const exportFile = useMutation({
     mutationFn: () => window.transfer.exportSettings(),
     onSuccess: (file) => {
@@ -156,12 +188,14 @@ function Transfer(): React.JSX.Element {
             <FileUp /> Exportar…
           </Button>
         </Row>
-        <div>
-          <Row title="Importar configurações">
-            {!importing.preview && <ImportButton state={importing} label="Importar…" />}
-          </Row>
-          <ImportPreview state={importing} className="mt-4 bg-surface" />
-        </div>
+        {!reception && (
+          <div>
+            <Row title="Importar configurações">
+              {!importing.preview && <ImportButton state={importing} label="Importar…" />}
+            </Row>
+            <ImportPreview state={importing} className="mt-4 bg-surface" />
+          </div>
+        )}
         {exportFile.error && <ErrorText>{exportFile.error.message}</ErrorText>}
       </SettingsGroup>
     </PageSection>
@@ -189,6 +223,7 @@ export function GeneralPage(): React.JSX.Element {
     <Page trail={[SETTINGS_CRUMB, { label: 'Geral' }]}>
       <div className="mx-auto max-w-[720px] px-8 pt-8 pb-16">
         <div className="flex flex-col gap-14">
+          <ThisComputer />
           <PageSection id="atualizacoes" title="Atualizações">
             {state && (
               <SettingsGroup className="flex flex-col gap-5">

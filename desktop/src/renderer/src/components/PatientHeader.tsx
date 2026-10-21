@@ -4,6 +4,7 @@ import { formatAge } from '@shared/dates'
 import { Avatar } from '@renderer/components/ui/avatar'
 import { Badge } from '@renderer/components/ui/badge'
 import { WaitlistButton } from '@renderer/components/waitlist/WaitlistButton'
+import { useReception } from '@renderer/lib/reception'
 import { cn } from '@renderer/lib/utils'
 
 export const PATIENT_COLUMN = 'mx-auto max-w-[840px] px-8 pt-6 pb-16'
@@ -62,6 +63,8 @@ const TABS: [PatientTab, string][] = [
   ['financeiro', 'Financeiro']
 ]
 
+const CLINICAL_TABS: readonly PatientTab[] = ['anamnese', 'evolucoes']
+
 const TAB_PATH: Record<PatientTab, string> = {
   ficha: '',
   anamnese: '/anamnese',
@@ -78,9 +81,11 @@ function PatientTabs({
   patientId: number
   value: PatientTab
 }): React.JSX.Element {
+  const reception = useReception()
+  const tabs = reception ? TABS.filter(([tab]) => !CLINICAL_TABS.includes(tab)) : TABS
   return (
     <nav aria-label="Partes do paciente" className="flex gap-1">
-      {TABS.map(([tab, label]) => (
+      {tabs.map(([tab, label]) => (
         <Link
           key={tab}
           to={`/pacientes/${patientId}${TAB_PATH[tab]}`}

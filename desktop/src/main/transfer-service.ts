@@ -62,7 +62,10 @@ export function createTransferService(options: {
     const { clinic, termModels, tipos } = await clinicData()
     const { updated_at: _, ...clinicFields } = clinic
     return {
-      appearance: options.prefs.get(),
+      appearance: {
+        theme: options.prefs.get().theme,
+        sidebarOpen: options.prefs.get().sidebarOpen
+      },
       connection: {
         role: c.role,
         name: c.name,

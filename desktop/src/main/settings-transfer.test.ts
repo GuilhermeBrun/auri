@@ -16,7 +16,7 @@ const TIPOS_SEMENTE: SettingsSnapshot['tipos'] = [
 const { 6: _, ...SEM_SABADO } = FUNCIONAMENTO_PADRAO
 
 const RECEPCAO: SettingsSnapshot = {
-  appearance: { theme: 'dark', sidebarOpen: true, whatsapp: true },
+  appearance: { theme: 'dark', sidebarOpen: true },
   connection: {
     role: 'server',
     name: 'Recepção',
@@ -51,7 +51,7 @@ const RECEPCAO: SettingsSnapshot = {
 }
 
 const NOVO: SettingsSnapshot = {
-  appearance: { theme: 'system', sidebarOpen: true, whatsapp: true },
+  appearance: { theme: 'system', sidebarOpen: true },
   connection: {
     role: 'server',
     name: 'DESKTOP-4F2K',

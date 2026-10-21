@@ -69,6 +69,8 @@ export type BackupService = {
   restore(file: string, secret?: BackupSecret): Promise<BackupInfo>
   undoRestore(): Promise<BackupInfo>
   dismissWelcome(): Promise<BackupInfo>
+  hasPassword(): boolean
+  checkSecret(secret: BackupSecret): Promise<void>
   providers(): Promise<CloudProvider[]>
   check(): Promise<BackupInfo>
   install(id: CloudProviderId): Promise<void>
@@ -484,6 +486,22 @@ export function createBackupService(options: {
         ? await dialog.showOpenDialog(window, options)
         : await dialog.showOpenDialog(options)
       return result.canceled ? null : (result.filePaths[0] ?? null)
+    },
+
+    hasPassword: () => keyring() !== null,
+
+    async checkSecret(secret) {
+      const current = keyring()
+      if (!current) return
+      const key =
+        'password' in secret
+          ? await unseal(current.password, secret.password, 'Senha incorreta.')
+          : await unseal(
+              current.recovery,
+              normalizeRecoveryCode(secret.recoveryCode),
+              'Código de recuperação incorreto.'
+            )
+      if (!key.equals(current.key)) throw new WrongSecretError('Senha incorreta.')
     },
 
     changePassword(current, next) {

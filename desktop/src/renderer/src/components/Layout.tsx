@@ -33,6 +33,7 @@ import { useIncomingConfirmacoes } from '@renderer/lib/confirmacoes'
 import { useIncomingTerms } from '@renderer/lib/terms'
 import { needsAttention, useBackup } from '@renderer/lib/backup'
 import { useConnection } from '@renderer/lib/connection'
+import { useReception } from '@renderer/lib/reception'
 import { isMac, SETTINGS_SHORTCUT, SIDEBAR_SHORTCUT } from '@renderer/lib/platform'
 import { SidebarContext, useSidebar } from '@renderer/lib/sidebar'
 import { useToast } from '@renderer/lib/toast'
@@ -137,6 +138,7 @@ function SidebarBody(): React.JSX.Element {
   const attention = needsAttention(useBackup())
   const whatsapp = useWhatsAppEnabled()
   const unread = useWhatsAppUnread(whatsapp)
+  const reception = useReception()
   const backTo = useRef('/agenda')
   useEffect(() => {
     if (!inSettings) backTo.current = pathname
@@ -170,14 +172,12 @@ function SidebarBody(): React.JSX.Element {
   return (
     <div key="principal" className="flex flex-1 animate-fade-in flex-col">
       <SidebarNav
-        items={
-          whatsapp
-            ? [
-                ...NAV_ITEMS,
-                { to: WHATSAPP_PATH, label: 'WhatsApp', icon: <MessageCircle />, badge: unread }
-              ]
-            : NAV_ITEMS
-        }
+        items={[
+          ...(reception ? NAV_ITEMS.filter((item) => item.to !== '/clinica') : NAV_ITEMS),
+          ...(whatsapp
+            ? [{ to: WHATSAPP_PATH, label: 'WhatsApp', icon: <MessageCircle />, badge: unread }]
+            : [])
+        ]}
         label="Principal"
         pathname={pathname}
       />

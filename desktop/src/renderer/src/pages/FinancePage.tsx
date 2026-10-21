@@ -16,6 +16,7 @@ import { ErrorState } from '@renderer/components/ui/error'
 import { Loading } from '@renderer/components/ui/loading'
 import { formatShortDay, RENOVACAO_LABELS, useRenewPackage } from '@renderer/lib/finance'
 import { financeCatalogQuery, financeOverviewQuery } from '@renderer/lib/queries'
+import { useReception } from '@renderer/lib/reception'
 
 function monthName(date: Date): string {
   return format(date, "MMMM 'de' yyyy", { locale: ptBR })
@@ -197,6 +198,7 @@ export function FinancePage(): React.JSX.Element {
   const navigate = useNavigate()
   const [month, setMonth] = useState(() => startOfMonth(new Date()))
   const [paying, setPaying] = useState(false)
+  const reception = useReception()
   const de = toIsoDate(month)
   const ate = toIsoDate(endOfMonth(month))
   const overview = useQuery(financeOverviewQuery(de, ate))
@@ -239,15 +241,17 @@ export function FinancePage(): React.JSX.Element {
       }
       actions={
         <>
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label="Valores e convênios"
-            title="Valores e convênios"
-            onClick={() => void navigate('/financeiro/valores')}
-          >
-            <Tags />
-          </Button>
+          {!reception && (
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Valores e convênios"
+              title="Valores e convênios"
+              onClick={() => void navigate('/financeiro/valores')}
+            >
+              <Tags />
+            </Button>
+          )}
           <Button
             variant="ghost"
             size="icon"
@@ -273,13 +277,17 @@ export function FinancePage(): React.JSX.Element {
       ) : firstUse ? (
         <EmptyState
           icon={<Wallet />}
-          title="Comece pelos valores"
+          title={reception ? 'Nenhum valor cadastrado' : 'Comece pelos valores'}
           action={
-            <Button variant="secondary" onClick={() => void navigate('/financeiro/valores')}>
-              Cadastrar valores
-            </Button>
+            !reception && (
+              <Button variant="secondary" onClick={() => void navigate('/financeiro/valores')}>
+                Cadastrar valores
+              </Button>
+            )
           }
-        />
+        >
+          {reception && 'Cadastre no computador do consultório.'}
+        </EmptyState>
       ) : (
         <div className="mx-auto max-w-[840px] px-8 pt-6 pb-20">
           <Overview data={overview.data} month={month} />

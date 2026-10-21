@@ -217,7 +217,9 @@ const prefsArg = process.argv.find((arg) => arg.startsWith(PREFS_ARG))
 const prefs: AuriPrefs = {
   initial: prefsArg ? JSON.parse(prefsArg.slice(PREFS_ARG.length)) : DEFAULT_UI_PREFS,
   save: (value) => ipcRenderer.send('prefs:save', value),
-  onChange: (listener) => subscribe<UiPrefs>('prefs:changed', listener)
+  onChange: (listener) => subscribe<UiPrefs>('prefs:changed', listener),
+  enableReception: () => invoke('reception:enable'),
+  disableReception: (secret) => invoke('reception:disable', secret)
 }
 
 const transfer: AuriTransfer = {

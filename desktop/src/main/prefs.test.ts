@@ -15,13 +15,15 @@ describe('preferências da interface', () => {
     expect(createPrefsStore(file).get()).toEqual({
       sidebarOpen: true,
       theme: 'system',
-      whatsapp: true
+      whatsapp: true,
+      recepcao: false
     })
     createPrefsStore(file).save({ sidebarOpen: false })
     expect(createPrefsStore(file).get()).toEqual({
       sidebarOpen: false,
       theme: 'system',
-      whatsapp: true
+      whatsapp: true,
+      recepcao: false
     })
   })
 
@@ -32,7 +34,8 @@ describe('preferências da interface', () => {
     expect(createPrefsStore(file).get()).toEqual({
       sidebarOpen: false,
       theme: 'dark',
-      whatsapp: true
+      whatsapp: true,
+      recepcao: false
     })
   })
 
@@ -41,7 +44,8 @@ describe('preferências da interface', () => {
     expect(createPrefsStore(file).get()).toEqual({
       sidebarOpen: false,
       theme: 'system',
-      whatsapp: true
+      whatsapp: true,
+      recepcao: false
     })
   })
 
@@ -51,7 +55,12 @@ describe('preferências da interface', () => {
     store.save({ theme: 'light' })
     store.save({ theme: 'light' })
     expect(onChange).toHaveBeenCalledTimes(1)
-    expect(onChange).toHaveBeenCalledWith({ sidebarOpen: true, theme: 'light', whatsapp: true })
+    expect(onChange).toHaveBeenCalledWith({
+      sidebarOpen: true,
+      theme: 'light',
+      whatsapp: true,
+      recepcao: false
+    })
   })
 
   it('usa o padrão quando o arquivo está corrompido', () => {
@@ -59,7 +68,8 @@ describe('preferências da interface', () => {
     expect(createPrefsStore(file).get()).toEqual({
       sidebarOpen: true,
       theme: 'system',
-      whatsapp: true
+      whatsapp: true,
+      recepcao: false
     })
   })
 
@@ -71,7 +81,8 @@ describe('preferências da interface', () => {
     expect(JSON.parse(readFileSync(file, 'utf8'))).toEqual({
       sidebarOpen: false,
       theme: 'system',
-      whatsapp: true
+      whatsapp: true,
+      recepcao: false
     })
   })
 })

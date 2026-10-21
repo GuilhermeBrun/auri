@@ -204,11 +204,18 @@ export type IpcResult<T> = { ok: true; data: T } | { ok: false; error: string }
 
 export interface AuriPrefs {
   initial: UiPrefs
-  save(prefs: Partial<UiPrefs>): void
+  save(prefs: Partial<Omit<UiPrefs, 'recepcao'>>): void
   onChange(listener: (prefs: UiPrefs) => void): () => void
+  enableReception(): Promise<void>
+  disableReception(secret?: BackupSecret): Promise<void>
 }
 
-export const DEFAULT_UI_PREFS: UiPrefs = { sidebarOpen: true, theme: 'system', whatsapp: true }
+export const DEFAULT_UI_PREFS: UiPrefs = {
+  sidebarOpen: true,
+  theme: 'system',
+  whatsapp: true,
+  recepcao: false
+}
 
 export type WhatsAppBounds = { x: number; y: number; width: number; height: number }
 
