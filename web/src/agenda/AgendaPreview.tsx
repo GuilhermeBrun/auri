@@ -505,6 +505,11 @@ export function AgendaPreview() {
     const marker = bodyRef.current?.querySelector('.drop')?.getBoundingClientRect()
     const to = marker ? { x: marker.left - main.left, y: marker.top - main.top } : null
     land(g, to, () => {
+      const late = problem(session, target.day, target.start)
+      if (late) {
+        render({ ...state, selected: null })
+        return showToast('alert', late.title, late.text)
+      }
       const undo = { id: session.id, day: session.day, start: session.start, mark: session.mark }
       const moved = store.move(session.id, target.day, target.start)
       if (!moved) return
@@ -593,7 +598,7 @@ export function AgendaPreview() {
 
   function onClick(event: MouseEvent) {
     const target = event.target as Element
-    if (swallowClick.current) return
+    if (swallowClick.current || winRef.current?.hasAttribute('data-dragging')) return
     if (target.closest('[data-undo]') && toast.undo) {
       const { id, day, start, mark } = toast.undo
       const moved = store.find(id)
