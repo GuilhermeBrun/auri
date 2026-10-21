@@ -230,7 +230,6 @@ export function GeneralPage(): React.JSX.Element {
     <Page trail={[SETTINGS_CRUMB, { label: 'Geral' }]}>
       <div className="mx-auto max-w-[720px] px-8 pt-8 pb-16">
         <div className="flex flex-col gap-14">
-          <ThisComputer />
           <PageSection id="atualizacoes" title="Atualizações">
             {state && (
               <SettingsGroup className="flex flex-col gap-5">
@@ -290,6 +289,7 @@ export function GeneralPage(): React.JSX.Element {
             )}
           </PageSection>
           <WhatsApp />
+          <ThisComputer />
           <Transfer />
           <ErrorReports />
         </div>
