@@ -14,9 +14,10 @@ o minuto inteiro.
 | Lint          | `npm run check` (formato, lint e tipos) e `npm run knip` (código e dependências sem uso) |
 | Build         | `npm run build` (electron-vite; os tipos já passaram no `npm run check`)                 |
 | Test          | `npm test` (Vitest no Node do Electron)                                                  |
-| Release Smoke | `node --test scripts/release/*.test.mjs` (versões e site de atualização)                 |
+| Release Smoke | `node --test scripts/release/*.test.mjs` (versões e tradução da pilha de erros)          |
+| Site          | `npm run check`, `npm test` e `npm run build:exemplo`                                    |
 
-Os comandos rodam em `desktop/`, a pasta do app (o job define `working-directory: desktop`).
+Os passos do app rodam em `desktop/` e os do site em `web/`.
 
 Os passos rodam mesmo depois de um erro, para o PR mostrar todos de uma vez. O `Check` é o único
 check exigido pela proteção do `main`, que também exige o PR **atualizado com o `main`**: o que
@@ -37,8 +38,8 @@ nada do que o passo lê mudou desde a última vez que passou, a saída é repeti
 roda tudo sem cache.
 
 Os hooks são do Vite+. O `npm install` do desktop instala os hooks (`vp config`). Antes de cada
-commit, o `desktop/.vite-hooks/pre-commit` roda o `vp staged`: formato e lint só dos arquivos do
-commit, corrigindo o que der. `npx vp hooks status` mostra o estado, e `VP_GIT_HOOKS=0` desliga os
+commit, o `desktop/.vite-hooks/pre-commit` roda o `vp staged` no app e no site: formato e lint só
+dos arquivos do commit, corrigindo o que der. `npx vp hooks status` mostra o estado, e `VP_GIT_HOOKS=0` desliga os
 hooks num comando.
 
 ## Revisão

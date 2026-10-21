@@ -64,11 +64,11 @@ Auri instalado ──POST JSON──▶ erros.auri.dev.br/api/erros ──SQL─
 
 O app decide pela resposta. Qualquer servidor novo precisa responder igual:
 
-| Resposta                         | O app                                        |
-| -------------------------------- | -------------------------------------------- |
-| `2xx`                            | marca como enviado                           |
-| `4xx` (fora `429`)               | descarta: mandar de novo daria o mesmo erro  |
-| `429`, `5xx`, sem rede, sem DNS  | guarda e tenta de novo mais tarde            |
+| Resposta                        | O app                                       |
+| ------------------------------- | ------------------------------------------- |
+| `2xx`                           | marca como enviado                          |
+| `4xx` (fora `429`)              | descarta: mandar de novo daria o mesmo erro |
+| `429`, `5xx`, sem rede, sem DNS | guarda e tenta de novo mais tarde           |
 
 Os limites de cada campo ficam num arquivo só, `web/contrato/relatorio-de-erro.json`, que os dois
 lados leem: o app corta e divide os envios por ele, e a função monta o `payloadSchema` com ele. Os
@@ -99,7 +99,7 @@ o Postgres não aceita em texto, sai antes de gravar.
 ### Migrações
 
 Cada mudança no banco é um arquivo numerado em `web/db/migracoes/` (`001_relatorios_de_erro.sql`,
-`002_…sql`). O `npm run erros:migrar`, com o dono do banco, aplica em ordem só as que ainda não
+`002_links_curtos.sql`…). O `npm run erros:migrar`, com o dono do banco, aplica em ordem só as que ainda não
 rodaram, todas numa transação: se uma falhar, nada fica pela metade. A tabela `schema_migrations`
 guarda quais rodaram e o SHA-256 de cada arquivo.
 
@@ -119,7 +119,7 @@ cd web
 DATABASE_URL=<endereço do dono> npm run erros:migrar
 ```
 
-- **Mudar o banco:** crie a próxima migração (`003_…sql`). Nunca edite uma que já rodou: o
+- **Mudar o banco:** crie a migração com o próximo número. Nunca edite uma que já rodou: o
   `erros:migrar` recusa, porque o arquivo não bate mais com o que foi aplicado.
 - **Ordem:** a Vercel publica o site no mesmo push em que o workflow migra, então por alguns
   segundos a função nova pode chegar antes da tabela. Por isso as migrações só acrescentam: até a
@@ -166,15 +166,15 @@ Para ligar:
 
 O que alguém consegue tentando atacar ou interceptar o serviço:
 
-| Tentativa | O que impede |
-| --- | --- |
-| Ler o envio no caminho (Wi-Fi da clínica, provedor) | O app só manda por HTTPS e confere o certificado; o envio também não tem dado de paciente nem nome de quem usa. |
-| Fazer o app mandar para outro lugar | O endereço está no app (`erros.auri.dev.br`) e redirecionamentos são recusados (`redirect: 'error'`): o relatório só vai para o endereço configurado. |
-| Ler os relatórios pela API | Não há como: a função só aceita `POST` e responde sem corpo. Nenhum caminho devolve o que está no banco. |
-| Ler os relatórios com o endereço do banco, se vazar da Vercel | O usuário da função só grava: `SELECT`, `UPDATE`, `DELETE`, outras tabelas e criar tabelas dão "permission denied" (testado em `web/tests/erros.test.ts`). |
-| Se passar pelo banco entre a função e o Neon | A conexão confere o certificado do banco (`verify-full`). O `sslmode=require` do endereço do Neon cifraria sem conferir; o código ignora esse modo. |
-| Injetar SQL pelos campos | Todo valor vai como parâmetro (`sql(rows)` do driver `postgres`), nunca colado no texto do SQL; os campos ainda passam pelo `payloadSchema` (tipos e tamanhos). |
-| Encher o banco de lixo | Dá para gravar relatórios falsos (o app é público, não há senha a esconder), mas não ler nada. Limites: 64 KB e 20 falhas por envio, 1000 falhas por dia e 90 dias guardados, no próprio banco. Na frente da função, o Firewall da Vercel aceita no máximo 60 pedidos por minuto por IP em `/api/` (relatórios de erro e links curtos, numa regra só, o limite do plano Hobby) e responde `429` ao que passar, que o app guarda para depois. Ao trocar de hospedagem, o mesmo limite vai para o proxy da nova. |
+| Tentativa                                                     | O que impede                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| ------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Ler o envio no caminho (Wi-Fi da clínica, provedor)           | O app só manda por HTTPS e confere o certificado; o envio também não tem dado de paciente nem nome de quem usa.                                                                                                                                                                                                                                                                                                                                                                                                |
+| Fazer o app mandar para outro lugar                           | O endereço está no app (`erros.auri.dev.br`) e redirecionamentos são recusados (`redirect: 'error'`): o relatório só vai para o endereço configurado.                                                                                                                                                                                                                                                                                                                                                          |
+| Ler os relatórios pela API                                    | Não há como: a função só aceita `POST` e responde sem corpo. Nenhum caminho devolve o que está no banco.                                                                                                                                                                                                                                                                                                                                                                                                       |
+| Ler os relatórios com o endereço do banco, se vazar da Vercel | O usuário da função só grava: `SELECT`, `UPDATE`, `DELETE`, outras tabelas e criar tabelas dão "permission denied" (testado em `web/tests/erros.test.ts`).                                                                                                                                                                                                                                                                                                                                                     |
+| Se passar pelo banco entre a função e o Neon                  | A conexão confere o certificado do banco (`verify-full`). O `sslmode=require` do endereço do Neon cifraria sem conferir; o código ignora esse modo.                                                                                                                                                                                                                                                                                                                                                            |
+| Injetar SQL pelos campos                                      | Todo valor vai como parâmetro (`sql(rows)` do driver `postgres`), nunca colado no texto do SQL; os campos ainda passam pelo `payloadSchema` (tipos e tamanhos).                                                                                                                                                                                                                                                                                                                                                |
+| Encher o banco de lixo                                        | Dá para gravar relatórios falsos (o app é público, não há senha a esconder), mas não ler nada. Limites: 64 KB e 20 falhas por envio, 1000 falhas por dia e 90 dias guardados, no próprio banco. Na frente da função, o Firewall da Vercel aceita no máximo 60 pedidos por minuto por IP em `/api/` (relatórios de erro e links curtos, numa regra só, o limite do plano Hobby) e responde `429` ao que passar, que o app guarda para depois. Ao trocar de hospedagem, o mesmo limite vai para o proxy da nova. |
 
 O que não sai do computador de jeito nenhum: dados de pacientes, o que foi digitado, o nome de quem
 usa e o nome do computador. O IP de quem manda não é guardado.

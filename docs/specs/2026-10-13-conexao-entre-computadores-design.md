@@ -1,6 +1,7 @@
 # Conexão entre computadores — design
 
-Data: 13/10/2026. Estado: fases 1 e 2 implementadas (13/10/2026); falta teste real no Windows e entre duas redes.
+Data: 13/10/2026. Estado: implementado (rede da clínica e acesso de fora); falta teste real no
+Windows e entre duas redes.
 
 ## Objetivo
 
@@ -17,15 +18,12 @@ sem ninguém exportar ou importar arquivo; de casa a médica também acessa, se 
   (cliente). Um banco só, então não há conflito de sincronização e a regra de não sobrepor sessões
   continua estrita. Sem o servidor, o cliente não funciona (aceito; edição offline fica para
   depois, se fizer falta).
-- **Mesmo app, dois papéis**, escolhidos em Configurações / Conexão: "Este computador guarda os
-  dados" (padrão, o funcionamento de antes) ou "Usar os dados de outro computador".
-- **Transporte:** Noise (`@hyperswarm/secret-stream`, padrão XX) sobre TCP na rede local; na fase 2,
-  o mesmo fluxo pela rede distribuída do Hyperswarm (`hyperdht`) para acesso de fora. Cada Auri tem
-  um par de chaves; a chave pública é a identidade do computador.
-- **Descartados:** HTTPS com certificado próprio (substituído pelas chaves), SSH (resolve
-  criptografia, não alcance, e expõe o computador inteiro), redirecionar porta no roteador, túneis
-  de terceiros (Cloudflare, ngrok: dados passam abertos por eles), Tailscale (programa à parte),
-  servidor de retransmissão próprio (exige infraestrutura; volta com a nuvem).
+- **Mesmo app, dois papéis**, escolhidos em Configurações › Armazenamento, seção Conexão: "Este
+  computador guarda os dados" (padrão) ou "Usar os dados de outro computador".
+- **Transporte:** Noise (`@hyperswarm/secret-stream`, padrão XX) sobre TCP na rede local, e o mesmo
+  fluxo pela rede distribuída do Hyperswarm (`hyperdht`) para acesso de fora. Cada Auri tem um par
+  de chaves; a chave pública é a identidade do computador. Nenhuma porta aberta no roteador e
+  nenhum serviço de terceiros por onde os dados passem abertos.
 
 ## Arquitetura
 
@@ -59,9 +57,8 @@ tela ◀─ IPC ◀─ main ◀────────── aviso "agenda mudo
 - **Servidor** só aceita chaves pareadas; **cliente** só aceita a chave do servidor com que pareou.
   Remover um computador apaga a chave dele e derruba a conexão aberta.
 - **Código de pareamento:** 12 caracteres (base32 de Crockford, ~60 bits), mostrados em três
-  grupos, válido por 5 minutos, de uso único, descartado após 5 tentativas erradas. Era para ser
-  de 6 dígitos, mas 6 dígitos podem ser descobertos por força bruta por quem interceptar uma
-  tentativa; com 60 bits isso é inviável.
+  grupos, válido por 5 minutos, de uso único, descartado após 5 tentativas erradas. Com 60 bits,
+  descobrir o código por força bruta a partir de uma tentativa interceptada é inviável.
 - **Prova:** o código nunca viaja. O cliente manda `HMAC(código, hash do handshake)`; o hash
   amarra as duas chaves desta conexão, então um intermediário (chaves diferentes de cada lado)
   produz provas que não batem. O servidor responde com a própria prova, e os dois se autenticam.
@@ -72,18 +69,38 @@ tela ◀─ IPC ◀─ main ◀────────── aviso "agenda mudo
   pacientes.
 - **Fora do escopo:** login por pessoa (está no roadmap como "senha de acesso").
 
-## Configurações / Conexão
+## Acesso de fora da clínica
 
-Página de uma coluna, como Aparência. Dois cartões de papel no topo.
+O servidor também escuta pela `hyperdht` com a mesma chave (`main/net/remote.ts`); chaves não
+pareadas são barradas antes da conexão (`firewall`), e o pareamento continua só na rede local. O
+cliente tenta a rede local primeiro e, se ela não responder em 1,5 s, também a internet; fica a
+que entrar primeiro.
+
+Limitação conhecida: falha se as duas pontas estiverem atrás de NAT restritivo (CGNAT nos dois
+lados, celular roteando). A DHT pública (nós de bootstrap da Holepunch) só coordena: os dados vão
+direto entre os dois computadores, cifrados. Quem conhece a chave pública da recepção (só
+computadores pareados) consegue saber o IP público dela pela DHT.
+
+## Configurações › Armazenamento › Conexão
+
+A seção Conexão fica em Configurações › Armazenamento, antes da cópia de segurança
+(`StoragePage.tsx`, `?secao=conexao`). No topo, "Onde ficam os dados" com os dois papéis.
 
 **Guarda os dados (recepção):** compartilhar na rede (desligado por padrão: nenhuma porta aberta);
 "Conectar computador" mostra o código; lista de computadores pareados (online/visto por último,
-Remover); continuar rodando ao fechar a janela e abrir ao ligar o computador (ligados ao ativar o
-compartilhamento); nome deste computador. Aviso do firewall do Windows.
+Remover); "Permitir acesso de fora da clínica" (ligado por padrão quando compartilha), com o estado
+da rede: disponível (`open`), na maioria das redes (`likely`), restritiva (`restricted`: o roteador
+troca a porta a cada conexão), sem internet (`offline`); continuar rodando ao fechar a janela e
+abrir ao ligar o computador; nome deste computador. Aviso do firewall do Windows.
 
 **Usa os dados de outro (consultório):** lista de Auri encontrados na rede + digitar endereço;
-código; depois "Conectado a Recepção", estado e Desconectar. Os dados locais ficam no disco e não
-aparecem enquanto conectado; voltam ao desconectar. Sem junção de bases.
+código; depois o computador em uso, "Conectado pela rede da clínica" ou "pela internet",
+Desconectar e "Testar acesso pela internet" (conecta só pela DHT, se apresenta e mede o tempo). Os
+dados locais ficam no disco e não aparecem enquanto conectado; voltam ao desconectar. Sem junção de
+bases.
+
+Com outro computador conectado, os dois lados podem ligar "Avisar quando a agenda mudar em outro
+computador".
 
 Trocar de papel não reinicia o app: o main fecha banco/conexão, abre o novo e manda a tela recarregar.
 
@@ -99,30 +116,12 @@ Trocar de papel não reinicia o app: o main fecha banco/conexão, abre o novo e 
 - Recepção: sair com cliente conectado pede confirmação; enquanto houver cliente, o computador não
   entra em suspensão.
 
-## Fases
-
-1. **Rede da clínica:** registro de operações, edição concorrente, protocolo, pareamento, servidor
-   TCP + mDNS, cliente com reconexão, segundo plano/bandeja/abrir ao ligar, aba Conexão, estados.
-2. **Acesso de fora:** o servidor também escuta pela `hyperdht` com a mesma chave
-   (`main/net/remote.ts`); chaves não pareadas são barradas antes da conexão (`firewall`), e o
-   pareamento continua só na rede local. O cliente tenta a rede local primeiro e, se ela não
-   responder em 1,5 s, também a internet; fica a que entrar primeiro. Configurações / Conexão:
-   - recepção: "Permitir acesso de fora da clínica" (ligado por padrão quando compartilha), com o
-     estado da rede: disponível (`open`), na maioria das redes (`likely`), restritiva
-     (`restricted`: o roteador troca a porta a cada conexão), sem internet (`offline`);
-   - consultório: "Conectado pela rede da clínica" ou "pela internet", e "Testar acesso pela
-     internet" (conecta só pela DHT, se apresenta e mede o tempo).
-     Limitação conhecida: falha se as duas pontas estiverem atrás de NAT restritivo (CGNAT nos dois
-     lados, celular roteando). A DHT pública (nós de bootstrap da Holepunch) só coordena: os dados
-     vão direto entre os dois computadores, cifrados. Quem conhece a chave pública da recepção (só
-     computadores pareados) consegue saber o IP público dela pela DHT.
-
 ## Testes
 
 - Automáticos (Vitest): registro de operações; `updated_at` antigo recusado; código certo/errado/
   vencido/usado/5 tentativas; prova com chaves trocadas falha; chave não pareada recusada; remover
   derruba; integração servidor + cliente por TCP local com banco em memória (avisos, queda sem
   repetição, versões diferentes).
-- Manual com duas máquinas (Mac + Windows) ao fim de cada fase, incluindo firewall do Windows,
-  bandeja e abrir ao ligar; fase 2 testada da casa da médica ou de um celular roteando.
+- Manual com duas máquinas (Mac + Windows), incluindo firewall do Windows, bandeja e abrir ao
+  ligar; o acesso de fora testado da casa da médica ou de um celular roteando.
 - Só dados fictícios.
