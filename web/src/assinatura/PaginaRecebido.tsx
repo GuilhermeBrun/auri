@@ -30,7 +30,7 @@ export function PaginaRecebido({
       computador={computador}
       abrir={abrir}
       textos={TEXTOS}
-      rodape="Esta página não manda nada pela internet. Ela só mostra a resposta, cifrada."
+      rodape="A resposta está cifrada: só o Auri que fez o pedido consegue ler."
     />
   )
 }

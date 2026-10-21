@@ -30,10 +30,10 @@ describe('cabeçalhos da Vercel', () => {
     '/confirmar/index.html',
     '/resposta',
     '/resposta/'
-  ])('%s: CSP própria, sem conexão nenhuma, e fora da busca', (caminho) => {
+  ])('%s: CSP própria, conexão só com o próprio site, e fora da busca', (caminho) => {
     const csp = cabecalhos(caminho).get('Content-Security-Policy')
     expect(csp).toHaveLength(1)
-    expect(csp?.[0]).toContain("connect-src 'none'")
+    expect(csp?.[0]).toContain("connect-src 'self'")
     expect(csp?.[0]).toContain("default-src 'none'")
     expect(csp?.[0]).not.toContain('unsafe-inline')
     expect(cabecalhos(caminho).get('X-Robots-Tag')).toEqual(['noindex'])

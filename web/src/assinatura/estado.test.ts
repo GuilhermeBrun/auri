@@ -3,6 +3,7 @@ import { novaChave, sha256 } from '../../contrato/assinatura/cifra'
 import { CPF_FICTICIO, assinaturaFicticia, termoFicticio } from '../../contrato/assinatura/ficticio'
 import { lerVolta, montarIda, montarVolta, type Termo } from '../../contrato/assinatura/formato'
 import { simplificar } from '../../contrato/assinatura/traco'
+import { chaveDoCodigo, guardar, novoCodigo, type Buscar } from '../../contrato/link-curto'
 import { abrir, avaliarRecebido, guardarRascunho, lerRascunho, temSuporte } from './estado'
 import { resposta, type Preenchido } from './textos'
 
@@ -99,6 +100,48 @@ describe('abrir o link de ida', () => {
     guardarRascunho(termoFicticio().id, { preenchido: outro }, armazenamento)
     const estado = await abrir(fragmento, armazenamento, ANTES_DO_PRAZO)
     expect(estado).toMatchObject({ tela: 'termo', rascunho: { rel: 'mae' } })
+  })
+})
+
+function servidor() {
+  const guardados = new Map<string, string>()
+  const buscar: Buscar = async (endereco, opcoes) => {
+    const id = new URL(endereco).searchParams.get('id') ?? ''
+    if (opcoes?.method === 'PUT') {
+      guardados.set(id, (JSON.parse(opcoes.body as string) as { dados: string }).dados)
+      return new Response(null, { status: 204 })
+    }
+    const dados = guardados.get(id)
+    return dados ? new Response(dados) : new Response(null, { status: 404 })
+  }
+  return { origem: 'https://auri.dev.br', buscar }
+}
+
+describe('link curto', () => {
+  test('busca o termo cifrado pelo código e abre com a chave do código', async () => {
+    const rede = servidor()
+    const codigo = novoCodigo()
+    const chave = await chaveDoCodigo(codigo)
+    const ida = await montarIda(termoFicticio(), chave)
+    const dados = ida.slice(ida.indexOf('#') + 1).split('.')[2]!
+    await guardar(codigo, dados, 2_000_000_000, rede)
+    const estado = await abrir(`#${codigo}`, memoria(), ANTES_DO_PRAZO, globalThis, rede)
+    expect(estado).toMatchObject({ tela: 'termo', aberto: { termo: termoFicticio(), chave } })
+  })
+
+  test('código que não está no site vira "não vale mais"; sem rede, "sem internet"', async () => {
+    const codigo = novoCodigo()
+    expect(await abrir(`#${codigo}`, memoria(), ANTES_DO_PRAZO, globalThis, servidor())).toEqual({
+      tela: 'sumiu'
+    })
+    const fora = { origem: 'https://auri.dev.br', buscar: () => Promise.reject(new TypeError()) }
+    expect(await abrir(`#${codigo}`, memoria(), ANTES_DO_PRAZO, globalThis, fora)).toEqual({
+      tela: 'sem-conexao'
+    })
+  })
+
+  test('a página recebido aceita o código da resposta guardada', () => {
+    expect(avaliarRecebido(`#${novoCodigo()}`)).toBe('pronto')
   })
 })
 

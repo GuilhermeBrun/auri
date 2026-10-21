@@ -1,6 +1,7 @@
 import { LinkInvalido } from '../../contrato/assinatura/formato'
 import {
   RESPOSTAS,
+  VERSAO,
   idDaVolta,
   lerIda,
   passou,
@@ -9,8 +10,10 @@ import {
   type Decisao,
   type Resposta
 } from '../../contrato/confirmacao/formato'
+import { ehCodigo } from '../../contrato/link-curto'
 import type { Situacao } from '../assinatura/Devolucao'
 import { temSuporte } from '../assinatura/estado'
+import { expandir, type Rede } from '../assinatura/link'
 
 export type Aberta = { confirmacao: Confirmacao; chave: Uint8Array }
 
@@ -19,6 +22,8 @@ export type Estado =
   | { tela: 'sem-suporte' }
   | { tela: 'incompleto' }
   | { tela: 'versao' }
+  | { tela: 'sumiu' }
+  | { tela: 'sem-conexao' }
   | { tela: 'passou'; confirmacao: Confirmacao }
   | { tela: 'vencido'; confirmacao: Confirmacao }
   | { tela: 'pergunta'; aberta: Aberta }
@@ -60,11 +65,14 @@ export async function abrir(
   fragmento: string,
   armazenamento?: Armazenamento,
   agora: number = Date.now(),
-  ambiente: Ambiente = globalThis
+  ambiente: Ambiente = globalThis,
+  rede: Rede = {}
 ): Promise<Estado> {
   if (!temSuporte(ambiente)) return { tela: 'sem-suporte' }
   try {
-    const { confirmacao, chave } = await lerIda(fragmento)
+    const expandido = await expandir(fragmento, VERSAO, rede)
+    if ('falha' in expandido) return { tela: expandido.falha }
+    const { confirmacao, chave } = await lerIda(expandido.fragmento)
     const enviado = lerEnviado(confirmacao.id, armazenamento)
     if (enviado) return { tela: 'enviado', confirmacao, ...enviado }
     const fim = situacao(confirmacao, agora)
@@ -77,6 +85,7 @@ export async function abrir(
 }
 
 export function avaliarResposta(fragmento: string): Situacao {
+  if (ehCodigo(fragmento.replace(/^#/, ''))) return 'pronto'
   try {
     idDaVolta(fragmento)
     return 'pronto'

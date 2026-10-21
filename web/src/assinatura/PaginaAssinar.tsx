@@ -4,6 +4,7 @@ import type { Termo } from '../../contrato/assinatura/formato'
 import { Aviso, Rodape } from './comum'
 import { Conteudo } from './Conteudo'
 import { abrir, copiar, guardarRascunho, type Aberto, type Estado } from './estado'
+import { voltaCurta } from './link'
 import {
   Alerta,
   Atualizar,
@@ -100,6 +101,7 @@ function Formulario({
   const [preenchido, setPreenchido] = useState(() => inicial ?? preenchidoVazio(termo))
   const [tocado, setTocado] = useState({ nome: false, cpf: false })
   const [volta, setVolta] = useState<Volta | null>(null)
+  const [enviando, setEnviando] = useState(false)
   const lista = faltas(preenchido)
   const completo = lista.length === 0
 
@@ -137,10 +139,13 @@ function Formulario({
   const erroCpf = (tocado.cpf || preenchido.cpf.length === 11) && !cpfValido(preenchido.cpf)
   const registro = [termo.prof.nome, termo.prof.reg].filter(Boolean).join(' · ')
 
-  function enviar() {
-    if (!mensagem) return
-    guardarRascunho(termo.id, { enviado: mensagem })
-    setTimeout(() => onEnviado(mensagem))
+  async function enviar() {
+    if (!link || enviando) return
+    setEnviando(true)
+    const texto = mensagemDaVolta(termo, await voltaCurta(link))
+    guardarRascunho(termo.id, { enviado: texto })
+    location.href = linkDoWhatsApp(termo.cli.whats, texto)
+    setTimeout(() => onEnviado(texto))
   }
 
   return (
@@ -266,9 +271,13 @@ function Formulario({
           <a
             className="botao botao-principal"
             href={linkDoWhatsApp(termo.cli.whats, mensagem)}
-            onClick={enviar}
+            aria-busy={enviando}
+            onClick={(evento) => {
+              evento.preventDefault()
+              void enviar()
+            }}
           >
-            <Enviar />
+            {enviando ? <Carregando /> : <Enviar />}
             Enviar pelo WhatsApp
           </a>
         ) : (
@@ -313,6 +322,31 @@ function Tela({
           <p>
             Abra de novo pela mensagem da clínica. Se copiou o link, confira se ele veio inteiro.
           </p>
+        </Aviso>
+      )
+    case 'sumiu':
+      return (
+        <Aviso icone={<Relogio />} titulo="Este link não vale mais">
+          <p>Ele venceu ou foi trocado por um novo. Peça um link novo para a clínica.</p>
+        </Aviso>
+      )
+    case 'sem-conexao':
+      return (
+        <Aviso
+          icone={<Atualizar />}
+          titulo="Sem internet"
+          acao={
+            <button
+              type="button"
+              className="botao botao-principal"
+              onClick={() => location.reload()}
+            >
+              <Atualizar />
+              Tentar de novo
+            </button>
+          }
+        >
+          <p>O termo precisa de internet para abrir. Confira a conexão e tente de novo.</p>
         </Aviso>
       )
     case 'versao':
@@ -386,8 +420,7 @@ export function PaginaAssinar({ inicial }: { inicial?: Estado }) {
         onEnviado={(termo, mensagem) => setEstado({ tela: 'enviado', termo, mensagem })}
       />
       <Rodape>
-        Esta página não manda nada pela internet. A resposta vai cifrada pelo seu WhatsApp, só para
-        a clínica.
+        O termo e a resposta vão cifrados: só a clínica consegue ler, nem o site do Auri.
       </Rodape>
     </main>
   )
