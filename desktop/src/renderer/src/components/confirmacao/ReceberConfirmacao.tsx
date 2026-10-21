@@ -17,7 +17,6 @@ export function ReceberConfirmacao(): React.JSX.Element {
       open={recebendo !== null}
       onOpenChange={(open) => !open && fecharResposta()}
       title="Resposta da confirmação"
-      description="A resposta entra na agenda assim que chega."
     >
       {recebendo && <Receber key={recebendo.id} inicial={recebendo.texto} />}
     </Dialog>

@@ -202,7 +202,6 @@ function WaitlistForm({
 
         <SwitchField
           label="Prioridade"
-          description="Aparece primeiro na lista e quando um horário vaga."
           checked={values.prioridade}
           onCheckedChange={(v) => set('prioridade', v)}
         />

@@ -1131,11 +1131,6 @@ export function AgendaPage(): React.JSX.Element {
                     )
                   }
                 />
-                {!vaga && (
-                  <p className="mt-4 px-3 text-xs text-ink-faint">
-                    Clique num horário vago da agenda para ver quem cabe nele.
-                  </p>
-                )}
               </aside>
             )}
           </div>

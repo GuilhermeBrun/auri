@@ -502,7 +502,7 @@ export function AppointmentForm({
                 description={
                   field.value && editing?.confirmado_em
                     ? `Confirmado em ${format(new Date(editing.confirmado_em), "dd/MM 'às' HH:mm")}.`
-                    : 'Marque quando a família confirmar que vem.'
+                    : undefined
                 }
                 checked={field.value}
                 onCheckedChange={field.onChange}
@@ -513,16 +513,14 @@ export function AppointmentForm({
         {editing && !signed && !started && <ConfirmacaoDaSessao appointment={editing} />}
         {!signed && started && !canSign && editing?.presenca !== 'presente' && (
           <p className="-mt-2 text-xs text-ink-soft">
-            Presente só com a assinatura de quem trouxe o paciente, no dia da sessão.
+            Presente só com a assinatura, no dia da sessão.
           </p>
         )}
         {canSign && (
           <div className="flex items-center justify-between gap-3 rounded-control bg-canvas px-3 py-2.5">
             <span className="flex flex-col">
               <span className="text-[13px] font-medium">Chegada</span>
-              <span className="text-xs text-ink-soft">
-                A presença só é marcada com a assinatura de quem trouxe o paciente, e fica travada.
-              </span>
+              <span className="text-xs text-ink-soft">Marca a presença e trava a sessão.</span>
             </span>
             <Button variant="secondary" onClick={() => setSigning(true)}>
               <PenLine /> Assinar chegada
@@ -537,8 +535,7 @@ export function AppointmentForm({
                   <Check /> Presente · chegada assinada às {clock(signed.assinado_em)}
                 </span>
                 <span className="text-xs text-ink-soft">
-                  Por {signed.signer_nome} ({signed.signer_parentesco.toLowerCase()}). Paciente,
-                  horário, etiqueta e presença não mudam mais.
+                  Por {signed.signer_nome} ({signed.signer_parentesco.toLowerCase()}).
                 </span>
               </span>
               {!voiding && (
@@ -581,8 +578,7 @@ export function AppointmentForm({
                   </Button>
                 </div>
                 <p className="text-xs text-ink-soft">
-                  A assinatura anulada continua guardada, com o motivo, e a sessão volta a poder ser
-                  editada.
+                  Fica guardada com o motivo, e a sessão volta a ser editável.
                 </p>
               </div>
             )}
