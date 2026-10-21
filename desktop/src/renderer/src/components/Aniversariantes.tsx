@@ -95,7 +95,7 @@ export function BoloAniversario({
     <Cake
       role="img"
       aria-label={`Faz ${anos(idade)} neste dia`}
-      className="ml-1 inline size-3 -translate-y-px stroke-[2] opacity-75"
+      className="mr-1 inline size-3 -translate-y-px stroke-[2] opacity-75"
     />
   )
 }
