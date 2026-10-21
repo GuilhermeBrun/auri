@@ -39,6 +39,13 @@ describe('segurança IPC', () => {
   it('recusa janela desconhecida mesmo carregando o arquivo legítimo', () => {
     expect(() => assertTrustedSender(renderer().event)).toThrow('não autorizada')
   })
+  it('recusa a janela do WhatsApp Web, que nunca é registrada', () => {
+    const main = renderer()
+    trustRenderer(main.contents, main.event.senderFrame!.url)
+    expect(() =>
+      assertTrustedSender(renderer('https://web.whatsapp.com/send?phone=5565900000000').event)
+    ).toThrow('não autorizada')
+  })
   it('recusa subframe, navegação externa, URL com prefixo parecido e frame ausente', () => {
     const r = renderer()
     const url = r.event.senderFrame!.url

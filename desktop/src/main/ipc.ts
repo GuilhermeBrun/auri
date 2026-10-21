@@ -1,4 +1,4 @@
-import { app, clipboard, ipcMain, shell } from 'electron'
+import { clipboard, ipcMain } from 'electron'
 import { z } from 'zod'
 import type { AuriTransfer, IpcResult } from '../shared/api'
 import type {
@@ -21,6 +21,7 @@ import { DATA_CHANNELS, errorMessage } from './operations'
 import type { PrefsStore } from './prefs'
 import type { UpdateService } from './updates'
 import { assertTrustedSender } from './ipc-security'
+import type { WhatsAppWindow } from './whatsapp-window'
 import { chooseLogo } from './logo'
 import { documentFont, htmlToPdf, openPdf, savePdf } from './pdf'
 
@@ -32,6 +33,7 @@ export type IpcServices = {
   updates: UpdateService
   reports: ErrorReportService
   inbox: Caixa
+  whatsapp: WhatsAppWindow
 }
 
 const cut = (max: number) =>
@@ -59,7 +61,8 @@ export function registerIpc({
   transfer,
   updates,
   reports,
-  inbox
+  inbox,
+  whatsapp
 }: IpcServices): void {
   function handle<A extends unknown[], T>(
     channel: string,
@@ -167,18 +170,12 @@ export function registerIpc({
       termPdfName(record)
     )
   })
-  handle('terms:openWhatsApp', async (numero: unknown, texto: unknown) => {
+  handle('terms:openWhatsApp', (numero: unknown, texto: unknown) => {
     const phone = z
       .string()
       .regex(/^\d{10,15}$/)
       .parse(numero)
-    const text = encodeURIComponent(z.string().max(6000).parse(texto))
-    const desktop = app.getApplicationNameForProtocol('whatsapp://') !== ''
-    await shell.openExternal(
-      desktop
-        ? `whatsapp://send?phone=${phone}&text=${text}`
-        : `https://wa.me/${phone}?text=${text}`
-    )
+    whatsapp.open(phone, z.string().max(6000).parse(texto))
   })
   handle('terms:takeIncoming', () => inbox.retirar())
   handle('confirmacoes:takeIncoming', () => inbox.retirarConfirmacoes())
