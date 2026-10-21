@@ -209,11 +209,12 @@ export function createWhatsAppView({
     show(bounds) {
       const current = ensure()
       if (!current) return
+      const zoom = window?.webContents.getZoomFactor() ?? 1
       current.setBounds({
-        x: Math.round(bounds.x),
-        y: Math.round(bounds.y),
-        width: Math.max(0, Math.round(bounds.width)),
-        height: Math.max(0, Math.round(bounds.height))
+        x: Math.round(bounds.x * zoom),
+        y: Math.round(bounds.y * zoom),
+        width: Math.max(0, Math.round(bounds.width * zoom)),
+        height: Math.max(0, Math.round(bounds.height * zoom))
       })
       if (!current.getVisible()) {
         current.setVisible(true)

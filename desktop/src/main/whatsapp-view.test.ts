@@ -73,6 +73,8 @@ vi.mock('electron', () => ({
   shell: { openExternal: mocks.openExternal }
 }))
 
+const zoom = { value: 1 }
+
 function fakeWindow() {
   const listeners = new Map<string, Listener>()
   const loads: Listener[] = []
@@ -84,7 +86,10 @@ function fakeWindow() {
     window: {
       isDestroyed: () => false,
       once: (name: string, fn: Listener) => listeners.set(name, fn),
-      webContents: { once: (_name: string, fn: Listener) => loads.push(fn) },
+      webContents: {
+        once: (_name: string, fn: Listener) => loads.push(fn),
+        getZoomFactor: () => zoom.value
+      },
       contentView: {
         addChildView: (view: unknown) => children.push(view),
         removeChildView: (view: unknown) => children.splice(children.indexOf(view), 1)
@@ -174,6 +179,15 @@ describe('WhatsApp dentro do Auri', () => {
     expect(mocks.views).toHaveLength(1)
     expect(view.webContents.loadURL).toHaveBeenLastCalledWith(whatsAppUrl('5565900000000', 'Oi'))
     expect(onOpen).toHaveBeenCalled()
+  })
+
+  it('acompanha o zoom do texto maior', () => {
+    const { whatsapp, main } = setup()
+    main.loaded()
+    zoom.value = 1.2
+    whatsapp.show({ x: 216, y: 48, width: 800, height: 600 })
+    expect(mocks.views[0].bounds).toEqual({ x: 259, y: 58, width: 960, height: 720 })
+    zoom.value = 1
   })
 
   it('avisa as não lidas só quando mudam', () => {
