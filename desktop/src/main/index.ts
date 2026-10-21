@@ -89,8 +89,8 @@ function applyTextSize(window: BrowserWindow, wanted: TextSize): void {
   const largest = largestTextSize(area)
   const size = Math.min(wanted, largest)
   const min = {
-    width: Math.round(MIN_WINDOW.width * size),
-    height: Math.round(MIN_WINDOW.height * size)
+    width: Math.min(Math.round(MIN_WINDOW.width * size), Math.floor(area.width)),
+    height: Math.min(Math.round(MIN_WINDOW.height * size), Math.floor(area.height))
   }
   window.setMinimumSize(min.width, min.height)
   const bounds = window.getBounds()
