@@ -104,28 +104,17 @@ function Catalog({ catalog }: { catalog: FinanceCatalog }): React.JSX.Element {
   if (editing && editing !== shown) setShown(editing)
   return (
     <div className="mx-auto max-w-[840px] px-8 pt-6 pb-16">
-      <p className="text-[13px] text-ink-soft">
-        O que a clínica cobra. Cada lançamento guarda o valor do dia em que foi feito: mudar um
-        valor aqui não muda o que já foi cobrado.
-      </p>
+      <p className="text-[13px] text-ink-soft">Mudar um valor não muda o que já foi cobrado.</p>
       <div className="mt-8 flex flex-col">
-        <FormSection
-          id="valores"
-          title="Valores"
-          description="Sessão, avaliação, relatório. A ficha escolhe o valor da sessão de cada paciente."
-        >
+        <FormSection id="valores" title="Valores">
           <CatalogList
             kind="service"
             items={catalog.services}
-            empty="Nenhum valor ainda. Comece pelo valor da sessão."
+            empty="Nenhum valor ainda."
             onEdit={setEditing}
           />
         </FormSection>
-        <FormSection
-          id="pacotes"
-          title="Pacotes"
-          description="Um número de sessões por um preço fechado. Cada sessão com presença usa uma."
-        >
+        <FormSection id="pacotes" title="Pacotes">
           <CatalogList
             kind="plan"
             items={catalog.plans}
@@ -133,11 +122,7 @@ function Catalog({ catalog }: { catalog: FinanceCatalog }): React.JSX.Element {
             onEdit={setEditing}
           />
         </FormSection>
-        <FormSection
-          id="convenios"
-          title="Convênios"
-          description="O valor que o convênio paga por sessão. A carteirinha fica na ficha do paciente."
-        >
+        <FormSection id="convenios" title="Convênios">
           <CatalogList
             kind="insurer"
             items={catalog.insurers}
