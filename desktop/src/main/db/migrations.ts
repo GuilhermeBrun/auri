@@ -953,6 +953,90 @@ ${onlyVoid('finance_payments', ['id', 'patient_id', 'data', 'valor_centavos', 'f
     `)
       for (const { sql } of gatilhos) db.exec(sql)
     }
+  },
+  (db) => {
+    const principal = `('sessao', 'avaliacao', 'exame')`
+    const padrao = `(SELECT id FROM appointment_types WHERE categoria IN ${principal}
+      ORDER BY categoria <> 'sessao', id LIMIT 1)`
+    db.exec(`
+    DROP TRIGGER appointment_types_no_delete;
+    DELETE FROM appointment_types
+    WHERE arquivado_em IS NOT NULL AND sistema IS NULL
+      AND NOT EXISTS (SELECT 1 FROM appointments WHERE tipo_id = appointment_types.id)
+      AND NOT EXISTS (SELECT 1 FROM waitlist_entries WHERE tipo_id = appointment_types.id)
+      AND NOT EXISTS (SELECT 1 FROM commitments WHERE etiqueta_id = appointment_types.id);
+    `)
+    const chave = (nome: string): string => nome.trim().toLocaleLowerCase('pt-BR')
+    const ativos = (
+      db.prepare('SELECT nome FROM appointment_types WHERE arquivado_em IS NULL').all() as {
+        nome: string
+      }[]
+    ).map((r) => chave(r.nome))
+    const arquivadas = db
+      .prepare('SELECT id, nome FROM appointment_types WHERE arquivado_em IS NOT NULL ORDER BY id')
+      .all() as { id: number; nome: string }[]
+    const renomear = db.prepare('UPDATE appointment_types SET nome = ? WHERE id = ?')
+    for (const { id, nome } of arquivadas) {
+      let final = nome
+      for (let n = 1; ativos.includes(chave(final)); n++) {
+        final = `${nome.trim()} (arquivada${n > 1 ? ` ${n}` : ''})`
+      }
+      if (final !== nome) renomear.run(final, id)
+      ativos.push(chave(final))
+    }
+    db.exec(`
+    ALTER TABLE appointment_types DROP COLUMN arquivado_em;
+
+    CREATE TRIGGER appointment_types_reserva_fica
+    BEFORE DELETE ON appointment_types
+    WHEN OLD.sistema IS NOT NULL
+    BEGIN
+      SELECT RAISE(ABORT, 'A Reserva não pode ser excluída.');
+    END;
+
+    DROP TRIGGER appointments_signed_locked;
+    CREATE TRIGGER appointments_signed_locked
+    BEFORE UPDATE OF patient_id, inicio, fim, tipo_id, presenca ON appointments
+    WHEN (
+      NEW.patient_id IS NOT OLD.patient_id OR NEW.inicio IS NOT OLD.inicio
+      OR NEW.fim IS NOT OLD.fim OR NEW.presenca IS NOT OLD.presenca
+      OR (OLD.tipo_id IS NOT NULL AND NEW.tipo_id IS NOT OLD.tipo_id
+        AND EXISTS (SELECT 1 FROM appointment_types WHERE id = OLD.tipo_id))
+    )
+    AND EXISTS (
+      SELECT 1 FROM attendance_signatures s
+      WHERE s.appointment_id = OLD.id
+        AND s.id NOT IN (SELECT signature_id FROM attendance_voids)
+    )
+    BEGIN
+      SELECT RAISE(ABORT, 'A chegada desta sessão foi assinada: paciente, horário, tipo e presença não mudam mais.');
+    END;
+
+    DROP TRIGGER appointments_tipo_padrao;
+    CREATE TRIGGER appointments_tipo_padrao
+    AFTER INSERT ON appointments
+    WHEN NEW.tipo_id IS NULL
+    BEGIN
+      UPDATE appointments SET tipo_id = ${padrao} WHERE id = NEW.id;
+    END;
+
+    DROP TRIGGER appointments_categoria_nova;
+    CREATE TRIGGER appointments_categoria_nova
+    AFTER INSERT ON appointments
+    BEGIN
+      UPDATE appointments SET categoria = (SELECT categoria FROM appointment_types
+        WHERE id = coalesce(NEW.tipo_id, ${padrao}))
+      WHERE id = NEW.id;
+    END;
+
+    DROP TRIGGER waitlist_entries_tipo_padrao;
+    CREATE TRIGGER waitlist_entries_tipo_padrao
+    AFTER INSERT ON waitlist_entries
+    WHEN NEW.tipo_id IS NULL
+    BEGIN
+      UPDATE waitlist_entries SET tipo_id = ${padrao} WHERE id = NEW.id;
+    END;
+    `)
   }
 ]
 

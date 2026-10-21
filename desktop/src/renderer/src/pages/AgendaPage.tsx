@@ -79,6 +79,7 @@ import { commitmentName, type Commitment } from '@shared/commitments'
 import { PEDIDO_LABELS, type Vaga } from '@shared/confirmacao'
 import { vagaEm, type Intervalo } from '@shared/encaixe'
 import type { Appointment } from '@shared/schemas'
+import { ehPrincipal } from '@shared/tipos'
 import type { WaitlistEntry } from '@shared/waitlist'
 import { AniversariantesHoje, BoloAniversario } from '@renderer/components/Aniversariantes'
 import { AppointmentDialog, type AppointmentDraft } from '@renderer/components/AppointmentDialog'
@@ -430,9 +431,7 @@ function AgendaControls({
   onEtiqueta
 }: AgendaControlsProps): React.JSX.Element {
   const { data = [] } = useQuery(tiposQuery())
-  const opcoes = data.filter(
-    (e) => e.categoria !== 'compromisso' && (!e.arquivado || e.id === etiqueta)
-  )
+  const opcoes = data.filter((e) => ehPrincipal(e.categoria))
   return (
     <>
       {opcoes.length > 0 && (

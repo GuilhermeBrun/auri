@@ -47,6 +47,7 @@ describe('computador da recepção', () => {
     for (const channel of [
       'clinic:save',
       'tipos:save',
+      'tipos:remove',
       'terms:saveModel',
       'finance:saveService',
       'finance:savePlan',

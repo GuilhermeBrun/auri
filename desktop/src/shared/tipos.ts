@@ -85,7 +85,21 @@ export type TipoInput = z.input<typeof tipoInputSchema>
 export type TipoAtendimento = z.output<typeof tipoInputSchema> & {
   id: number
   sistema: Sistema | null
-  arquivado: boolean
+}
+
+export type UsoDaEtiqueta = { agendamentos: number; compromissos: number; espera: number }
+
+export function mesmoGrupo(a: CategoriaEtiqueta, b: CategoriaEtiqueta): boolean {
+  return ehPrincipal(a) === ehPrincipal(b)
+}
+
+export function destinosAoExcluir(
+  tipos: readonly TipoAtendimento[],
+  tipo: TipoAtendimento
+): TipoAtendimento[] {
+  return tipos.filter(
+    (t) => t.id !== tipo.id && t.sistema === null && mesmoGrupo(t.categoria, tipo.categoria)
+  )
 }
 
 export function consomePacote(categoria: Categoria): boolean {

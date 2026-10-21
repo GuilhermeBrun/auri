@@ -1,12 +1,15 @@
 import { toIsoLocalDateTime } from '../../shared/dates'
 import {
   CATEGORIA_LABELS,
+  destinosAoExcluir,
   ehPrincipal,
+  mesmoGrupo,
   mesmoNome,
   tipoInputSchema,
   type CategoriaEtiqueta,
   type TipoAtendimento,
-  type TipoInput
+  type TipoInput,
+  type UsoDaEtiqueta
 } from '../../shared/tipos'
 import type { Db } from './connection'
 
@@ -18,39 +21,27 @@ export const TIPO_JOIN = 'JOIN appointment_types t ON t.id = a.tipo_id'
 const ORDEM_CATEGORIA = `CASE categoria WHEN 'sessao' THEN 0 WHEN 'avaliacao' THEN 1
   WHEN 'exame' THEN 2 ELSE 3 END`
 
-const COLUNAS = 'id, nome, categoria, cor, duracao, sistema, arquivado_em'
-
-type TipoRow = Omit<TipoAtendimento, 'arquivado'> & { arquivado_em: string | null }
-
-function ativo({ arquivado_em, ...rest }: TipoRow): TipoAtendimento {
-  return { ...rest, arquivado: arquivado_em !== null }
-}
+const COLUNAS = 'id, nome, categoria, cor, duracao, sistema'
 
 export function listTipos(db: Db): TipoAtendimento[] {
-  const rows = db
-    .prepare(
-      `SELECT ${COLUNAS} FROM appointment_types
-       ORDER BY arquivado_em IS NOT NULL, ${ORDEM_CATEGORIA}, id`
-    )
-    .all() as TipoRow[]
-  return rows.map(ativo)
+  return db
+    .prepare(`SELECT ${COLUNAS} FROM appointment_types ORDER BY ${ORDEM_CATEGORIA}, id`)
+    .all() as TipoAtendimento[]
 }
 
 export function getTipo(db: Db, id: number): TipoAtendimento {
   const row = db.prepare(`SELECT ${COLUNAS} FROM appointment_types WHERE id = ?`).get(id) as
-    | TipoRow
+    | TipoAtendimento
     | undefined
   if (!row) throw new Error('Etiqueta não encontrada')
-  return ativo(row)
+  return row
 }
 
 function assertNomeLivre(db: Db, nome: string, id: number | null): void {
-  if (listTipos(db).some((t) => t.id !== id && !t.arquivado && mesmoNome(t.nome, nome))) {
+  if (listTipos(db).some((t) => t.id !== id && mesmoNome(t.nome, nome))) {
     throw new Error(`Já existe uma etiqueta chamada “${nome}”.`)
   }
 }
-
-const GRUPO = (c: CategoriaEtiqueta): string => (ehPrincipal(c) ? 'principal' : c)
 
 function contar(db: Db, sql: string, id: number): number {
   return (db.prepare(sql).get(id) as { n: number }).n
@@ -75,21 +66,19 @@ function emUso(db: Db, tipo: TipoAtendimento): string | null {
   return n > 0 ? plural(n, 'compromisso', 'compromissos') : null
 }
 
-function assertUltimoAtivo(db: Db, tipo: TipoAtendimento): void {
-  const grupo = GRUPO(tipo.categoria)
-  const outros = listTipos(db).filter(
-    (t) => t.id !== tipo.id && !t.arquivado && GRUPO(t.categoria) === grupo
-  )
-  if (outros.length > 0) return
+function assertNaoEUltima(db: Db, tipo: TipoAtendimento): void {
+  if (listTipos(db).some((t) => t.id !== tipo.id && mesmoGrupo(t.categoria, tipo.categoria))) {
+    return
+  }
   throw new Error(
-    grupo === 'principal'
-      ? 'Deixe pelo menos uma etiqueta de sessão, avaliação ou exame ativa.'
-      : 'Deixe pelo menos uma etiqueta de compromisso ativa.'
+    ehPrincipal(tipo.categoria)
+      ? 'Deixe pelo menos uma etiqueta de sessão, avaliação ou exame.'
+      : 'Deixe pelo menos uma etiqueta de compromisso.'
   )
 }
 
 function assertTrocaDeCategoria(db: Db, atual: TipoAtendimento, nova: CategoriaEtiqueta): void {
-  if (atual.categoria === nova || GRUPO(atual.categoria) === GRUPO(nova)) return
+  if (mesmoGrupo(atual.categoria, nova)) return
   if (atual.sistema === 'reserva') {
     throw new Error('A Reserva é sempre um compromisso.')
   }
@@ -99,7 +88,7 @@ function assertTrocaDeCategoria(db: Db, atual: TipoAtendimento, nova: CategoriaE
       `“${atual.nome}” está em ${uso}. Para virar ${CATEGORIA_LABELS[nova]}, crie outra etiqueta.`
     )
   }
-  if (!atual.arquivado) assertUltimoAtivo(db, atual)
+  assertNaoEUltima(db, atual)
 }
 
 function categoriaDaquiPraFrente(db: Db, id: number, agora: Date): void {
@@ -144,21 +133,54 @@ export function saveTipo(
   })()
 }
 
-export function archiveTipo(db: Db, id: number, arquivado: boolean): TipoAtendimento {
-  return db.transaction(() => {
+export function usoDoTipo(db: Db, id: number): UsoDaEtiqueta {
+  getTipo(db, id)
+  return db
+    .prepare(
+      `SELECT (SELECT count(*) FROM appointments WHERE tipo_id = @id) AS agendamentos,
+              (SELECT count(*) FROM commitments WHERE etiqueta_id = @id) AS compromissos,
+              (SELECT count(*) FROM waitlist_entries
+                WHERE tipo_id = @id AND encerrado_em IS NULL) AS espera`
+    )
+    .get({ id }) as UsoDaEtiqueta
+}
+
+function assertDestino(db: Db, tipo: TipoAtendimento, destino: number | null): void {
+  const uso = usoDoTipo(db, tipo.id)
+  if (destino === null) {
+    if (uso.agendamentos + uso.compromissos + uso.espera === 0) return
+    throw new Error(`Escolha a etiqueta que fica no lugar de “${tipo.nome}”.`)
+  }
+  const outra = getTipo(db, destino)
+  if (!destinosAoExcluir(listTipos(db), tipo).some((t) => t.id === outra.id)) {
+    throw new Error(`“${outra.nome}” não pode ficar no lugar de “${tipo.nome}”.`)
+  }
+}
+
+export function removeTipo(
+  db: Db,
+  id: number,
+  destino: number | null,
+  agora: Date = new Date()
+): void {
+  db.transaction(() => {
     const tipo = getTipo(db, id)
-    if (arquivado) {
-      if (!tipo.arquivado) assertUltimoAtivo(db, tipo)
-    } else {
-      assertNomeLivre(db, tipo.nome, id)
+    if (tipo.sistema === 'reserva') throw new Error('A Reserva não pode ser excluída.')
+    assertNaoEUltima(db, tipo)
+    assertDestino(db, tipo, destino)
+    db.pragma('defer_foreign_keys = ON')
+    const categorias = db
+      .prepare('SELECT id, categoria FROM appointments WHERE tipo_id = ?')
+      .all(id) as { id: number; categoria: string | null }[]
+    db.prepare('DELETE FROM appointment_types WHERE id = ?').run(id)
+    if (destino !== null) {
+      db.prepare('UPDATE appointments SET tipo_id = ? WHERE tipo_id = ?').run(destino, id)
+      const manter = db.prepare('UPDATE appointments SET categoria = ? WHERE id = ?')
+      for (const a of categorias) manter.run(a.categoria, a.id)
+      categoriaDaquiPraFrente(db, destino, agora)
+      db.prepare('UPDATE commitments SET etiqueta_id = ? WHERE etiqueta_id = ?').run(destino, id)
     }
-    db.prepare(
-      `UPDATE appointment_types
-       SET arquivado_em = CASE WHEN @arquivado = 1
-         THEN coalesce(arquivado_em, strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) END
-       WHERE id = @id`
-    ).run({ id, arquivado: Number(arquivado) })
-    return getTipo(db, id)
+    db.prepare('UPDATE waitlist_entries SET tipo_id = ? WHERE tipo_id = ?').run(destino, id)
   })()
 }
 
@@ -166,7 +188,7 @@ export function tipoPadrao(db: Db): number {
   const row = db
     .prepare(
       `SELECT id FROM appointment_types
-       WHERE arquivado_em IS NULL AND categoria IN ('sessao', 'avaliacao', 'exame')
+       WHERE categoria IN ('sessao', 'avaliacao', 'exame')
        ORDER BY categoria <> 'sessao', id LIMIT 1`
     )
     .get() as { id: number } | undefined
@@ -179,21 +201,13 @@ export function assertTipoUsavel(db: Db, id: number): TipoAtendimento {
   if (!ehPrincipal(tipo.categoria)) {
     throw new Error(`“${tipo.nome}” não é uma etiqueta de sessão, avaliação ou exame.`)
   }
-  if (tipo.arquivado) throw new Error(`A etiqueta “${tipo.nome}” foi arquivada. Escolha outra.`)
   return tipo
 }
 
-export function assertCompromissoUsavel(
-  db: Db,
-  id: number,
-  antes: number | null = null
-): TipoAtendimento {
+export function assertCompromissoUsavel(db: Db, id: number): TipoAtendimento {
   const tipo = getTipo(db, id)
   if (tipo.categoria !== 'compromisso') {
     throw new Error(`“${tipo.nome}” não é uma etiqueta de compromisso.`)
-  }
-  if (tipo.arquivado && id !== antes) {
-    throw new Error(`A etiqueta “${tipo.nome}” foi arquivada. Escolha outra.`)
   }
   return tipo
 }

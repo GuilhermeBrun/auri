@@ -38,7 +38,7 @@ const etiqueta = (
   cor: string,
   duracao: number,
   sistema: TipoAtendimento['sistema'] = null
-): TipoAtendimento => ({ id, nome, categoria, cor, duracao, sistema, arquivado: false })
+): TipoAtendimento => ({ id, nome, categoria, cor, duracao, sistema })
 
 export const ETIQUETAS_SEMENTE: TipoAtendimento[] = [
   etiqueta(1, 'Sessão', 'sessao', '#6b7280', 30),

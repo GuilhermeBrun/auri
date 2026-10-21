@@ -84,7 +84,7 @@ export function updateCommitment(
   const current = getCommitment(db, id)
   assertUnchanged(current.updated_at, expected)
   const params = toParams(input)
-  assertCompromissoUsavel(db, params.etiqueta_id, current.etiqueta_id)
+  assertCompromissoUsavel(db, params.etiqueta_id)
   const slot = { inicio: params.inicio, fim: params.fim }
   if (slot.inicio !== current.inicio || slot.fim !== current.fim) assertWithinHours(db, slot)
   assertAgendaFree(db, slot, { commitment: id })

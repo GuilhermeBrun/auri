@@ -83,7 +83,7 @@ import {
   signedTermRecord,
   termLink
 } from './db/terms'
-import { archiveTipo, listTipos, saveTipo } from './db/tipos'
+import { listTipos, removeTipo, saveTipo, usoDoTipo } from './db/tipos'
 import {
   createAppointment,
   getAppointment,
@@ -358,9 +358,11 @@ const OPERATIONS: Record<string, Operation> = {
       saveTipo(db, idSchema.nullable().parse(id), tipoInputSchema.parse(input)),
     changes: ['types', 'appointments', 'commitments']
   },
-  'tipos:archive': {
-    run: (db, [id, arquivado]) => archiveTipo(db, idSchema.parse(id), z.boolean().parse(arquivado)),
-    changes: ['types']
+  'tipos:usage': { run: (db, [id]) => usoDoTipo(db, idSchema.parse(id)) },
+  'tipos:remove': {
+    run: (db, [id, destino]) =>
+      removeTipo(db, idSchema.parse(id), idSchema.nullable().parse(destino)),
+    changes: ['types', 'appointments', 'commitments', 'waitlist']
   },
 
   'terms:models': { run: (db) => listModels(db) },

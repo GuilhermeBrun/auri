@@ -108,7 +108,7 @@ export function CommitmentForm({
     setValues((v) => ({ ...v, [key]: value }))
     setInvalid(null)
   }
-  const etiquetas = useEtiquetas('compromisso', editing ? [editing.etiqueta_id] : [])
+  const etiquetas = useEtiquetas('compromisso')
   const etiquetaId =
     values.etiqueta_id ?? (etiquetas.find((e) => e.sistema === null) ?? etiquetas.at(0))?.id
   const etiqueta = etiquetas.find((e) => e.id === etiquetaId)

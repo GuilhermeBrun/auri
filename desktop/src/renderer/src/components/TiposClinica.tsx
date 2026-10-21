@@ -1,14 +1,18 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { ChevronRight, Plus } from 'lucide-react'
+import { ChevronRight, Plus, Trash2 } from 'lucide-react'
 import { useId, useState } from 'react'
 import {
   CATEGORIA_LABELS,
   CATEGORIAS,
   COR_PADRAO,
+  destinosAoExcluir,
   DURACOES,
+  ehPrincipal,
+  mesmoGrupo,
   tipoInputSchema,
   type CategoriaEtiqueta,
-  type TipoAtendimento
+  type TipoAtendimento,
+  type UsoDaEtiqueta
 } from '@shared/tipos'
 import { Button } from '@renderer/components/ui/button'
 import { CorEscolha, CorPonto } from '@renderer/components/ui/cor'
@@ -33,9 +37,6 @@ function Linha({
   item: TipoAtendimento
   onEdit: (item: TipoAtendimento) => void
 }): React.JSX.Element {
-  const detalhe = [item.arquivado ? 'Arquivada' : '', `${item.duracao} min`]
-    .filter(Boolean)
-    .join(' · ')
   return (
     <li>
       <button
@@ -43,17 +44,9 @@ function Linha({
         onClick={() => onEdit(item)}
         className="flex w-full items-center gap-3 rounded-card px-3 py-2 text-left transition-colors hover:bg-fill focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-accent"
       >
-        <CorPonto cor={item.cor} className={item.arquivado ? 'opacity-40' : undefined} />
-        <span
-          className={
-            item.arquivado
-              ? 'min-w-0 flex-1 truncate text-[13px] text-ink-soft'
-              : 'min-w-0 flex-1 truncate text-[13px] font-medium'
-          }
-        >
-          {item.nome}
-        </span>
-        <span className="text-xs text-ink-soft tabular-nums">{detalhe}</span>
+        <CorPonto cor={item.cor} />
+        <span className="min-w-0 flex-1 truncate text-[13px] font-medium">{item.nome}</span>
+        <span className="text-xs text-ink-soft tabular-nums">{item.duracao} min</span>
         <ChevronRight className="size-4 text-ink-faint" aria-hidden />
       </button>
     </li>
@@ -108,6 +101,82 @@ export function EtiquetasSection(): React.JSX.Element {
 
 const CATEGORIA_OPTIONS = CATEGORIAS.map((c) => ({ value: c, label: CATEGORIA_LABELS[c] }))
 
+function quantos(n: number, um: string, varios: string): string | null {
+  if (n === 0) return null
+  return `${n} ${n === 1 ? um : varios}`
+}
+
+function emLista(partes: string[]): string {
+  return partes.length > 1 ? `${partes.slice(0, -1).join(', ')} e ${partes.at(-1)}` : partes[0]
+}
+
+function Exclusao({
+  etiqueta,
+  ultima,
+  uso,
+  destinos,
+  destino,
+  onDestino
+}: {
+  etiqueta: TipoAtendimento
+  ultima: boolean
+  uso: UsoDaEtiqueta | undefined
+  destinos: TipoAtendimento[]
+  destino: TipoAtendimento | undefined
+  onDestino: (id: number) => void
+}): React.JSX.Element | null {
+  const id = useId()
+  const texto = 'text-xs text-ink-soft'
+  if (ultima) {
+    return (
+      <p className={texto}>
+        É a única etiqueta de sessão, avaliação ou exame. Crie outra antes de excluir esta.
+      </p>
+    )
+  }
+  if (!uso) return null
+  const partes = [
+    quantos(uso.agendamentos, 'agendamento', 'agendamentos'),
+    quantos(uso.compromissos, 'compromisso', 'compromissos'),
+    quantos(uso.espera, 'paciente da lista de espera', 'pacientes da lista de espera')
+  ].filter((p): p is string => p !== null)
+  if (partes.length === 0) {
+    return (
+      <p className={texto}>
+        {ehPrincipal(etiqueta.categoria)
+          ? 'Nenhum agendamento usa esta etiqueta.'
+          : 'Nenhum compromisso usa esta etiqueta.'}
+      </p>
+    )
+  }
+  const um = uso.agendamentos + uso.compromissos + uso.espera === 1
+  const situacao = `${emLista(partes)} ${um ? 'está' : 'estão'} com esta etiqueta.`
+  if (!destino) {
+    return (
+      <p className={texto}>
+        {situacao} Crie outra etiqueta de compromisso para {um ? 'recebê-lo' : 'recebê-los'}.
+      </p>
+    )
+  }
+  return (
+    <div className="flex flex-col gap-3">
+      <p className={texto}>{situacao}</p>
+      <Field label={um ? 'Passa para' : 'Passam para'} htmlFor={id} className="w-56">
+        <Select
+          id={id}
+          value={String(destino.id)}
+          onValueChange={(v) => onDestino(Number(v))}
+          options={destinos.map((t) => ({
+            value: String(t.id),
+            label: t.nome,
+            icon: <CorPonto cor={t.cor} />
+          }))}
+        />
+      </Field>
+    </div>
+  )
+}
+
 function issues(error: { issues: { path: PropertyKey[]; message: string }[] }) {
   const next: Record<string, string> = {}
   for (const issue of error.issues) next[String(issue.path[0])] ??= issue.message
@@ -137,16 +206,35 @@ function EtiquetaForm({
       onClose()
     }
   })
-  const archive = useMutation({
-    mutationFn: () => window.api.tipos.archive(etiqueta!.id, !etiqueta!.arquivado),
-    onSuccess: (saved) => {
-      toast({ title: saved.arquivado ? 'Arquivada' : 'Reativada', description: saved.nome })
+  const lista = useQuery(tiposQuery()).data ?? []
+  const [excluindo, setExcluindo] = useState(false)
+  const uso = useQuery({
+    queryKey: ['tipos', etiqueta?.id, 'uso'],
+    queryFn: () => window.api.tipos.usage(etiqueta!.id),
+    enabled: excluindo && etiqueta !== null
+  })
+  const [escolhido, setEscolhido] = useState<number | null>(null)
+  const ultima =
+    etiqueta !== null &&
+    !lista.some((t) => t.id !== etiqueta.id && mesmoGrupo(t.categoria, etiqueta.categoria))
+  const destinos = etiqueta ? destinosAoExcluir(lista, etiqueta) : []
+  const destino =
+    destinos.find((t) => t.id === escolhido) ??
+    destinos.find((t) => t.categoria === etiqueta?.categoria) ??
+    destinos.at(0)
+  const usada =
+    uso.data !== undefined && uso.data.agendamentos + uso.data.compromissos + uso.data.espera > 0
+  const remove = useMutation({
+    mutationFn: () => window.api.tipos.remove(etiqueta!.id, usada ? destino!.id : null),
+    onSuccess: () => {
+      toast({ title: 'Etiqueta excluída', description: etiqueta!.nome })
       onClose()
     }
   })
+  const podeExcluir = uso.data !== undefined && !ultima && (!usada || destino !== undefined)
   const duracoes = [...new Set([...DURACOES, duracao])].sort((a, b) => a - b)
   const reserva = etiqueta?.sistema === 'reserva'
-  const erro = (save.error ?? archive.error)?.message
+  const erro = (save.error ?? remove.error ?? uso.error)?.message
   return (
     <form
       onSubmit={(e) => {
@@ -215,14 +303,36 @@ function EtiquetaForm({
             }}
           />
         </div>
+        {excluindo && etiqueta && (
+          <div className="animate-fade-in">
+            <Exclusao
+              etiqueta={etiqueta}
+              ultima={ultima}
+              uso={uso.data}
+              destinos={destinos}
+              destino={destino}
+              onDestino={setEscolhido}
+            />
+          </div>
+        )}
         {erro && <ErrorText>{erro}</ErrorText>}
       </DialogBody>
       <DialogFooter>
-        {etiqueta === null ? (
+        {etiqueta === null || reserva ? (
           <span />
+        ) : excluindo ? (
+          <Button
+            variant="danger"
+            className="animate-fade-in"
+            disabled={!podeExcluir}
+            loading={remove.isPending}
+            onClick={() => remove.mutate()}
+          >
+            <Trash2 /> {usada ? 'Excluir e passar' : 'Confirmar exclusão'}
+          </Button>
         ) : (
-          <Button variant="ghost" loading={archive.isPending} onClick={() => archive.mutate()}>
-            {etiqueta.arquivado ? 'Reativar' : 'Arquivar'}
+          <Button variant="danger-ghost" onClick={() => setExcluindo(true)}>
+            <Trash2 /> Excluir
           </Button>
         )}
         <Button type="submit" loading={save.isPending}>

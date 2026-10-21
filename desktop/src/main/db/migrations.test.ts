@@ -16,6 +16,32 @@ afterEach(() => {
   rmSync(dir, { recursive: true, force: true })
 })
 
+const tem = (db: Database.Database, nome: string): boolean =>
+  db.prepare('SELECT 1 FROM sqlite_master WHERE name = ?').get(nome) !== undefined
+
+const gatilhos = (db: Database.Database): string[] =>
+  (
+    db.prepare("SELECT name FROM sqlite_master WHERE type = 'trigger' ORDER BY name").all() as {
+      name: string
+    }[]
+  ).map((t) => t.name)
+
+function bancoNa(version: number): Database.Database {
+  const db = new Database(':memory:')
+  opened.push(db)
+  db.function('normalize_text', (v: unknown) => v)
+  db.pragma('foreign_keys = ON')
+  migrate(db, version)
+  return db
+}
+
+function versaoEm(chegou: (db: Database.Database) => boolean): number {
+  const probe = bancoNa(0)
+  let version = 0
+  while (!chegou(probe)) migrate(probe, ++version)
+  return version
+}
+
 describe('compatibilidade do banco', () => {
   it('preserva os registros v1 ao migrar e reabrir', () => {
     const file = join(dir, 'v1.db')
@@ -170,27 +196,10 @@ describe('compatibilidade do banco', () => {
   })
 
   it('tira a categoria Marca: apaga as marcas das sessões e mantém o resto', () => {
-    const tem = (db: Database.Database, nome: string): boolean =>
-      db.prepare('SELECT 1 FROM sqlite_master WHERE name = ?').get(nome) !== undefined
-    const gatilhos = (db: Database.Database): string[] =>
-      (
-        db.prepare("SELECT name FROM sqlite_master WHERE type = 'trigger' ORDER BY name").all() as {
-          name: string
-        }[]
-      ).map((t) => t.name)
-    const probe = new Database(':memory:')
-    opened.push(probe)
-    probe.function('normalize_text', (v: unknown) => v)
-    let version = 0
-    while (!(tem(probe, 'appointment_types') && !tem(probe, 'appointment_tags'))) {
-      migrate(probe, ++version)
-    }
-
-    const db = new Database(':memory:')
-    opened.push(db)
-    db.function('normalize_text', (v: unknown) => v)
-    db.pragma('foreign_keys = ON')
-    migrate(db, version - 1)
+    const version = versaoEm(
+      (probe) => tem(probe, 'appointment_types') && !tem(probe, 'appointment_tags')
+    )
+    const db = bancoNa(version - 1)
     db.exec(`
       INSERT INTO patients (id, nome) VALUES (1, 'Ana Fictícia');
       INSERT INTO appointment_types (id, nome, categoria, cor, duracao, arquivado_em) VALUES
@@ -206,7 +215,7 @@ describe('compatibilidade do banco', () => {
       INSERT INTO waitlist_entries (patient_id, tipo_id, duracao) VALUES (1, 2, 60);
     `)
     const antes = gatilhos(db)
-    migrate(db)
+    migrate(db, version)
 
     expect(
       db.prepare('SELECT id, nome, categoria, duracao FROM appointment_types ORDER BY id').all()
@@ -251,6 +260,69 @@ describe('compatibilidade do banco', () => {
         .run()
     ).toThrow('Escolha uma etiqueta de sessão')
     expect(db.pragma('foreign_keys', { simple: true })).toBe(1)
+    expect(db.pragma('foreign_key_check')).toEqual([])
+    expect(db.pragma('integrity_check', { simple: true })).toBe('ok')
+  })
+
+  it('troca arquivar por excluir: apaga as arquivadas sem uso e reativa as que estão em uso', () => {
+    const colunas = (db: Database.Database): string[] =>
+      (db.pragma('table_info(appointment_types)') as { name: string }[]).map((c) => c.name)
+    const version = versaoEm(
+      (probe) => tem(probe, 'appointment_types') && !colunas(probe).includes('arquivado_em')
+    )
+    const db = bancoNa(version - 1)
+    db.exec(`
+      INSERT INTO patients (id, nome) VALUES (1, 'Ana Fictícia');
+      UPDATE appointment_types SET arquivado_em = '2026-01-01T00:00:00.000Z'
+      WHERE nome IN ('Curso', 'Reserva');
+      INSERT INTO appointment_types (id, nome, categoria, cor, duracao, arquivado_em) VALUES
+        (20, 'Antiga', 'sessao', '#6b7280', 30, '2026-01-01T00:00:00.000Z'),
+        (21, ' avaliação', 'avaliacao', '#2563eb', 60, '2026-01-01T00:00:00.000Z'),
+        (22, 'Grupo', 'sessao', '#0d9488', 60, '2026-01-01T00:00:00.000Z'),
+        (23, 'Congresso', 'compromisso', '#ea580c', 60, '2026-01-01T00:00:00.000Z');
+      INSERT INTO appointments (id, patient_id, inicio, fim, tipo_id) VALUES
+        (10, 1, '2026-10-19T09:00', '2026-10-19T10:00', 21);
+      INSERT INTO waitlist_entries (patient_id, tipo_id, duracao, encerrado_em, encerrado_motivo)
+      VALUES (1, 22, 60, '2026-10-01T00:00:00.000Z', 'removido');
+      INSERT INTO commitments (id, etiqueta_id, inicio, fim) VALUES
+        (30, 23, '2026-10-21T08:00', '2026-10-21T09:00');
+    `)
+    migrate(db, version)
+
+    expect(colunas(db)).not.toContain('arquivado_em')
+    expect(db.prepare('SELECT id, nome FROM appointment_types ORDER BY id').all()).toEqual([
+      { id: 1, nome: 'Sessão' },
+      { id: 2, nome: 'Avaliação' },
+      { id: 3, nome: 'Exame' },
+      { id: 4, nome: 'Palestra' },
+      { id: 6, nome: 'Hospital' },
+      { id: 7, nome: 'Reunião' },
+      { id: 8, nome: 'Reserva' },
+      { id: 21, nome: 'avaliação (arquivada)' },
+      { id: 22, nome: 'Grupo' },
+      { id: 23, nome: 'Congresso' }
+    ])
+    expect(gatilhos(db)).not.toContain('appointment_types_no_delete')
+    expect(() => db.prepare('DELETE FROM appointment_types WHERE id = 8').run()).toThrow(
+      'A Reserva não pode ser excluída.'
+    )
+    expect(() => db.prepare('DELETE FROM appointment_types WHERE id = 23').run()).toThrow(
+      /FOREIGN KEY/
+    )
+
+    db.prepare('DELETE FROM appointment_types WHERE id = 1').run()
+    db.exec(`
+      INSERT INTO appointments (id, patient_id, inicio, fim) VALUES
+        (11, 1, '2026-10-20T09:00', '2026-10-20T10:00');
+      INSERT INTO waitlist_entries (patient_id, duracao) VALUES (1, 60);
+    `)
+    expect(db.prepare('SELECT tipo_id, categoria FROM appointments WHERE id = 11').get()).toEqual({
+      tipo_id: 22,
+      categoria: 'sessao'
+    })
+    expect(
+      db.prepare('SELECT tipo_id FROM waitlist_entries WHERE encerrado_em IS NULL').get()
+    ).toEqual({ tipo_id: 22 })
     expect(db.pragma('foreign_key_check')).toEqual([])
     expect(db.pragma('integrity_check', { simple: true })).toBe('ok')
   })
