@@ -194,7 +194,7 @@ const backup: AuriBackup = {
   providers: () => invoke('backup:providers'),
   check: () => invoke('backup:check'),
   chooseFolder: () => invoke('backup:chooseFolder'),
-  setup: (destination, password) => invoke('backup:setup', destination, password),
+  setup: (destination, password, replace) => invoke('backup:setup', destination, password, replace),
   setDestination: (destination) => invoke('backup:setDestination', destination),
   setFrequency: (frequency, time) => invoke('backup:setFrequency', frequency, time),
   runNow: () => invoke('backup:runNow'),
@@ -219,7 +219,7 @@ const prefs: AuriPrefs = {
   initial: prefsArg ? JSON.parse(prefsArg.slice(PREFS_ARG.length)) : DEFAULT_UI_PREFS,
   save: (value) => ipcRenderer.send('prefs:save', value),
   onChange: (listener) => subscribe<UiPrefs>('prefs:changed', listener),
-  enableReception: () => invoke('reception:enable'),
+  enableReception: (password) => invoke('reception:enable', password),
   disableReception: (secret) => invoke('reception:disable', secret),
   onFit: (listener) => subscribe<TextSize>('prefs:fit', listener)
 }

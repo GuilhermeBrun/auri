@@ -53,7 +53,11 @@ export type BackupService = {
   dataWritten(): void
   pendingOnQuit(): boolean
   backupBeforeQuit(limitMs: number): Promise<void>
-  setup(destination: BackupDestination, password: string): Promise<{ recoveryCode: string }>
+  setup(
+    destination: BackupDestination,
+    password: string,
+    replace?: boolean
+  ): Promise<{ recoveryCode: string | null }>
   setDestination(destination: BackupDestination): Promise<BackupInfo>
   setFrequency(frequency: BackupFrequency, dailyTime: string): Promise<BackupInfo>
   runNow(): Promise<BackupInfo>
@@ -70,6 +74,7 @@ export type BackupService = {
   undoRestore(): Promise<BackupInfo>
   dismissWelcome(): Promise<BackupInfo>
   hasPassword(): boolean
+  createPassword(password: string): Promise<{ recoveryCode: string }>
   checkSecret(secret: BackupSecret): Promise<void>
   providers(): Promise<CloudProvider[]>
   check(): Promise<BackupInfo>
@@ -154,7 +159,8 @@ export function createBackupService(options: {
       welcome: !s.welcomeDone && !on && available() && emptyDatabase(),
       suggested: s.suggested,
       destinationProblem: on ? problem : null,
-      stored: on ? stored : null
+      stored: on ? stored : null,
+      hasPassword: !!s.keyring
     }
   }
 
@@ -420,12 +426,18 @@ export function createBackupService(options: {
       }
     },
 
-    async setup(destination, password) {
+    async setup(destination, password, replace = false) {
       requireServer()
-      validatePassword(password)
-      const recoveryCode = newRecoveryCode()
-      const next = await createKeyring(password, recoveryCode)
-      saveKeyring(next)
+      const current = replace ? null : keyring()
+      let recoveryCode: string | null = null
+      if (current) {
+        const key = await unseal(current.password, password, 'Senha incorreta.')
+        if (!key.equals(current.key)) throw new WrongSecretError('Senha incorreta.')
+      } else {
+        validatePassword(password)
+        recoveryCode = newRecoveryCode()
+        saveKeyring(await createKeyring(password, recoveryCode))
+      }
       store.update({
         destination,
         lastSuccessAt: null,
@@ -489,6 +501,15 @@ export function createBackupService(options: {
     },
 
     hasPassword: () => keyring() !== null,
+
+    async createPassword(password) {
+      if (store.get().keyring) throw new Error('Este computador já tem uma senha.')
+      validatePassword(password)
+      const recoveryCode = newRecoveryCode()
+      saveKeyring(await createKeyring(password, recoveryCode))
+      changed()
+      return { recoveryCode }
+    },
 
     async checkSecret(secret) {
       const current = keyring()

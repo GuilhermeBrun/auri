@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Copy, Download, FileUp, RotateCcw } from 'lucide-react'
 import { useId, useState } from 'react'
 import { Page } from '@renderer/components/Layout'
-import { ReceptionDialog } from '@renderer/components/ReceptionDialog'
+import { ReceptionDialog, ReceptionPasswordDialog } from '@renderer/components/ReceptionDialog'
 import { ImportButton, ImportPreview } from '@renderer/components/SettingsImport'
 import { Button } from '@renderer/components/ui/button'
 import { ErrorText, PageSection, SettingsGroup } from '@renderer/components/ui/section'
@@ -137,11 +137,13 @@ function ErrorReports(): React.JSX.Element | null {
 
 function ThisComputer(): React.JSX.Element {
   const reception = useReception()
-  const protectedByBackup = useBackup()?.configured === true
-  const [asking, setAsking] = useState(false)
+  const hasPassword = useBackup()?.hasPassword === true
+  const [asking, setAsking] = useState<'desligar' | 'criar' | null>(null)
   const toggle = useMutation({
-    mutationFn: (on: boolean) =>
-      on ? window.prefs.enableReception() : window.prefs.disableReception()
+    mutationFn: async (on: boolean) => {
+      if (on) await window.prefs.enableReception()
+      else await window.prefs.disableReception()
+    }
   })
   return (
     <PageSection id="computador" title="Este computador">
@@ -150,16 +152,21 @@ function ThisComputer(): React.JSX.Element {
           label="Computador da recepção"
           description={
             reception
-              ? `Sem anamnese, evoluções, Clínica e valores.${protectedByBackup ? ' Desligar pede a senha da cópia.' : ''}`
+              ? `Sem anamnese, evoluções, Clínica e valores.${hasPassword ? ' Desligar pede a senha.' : ''}`
               : undefined
           }
           checked={reception}
           disabled={toggle.isPending}
-          onCheckedChange={(on) => (!on && protectedByBackup ? setAsking(true) : toggle.mutate(on))}
+          onCheckedChange={(on) => {
+            if (on && !hasPassword) setAsking('criar')
+            else if (!on && hasPassword) setAsking('desligar')
+            else toggle.mutate(on)
+          }}
         />
         {toggle.error && <ErrorText>{toggle.error.message}</ErrorText>}
       </SettingsGroup>
-      <ReceptionDialog open={asking} onClose={() => setAsking(false)} />
+      <ReceptionDialog open={asking === 'desligar'} onClose={() => setAsking(null)} />
+      <ReceptionPasswordDialog open={asking === 'criar'} onClose={() => setAsking(null)} />
     </PageSection>
   )
 }

@@ -9,6 +9,7 @@ import { RecoveryCode } from '@renderer/components/backup/RecoveryCode'
 import { RestoreDialog } from '@renderer/components/backup/RestoreDialog'
 import { Button } from '@renderer/components/ui/button'
 import { Callout } from '@renderer/components/ui/callout'
+import { Field, Input } from '@renderer/components/ui/input'
 import { Loading } from '@renderer/components/ui/loading'
 import {
   ErrorText,
@@ -57,22 +58,31 @@ function DestinationLine({ destination }: { destination: BackupDestination }): R
 
 function Setup({
   suggested,
+  hasPassword,
   onCode
 }: {
   suggested: BackupInfo['suggested']
+  hasPassword: boolean
   onCode: (code: string) => void
 }): React.JSX.Element {
   const [destination, setDestination] = useState<BackupDestination | null>(null)
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
+  const [replace, setReplace] = useState(false)
   const [tried, setTried] = useState(false)
+  const existing = hasPassword && !replace
+  const total = existing ? 2 : 3
 
   const setup = useMutation({
-    mutationFn: () => window.backup.setup(destination!, password),
-    onSuccess: ({ recoveryCode }) => onCode(recoveryCode)
+    mutationFn: () => window.backup.setup(destination!, password, replace),
+    onSuccess: ({ recoveryCode }) => recoveryCode && onCode(recoveryCode)
   })
 
-  const problem = passwordProblem(password, confirm)
+  const problem = existing
+    ? password
+      ? null
+      : 'Digite a senha.'
+    : passwordProblem(password, confirm)
   const submit = (e: FormEvent): void => {
     e.preventDefault()
     setTried(true)
@@ -81,7 +91,10 @@ function Setup({
 
   if (!destination) {
     return (
-      <SettingsGroup label="Passo 1 de 3 · Onde guardar as cópias" className="animate-fade-in">
+      <SettingsGroup
+        label={`Passo 1 de ${total} · Onde guardar as cópias`}
+        className="animate-fade-in"
+      >
         <GroupText>Numa nuvem, para a cópia sobreviver se este computador quebrar.</GroupText>
         <div className="mt-4">
           <DestinationPicker onPick={setDestination} suggested={suggested} />
@@ -91,8 +104,19 @@ function Setup({
   }
 
   return (
-    <SettingsGroup label="Passo 2 de 3 · Crie uma senha para as cópias" className="animate-fade-in">
-      <GroupText>Sem a senha, ninguém abre as cópias, nem quem acessa a nuvem.</GroupText>
+    <SettingsGroup
+      label={
+        existing
+          ? 'Passo 2 de 2 · Digite a senha deste computador'
+          : `Passo 2 de ${total} · Crie uma senha para as cópias`
+      }
+      className="animate-fade-in"
+    >
+      <GroupText>
+        {existing
+          ? 'A senha criada para o computador da recepção também protege as cópias.'
+          : 'Sem a senha, ninguém abre as cópias, nem quem acessa a nuvem.'}
+      </GroupText>
       <div className="mt-4 flex items-center gap-3 rounded-card bg-surface px-4 py-3">
         <DestinationLine destination={destination} />
         <Button variant="secondary" onClick={() => setDestination(null)}>
@@ -100,17 +124,44 @@ function Setup({
         </Button>
       </div>
       <form onSubmit={submit} className="mt-6 max-w-[360px]">
-        <NewPasswordFields
-          password={password}
-          confirm={confirm}
-          onPassword={setPassword}
-          onConfirm={setConfirm}
-          error={tried ? problem : null}
-          autoFocus
-        />
-        <Button type="submit" className="mt-6" loading={setup.isPending}>
-          Continuar
-        </Button>
+        {existing ? (
+          <Field label="Senha" error={tried ? (problem ?? undefined) : undefined}>
+            <Input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="current-password"
+              autoFocus
+            />
+          </Field>
+        ) : (
+          <NewPasswordFields
+            password={password}
+            confirm={confirm}
+            onPassword={setPassword}
+            onConfirm={setConfirm}
+            error={tried ? problem : null}
+            autoFocus
+          />
+        )}
+        <div className="mt-6 flex items-center gap-2">
+          <Button type="submit" loading={setup.isPending}>
+            Continuar
+          </Button>
+          {existing && (
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setReplace(true)
+                setPassword('')
+                setTried(false)
+                setup.reset()
+              }}
+            >
+              Criar outra senha
+            </Button>
+          )}
+        </div>
         {setup.error && <ErrorText>{setup.error.message}</ErrorText>}
       </form>
     </SettingsGroup>
@@ -436,7 +487,7 @@ export function BackupSection(): React.JSX.Element {
           </>
         ) : (
           <>
-            <Setup suggested={info.suggested} onCode={setCode} />
+            <Setup suggested={info.suggested} hasPassword={info.hasPassword} onCode={setCode} />
             <Restore info={info} />
           </>
         )}

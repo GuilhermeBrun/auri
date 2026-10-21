@@ -207,7 +207,7 @@ export interface AuriPrefs {
   initial: UiPrefs
   save(prefs: Partial<Omit<UiPrefs, 'recepcao'>>): void
   onChange(listener: (prefs: UiPrefs) => void): () => void
-  enableReception(): Promise<void>
+  enableReception(password?: string): Promise<{ recoveryCode: string } | null>
   disableReception(secret?: BackupSecret): Promise<void>
   onFit(listener: (largest: TextSize) => void): () => void
 }
@@ -336,6 +336,7 @@ export type BackupInfo = {
   suggested: BackupDestination['kind'] | null
   destinationProblem: DestinationProblem | null
   stored: { count: number; bytes: number } | null
+  hasPassword: boolean
 }
 
 export type DestinationProblem = {
@@ -360,7 +361,11 @@ export interface AuriBackup {
   onChange(listener: (info: BackupInfo) => void): () => void
   providers(): Promise<CloudProvider[]>
   chooseFolder(): Promise<string | null>
-  setup(destination: BackupDestination, password: string): Promise<{ recoveryCode: string }>
+  setup(
+    destination: BackupDestination,
+    password: string,
+    replace?: boolean
+  ): Promise<{ recoveryCode: string | null }>
   setDestination(destination: BackupDestination): Promise<BackupInfo>
   setFrequency(frequency: BackupFrequency, dailyTime: string): Promise<BackupInfo>
   runNow(): Promise<BackupInfo>
