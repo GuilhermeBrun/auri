@@ -103,16 +103,30 @@ Cada mudança no banco é um arquivo numerado em `web/db/migracoes/` (`001_relat
 rodaram, todas numa transação: se uma falhar, nada fica pela metade. A tabela `schema_migrations`
 guarda quais rodaram e o SHA-256 de cada arquivo.
 
+Em produção quem roda é o workflow **Banco do site** (`.github/workflows/banco.yml`): a cada push
+no `main` que mexe em `web/db/`, ou à mão (`gh workflow run banco.yml`). Ele usa o segredo
+`NEON_DONO_URL` do ambiente `producao` do GitHub, que só libera o segredo para o `main`; PR, fork e
+prévia não enxergam. Para gravar ou trocar o segredo (o endereço do dono, com pool):
+
+```sh
+gh secret set NEON_DONO_URL --env producao
+```
+
+Rodar à mão continua possível:
+
 ```sh
 cd web
 DATABASE_URL=<endereço do dono> npm run erros:migrar
 ```
 
-- **Mudar o banco:** crie a próxima migração (`002_…sql`). Nunca edite uma que já rodou: o
+- **Mudar o banco:** crie a próxima migração (`003_…sql`). Nunca edite uma que já rodou: o
   `erros:migrar` recusa, porque o arquivo não bate mais com o que foi aplicado.
-- **Antes do deploy:** rode a migração antes de publicar uma função que dependa dela. Se a ordem
-  inverter, os envios respondem `503` e ficam na fila dos apps até a migração rodar.
-- **O deploy não migra:** o usuário da função só grava e não pode criar nem alterar tabelas.
+- **Ordem:** a Vercel publica o site no mesmo push em que o workflow migra, então por alguns
+  segundos a função nova pode chegar antes da tabela. Por isso as migrações só acrescentam: até a
+  tabela existir, a função responde `503` e os apps guardam o envio (relatórios) ou mandam o link
+  longo (links curtos).
+- **A função não migra:** o usuário da função só lê e grava e não pode criar nem alterar tabelas;
+  o endereço do dono só existe no Neon e no segredo do ambiente `producao`.
 
 Algumas consultas, com o dono:
 

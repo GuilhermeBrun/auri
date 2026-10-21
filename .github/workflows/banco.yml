@@ -1,0 +1,43 @@
+name: Banco do site
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - web/db/**
+      - web/scripts/migrar-erros.ts
+      - .github/workflows/banco.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: banco-producao
+  cancel-in-progress: false
+
+jobs:
+  migrar:
+    name: Migrar
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: producao
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-deps
+        with:
+          directory: web
+      - name: Aplicar as migrações no Neon
+        env:
+          DATABASE_URL: ${{ secrets.NEON_DONO_URL }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::Sem o segredo NEON_DONO_URL no ambiente producao: o banco do site não foi migrado."
+            exit 1
+          fi
+          npm run erros:migrar
