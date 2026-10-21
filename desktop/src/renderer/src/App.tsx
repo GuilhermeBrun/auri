@@ -15,6 +15,7 @@ import { TermModelRoute } from './pages/TermModelPage'
 import { PatientsPage } from './pages/PatientsPage'
 import { GeneralPage } from './pages/GeneralPage'
 import { AppearancePage } from './pages/SettingsPage'
+import { AtalhosPage } from './pages/AtalhosPage'
 import { WhatsAppPage } from './pages/WhatsAppPage'
 import { useReception } from './lib/reception'
 import { useHomePath } from './lib/sidebar'
@@ -104,6 +105,7 @@ function App(): React.JSX.Element {
         <Route path="configuracoes" element={<Navigate to="geral" replace />} />
         <Route path="configuracoes/geral" element={<GeneralPage />} />
         <Route path="configuracoes/aparencia" element={<AppearancePage />} />
+        <Route path="configuracoes/atalhos" element={<AtalhosPage />} />
         <Route path="configuracoes/armazenamento" element={<StoragePage />} />
         <Route path="*" element={<Home />} />
       </Route>

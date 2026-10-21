@@ -1,9 +1,10 @@
 import type { ReactNode } from 'react'
-import { Link } from 'react-router'
+import { Link, useNavigate } from 'react-router'
 import { formatAge } from '@shared/dates'
 import { Avatar } from '@renderer/components/ui/avatar'
 import { Badge } from '@renderer/components/ui/badge'
 import { WaitlistButton } from '@renderer/components/waitlist/WaitlistButton'
+import { useAtalhos } from '@renderer/lib/atalhos'
 import { useReception } from '@renderer/lib/reception'
 import { PATIENT_TABS, type PatientTab } from '@renderer/lib/session'
 import { cn } from '@renderer/lib/utils'
@@ -72,9 +73,16 @@ function PatientTabs({
   value: PatientTab
 }): React.JSX.Element {
   const reception = useReception()
+  const navigate = useNavigate()
   const tabs = reception
     ? PATIENT_TABS.filter(([tab]) => !CLINICAL_TABS.includes(tab))
     : PATIENT_TABS
+  const step = (delta: number) => (): void => {
+    const index = tabs.findIndex(([tab]) => tab === value)
+    const [next] = tabs[(index + delta + tabs.length) % tabs.length]
+    void navigate(`/pacientes/${patientId}${TAB_PATH[next]}`)
+  }
+  useAtalhos({ 'paciente-aba-proxima': step(1), 'paciente-aba-anterior': step(-1) })
   return (
     <nav aria-label="Partes do paciente" className="flex gap-1">
       {tabs.map(([tab, label]) => (

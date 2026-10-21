@@ -1,13 +1,17 @@
 import type { MenuItemConstructorOptions } from 'electron'
 
-export function macMenu(name: string, openSettings: () => void): MenuItemConstructorOptions[] {
+export function macMenu(
+  name: string,
+  openSettings: () => void,
+  settingsAccelerator: string | undefined
+): MenuItemConstructorOptions[] {
   return [
     {
       label: name,
       submenu: [
         { role: 'about', label: `Sobre o ${name}` },
         { type: 'separator' },
-        { label: 'Configurações…', accelerator: 'Command+,', click: openSettings },
+        { label: 'Configurações…', accelerator: settingsAccelerator, click: openSettings },
         { type: 'separator' },
         { role: 'services', label: 'Serviços' },
         { type: 'separator' },

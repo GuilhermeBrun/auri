@@ -92,7 +92,7 @@ const settingsFileSchema = z.object({
 export type SettingsFile = z.output<typeof settingsFileSchema>
 
 export type SettingsSnapshot = {
-  appearance: Omit<UiPrefs, 'recepcao' | 'whatsapp'>
+  appearance: Omit<UiPrefs, 'recepcao' | 'whatsapp' | 'atalhos'>
   connection: Required<SettingsFile['connection']>
   backup: { kind: z.infer<typeof kindSchema> | null } & Required<
     Omit<SettingsFile['backup'], 'kind'>

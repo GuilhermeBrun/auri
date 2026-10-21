@@ -16,6 +16,7 @@ import { Button } from '@renderer/components/ui/button'
 import { EmptyState } from '@renderer/components/ui/empty'
 import { ErrorState } from '@renderer/components/ui/error'
 import { SearchField } from '@renderer/components/ui/search-field'
+import { comAtalho, useAtalhos, useTextoDoAtalho } from '@renderer/lib/atalhos'
 import { revealRow, useVirtualRows } from '@renderer/lib/hooks'
 import { patientsQuery } from '@renderer/lib/queries'
 import { cn } from '@renderer/lib/utils'
@@ -179,7 +180,9 @@ const PatientTable = memo(function PatientTable({
 export function PatientsPage(): React.JSX.Element {
   const navigate = useNavigate()
   const [busca, setBusca] = useState('')
-  const savedId = (useLocation().state as { saved?: number } | null)?.saved
+  const state = useLocation().state as { saved?: number; buscar?: number } | null
+  const savedId = state?.saved
+  const buscar = state?.buscar
   useEffect(() => {
     if (savedId === undefined) return
     const timer = setTimeout(() => navigate('/pacientes', { replace: true, state: null }), SAVED_MS)
@@ -199,6 +202,13 @@ export function PatientsPage(): React.JSX.Element {
   const newPatient = (): void => {
     void navigate('/pacientes/novo')
   }
+  useAtalhos({ 'paciente-novo': newPatient })
+  const novoAtalho = useTextoDoAtalho('paciente-novo')
+  useEffect(() => {
+    if (buscar === undefined) return
+    searchRef.current?.focus()
+    searchRef.current?.select()
+  }, [buscar])
 
   return (
     <Page
@@ -209,7 +219,7 @@ export function PatientsPage(): React.JSX.Element {
           size="icon"
           onClick={newPatient}
           aria-label="Novo paciente"
-          title="Novo paciente"
+          title={comAtalho('Novo paciente', novoAtalho)}
         >
           <Plus />
         </Button>

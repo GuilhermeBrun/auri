@@ -26,7 +26,8 @@ import {
   TEXT_SIZES,
   type TextSize
 } from '../shared/aparencia'
-import { PREFS_ARG } from '../shared/api'
+import { DEFAULT_UI_PREFS, PREFS_ARG } from '../shared/api'
+import { paraAcelerador, teclasDosAtalhos } from '../shared/atalhos'
 import type { UiPrefs } from '../shared/schemas'
 import { createBackupService, type BackupService } from './backup-service'
 import { detectProviders, systemProbe } from './backup/providers'
@@ -282,6 +283,16 @@ function openSettings(): void {
   else window.webContents.once('did-finish-load', send)
 }
 
+let menuAccelerator: string | undefined | null = null
+
+function applyMenu(atalhos: UiPrefs['atalhos']): void {
+  if (process.platform !== 'darwin') return
+  const accelerator = paraAcelerador(teclasDosAtalhos('mac', atalhos).configuracoes)
+  if (accelerator === menuAccelerator) return
+  menuAccelerator = accelerator
+  Menu.setApplicationMenu(Menu.buildFromTemplate(macMenu(app.name, openSettings, accelerator)))
+}
+
 function openAgendaAt(inicio: string): void {
   const existed = BrowserWindow.getAllWindows().length > 0
   showWindow()
@@ -378,7 +389,7 @@ void app.whenReady().then(async () => {
 
   if (process.platform === 'darwin') {
     app.dock?.setIcon(icon)
-    Menu.setApplicationMenu(Menu.buildFromTemplate(macMenu(app.name, openSettings)))
+    applyMenu(DEFAULT_UI_PREFS.atalhos)
   }
 
   const skipBackup = (): void => {
@@ -429,6 +440,7 @@ void app.whenReady().then(async () => {
   syncTray()
   prefs = createPrefsStore(join(app.getPath('userData'), 'preferencias.json'), (next) => {
     applyAppearance(next)
+    applyMenu(next.atalhos)
     void whatsapp?.setEnabled(next.whatsapp)
     sendToWindows('prefs:changed', next)
   })
@@ -461,6 +473,7 @@ void app.whenReady().then(async () => {
     })
   })
   applyAppearance(prefs.get())
+  applyMenu(prefs.get().atalhos)
   nativeTheme.on('updated', syncWindowBackgrounds)
   screen.on('display-metrics-changed', refitWindows)
   screen.on('display-removed', refitWindows)

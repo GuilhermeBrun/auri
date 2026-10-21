@@ -350,6 +350,7 @@ export const sidebarItemsSchema = z.object({
 export const uiPrefsSchema = z.object({
   sidebarOpen: z.boolean(),
   sidebarItems: sidebarItemsSchema,
+  atalhos: z.record(z.string().max(40), z.string().max(60).nullable()),
   theme: themeSchema,
   whatsapp: z.boolean(),
   recepcao: z.boolean(),
