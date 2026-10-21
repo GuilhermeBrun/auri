@@ -29,6 +29,7 @@ import {
 import { Page } from '@renderer/components/Layout'
 import { PATIENT_COLUMN, PatientHeader } from '@renderer/components/PatientHeader'
 import { Button } from '@renderer/components/ui/button'
+import { Callout } from '@renderer/components/ui/callout'
 import { EmptyState } from '@renderer/components/ui/empty'
 import { ErrorState } from '@renderer/components/ui/error'
 import { Loading } from '@renderer/components/ui/loading'
@@ -37,8 +38,10 @@ import {
   formatDay,
   formatShortDay,
   plural,
+  RENOVACAO_TITLES,
   SITUACAO_LABELS,
-  useComputador
+  useComputador,
+  useRenewPackage
 } from '@renderer/lib/finance'
 import { patientFinanceQuery, patientQuery } from '@renderer/lib/queries'
 import { PATIENTS_CRUMB } from '@renderer/lib/session'
@@ -163,7 +166,9 @@ function billingText(billing: Billing): string {
   const service = billing.service
     ? `${billing.service.nome} ${formatBRL(billing.service.valor_centavos)}`
     : ''
-  return billing.forma === 'pacote' ? `Sessão fora do pacote: ${service}` : service
+  if (billing.forma !== 'pacote') return service
+  const plan = billing.plan ? `${formatBRL(billing.plan.valor_centavos)} · ` : ''
+  return `${plan}Sessão fora do pacote: ${service}`
 }
 
 function FinanceBody({
@@ -182,7 +187,8 @@ function FinanceBody({
   onLaunch: (session: PendingSession) => void
 }): React.JSX.Element {
   const saldo = finance.saldo_centavos
-  const current = finance.packages.find((p) => p.em_vigor) ?? null
+  const current = finance.packages.filter((p) => p.em_vigor).reverse()
+  const renew = useRenewPackage(patient)
   const showPackages = billing.forma === 'pacote' || finance.packages.length > 0
   return (
     <>
@@ -218,7 +224,10 @@ function FinanceBody({
           </Button>
         }
       >
-        <p className="text-[13px] font-medium">{FORMA_COBRANCA_LABELS[billing.forma]}</p>
+        <p className="text-[13px] font-medium">
+          {FORMA_COBRANCA_LABELS[billing.forma]}
+          {billing.plan ? ` · ${billing.plan.nome}` : ''}
+        </p>
         <p className="mt-0.5 text-xs text-ink-soft tabular-nums">{billingText(billing)}</p>
       </Section>
 
@@ -237,9 +246,32 @@ function FinanceBody({
             </Button>
           }
         >
-          {current ? (
-            <PackageCard pkg={current} />
-          ) : (
+          {finance.renovacao && (
+            <Callout
+              className={current.length > 0 ? 'mb-4' : undefined}
+              title={RENOVACAO_TITLES[finance.renovacao.situacao]}
+              action={
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  loading={renew.isPending}
+                  onClick={() => finance.renovacao && renew.mutate(finance.renovacao)}
+                >
+                  Renovar
+                </Button>
+              }
+            >
+              {finance.renovacao.nome} · {formatBRL(finance.renovacao.valor_centavos)}
+            </Callout>
+          )}
+          {renew.error && <ErrorText>{renew.error.message}</ErrorText>}
+          {current.length > 0 ? (
+            <div className="flex flex-col gap-6">
+              {current.map((pkg) => (
+                <PackageCard key={pkg.id} pkg={pkg} />
+              ))}
+            </div>
+          ) : finance.renovacao ? null : (
             <p className="text-[13px] text-ink-faint">
               Nenhum pacote em vigor
               {finance.packages[0] && !finance.packages[0].estorno
@@ -272,7 +304,8 @@ function PackageCard({ pkg }: { pkg: PatientPackage }): React.JSX.Element {
       <p className="text-[13px] font-medium">
         {pkg.nome}{' '}
         <span className="font-normal text-ink-soft tabular-nums">
-          · {pkg.usadas} de {pkg.sessoes} usadas
+          · {pkg.usadas} de {pkg.sessoes} usadas ·{' '}
+          {pkg.sessoes - pkg.usadas === 1 ? 'resta 1' : `restam ${pkg.sessoes - pkg.usadas}`}
         </span>
       </p>
       <ol

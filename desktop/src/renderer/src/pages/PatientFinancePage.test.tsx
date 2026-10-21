@@ -7,6 +7,11 @@ import { fakePatient, renderRoute } from '@renderer/testing'
 import type { ToastInput } from '@renderer/lib/toast'
 
 vi.hoisted(() => {
+  Object.assign(Element.prototype, {
+    hasPointerCapture: () => false,
+    releasePointerCapture: () => {},
+    scrollIntoView: () => {}
+  })
   const bridge = (): unknown =>
     new Proxy({} as Record<string, unknown>, {
       get: (target, key: string) =>
@@ -43,11 +48,13 @@ const finance: PatientFinance = {
     forma: 'pacote',
     service_id: 1,
     insurer_id: null,
+    plan_id: 3,
     carteirinha: '',
     desde: '2026-10-01',
     updated_at: '2026-10-01T12:00:00.000Z',
     service: { nome: 'Sessão', valor_centavos: 19000 },
-    insurer: null
+    insurer: null,
+    plan: { nome: '8 sessões', sessoes: 8, valor_centavos: 152000 }
   },
   saldo_centavos: 38000,
   convenios: [],
@@ -129,7 +136,23 @@ const finance: PatientFinance = {
   pendentes: [
     { appointment_id: 60, inicio: '2026-10-09T14:00', tipo_nome: 'Sessão', categoria: 'sessao' },
     { appointment_id: 61, inicio: '2026-10-13T14:00', tipo_nome: 'Sessão', categoria: 'sessao' }
-  ]
+  ],
+  renovacao: null
+}
+
+const catalog = {
+  services: [{ id: 1, nome: 'Sessão', valor_centavos: 19000, arquivado: false }],
+  plans: [
+    {
+      id: 3,
+      nome: '8 sessões',
+      sessoes: 8,
+      valor_centavos: 152000,
+      validade_dias: 60,
+      arquivado: false
+    }
+  ],
+  insurers: []
 }
 
 let api: { patients: Record<string, unknown>; finance: Record<string, ReturnType<typeof vi.fn>> }
@@ -142,7 +165,10 @@ beforeEach(() => {
       catalog: vi.fn(async () => ({ services: [], plans: [], insurers: [] })),
       pay: vi.fn(async () => 22),
       void: vi.fn(async () => 1),
-      launchSession: vi.fn(async () => ({ kind: 'use', id: 31 }))
+      launchSession: vi.fn(async () => ({ kind: 'use', id: 31 })),
+      setBilling: vi.fn(async () => finance.billing),
+      contractPackage: vi.fn(async () => 5),
+      renewPackage: vi.fn(async () => 5)
     }
   }
   Object.assign(window, { api })
@@ -167,7 +193,8 @@ describe('aba Financeiro da ficha', () => {
     expect(screen.getByRole('link', { name: 'Financeiro' }).getAttribute('aria-current')).toBe(
       'page'
     )
-    expect(screen.getByText('· 3 de 8 usadas')).toBeTruthy()
+    expect(screen.getByText('· 3 de 8 usadas · restam 5')).toBeTruthy()
+    expect(screen.getByText('Pacote · 8 sessões')).toBeTruthy()
     expect(screen.getByRole('list', { name: '3 de 8 sessões usadas' })).toBeTruthy()
     expect(screen.getByText(/vale até 29\/11\/2026/)).toBeTruthy()
     expect(screen.getByText('Parcial · falta R$ 380,00')).toBeTruthy()
@@ -240,6 +267,78 @@ describe('aba Financeiro da ficha', () => {
     await userEvent.click(within(dialog).getByRole('button', { name: 'Estornar' }))
     await waitFor(() =>
       expect(api.finance.void).toHaveBeenCalledWith('package', 4, 'Desistiu', 'Este computador')
+    )
+  })
+
+  it('pacote acabado avisa e renova com um clique', async () => {
+    const toast = vi.fn()
+    api.finance.patient.mockResolvedValue({
+      ...finance,
+      packages: [{ ...finance.packages[0], usadas: 8, em_vigor: false }],
+      renovacao: {
+        plan_id: 3,
+        nome: '8 sessões',
+        valor_centavos: 152000,
+        situacao: 'acabou',
+        restantes: 0
+      }
+    })
+    renderPage(toast)
+    expect(await screen.findByText('O pacote acabou')).toBeTruthy()
+    await userEvent.click(screen.getByRole('button', { name: 'Renovar' }))
+    await waitFor(() => expect(api.finance.renewPackage).toHaveBeenCalledWith(1, 'Este computador'))
+    await waitFor(() =>
+      expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: 'Pacote renovado' }))
+    )
+  })
+
+  it('Cobrar mostra os pacotes e contrata o escolhido', async () => {
+    api.finance.catalog.mockResolvedValue(catalog)
+    renderPage()
+    await userEvent.click(await screen.findByRole('button', { name: 'Cobrar' }))
+    const dialog = await screen.findByRole('dialog')
+    await userEvent.click(within(dialog).getByLabelText('Serviço ou pacote'))
+    await userEvent.click(
+      await screen.findByRole('option', { name: 'Pacote 8 sessões · R$ 1.520,00' })
+    )
+    expect(within(dialog).queryByText('Descrição')).toBeNull()
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Contratar' }))
+    await waitFor(() =>
+      expect(api.finance.contractPackage).toHaveBeenCalledWith(
+        1,
+        { plan_id: 3, inicio: expect.any(String) },
+        'Este computador'
+      )
+    )
+  })
+
+  it('forma de cobrança por pacote escolhe o pacote e contrata ao salvar', async () => {
+    api.finance.catalog.mockResolvedValue(catalog)
+    api.finance.patient.mockResolvedValue({
+      ...finance,
+      billing: null,
+      packages: [],
+      pendentes: []
+    })
+    renderPage()
+    await userEvent.click(await screen.findByRole('button', { name: 'Definir forma de cobrança' }))
+    const dialog = await screen.findByRole('dialog')
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Pacote' }))
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Salvar e contratar' }))
+    expect(await within(dialog).findByText('Escolha o pacote')).toBeTruthy()
+    await userEvent.click(within(dialog).getByLabelText('Pacote'))
+    await userEvent.click(await screen.findByRole('option', { name: '8 sessões · R$ 1.520,00' }))
+    await userEvent.click(within(dialog).getByLabelText('Sessão fora do pacote'))
+    await userEvent.click(await screen.findByRole('option', { name: 'Sessão · R$ 190,00' }))
+    expect(within(dialog).getByRole('switch', { name: 'Contratar agora' })).toBeTruthy()
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Salvar e contratar' }))
+    await waitFor(() =>
+      expect(api.finance.setBilling).toHaveBeenCalledWith(
+        1,
+        expect.objectContaining({ forma: 'pacote', plan_id: 3, service_id: 1 }),
+        undefined,
+        { inicio: expect.any(String), computador: 'Este computador' }
+      )
     )
   })
 

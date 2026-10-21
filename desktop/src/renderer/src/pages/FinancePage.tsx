@@ -14,7 +14,7 @@ import { Button } from '@renderer/components/ui/button'
 import { EmptyState } from '@renderer/components/ui/empty'
 import { ErrorState } from '@renderer/components/ui/error'
 import { Loading } from '@renderer/components/ui/loading'
-import { formatShortDay } from '@renderer/lib/finance'
+import { formatShortDay, RENOVACAO_LABELS, useRenewPackage } from '@renderer/lib/finance'
 import { financeCatalogQuery, financeOverviewQuery } from '@renderer/lib/queries'
 
 function monthName(date: Date): string {
@@ -51,6 +51,37 @@ function Quiet({ children }: { children: ReactNode }): React.JSX.Element {
 
 const rowClass =
   'flex w-full items-center gap-3 rounded-card px-3 py-2 text-left text-[13px] transition-colors hover:bg-canvas focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-accent'
+
+function RenewRow({
+  item,
+  onOpen
+}: {
+  item: FinanceOverview['renovar'][number]
+  onOpen: () => void
+}): React.JSX.Element {
+  const renew = useRenewPackage({ id: item.patient_id, nome: item.patient_nome })
+  return (
+    <li className="flex items-center gap-2">
+      <button type="button" className={rowClass} onClick={onOpen}>
+        <Avatar name={item.patient_nome} size="sm" />
+        <span className="min-w-0 flex-1 truncate font-medium">{item.patient_nome}</span>
+        <span className="text-xs text-ink-soft">
+          {item.nome} · {RENOVACAO_LABELS[item.situacao]}
+        </span>
+      </button>
+      <Button
+        variant="secondary"
+        size="sm"
+        className="mr-3 shrink-0"
+        loading={renew.isPending}
+        title={renew.error?.message}
+        onClick={() => renew.mutate(item)}
+      >
+        Renovar
+      </Button>
+    </li>
+  )
+}
 
 function Overview({ data, month }: { data: FinanceOverview; month: Date }): React.JSX.Element {
   const navigate = useNavigate()
@@ -101,6 +132,16 @@ function Overview({ data, month }: { data: FinanceOverview; month: Date }): Reac
           </ul>
         )}
       </Section>
+
+      {data.renovar.length > 0 && (
+        <Section id="renovar" title="Pacotes a renovar">
+          <ul className="-mx-3 flex flex-col">
+            {data.renovar.map((r) => (
+              <RenewRow key={r.patient_id} item={r} onOpen={() => open(r.patient_id)} />
+            ))}
+          </ul>
+        </Section>
+      )}
 
       {data.convenios.length > 0 && (
         <Section id="convenios" title="Convênios a receber">

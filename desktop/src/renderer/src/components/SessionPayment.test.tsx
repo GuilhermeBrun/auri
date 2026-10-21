@@ -28,6 +28,8 @@ const billing: PatientFinance['billing'] = {
   forma: 'particular',
   service_id: 1,
   insurer_id: null,
+  plan_id: null,
+  plan: null,
   carteirinha: '',
   desde: '2026-10-01',
   updated_at: '2026-10-01T12:00:00.000Z',
@@ -62,7 +64,8 @@ const base: PatientFinance = {
   charges: [],
   payments: [],
   uses: [],
-  pendentes: []
+  pendentes: [],
+  renovacao: null
 }
 
 let finance: Record<string, ReturnType<typeof vi.fn>>
@@ -71,6 +74,7 @@ beforeEach(() => {
   finance = {
     patient: vi.fn(async () => ({ ...base, charges: [charge({})] })),
     chargeAbsence: vi.fn(async () => 11),
+    renewPackage: vi.fn(async () => 5),
     pay: vi.fn(async () => 1)
   }
   Object.assign(window, { api: { finance, patients: { list: vi.fn(async () => []) } } })
@@ -113,6 +117,34 @@ describe('pagamento no registro da sessão', () => {
     show()
     expect(await screen.findByText('8 sessões · sessão 3 de 8')).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Registrar pagamento' })).toBeNull()
+  })
+
+  it('sessão fora do pacote oferece renovar', async () => {
+    const toast = vi.fn()
+    finance.patient.mockResolvedValue({
+      ...base,
+      billing: { ...billing, forma: 'pacote' },
+      charges: [charge({ descricao: 'Sessão de 14/10 · fora do pacote' })],
+      renovacao: {
+        plan_id: 3,
+        nome: '8 sessões',
+        valor_centavos: 152000,
+        situacao: 'acabou',
+        restantes: 0
+      }
+    })
+    renderRoute(
+      '/agenda',
+      '/agenda',
+      <SessionPayment appointment={presente} onLeave={() => {}} />,
+      toast
+    )
+    expect(await screen.findByText('Fora do pacote · R$ 190,00 · em aberto')).toBeTruthy()
+    await userEvent.click(screen.getByRole('button', { name: 'Renovar pacote' }))
+    await waitFor(() => expect(finance.renewPackage).toHaveBeenCalledWith(1, 'Este computador'))
+    await waitFor(() =>
+      expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: 'Pacote renovado' }))
+    )
   })
 
   it('convênio diz quem paga', async () => {

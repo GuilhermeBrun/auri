@@ -6,14 +6,21 @@ import type { Appointment } from '@shared/schemas'
 import { PaymentDialog } from '@renderer/components/FinanceDialogs'
 import { Button } from '@renderer/components/ui/button'
 import { ErrorText } from '@renderer/components/ui/section'
-import { SITUACAO_LABELS, sessionPay, useComputador, type SessionPay } from '@renderer/lib/finance'
+import {
+  SITUACAO_LABELS,
+  sessionPay,
+  useComputador,
+  useRenewPackage,
+  type SessionPay
+} from '@renderer/lib/finance'
 import { patientFinanceQuery } from '@renderer/lib/queries'
 import { useToast } from '@renderer/lib/toast'
 
 function detail(pay: SessionPay): string {
   if (pay.kind === 'pacote') return `${pay.nome} · sessão ${pay.numero} de ${pay.sessoes}`
   if (pay.kind === 'nenhum') return ''
-  const falta = pay.motivo === 'falta_cobrada' ? 'Falta cobrada · ' : ''
+  const falta =
+    pay.motivo === 'falta_cobrada' ? 'Falta cobrada · ' : pay.fora ? 'Fora do pacote · ' : ''
   const valor = formatBRL(pay.valor_centavos)
   if (pay.convenio)
     return `${falta}${pay.convenio} · ${valor} · ${pay.situacao === 'pago' ? 'pago pelo convênio' : 'a receber do convênio'}`
@@ -35,6 +42,7 @@ export function SessionPayment({
   const finance = useQuery(patientFinanceQuery(appointment.patient_id))
   const [paying, setPaying] = useState(false)
   const [confirming, setConfirming] = useState(false)
+  const renew = useRenewPackage({ id: appointment.patient_id, nome: appointment.patient_nome })
   const charge = useMutation({
     mutationFn: () => window.api.finance.chargeAbsence(appointment.id, computador),
     onSuccess: () => {
@@ -62,6 +70,7 @@ export function SessionPayment({
           : 'Ainda não lançada. Fica em A lançar, no financeiro do paciente.'
   const canPay = pay.kind === 'cobranca' && !pay.convenio && pay.situacao !== 'pago'
   const canCharge = pay.kind === 'nenhum' && missed && billing !== null && valorFalta !== null
+  const renovacao = missed ? null : finance.data.renovacao
 
   return (
     <div className="flex flex-col gap-2 rounded-control bg-canvas px-3 py-2.5">
@@ -91,6 +100,16 @@ export function SessionPayment({
                   Registrar pagamento
                 </Button>
               )}
+              {renovacao && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  loading={renew.isPending}
+                  onClick={() => renew.mutate(renovacao)}
+                >
+                  Renovar pacote
+                </Button>
+              )}
               {canCharge && (
                 <Button variant="secondary" size="sm" onClick={() => setConfirming(true)}>
                   Cobrar sessão
@@ -100,7 +119,9 @@ export function SessionPayment({
           )}
         </span>
       </div>
-      {charge.error && <ErrorText className="mt-0">{charge.error.message}</ErrorText>}
+      {(charge.error ?? renew.error) && (
+        <ErrorText className="mt-0">{(charge.error ?? renew.error)?.message}</ErrorText>
+      )}
       <PaymentDialog
         open={paying}
         onOpenChange={setPaying}

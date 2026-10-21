@@ -52,6 +52,17 @@ const overview: FinanceOverview = {
     { patient_id: 7, nome: 'Bruno Fictício', saldo_centavos: 38000, desde: '2026-10-02' },
     { patient_id: 8, nome: 'Helena Fictícia', saldo_centavos: 19000, desde: '2026-10-09' }
   ],
+  renovar: [
+    {
+      patient_id: 9,
+      patient_nome: 'Lia Fictícia',
+      plan_id: 3,
+      nome: '8 sessões',
+      valor_centavos: 152000,
+      situacao: 'acabou',
+      restantes: 0
+    }
+  ],
   convenios: [{ insurer_id: 5, nome: 'Saúde Fictícia', saldo_centavos: 9500 }],
   recebimentos: [
     {
@@ -81,6 +92,7 @@ beforeEach(() => {
   finance = {
     overview: vi.fn(async () => overview),
     catalog: vi.fn(async () => catalog),
+    renewPackage: vi.fn(async () => 12),
     savePlan: vi.fn(async (_id, input) => ({ id: 9, ...input, arquivado: false })),
     archiveService: vi.fn(async () => ({ ...catalog.services[1], arquivado: false }))
   }
@@ -110,6 +122,14 @@ describe('tela Financeiro', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Mês anterior' }))
     await waitFor(() => expect(finance.overview).toHaveBeenCalledWith('2026-09-01', '2026-09-30'))
+  })
+
+  it('pacotes a renovar com um clique', async () => {
+    renderRoute('/financeiro', '/financeiro', <FinancePage />)
+    const renovar = await screen.findByRole('region', { name: 'Pacotes a renovar' })
+    expect(within(renovar).getByText('8 sessões · Acabou')).toBeTruthy()
+    await userEvent.click(within(renovar).getByRole('button', { name: 'Renovar' }))
+    await waitFor(() => expect(finance.renewPackage).toHaveBeenCalledWith(9, 'Este computador'))
   })
 
   it('o clique no paciente abre a aba Financeiro dele', async () => {
