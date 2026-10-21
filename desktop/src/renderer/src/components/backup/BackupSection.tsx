@@ -15,6 +15,7 @@ import {
   ErrorText,
   GroupText,
   PageSection,
+  SettingRow,
   SettingsGroup,
   StatusDot
 } from '@renderer/components/ui/section'
@@ -117,7 +118,7 @@ function Setup({
           ? 'A senha criada para o computador da recepção também protege as cópias.'
           : 'Sem a senha, ninguém abre as cópias, nem quem acessa a nuvem.'}
       </GroupText>
-      <div className="mt-4 flex items-center gap-3 rounded-card bg-surface px-4 py-3">
+      <div className="mt-4 flex items-center gap-3 rounded-card bg-fill px-4 py-3">
         <DestinationLine destination={destination} />
         <Button variant="secondary" onClick={() => setDestination(null)}>
           Trocar
@@ -177,7 +178,7 @@ function RecoveryStep({ code, onDone }: { code: string; onDone: () => void }): R
     >
       <GroupText>Sem a senha, só este código abre as cópias. Ele não aparece de novo.</GroupText>
       <div className="mt-4">
-        <RecoveryCode code={code} className="bg-surface" />
+        <RecoveryCode code={code} />
       </div>
       <label className="mt-5 flex cursor-pointer items-center gap-2 text-[13px]">
         <input
@@ -219,7 +220,7 @@ function Status({ info }: { info: BackupInfo }): React.JSX.Element {
   }, [problem, label, toast])
 
   return (
-    <SettingsGroup label="Situação">
+    <SettingsGroup>
       <div className="flex items-center gap-3">
         <span className="flex self-start pt-[5px]">
           <StatusDot on={!failed && !info.stale && !problem} />
@@ -287,7 +288,7 @@ function Destination({ info }: { info: BackupInfo }): React.JSX.Element {
   })
   const destination = info.destination!
   return (
-    <SettingsGroup label="Onde ficam">
+    <SettingsGroup>
       <div className="flex items-center gap-3">
         <DestinationLine destination={destination} />
         {!changing && (
@@ -305,7 +306,7 @@ function Destination({ info }: { info: BackupInfo }): React.JSX.Element {
         </ErrorText>
       )}
       {changing && (
-        <div className="mt-4 animate-fade-in rounded-card bg-surface p-4">
+        <div className="mt-4 animate-fade-in rounded-card bg-fill p-4">
           <DestinationPicker onPick={(next) => change.mutate(next)} />
           <div className="mt-3 flex justify-end">
             <Button variant="secondary" onClick={() => setChanging(false)}>
@@ -329,8 +330,13 @@ function Frequency({ info }: { info: BackupInfo }): React.JSX.Element {
     ? TIME_OPTIONS
     : [...TIME_OPTIONS, { value: info.dailyTime, label: info.dailyTime }]
   return (
-    <SettingsGroup label="Quando copiar">
-      <div className="flex flex-wrap items-center gap-3">
+    <SettingsGroup>
+      <SettingRow
+        title="Quando copiar"
+        description={
+          info.frequency === 'manual' ? 'O Auri avisa depois de 3 dias sem cópia.' : undefined
+        }
+      >
         <Segmented
           label="Quando copiar"
           value={info.frequency}
@@ -347,10 +353,7 @@ function Frequency({ info }: { info: BackupInfo }): React.JSX.Element {
             />
           </div>
         )}
-      </div>
-      {info.frequency === 'manual' && (
-        <p className="mt-2 text-xs text-ink-soft">O Auri avisa depois de 3 dias sem cópia.</p>
-      )}
+      </SettingRow>
       {change.error && <ErrorText>{change.error.message}</ErrorText>}
     </SettingsGroup>
   )
@@ -360,18 +363,18 @@ function Password(): React.JSX.Element {
   const [request, setRequest] = useState<{ mode: PasswordMode; id: number } | null>(null)
   const open = (mode: PasswordMode): void => setRequest({ mode, id: Date.now() })
   return (
-    <SettingsGroup label="Senha das cópias">
-      <div className="flex flex-wrap gap-2">
+    <SettingsGroup>
+      <SettingRow title="Senha" description="Também desliga o computador da recepção.">
         <Button variant="secondary" onClick={() => open('change')}>
-          Alterar senha
+          Alterar
         </Button>
         <Button variant="secondary" onClick={() => open('reset')}>
-          Esqueci a senha
+          Esqueci
         </Button>
         <Button variant="secondary" onClick={() => open('code')}>
-          Novo código de recuperação
+          Novo código
         </Button>
-      </div>
+      </SettingRow>
       <PasswordDialog request={request} onClose={() => setRequest(null)} />
     </SettingsGroup>
   )
@@ -390,13 +393,17 @@ function Restore({ info }: { info: BackupInfo }): React.JSX.Element {
     }
   })
   return (
-    <SettingsGroup label="Restaurar dados">
-      <GroupText>Troca os pacientes e a agenda pelos da cópia.</GroupText>
-      <Button variant="secondary" className="mt-3" onClick={() => setRequest({ id: Date.now() })}>
-        Restaurar de uma cópia…
-      </Button>
+    <SettingsGroup>
+      <SettingRow
+        title="Restaurar dados"
+        description="Troca os pacientes e a agenda pelos da cópia."
+      >
+        <Button variant="secondary" onClick={() => setRequest({ id: Date.now() })}>
+          Restaurar…
+        </Button>
+      </SettingRow>
       {info.undo && (
-        <div className="mt-4 flex animate-fade-in items-center gap-3 rounded-card bg-surface px-4 py-3">
+        <div className="mt-4 flex animate-fade-in items-center gap-3 rounded-card bg-fill px-4 py-3">
           <p className="min-w-0 flex-1 text-xs text-ink-soft">
             {confirming
               ? 'Voltar aos dados de antes? O que foi feito depois se perde.'
@@ -431,7 +438,7 @@ function Disable(): React.JSX.Element {
     onSuccess: setBackupInfo
   })
   return (
-    <section>
+    <SettingsGroup>
       {confirming ? (
         <div className="animate-fade-in rounded-card bg-fill p-4">
           <p className="text-xs text-ink-soft">
@@ -452,7 +459,7 @@ function Disable(): React.JSX.Element {
         </Button>
       )}
       {disable.error && <ErrorText>{disable.error.message}</ErrorText>}
-    </section>
+    </SettingsGroup>
   )
 }
 
@@ -462,7 +469,7 @@ export function BackupSection(): React.JSX.Element {
 
   return (
     <PageSection id="copia" title="Cópia de segurança">
-      <div className="flex flex-col gap-8">
+      <div className="flex flex-col">
         {!info ? (
           <Loading />
         ) : !info.available ? (

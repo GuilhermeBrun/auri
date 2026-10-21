@@ -5,7 +5,7 @@ import { Page } from '@renderer/components/Layout'
 import { ReceptionDialog, ReceptionPasswordDialog } from '@renderer/components/ReceptionDialog'
 import { ImportButton, ImportPreview } from '@renderer/components/SettingsImport'
 import { Button } from '@renderer/components/ui/button'
-import { ErrorText, PageSection, SettingsGroup } from '@renderer/components/ui/section'
+import { ErrorText, PageSection, SettingRow, SettingsGroup } from '@renderer/components/ui/section'
 import { Select } from '@renderer/components/ui/select'
 import { SwitchField } from '@renderer/components/ui/switch'
 import { formatWhen, useBackup } from '@renderer/lib/backup'
@@ -40,26 +40,6 @@ const CHANNELS = [
   { value: 'latest', label: 'Estável' },
   { value: 'alpha', label: 'Alpha' }
 ] as const
-
-function Row({
-  title,
-  description,
-  children
-}: {
-  title: React.ReactNode
-  description?: React.ReactNode
-  children?: React.ReactNode
-}): React.JSX.Element {
-  return (
-    <div className="flex items-center justify-between gap-6">
-      <div className="min-w-0">
-        <div className="text-[13px] font-medium">{title}</div>
-        {description && <p className="mt-0.5 text-xs text-ink-soft">{description}</p>}
-      </div>
-      {children && <div className="shrink-0">{children}</div>}
-    </div>
-  )
-}
 
 function WhatsApp(): React.JSX.Element {
   const enabled = useWhatsAppEnabled()
@@ -105,7 +85,7 @@ function ErrorReports(): React.JSX.Element | null {
   const { enabled, count } = info.data
   return (
     <PageSection id="relatorios" title="Relatórios de erro">
-      <SettingsGroup className="flex flex-col gap-5">
+      <SettingsGroup rows>
         <SwitchField
           label="Enviar relatórios de erro"
           description={
@@ -118,14 +98,14 @@ function ErrorReports(): React.JSX.Element | null {
           onCheckedChange={(on) => enable.mutate(on)}
         />
         {count > 0 && (
-          <Row
+          <SettingRow
             title="Falhas neste computador"
             description={count === 1 ? '1 falha guardada' : `${count} falhas guardadas`}
           >
             <Button variant="secondary" loading={copy.isPending} onClick={() => copy.mutate()}>
               <Copy /> Copiar relatório
             </Button>
-          </Row>
+          </SettingRow>
         )}
         {(enable.error ?? copy.error) && (
           <ErrorText>{(enable.error ?? copy.error)?.message}</ErrorText>
@@ -147,7 +127,7 @@ function ThisComputer(): React.JSX.Element {
   })
   return (
     <PageSection id="computador" title="Este computador">
-      <SettingsGroup className="flex flex-col gap-5">
+      <SettingsGroup>
         <SwitchField
           label="Computador da recepção"
           description={
@@ -185,8 +165,11 @@ function Transfer(): React.JSX.Element {
   })
   return (
     <PageSection id="levar" title="Levar para outro computador">
-      <SettingsGroup className="flex flex-col gap-5">
-        <Row title="Exportar configurações" description="Não vão pacientes, senhas nem chaves.">
+      <SettingsGroup rows>
+        <SettingRow
+          title="Exportar configurações"
+          description="Não vão pacientes, senhas nem chaves."
+        >
           <Button
             variant="secondary"
             loading={exportFile.isPending}
@@ -194,12 +177,12 @@ function Transfer(): React.JSX.Element {
           >
             <FileUp /> Exportar…
           </Button>
-        </Row>
+        </SettingRow>
         {!reception && (
           <div>
-            <Row title="Importar configurações">
+            <SettingRow title="Importar configurações">
               {!importing.preview && <ImportButton state={importing} label="Importar…" />}
-            </Row>
+            </SettingRow>
             <ImportPreview state={importing} className="mt-4 bg-surface" />
           </div>
         )}
@@ -232,8 +215,8 @@ export function GeneralPage(): React.JSX.Element {
         <div className="flex flex-col gap-14">
           <PageSection id="atualizacoes" title="Atualizações">
             {state && (
-              <SettingsGroup className="flex flex-col gap-5">
-                <Row
+              <SettingsGroup rows>
+                <SettingRow
                   title={
                     <>
                       Versão{' '}
@@ -258,9 +241,9 @@ export function GeneralPage(): React.JSX.Element {
                       </Button>
                     )
                   )}
-                </Row>
+                </SettingRow>
                 {state.status !== 'unavailable' && (
-                  <Row
+                  <SettingRow
                     title={<label htmlFor={channelId}>Canal de atualização</label>}
                     description={
                       state.channel === 'alpha' ? 'Novidades antes, mas pode ter erros.' : undefined
@@ -280,7 +263,7 @@ export function GeneralPage(): React.JSX.Element {
                         compact
                       />
                     </div>
-                  </Row>
+                  </SettingRow>
                 )}
                 {(check.error ?? install.error ?? channel.error) && (
                   <ErrorText>{(check.error ?? install.error ?? channel.error)?.message}</ErrorText>

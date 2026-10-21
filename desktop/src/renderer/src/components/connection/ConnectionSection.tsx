@@ -9,6 +9,7 @@ import {
   ErrorText,
   GroupText,
   PageSection,
+  SettingRow,
   SettingsGroup,
   StatusDot
 } from '@renderer/components/ui/section'
@@ -164,7 +165,7 @@ function PairingPanel({ devices }: { devices: PairedDevice[] }): React.JSX.Eleme
   const minutes = Math.floor(remaining / 60)
   const seconds = String(remaining % 60).padStart(2, '0')
   return (
-    <div className="mt-4 animate-fade-in rounded-card bg-surface p-5">
+    <div className="mt-4 animate-fade-in rounded-card bg-fill p-5">
       <p className="text-xs text-ink-soft">
         No outro computador, em Armazenamento, escolha “Usar os dados de outro computador”.
       </p>
@@ -419,7 +420,7 @@ function LinkedServer({
           )}
         </div>
         {confirming && (
-          <div className="mt-4 animate-fade-in rounded-card bg-surface p-4">
+          <div className="mt-4 animate-fade-in rounded-card bg-fill p-4">
             <p className="text-xs text-ink-soft">
               Para voltar, precisa de um código novo de {server.name}.
             </p>
@@ -571,9 +572,11 @@ function NameField({ name }: { name: string }): React.JSX.Element {
     else if (next !== name) save.mutate(next)
   }
   return (
-    <SettingsGroup label="Este computador">
-      <Field label="Nome" error={save.error?.message}>
+    <SettingsGroup>
+      <SettingRow title="Nome deste computador" description="Aparece nos outros computadores.">
         <Input
+          aria-label="Nome deste computador"
+          className="w-56"
           value={value}
           maxLength={60}
           onChange={(e) => setValue(e.target.value)}
@@ -582,7 +585,8 @@ function NameField({ name }: { name: string }): React.JSX.Element {
             if (e.key === 'Enter') e.currentTarget.blur()
           }}
         />
-      </Field>
+      </SettingRow>
+      {save.error && <ErrorText>{save.error.message}</ErrorText>}
     </SettingsGroup>
   )
 }
