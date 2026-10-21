@@ -8,6 +8,7 @@ import {
   nativeImage,
   nativeTheme,
   powerMonitor,
+  screen,
   Tray
 } from 'electron'
 import { join, resolve } from 'path'
@@ -27,6 +28,7 @@ import { trustRenderer } from './ipc-security'
 import { pathToFileURL } from 'node:url'
 import { createPrefsStore, type PrefsStore } from './prefs'
 import { createTransferService } from './transfer-service'
+import { tamanhoDaJanela } from './window-size'
 import { ESQUEMA, criarCaixa, enderecoNosArgumentos } from './terms/protocol'
 import {
   channelFile,
@@ -65,10 +67,7 @@ function syncWindowBackgrounds(): void {
 
 function createWindow(prefs: UiPrefs): void {
   const mainWindow = new BrowserWindow({
-    width: 1280,
-    height: 820,
-    minWidth: 1000,
-    minHeight: 640,
+    ...tamanhoDaJanela(screen.getPrimaryDisplay().workAreaSize),
     title: 'Auri',
     show: false,
     autoHideMenuBar: true,
