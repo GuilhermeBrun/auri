@@ -40,7 +40,7 @@ describe('gráfico de frequência', () => {
     fireEvent.mouseEnter(screen.getByRole('button', { name: /10 de outubro, Presente/ }))
     expect(screen.getByText(/— \/r\/ em palavras\./)).toBeTruthy()
     fireEvent.mouseLeave(bar.parentElement!.parentElement!)
-    expect(screen.getByText('Passe o mouse para ver cada sessão.')).toBeTruthy()
+    expect(screen.queryByText(/Faltou · Sessão/)).toBeNull()
   })
 
   it('setas, Home e End percorrem as sessões; Enter e clique abrem o registro', async () => {

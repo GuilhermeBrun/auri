@@ -40,7 +40,6 @@ export function SendTerm({
       open={model !== null}
       onOpenChange={(open) => !open && onClose()}
       title={model ? `Enviar "${model.titulo}"` : 'Enviar termo'}
-      description="Vai pelo WhatsApp. A pessoa lê e assina no celular, e a resposta volta pelo mesmo caminho."
     >
       {model && <SendForm patient={patient} model={model} onClose={onClose} />}
     </Dialog>
@@ -119,7 +118,7 @@ function SendForm({
       toast(
         via === 'whatsapp'
           ? { title: 'Termo enviado', description: 'Confira o WhatsApp e toque em enviar.' }
-          : { title: 'Mensagem copiada', description: 'Cole na conversa do WhatsApp.' }
+          : { title: 'Mensagem copiada' }
       )
       onClose()
     }

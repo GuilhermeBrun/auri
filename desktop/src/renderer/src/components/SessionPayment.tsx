@@ -67,7 +67,7 @@ export function SessionPayment({
         ? 'Paciente sem forma de cobrança.'
         : missed
           ? 'Falta não cobrada.'
-          : 'Ainda não lançada. Fica em A lançar, no financeiro do paciente.'
+          : 'Ainda não lançada.'
   const canPay = pay.kind === 'cobranca' && !pay.convenio && pay.situacao !== 'pago'
   const canCharge = pay.kind === 'nenhum' && missed && billing !== null && valorFalta !== null
   const renovacao = missed ? null : finance.data.renovacao

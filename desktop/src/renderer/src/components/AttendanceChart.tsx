@@ -172,9 +172,7 @@ export function AttendanceChart({
           </>
         ) : (
           <span className="text-ink-faint">
-            {terapias.length > MAX_BARS
-              ? `Últimas ${MAX_BARS} sessões. Passe o mouse para ver cada uma.`
-              : 'Passe o mouse para ver cada sessão.'}
+            {terapias.length > MAX_BARS && `Últimas ${MAX_BARS} sessões.`}
           </span>
         )}
       </p>
