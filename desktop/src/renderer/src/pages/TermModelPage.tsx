@@ -190,8 +190,7 @@ function TermModelEditor({ model }: { model: TermModel | null }): React.JSX.Elem
         <div className="flex min-w-0 flex-col gap-4">
           {model && (
             <p className="text-[13px] text-ink-soft">
-              Versão {model.versao}. Salvar cria a versão {model.versao + 1}; os termos já assinados
-              guardam o texto da versão deles.
+              Versão {model.versao}. Os termos já assinados ficam com o texto deles.
             </p>
           )}
           {(save.error ?? archive.error) && (
@@ -271,10 +270,7 @@ function TermModelEditor({ model }: { model: TermModel | null }): React.JSX.Elem
               className="font-mono text-[12.5px] leading-relaxed"
               placeholder="# Título do termo&#10;&#10;Texto do primeiro parágrafo."
             />
-            <p className="text-xs text-ink-soft">
-              Uma linha em branco começa outro parágrafo. Os campos entre chaves se preenchem
-              sozinhos no envio.
-            </p>
+            <p className="text-xs text-ink-soft">Uma linha em branco começa outro parágrafo.</p>
           </div>
         </div>
 
@@ -307,8 +303,8 @@ function TermModelEditor({ model }: { model: TermModel | null }): React.JSX.Elem
                 {measure.data
                   ? cabe
                     ? `Usa ${Math.round(uso * 100)}% do que cabe no link do WhatsApp.`
-                    : `Passou do que cabe no link do WhatsApp (${Math.round(uso * 100)}%). Encurte o texto.`
-                  : 'O tamanho do link aparece quando houver título e texto.'}
+                    : `Passou do que cabe no link do WhatsApp (${Math.round(uso * 100)}%).`
+                  : ''}
               </p>
             </div>
           </div>

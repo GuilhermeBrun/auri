@@ -190,7 +190,7 @@ function LogoField({
             {choose.error ? (
               <span className="text-danger">{choose.error.message}</span>
             ) : (
-              'PNG ou JPG. Fundo transparente fica melhor.'
+              'PNG ou JPG.'
             )}
           </p>
         </div>
@@ -243,16 +243,8 @@ function ClinicForm({ clinic }: { clinic: Clinic }): React.JSX.Element {
             </Callout>
           )}
 
-          <p className="text-[13px] text-ink-soft">
-            Como a clínica aparece nos documentos e quando ela atende.
-          </p>
-          <div className="mt-8 flex flex-col">
-            <FormSection
-              id="documentos"
-              title="Nos documentos"
-              description="O logo e o nome vão no cabeçalho do relatório de presença e dos termos."
-              className="grid-cols-2"
-            >
+          <div className="flex flex-col">
+            <FormSection id="documentos" title="Nos documentos" className="grid-cols-2">
               <Controller
                 control={control}
                 name="logo"
@@ -272,12 +264,7 @@ function ClinicForm({ clinic }: { clinic: Clinic }): React.JSX.Element {
               </Field>
             </FormSection>
 
-            <FormSection
-              id="profissional"
-              title="Profissional responsável"
-              description="Aparece nos relatórios, ao lado dos dados do paciente."
-              className="grid-cols-2"
-            >
+            <FormSection id="profissional" title="Profissional responsável" className="grid-cols-2">
               <Field label="Nome" error={err('profissional')}>
                 <Input {...register('profissional')} aria-invalid={invalid('profissional')} />
               </Field>
@@ -289,7 +276,7 @@ function ClinicForm({ clinic }: { clinic: Clinic }): React.JSX.Element {
             <FormSection
               id="funcionamento"
               title="Horário de funcionamento"
-              description="A agenda mostra só os dias abertos e não deixa marcar fora deste horário."
+              description="A agenda não deixa marcar fora deste horário."
             >
               <Controller
                 control={control}
@@ -323,15 +310,14 @@ function ClinicForm({ clinic }: { clinic: Clinic }): React.JSX.Element {
                 />
               </Field>
               <p className="col-span-6 -mt-2 text-xs text-ink-soft">
-                Tempo livre entre uma atividade do paciente (escola, esporte) e a sessão, usado nas
-                sugestões de horário e de encaixe.
+                Entre uma atividade do paciente e a sessão.
               </p>
             </FormSection>
             <EtiquetasSection />
             <FormSection
               id="termos"
               title="Termos assinados pelo celular"
-              description="O responsável envia o termo assinado para este WhatsApp."
+              description="Recebe os termos assinados."
               className="grid-cols-2"
             >
               <Field label="WhatsApp da clínica" error={err('whatsapp')}>
@@ -351,18 +337,10 @@ function TermModels(): React.JSX.Element {
   const models = useQuery(termModelsQuery())
   const list = [...(models.data ?? [])].sort((a, b) => Number(a.arquivado) - Number(b.arquivado))
   return (
-    <FormSection
-      id="modelos"
-      title="Modelos de termo"
-      description="Os termos que a clínica envia para a família ler e assinar pelo celular."
-      className="grid-cols-1 gap-y-2"
-    >
+    <FormSection id="modelos" title="Modelos de termo" className="grid-cols-1 gap-y-2">
       {models.error && <p className="text-xs text-danger">{models.error.message}</p>}
       {models.data && list.length === 0 && (
-        <p className="text-[13px] text-ink-faint">
-          Nenhum modelo ainda. O texto é da clínica: o Auri só leva até a família e guarda o que
-          voltar assinado.
-        </p>
+        <p className="text-[13px] text-ink-faint">Nenhum modelo ainda.</p>
       )}
       {list.length > 0 && (
         <ul className="-mx-3 flex flex-col">
