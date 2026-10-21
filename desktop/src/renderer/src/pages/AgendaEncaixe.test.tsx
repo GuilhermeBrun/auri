@@ -268,6 +268,33 @@ describe('painel da lista de espera na semana', () => {
     )
   })
 
+  it('o agendamento vem com a etiqueta de quem espera', async () => {
+    setup()
+    api.waitlist.list.mockResolvedValue([
+      { ...espera, tipo_id: 2, tipo_nome: 'Avaliação', categoria: 'avaliacao', duracao: 60 }
+    ])
+    open()
+    const user = userEvent.setup()
+    const painel = await screen.findByRole('complementary', { name: 'Encaixe' })
+    await user.click(await within(painel).findByRole('button', { name: 'Horários livres' }))
+    await user.click(await within(painel).findByRole('button', { name: /qui, 15 de out · 08:00/ }))
+    const dialog = await screen.findByRole('dialog', { name: 'Novo agendamento' })
+    expect(
+      within(dialog).getByText(/Avaliação de 60 min com Caio Fictício Prado na quinta-feira/)
+    ).toBeTruthy()
+    await user.click(within(dialog).getByRole('button', { name: 'Agendar' }))
+    await waitFor(() =>
+      expect(api.appointments.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          patient_id: 3,
+          tipo_id: 2,
+          inicio: '2026-10-15T08:00',
+          fim: '2026-10-15T09:00'
+        })
+      )
+    )
+  })
+
   it('não aparece na visão Mês', async () => {
     setup()
     open()
