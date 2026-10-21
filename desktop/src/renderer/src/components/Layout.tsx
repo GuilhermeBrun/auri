@@ -327,11 +327,18 @@ export function Layout(): React.JSX.Element {
   )
 }
 
+function pageOf(pathname: string): string {
+  const patient = matchPath({ path: '/pacientes/:id', end: false }, pathname)
+  if (patient && patient.params.id !== 'novo') return patient.pathnameBase
+  if (matchPath({ path: SETTINGS_PATH, end: false }, pathname)) return SETTINGS_PATH
+  return pathname
+}
+
 function RouteFade(): React.JSX.Element {
   const { pathname } = useLocation()
   return (
-    <div key={pathname} className="h-full animate-page-in">
-      <ErrorBoundary>
+    <div key={pageOf(pathname)} className="h-full animate-page-in">
+      <ErrorBoundary key={pathname}>
         <ConnectionGate
           inSettings={matchPath({ path: SETTINGS_PATH, end: false }, pathname) !== null}
         >
