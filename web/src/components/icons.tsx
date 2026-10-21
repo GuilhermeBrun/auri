@@ -295,6 +295,71 @@ export function Settings() {
     </Svg>
   )
 }
+export function MessageCircle() {
+  return (
+    <Svg>
+      <path d="M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719" />
+    </Svg>
+  )
+}
+export function Ellipsis() {
+  return (
+    <Svg>
+      <>
+        <circle cx="12" cy="12" r="1" />
+        <circle cx="19" cy="12" r="1" />
+        <circle cx="5" cy="12" r="1" />
+      </>
+    </Svg>
+  )
+}
+export function Keyboard() {
+  return (
+    <Svg>
+      <>
+        <path d="M10 8h.01" />
+        <path d="M12 12h.01" />
+        <path d="M14 8h.01" />
+        <path d="M16 12h.01" />
+        <path d="M18 8h.01" />
+        <path d="M6 8h.01" />
+        <path d="M7 16h10" />
+        <path d="M8 12h.01" />
+        <rect width="20" height="16" x="2" y="4" rx="2" />
+      </>
+    </Svg>
+  )
+}
+export function FolderOpen() {
+  return (
+    <Svg>
+      <path d="m6 14 1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.54 6a2 2 0 0 1-1.95 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2" />
+    </Svg>
+  )
+}
+export function Copy() {
+  return (
+    <Svg>
+      <>
+        <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
+        <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
+      </>
+    </Svg>
+  )
+}
+export function ClipboardPaste() {
+  return (
+    <Svg>
+      <>
+        <path d="M11 14h10" />
+        <path d="M16 4h2a2 2 0 0 1 2 2v1.344" />
+        <path d="m17 18 4-4-4-4" />
+        <path d="M8 4H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 1.793-1.113" />
+        <rect x="8" y="2" width="8" height="4" rx="1" />
+      </>
+    </Svg>
+  )
+}
 export function PanelLeftClose() {
   return (
     <Svg>

@@ -13,10 +13,13 @@ import {
   CalendarCheck,
   CalendarDays,
   Check,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Archive,
+  Ellipsis,
   Hourglass,
+  MessageCircle,
   PanelLeftClose,
   Plus,
   Pointer,
@@ -108,6 +111,10 @@ function Tools({ state }: { state: State }) {
   }
   return (
     <>
+      <span className="tag-filter" aria-hidden="true">
+        Todas as etiquetas
+        <ChevronDown />
+      </span>
       <span className="track">
         <button type="button" className="icon-sm" data-step="-1" aria-label="Anterior">
           <ChevronLeft />
@@ -430,7 +437,14 @@ export function AgendaPreview() {
               <Building />
               Clínica
             </span>
+            <span className="nav-item">
+              <MessageCircle />
+              WhatsApp
+            </span>
           </nav>
+          <span className="nav-more" aria-hidden="true">
+            <Ellipsis />
+          </span>
           <span className="win-foot">
             <Settings />
             Configurações

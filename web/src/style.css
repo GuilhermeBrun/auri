@@ -620,6 +620,35 @@ h1 {
   margin-top: auto;
 }
 
+.nav-more {
+  display: grid;
+  place-items: center;
+  width: calc(40 * var(--u));
+  height: calc(34 * var(--u));
+  margin-top: calc(6 * var(--u));
+  border-radius: calc(8 * var(--u));
+  color: var(--ink-soft);
+}
+
+.tag-filter {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  width: calc(192 * var(--u));
+  height: calc(32 * var(--u));
+  padding: 0 calc(10 * var(--u)) 0 calc(12 * var(--u));
+  border: calc(1 * var(--u)) solid var(--control);
+  border-radius: calc(8 * var(--u));
+  background: var(--app-surface);
+  color: var(--ink);
+  font-size: calc(13 * var(--u));
+}
+
+.win .tag-filter svg {
+  color: var(--ink-soft);
+}
+
 .win-main {
   position: relative;
   display: grid;
@@ -1374,6 +1403,7 @@ h1 {
 
   .win-side,
   .seg,
+  .tag-filter,
   .tools .ghost-icon,
   .search {
     display: none;
