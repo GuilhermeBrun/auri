@@ -1,4 +1,5 @@
-import { foraDoFuncionamento, type Funcionamento } from '@shared/agenda'
+import { addMinutes, differenceInMinutes, startOfDay } from 'date-fns'
+import { foraDoFuncionamento, SLOT_MINUTES, type Funcionamento } from '@shared/agenda'
 import type { AuriApi } from '@shared/api'
 import { commitmentName, type Commitment } from '@shared/commitments'
 import { parseIsoLocalDateTime, toIsoLocalDateTime } from '@shared/dates'
@@ -48,6 +49,100 @@ export function problemaNoDestino(
   const inicio = parseIsoLocalDateTime(destino.inicio)
   if (item.kind === 'appointment' && inicio <= agora) return HORARIO_PASSADO
   return foraDoFuncionamento(funcionamento, inicio, parseIsoLocalDateTime(destino.fim))
+}
+
+export type Soltura =
+  | { tipo: 'volta' }
+  | { tipo: 'recusa'; problema: string }
+  | { tipo: 'move'; destino: Destino }
+
+export function aoSoltar(
+  item: Arrastavel,
+  destino: Destino | null,
+  funcionamento: Funcionamento,
+  agora: Date
+): Soltura {
+  if (!destino || mesmoLugar(item, destino)) return { tipo: 'volta' }
+  const problema = problemaNoDestino(item, destino, funcionamento, agora)
+  return problema ? { tipo: 'recusa', problema } : { tipo: 'move', destino }
+}
+
+export const LIMIAR = 5
+
+export type Ponto = { x: number; y: number }
+
+export function passouDoLimiar(inicio: Ponto, agora: Ponto): boolean {
+  return Math.abs(agora.x - inicio.x) > LIMIAR || Math.abs(agora.y - inicio.y) > LIMIAR
+}
+
+export function posicaoLivre(ponteiro: Ponto, pega: Ponto): Ponto {
+  return { x: ponteiro.x - pega.x, y: ponteiro.y - pega.y }
+}
+
+export function duracaoDe(item: Arrastavel): number {
+  const { inicio, fim } = horarioDe(item)
+  return differenceInMinutes(parseIsoLocalDateTime(fim), parseIsoLocalDateTime(inicio))
+}
+
+export function minutosDaGrade(
+  min: Date,
+  max: Date,
+  faixa: number
+): { abre: number; minutos: number } {
+  return {
+    abre: min.getHours() * 60 + min.getMinutes(),
+    minutos: Math.ceil(differenceInMinutes(max, min) / faixa) * faixa
+  }
+}
+
+export type Coluna = { dia: Date; esquerda: number; direita: number }
+
+export type Grade = {
+  colunas: readonly Coluna[]
+  topo: number
+  altura: number
+  abre: number
+  minutos: number
+}
+
+export type Alvo = { coluna: number; minuto: number; destino: Destino }
+
+export function alvoNoPonto(
+  grade: Grade,
+  x: number,
+  topoDoCartao: number,
+  duracao: number
+): Alvo | null {
+  const coluna = grade.colunas.findIndex((c) => x >= c.esquerda && x < c.direita)
+  if (coluna < 0 || grade.altura <= 0) return null
+  const livre = grade.abre + ((topoDoCartao - grade.topo) / grade.altura) * grade.minutos
+  const ultimo = Math.max(
+    grade.abre,
+    Math.floor((grade.abre + grade.minutos - duracao) / SLOT_MINUTES) * SLOT_MINUTES
+  )
+  const preso = Math.round(livre / SLOT_MINUTES) * SLOT_MINUTES
+  const minuto = Math.min(Math.max(preso, grade.abre), ultimo)
+  const inicio = addMinutes(startOfDay(grade.colunas[coluna].dia), minuto)
+  return { coluna, minuto, destino: destinoDe(inicio, addMinutes(inicio, duracao)) }
+}
+
+export type Area = { topo: number; baixo: number; esquerda: number; direita: number }
+
+export const BORDA_DE_ROLAGEM = 40
+const ROLAGEM_MAXIMA = 14
+
+export function rolagemNaBorda(ponteiro: Ponto, area: Area): number {
+  if (ponteiro.x < area.esquerda || ponteiro.x > area.direita) return 0
+  const acima = area.topo + BORDA_DE_ROLAGEM - ponteiro.y
+  const abaixo = ponteiro.y - (area.baixo - BORDA_DE_ROLAGEM)
+  const perto = Math.max(acima, abaixo)
+  if (perto <= 0) return 0
+  const passo = Math.ceil(Math.min(1, perto / BORDA_DE_ROLAGEM) * ROLAGEM_MAXIMA)
+  return acima > 0 ? -passo : passo
+}
+
+export function topoDoMinuto(grade: Grade, minuto: number): number {
+  return grade.topo + ((minuto - grade.abre) / grade.minutos) * grade.altura
 }
 
 function entrada(a: Appointment, destino: Destino): AppointmentInput {
