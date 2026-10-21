@@ -26,6 +26,7 @@ import { DateField } from '@renderer/components/ui/date-field'
 import { ErrorState } from '@renderer/components/ui/error'
 import { Field, Textarea } from '@renderer/components/ui/input'
 import { Loading } from '@renderer/components/ui/loading'
+import { useSalvar } from '@renderer/lib/atalhos'
 import { useDraft } from '@renderer/lib/drafts'
 import { anamneseQuery, patientQuery } from '@renderer/lib/queries'
 import { useToast } from '@renderer/lib/toast'
@@ -228,9 +229,11 @@ function AnamneseForm({
   const savedAt =
     anamnese.updated_at &&
     format(new Date(anamnese.updated_at), "'Salva em' d 'de' MMM 'às' HH:mm", { locale: ptBR })
+  const salvar = useSalvar()
 
   return (
     <form
+      ref={salvar}
       onSubmit={handleSubmit((values) => save.mutate(values), showFirstError)}
       noValidate
       className="h-full"

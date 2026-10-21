@@ -66,7 +66,6 @@ export type JanelaDeEnvio = { aberta: true; ate: string } | { aberta: false; mot
 export type GrupoParaConfirmar = { dia: string; hoje: boolean; sessoes: ConfirmacaoLinha[] }
 
 export type ConfirmacaoLista = {
-  janela: JanelaDeEnvio
   grupos: GrupoParaConfirmar[]
   semAtendimento: boolean
 }

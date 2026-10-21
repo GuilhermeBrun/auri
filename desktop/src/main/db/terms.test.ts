@@ -127,7 +127,8 @@ describe('envio', () => {
     const curto = enviado.curto!
     expect(curto.link).toMatch(/^https:\/\/auri\.dev\.br\/assinar#[\w-]{22}$/)
     expect(curto.mensagem).toBe(enviado.mensagem.replace(enviado.link, curto.link))
-    expect(enviado.link.endsWith(`.${curto.dados}`)).toBe(true)
+    const [versao, , dados] = enviado.link.slice(enviado.link.indexOf('#') + 1).split('.')
+    expect(curto.dados).toBe(`${versao}.${dados}`)
     expect(curto.expira).toBe(termo.ate + 86_400)
   })
 

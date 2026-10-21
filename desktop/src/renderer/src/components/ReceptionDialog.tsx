@@ -99,20 +99,28 @@ function ReceptionForm({ onClose }: { onClose: () => void }): React.JSX.Element 
 
 export function ReceptionPasswordDialog({
   open,
+  on,
   onClose
 }: {
   open: boolean
+  on: boolean
   onClose: () => void
 }): React.JSX.Element {
+  const toast = useToast()
   const [code, setCode] = useState<string | null>(null)
   const close = (): void => {
     setCode(null)
     onClose()
   }
+  const done = (): void => {
+    toast({ title: on ? 'Senha da recepção criada' : 'Computador da recepção ligado' })
+    close()
+  }
   return (
     <Dialog
       open={open}
       onOpenChange={(next) => !next && close()}
+      dismissible={!code}
       title={code ? 'Guarde o código de recuperação' : 'Crie uma senha para a recepção'}
       description={
         code
@@ -120,19 +128,29 @@ export function ReceptionPasswordDialog({
           : 'Desligar vai pedir esta senha. A cópia de segurança usa a mesma.'
       }
     >
-      {open && !code && <CreatePasswordForm onCode={setCode} />}
-      {open && code && <SaveCode code={code} onDone={close} />}
+      {open && !code && (
+        <CreatePasswordForm label={on ? 'Criar senha' : 'Ligar'} onCode={setCode} onDone={done} />
+      )}
+      {open && code && <SaveCode code={code} onDone={done} />}
     </Dialog>
   )
 }
 
-function CreatePasswordForm({ onCode }: { onCode: (code: string) => void }): React.JSX.Element {
+function CreatePasswordForm({
+  label,
+  onCode,
+  onDone
+}: {
+  label: string
+  onCode: (code: string) => void
+  onDone: () => void
+}): React.JSX.Element {
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [tried, setTried] = useState(false)
   const enable = useMutation({
     mutationFn: () => window.prefs.enableReception(password),
-    onSuccess: (created) => created && onCode(created.recoveryCode)
+    onSuccess: (created) => (created ? onCode(created.recoveryCode) : onDone())
   })
   const problem = passwordProblem(password, confirm)
   const submit = (e: FormEvent): void => {
@@ -156,7 +174,7 @@ function CreatePasswordForm({ onCode }: { onCode: (code: string) => void }): Rea
       <DialogFooter>
         <span />
         <Button type="submit" loading={enable.isPending}>
-          Ligar
+          {label}
         </Button>
       </DialogFooter>
     </form>
@@ -164,7 +182,6 @@ function CreatePasswordForm({ onCode }: { onCode: (code: string) => void }): Rea
 }
 
 function SaveCode({ code, onDone }: { code: string; onDone: () => void }): React.JSX.Element {
-  const toast = useToast()
   const [saved, setSaved] = useState(false)
   return (
     <>
@@ -182,13 +199,7 @@ function SaveCode({ code, onDone }: { code: string; onDone: () => void }): React
       </DialogBody>
       <DialogFooter>
         <span />
-        <Button
-          disabled={!saved}
-          onClick={() => {
-            toast({ title: 'Computador da recepção ligado' })
-            onDone()
-          }}
-        >
+        <Button disabled={!saved} onClick={onDone}>
           Concluir
         </Button>
       </DialogFooter>

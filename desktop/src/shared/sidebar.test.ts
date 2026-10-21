@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vite-plus/test'
-import { arrangeSidebar, describeSidebar, isDefaultSidebar } from './sidebar'
+import { arrangeSidebar, canHide, describeSidebar, isDefaultSidebar, visibleItems } from './sidebar'
 
 const ids = (order: string[], hidden: string[] = []): string[] =>
   arrangeSidebar({ order, hidden }).map((item) => item.id)
@@ -34,6 +34,35 @@ describe('itens da barra lateral', () => {
         .map((item) => item.id)
     ).toEqual(['clinica', 'whatsapp'])
     expect(describeSidebar(prefs)).toBe('Pacientes, Agenda, Financeiro')
+  })
+
+  it('só deixa ocultar se sobrar um item que não some com a recepção ou o WhatsApp', () => {
+    const itens = arrangeSidebar({ order: [], hidden: ['agenda', 'pacientes'] })
+    const item = (id: string) => itens.find((i) => i.id === id)!
+    expect(canHide(itens, item('clinica'))).toBe(true)
+    expect(canHide(itens, item('financeiro'))).toBe(false)
+    const soClinica = arrangeSidebar({ order: [], hidden: ['agenda', 'pacientes', 'financeiro'] })
+    expect(
+      canHide(
+        soClinica,
+        soClinica.find((i) => i.id === 'clinica')!
+      )
+    ).toBe(false)
+  })
+
+  it('sem nenhum item visível, mostra o primeiro que nunca some', () => {
+    const disponiveis = arrangeSidebar({
+      order: ['whatsapp', 'financeiro'],
+      hidden: ['whatsapp', 'agenda', 'pacientes', 'financeiro']
+    }).filter((item) => item.id !== 'clinica')
+    expect(visibleItems(disponiveis).map((item) => item.id)).toEqual(['financeiro'])
+    const comClinica = arrangeSidebar({ order: [], hidden: ['agenda'] })
+    expect(visibleItems(comClinica).map((item) => item.id)).toEqual([
+      'pacientes',
+      'financeiro',
+      'clinica',
+      'whatsapp'
+    ])
   })
 
   it('reconhece o padrão mesmo com a ordem escrita por extenso', () => {

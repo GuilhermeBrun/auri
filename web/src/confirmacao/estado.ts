@@ -1,7 +1,6 @@
 import { LinkInvalido } from '../../contrato/assinatura/formato'
 import {
   RESPOSTAS,
-  VERSAO,
   idDaVolta,
   lerIda,
   passou,
@@ -70,7 +69,7 @@ export async function abrir(
 ): Promise<Estado> {
   if (!temSuporte(ambiente)) return { tela: 'sem-suporte' }
   try {
-    const expandido = await expandir(fragmento, VERSAO, rede)
+    const expandido = await expandir(fragmento, rede)
     if ('falha' in expandido) return { tela: expandido.falha }
     const { confirmacao, chave } = await lerIda(expandido.fragmento)
     const enviado = lerEnviado(confirmacao.id, armazenamento)

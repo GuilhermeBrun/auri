@@ -1,40 +1,14 @@
-import { useEffect, useState, useSyncExternalStore } from 'react'
+import { useEffect, useState } from 'react'
+import { prefsField, usePrefsField } from '@renderer/lib/prefs-field'
 
-let enabled: boolean | null = null
-let watching = false
-const listeners = new Set<() => void>()
-
-function notify(): void {
-  for (const listener of listeners) listener()
-}
-
-function current(): boolean {
-  enabled ??= window.prefs.initial?.whatsapp ?? true
-  return enabled
-}
-
-function subscribe(listener: () => void): () => void {
-  if (!watching) {
-    watching = true
-    window.prefs.onChange((prefs) => {
-      if (prefs.whatsapp === enabled) return
-      enabled = prefs.whatsapp
-      notify()
-    })
-  }
-  listeners.add(listener)
-  return () => listeners.delete(listener)
-}
+const whatsapp = prefsField('whatsapp')
 
 export function useWhatsAppEnabled(): boolean {
-  return useSyncExternalStore(subscribe, current)
+  return usePrefsField(whatsapp)
 }
 
 export function setWhatsAppEnabled(on: boolean): void {
-  if (on === current()) return
-  enabled = on
-  window.prefs.save({ whatsapp: on })
-  notify()
+  if (on !== whatsapp.get()) whatsapp.set(on)
 }
 
 export function useWhatsAppUnread(on: boolean): number {

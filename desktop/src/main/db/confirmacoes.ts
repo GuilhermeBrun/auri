@@ -103,7 +103,6 @@ function bloqueioDoEnvio(funcionamento: Funcionamento, inicio: Date, agora: Date
 
 export function listarParaConfirmar(db: Db, agora: Date): ConfirmacaoLista {
   const funcionamento = getFuncionamento(db)
-  const janela = janelaDeEnvio(funcionamento, agora)
   const linhas = (de: Date, ate: Date): ConfirmacaoLinha[] =>
     listAppointments(db, toIsoLocalDateTime(de), toIsoLocalDateTime(ate))
       .filter((a) => a.presenca === '' && parseIsoLocalDateTime(a.inicio) > agora)
@@ -131,7 +130,7 @@ export function listarParaConfirmar(db: Db, agora: Date): ConfirmacaoLista {
       hoje: false,
       sessoes: linhas(dia, addDays(dia, 1))
     })
-  return { janela, grupos, semAtendimento: dia === null }
+  return { grupos, semAtendimento: dia === null }
 }
 
 type RequestRow = {

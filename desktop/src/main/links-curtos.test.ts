@@ -3,6 +3,7 @@ import { paraBase64url } from '../../../web/contrato/assinatura/base64url'
 import {
   chaveDoCodigo as chaveNoSite,
   expandirIda,
+  idNoServidor,
   type Buscar
 } from '../../../web/contrato/link-curto'
 import contrato from '../../../web/contrato/link-curto.json'
@@ -44,7 +45,7 @@ describe('link curto no Auri', () => {
       link: `${ORIGEM}/assinar#AAECAwQFBgcICQoLDA0ODw`,
       mensagem: `Assine: ${ORIGEM}/assinar#AAECAwQFBgcICQoLDA0ODw`,
       codigo: 'AAECAwQFBgcICQoLDA0ODw',
-      dados: 'dados_cifrados',
+      dados: '1.dados_cifrados',
       expira: 1000 + contrato.folgaDaIdaS
     })
   })
@@ -76,7 +77,7 @@ describe('link curto no Auri', () => {
       mensagem: `Confirme: ${ORIGEM}/confirmar#${codigo}`,
       numero: '5565999990000'
     })
-    expect(await expandirIda(codigo, 1, { origem: ORIGEM, buscar: site.buscar })).toBe(
+    expect(await expandirIda(codigo, { origem: ORIGEM, buscar: site.buscar })).toBe(
       longo.slice(longo.indexOf('#') + 1)
     )
 
@@ -98,5 +99,17 @@ describe('link curto no Auri', () => {
     )
     const fora = createLinksCurtos({ buscar: () => Promise.reject(new TypeError('offline')) })
     await expect(fora.expandir(codigo)).rejects.toThrow(/internet/)
+  })
+
+  it('a resposta lida na conferência serve para guardar sem ir ao site de novo', async () => {
+    const site = siteFalso()
+    const codigo = novoCodigo()
+    site.guardados.set(await idNoServidor(codigo), '1.id.cifrado')
+    const links = createLinksCurtos({ buscar: site.buscar })
+    const texto = `https://auri.dev.br/recebido#${codigo}`
+    expect(await links.expandir(texto)).toBe('1.id.cifrado')
+    site.buscar.mockRejectedValue(new TypeError('offline'))
+    expect(await links.expandir(texto)).toBe('1.id.cifrado')
+    expect(site.buscar).toHaveBeenCalledTimes(1)
   })
 })

@@ -273,14 +273,18 @@ function showWindow(): void {
   window.focus()
 }
 
-function openSettings(): void {
+function showAndSend(channel: string, value: unknown): void {
   const existed = BrowserWindow.getAllWindows().length > 0
   showWindow()
   const [window] = BrowserWindow.getAllWindows()
   if (!window) return
-  const send = (): void => window.webContents.send('settings:open', undefined)
+  const send = (): void => window.webContents.send(channel, value)
   if (existed && !window.webContents.isLoading()) send()
   else window.webContents.once('did-finish-load', send)
+}
+
+function openSettings(): void {
+  showAndSend('settings:open', undefined)
 }
 
 let menuAccelerator: string | undefined | null = null
@@ -294,13 +298,7 @@ function applyMenu(atalhos: UiPrefs['atalhos']): void {
 }
 
 function openAgendaAt(inicio: string): void {
-  const existed = BrowserWindow.getAllWindows().length > 0
-  showWindow()
-  const [window] = BrowserWindow.getAllWindows()
-  if (!window) return
-  const send = (): void => window.webContents.send('agenda:open', inicio)
-  if (existed && !window.webContents.isLoading()) send()
-  else window.webContents.once('did-finish-load', send)
+  showAndSend('agenda:open', inicio)
 }
 
 const shownNotices = new Set<Notification>()

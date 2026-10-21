@@ -4,7 +4,7 @@ import { Page } from '@renderer/components/Layout'
 import { Button } from '@renderer/components/ui/button'
 import { Input } from '@renderer/components/ui/input'
 import { RodaDeCor } from '@renderer/components/ui/roda-de-cor'
-import { PageSection, SettingsGroup } from '@renderer/components/ui/section'
+import { PageSection, SettingRow, SettingsGroup } from '@renderer/components/ui/section'
 import { Segmented } from '@renderer/components/ui/segmented'
 import { isMac } from '@renderer/lib/platform'
 import { SETTINGS_CRUMB } from '@renderer/lib/settings'
@@ -649,15 +649,14 @@ function TextSizePicker(): React.JSX.Element {
   const largest = useLargestTextSize()
   const mod = isMac ? '⌘' : 'Ctrl'
   return (
-    <div className="flex items-center justify-between gap-6">
-      <div className="min-w-0">
-        <div className="text-[13px] font-medium">Tamanho</div>
-        <p className="mt-0.5 text-xs text-ink-soft">
-          {largest < TEXT_SIZES[TEXT_SIZES.length - 1]
-            ? 'Os tamanhos maiores não cabem nesta tela.'
-            : `Atalho: ${mod} + e ${mod} −.`}
-        </p>
-      </div>
+    <SettingRow
+      title="Tamanho"
+      description={
+        largest < TEXT_SIZES[TEXT_SIZES.length - 1]
+          ? 'Os tamanhos maiores não cabem nesta tela.'
+          : `Atalho: ${mod} + e ${mod} −.`
+      }
+    >
       <Segmented
         label="Tamanho do texto"
         value={String(Math.min(size, largest))}
@@ -665,7 +664,7 @@ function TextSizePicker(): React.JSX.Element {
         disabled={TEXT_SIZES.filter((s) => s > largest).map(String)}
         onChange={(value) => setTextSize(TEXT_SIZES.find((s) => String(s) === value) ?? 1)}
       />
-    </div>
+    </SettingRow>
   )
 }
 

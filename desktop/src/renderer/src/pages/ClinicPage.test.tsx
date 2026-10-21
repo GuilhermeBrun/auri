@@ -128,6 +128,18 @@ describe('Clínica', () => {
     )
   })
 
+  it('o atalho de salvar grava a tela, mesmo com o cursor num campo', async () => {
+    clinic.get.mockResolvedValue(vazia)
+    clinic.save.mockImplementation((input) =>
+      Promise.resolve({ ...vazia, ...input, updated_at: '2026-10-19T12:05:00.000Z' })
+    )
+    renderRoute('/clinica', '/clinica', <ClinicPage />)
+    await userEvent.type(await screen.findByLabelText('Nome da clínica'), 'Clínica Fictícia')
+    await userEvent.keyboard('{Control>}s{/Control}')
+    await waitFor(() => expect(clinic.save).toHaveBeenCalledTimes(1))
+    expect(clinic.save.mock.calls[0]![0]).toMatchObject({ nome: 'Clínica Fictícia' })
+  })
+
   it('remove o logo', async () => {
     clinic.get.mockResolvedValue({ ...vazia, nome: 'Clínica Fictícia', logo: LOGO })
     renderRoute('/clinica', '/clinica', <ClinicPage />)

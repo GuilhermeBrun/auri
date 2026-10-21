@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vite-plus/test'
 import { deBase64url, paraBase64url } from './assinatura/base64url'
+import { partes } from './assinatura/formato'
 import {
   LinkSumiu,
   SemConexao,
@@ -9,6 +10,7 @@ import {
   ehCodigo,
   encurtarVolta,
   expandirIda,
+  guardadoDaIda,
   guardar,
   idNoServidor,
   novoCodigo,
@@ -54,17 +56,25 @@ describe('link curto', () => {
     expect(await idNoServidor(novoCodigo())).not.toBe(id)
   })
 
-  it('guarda e devolve a ida, com a chave tirada do código', async () => {
+  it('guarda a ida sem a chave e devolve com a chave tirada do código', async () => {
     const { guardados, buscar } = servidor()
-    await guardar(CODIGO, 'dados-cifrados', 2_000_000_000, { origem: ORIGEM, buscar })
+    const guardado = guardadoDaIda('1.chave-que-nao-vai.dados-cifrados')
+    expect(guardado).toBe('1.dados-cifrados')
+    await guardar(CODIGO, guardado, 2_000_000_000, { origem: ORIGEM, buscar })
     expect([...guardados.keys()]).toEqual([await idNoServidor(CODIGO)])
     const chave = paraBase64url(await chaveDoCodigo(CODIGO))
-    expect(await expandirIda(CODIGO, 1, { origem: ORIGEM, buscar })).toBe(
-      `1.${chave}.dados-cifrados`
-    )
+    expect(await expandirIda(CODIGO, { origem: ORIGEM, buscar })).toBe(`1.${chave}.dados-cifrados`)
     expect(buscar.mock.calls[0]![0]).toBe(
       `${ORIGEM}${contrato.caminho}?id=${await idNoServidor(CODIGO)}`
     )
+  })
+
+  it('a ida guardada mantém a versão em que foi feita', async () => {
+    const { buscar } = servidor()
+    await guardar(CODIGO, guardadoDaIda('7.chave.dados'), 2_000_000_000, { origem: ORIGEM, buscar })
+    const fragmento = await expandirIda(CODIGO, { origem: ORIGEM, buscar })
+    expect(fragmento.split('.')[0]).toBe('7')
+    expect(() => partes(fragmento)).toThrow('Versão desconhecida')
   })
 
   it('a volta vira um link curto que devolve o fragmento longo', async () => {

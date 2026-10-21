@@ -15,7 +15,6 @@ export function createReceptionLock(
 ): ReceptionLock {
   return {
     async enable(password) {
-      if (prefs.get().recepcao) return null
       if (backup.hasPassword()) {
         prefs.save({ recepcao: true })
         return null

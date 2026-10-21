@@ -6,6 +6,7 @@ import {
   SemConexao,
   buscarGuardado,
   ehCodigo,
+  guardadoDaIda,
   guardar,
   partesDoLink,
   type Buscar
@@ -27,10 +28,18 @@ export function linkCurto(
   mensagem: (link: string) => string
 ): LinkCurto {
   const { inicio, fragmento } = partesDoLink(longo)
-  const dados = fragmento.split('.')[2] ?? ''
   const link = `${inicio}#${codigo}`
-  return { link, mensagem: mensagem(link), codigo, dados, expira: ate + contrato.folgaDaIdaS }
+  return {
+    link,
+    mensagem: mensagem(link),
+    codigo,
+    dados: guardadoDaIda(fragmento),
+    expira: ate + contrato.folgaDaIdaS
+  }
 }
+
+const ESPERA_DO_ENVIO_MS = 3000
+const LIDOS_NA_MEMORIA = 50
 
 const VOLTA_CURTA =
   /(?:\/(?:recebido|resposta)\/?|auri:(?:\/\/)?(?:receber|confirmacao)\/?)#([\w-]{22})(?![\w-])/i
@@ -54,12 +63,23 @@ export function createLinksCurtos({
   buscar: Buscar
   origem?: string
 }): LinksCurtos {
+  const lidos = new Map<string, string>()
+  const lembrar = (codigo: string, dados: string): string => {
+    lidos.set(codigo, dados)
+    const [antigo] = lidos.keys()
+    if (lidos.size > LIDOS_NA_MEMORIA && antigo !== undefined) lidos.delete(antigo)
+    return dados
+  }
   return {
     async encurtar(envio) {
       const { curto, ...resto } = envio
       if (!curto) return resto
       try {
-        await guardar(curto.codigo, curto.dados, curto.expira, { origem, buscar })
+        await guardar(curto.codigo, curto.dados, curto.expira, {
+          origem,
+          buscar,
+          esperaMs: ESPERA_DO_ENVIO_MS
+        })
         return { ...resto, link: curto.link, mensagem: curto.mensagem }
       } catch (erro) {
         console.warn(`[links] vai o link longo: ${(erro as Error).message}`)
@@ -70,8 +90,10 @@ export function createLinksCurtos({
     async expandir(texto) {
       const codigo = codigoDaVolta(texto)
       if (!codigo) return texto
+      const lido = lidos.get(codigo)
+      if (lido !== undefined) return lido
       try {
-        return await buscarGuardado(codigo, { origem, buscar })
+        return lembrar(codigo, await buscarGuardado(codigo, { origem, buscar }))
       } catch (erro) {
         if (erro instanceof LinkSumiu)
           throw new Error(

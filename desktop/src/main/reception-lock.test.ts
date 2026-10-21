@@ -65,4 +65,15 @@ describe('chave da recepção', () => {
     await lock.disable()
     expect(prefs.get().recepcao).toBe(false)
   })
+
+  it('ligada antes de existir senha, cria a senha sem desligar e passa a pedir', async () => {
+    prefs.save({ recepcao: true })
+    const copia = backup(false)
+    const lock = createReceptionLock(prefs, copia, 0)
+    await expect(lock.enable('senha-nova-1')).resolves.toEqual({ recoveryCode: 'CODIGO' })
+    expect(prefs.get().recepcao).toBe(true)
+    await expect(lock.disable()).rejects.toThrow('Digite a senha.')
+    await expect(lock.enable('outra-senha')).resolves.toBeNull()
+    expect(copia.createPassword).toHaveBeenCalledTimes(1)
+  })
 })

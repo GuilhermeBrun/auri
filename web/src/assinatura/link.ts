@@ -11,18 +11,16 @@ export type Rede = { origem?: string; buscar?: Buscar }
 
 const origemDaPagina = (): string => globalThis.location?.origin ?? 'https://auri.dev.br'
 
+const ESPERA_DA_VOLTA_MS = 1500
+
 export type Expandido = { fragmento: string } | { falha: 'sumiu' | 'sem-conexao' }
 
-export async function expandir(
-  fragmento: string,
-  versao: number,
-  rede: Rede = {}
-): Promise<Expandido> {
+export async function expandir(fragmento: string, rede: Rede = {}): Promise<Expandido> {
   const codigo = codigoDoFragmento(fragmento)
   if (!codigo) return { fragmento }
   try {
     return {
-      fragmento: await expandirIda(codigo, versao, {
+      fragmento: await expandirIda(codigo, {
         origem: rede.origem ?? origemDaPagina(),
         buscar: rede.buscar
       })
@@ -39,7 +37,7 @@ export async function voltaCurta(longo: string, rede: Rede = {}): Promise<string
     return await encurtarVolta(longo, Date.now(), {
       origem: rede.origem ?? origemDaPagina(),
       buscar: rede.buscar,
-      esperaMs: 5000
+      esperaMs: ESPERA_DA_VOLTA_MS
     })
   } catch {
     return longo

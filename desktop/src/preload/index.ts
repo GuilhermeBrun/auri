@@ -26,13 +26,25 @@ async function invoke<T>(channel: string, ...args: unknown[]): Promise<T> {
   return result.data
 }
 
-const agendaListeners = new Set<(inicio: string) => void>()
-let pendingAgenda: string | null = null
+function buffered<T>(channel: string): (listener: (value: T) => void) => () => void {
+  const listeners = new Set<(value: T) => void>()
+  let pending: { value: T } | null = null
+  ipcRenderer.on(channel, (_event, value: T) => {
+    if (listeners.size === 0) pending = { value }
+    for (const listener of listeners) listener(value)
+  })
+  return (listener) => {
+    listeners.add(listener)
+    if (pending) {
+      listener(pending.value)
+      pending = null
+    }
+    return () => listeners.delete(listener)
+  }
+}
 
-ipcRenderer.on('agenda:open', (_event, inicio: string) => {
-  if (agendaListeners.size === 0) pendingAgenda = inicio
-  for (const listener of agendaListeners) listener(inicio)
-})
+const onOpenAgenda = buffered<string>('agenda:open')
+const onOpenSettings = buffered<void>('settings:open')
 
 const api: AuriApi = {
   patients: {
@@ -153,14 +165,7 @@ const api: AuriApi = {
   },
   onChanged: (listener) => subscribe<DataTopic[]>('data:changed', listener),
   onNotice: (listener) => subscribe<AgendaNotice>('agenda:notice', listener),
-  onOpenAgenda: (listener) => {
-    agendaListeners.add(listener)
-    if (pendingAgenda !== null) {
-      listener(pendingAgenda)
-      pendingAgenda = null
-    }
-    return () => agendaListeners.delete(listener)
-  }
+  onOpenAgenda
 }
 
 function subscribe<T>(channel: string, listener: (value: T) => void): () => void {
@@ -223,7 +228,7 @@ const prefs: AuriPrefs = {
   enableReception: (password) => invoke('reception:enable', password),
   disableReception: (secret) => invoke('reception:disable', secret),
   onFit: (listener) => subscribe<TextSize>('prefs:fit', listener),
-  onOpenSettings: (listener) => subscribe<void>('settings:open', listener)
+  onOpenSettings
 }
 
 const transfer: AuriTransfer = {

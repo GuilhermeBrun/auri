@@ -4,6 +4,7 @@ import { useId, useRef, useState, type KeyboardEvent, type PointerEvent } from '
 import { flushSync } from 'react-dom'
 import {
   arrangeSidebar,
+  canHide,
   DEFAULT_SIDEBAR_ITEMS,
   isDefaultSidebar,
   type ArrangedItem
@@ -43,7 +44,6 @@ function ItemsEditor(): React.JSX.Element {
   const firstGrip = useRef<HTMLButtonElement>(null)
 
   const last = available.length - 1
-  const shown = available.filter((item) => !item.hidden).length
   const preview = drag ? move(available, drag.from, drag.to) : available
   const rank = (id: string): number => {
     const i = domOrder.indexOf(id)
@@ -153,7 +153,7 @@ function ItemsEditor(): React.JSX.Element {
               </span>
               <Switch
                 checked={!item.hidden}
-                disabled={!item.hidden && shown === 1}
+                disabled={!item.hidden && !canHide(available, item)}
                 onCheckedChange={(on) => setShown(item, on)}
                 aria-label={`Mostrar ${item.label}`}
               />

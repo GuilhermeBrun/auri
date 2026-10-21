@@ -23,6 +23,21 @@ export function arrangeSidebar(prefs: SidebarItems): ArrangedItem[] {
   return [...ordered, ...rest].map((item) => ({ ...item, hidden: prefs.hidden.includes(item.id) }))
 }
 
+const MAY_BE_UNAVAILABLE: readonly SidebarItemId[] = ['clinica', 'whatsapp']
+
+const alwaysAvailable = (item: ArrangedItem): boolean => !MAY_BE_UNAVAILABLE.includes(item.id)
+
+export function canHide(available: readonly ArrangedItem[], item: ArrangedItem): boolean {
+  return available.some((other) => other.id !== item.id && !other.hidden && alwaysAvailable(other))
+}
+
+export function visibleItems(available: readonly ArrangedItem[]): ArrangedItem[] {
+  const visible = available.filter((item) => !item.hidden)
+  if (visible.length > 0) return visible
+  const fallback = available.find(alwaysAvailable)
+  return fallback ? [fallback] : []
+}
+
 export function isDefaultSidebar(prefs: SidebarItems): boolean {
   const order = arrangeSidebar(prefs).map((item) => item.id)
   return (
