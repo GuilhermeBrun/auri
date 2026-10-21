@@ -428,6 +428,6 @@ describe('verificador no main', () => {
     expect(avisar).not.toHaveBeenCalled()
     enviarConfirmacao(db, sessaoId, PC, AGORA)
     expect(runOperation(db, 'confirmacoes:prazos', [PC], avisar)).toEqual({ ok: true, data: 1 })
-    expect(avisar).toHaveBeenCalledWith(['appointments', 'finance'])
+    expect(avisar).toHaveBeenCalledWith(['appointments', 'finance'], null)
   })
 })

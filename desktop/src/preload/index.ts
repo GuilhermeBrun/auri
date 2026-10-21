@@ -16,6 +16,7 @@ import {
   type IpcResult,
   type UpdateState
 } from '../shared/api'
+import type { AgendaNotice } from '../shared/agenda-notice'
 import type { UiPrefs } from '../shared/schemas'
 
 async function invoke<T>(channel: string, ...args: unknown[]): Promise<T> {
@@ -23,6 +24,14 @@ async function invoke<T>(channel: string, ...args: unknown[]): Promise<T> {
   if (!result.ok) throw new Error(result.error)
   return result.data
 }
+
+const agendaListeners = new Set<(inicio: string) => void>()
+let pendingAgenda: string | null = null
+
+ipcRenderer.on('agenda:open', (_event, inicio: string) => {
+  if (agendaListeners.size === 0) pendingAgenda = inicio
+  for (const listener of agendaListeners) listener(inicio)
+})
 
 const api: AuriApi = {
   patients: {
@@ -140,7 +149,16 @@ const api: AuriApi = {
     sessionStatus: (ids) => invoke('finance:sessionStatus', ids),
     overview: (de, ate) => invoke('finance:overview', de, ate)
   },
-  onChanged: (listener) => subscribe<DataTopic[]>('data:changed', listener)
+  onChanged: (listener) => subscribe<DataTopic[]>('data:changed', listener),
+  onNotice: (listener) => subscribe<AgendaNotice>('agenda:notice', listener),
+  onOpenAgenda: (listener) => {
+    agendaListeners.add(listener)
+    if (pendingAgenda !== null) {
+      listener(pendingAgenda)
+      pendingAgenda = null
+    }
+    return () => agendaListeners.delete(listener)
+  }
 }
 
 function subscribe<T>(channel: string, listener: (value: T) => void): () => void {
@@ -158,6 +176,7 @@ const connection: AuriConnection = {
   setKeepRunning: (on) => invoke('connection:setKeepRunning', on),
   setOpenAtLogin: (on) => invoke('connection:setOpenAtLogin', on),
   setRemoteAccess: (on) => invoke('connection:setRemoteAccess', on),
+  setNotices: (on) => invoke('connection:setNotices', on),
   testRemote: () => invoke('connection:testRemote'),
   createCode: () => invoke('connection:createCode'),
   cancelCode: () => invoke('connection:cancelCode'),

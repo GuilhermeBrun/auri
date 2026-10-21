@@ -1,3 +1,4 @@
+import type { AgendaNotice } from './agenda-notice'
 import type {
   Anamnese,
   AnamneseInput,
@@ -181,6 +182,8 @@ export interface AuriApi {
     overview(de: string, ate: string): Promise<FinanceOverview>
   }
   onChanged(listener: (topics: DataTopic[]) => void): () => void
+  onNotice(listener: (notice: AgendaNotice) => void): () => void
+  onOpenAgenda(listener: (inicio: string) => void): () => void
 }
 
 export const DATA_TOPICS = [
@@ -254,6 +257,7 @@ export type ConnectionInfo = {
   keepRunning: boolean
   openAtLogin: boolean
   remoteAccess: boolean
+  notices: boolean
   remoteReach: RemoteReach | null
   addresses: string[]
   devices: PairedDevice[]
@@ -272,6 +276,7 @@ export interface AuriConnection {
   setKeepRunning(on: boolean): Promise<ConnectionInfo>
   setOpenAtLogin(on: boolean): Promise<ConnectionInfo>
   setRemoteAccess(on: boolean): Promise<ConnectionInfo>
+  setNotices(on: boolean): Promise<ConnectionInfo>
   testRemote(): Promise<RemoteProbe>
   createCode(): Promise<PairingCode>
   cancelCode(): Promise<void>

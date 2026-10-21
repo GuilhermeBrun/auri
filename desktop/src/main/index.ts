@@ -7,6 +7,7 @@ import {
   Menu,
   nativeImage,
   nativeTheme,
+  Notification,
   powerMonitor,
   screen,
   Tray
@@ -15,6 +16,7 @@ import { join, resolve } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import trayIcon from '../../resources/trayTemplate.png?asset'
+import { noticeText, type AgendaNotice } from '../shared/agenda-notice'
 import { PREFS_ARG } from '../shared/api'
 import type { Theme, UiPrefs } from '../shared/schemas'
 import { createBackupService, type BackupService } from './backup-service'
@@ -190,6 +192,34 @@ function showWindow(): void {
   window.focus()
 }
 
+function openAgendaAt(inicio: string): void {
+  const existed = BrowserWindow.getAllWindows().length > 0
+  showWindow()
+  const [window] = BrowserWindow.getAllWindows()
+  if (!window) return
+  const send = (): void => window.webContents.send('agenda:open', inicio)
+  if (existed && !window.webContents.isLoading()) send()
+  else window.webContents.once('did-finish-load', send)
+}
+
+const shownNotices = new Set<Notification>()
+
+function showNotice(notice: AgendaNotice): void {
+  const focused = BrowserWindow.getFocusedWindow()
+  if (focused) return focused.webContents.send('agenda:notice', notice)
+  if (!Notification.isSupported()) return
+  const shown = new Notification({ ...noticeText(notice), silent: false })
+  shownNotices.add(shown)
+  const forget = (): boolean => shownNotices.delete(shown)
+  shown.on('click', () => {
+    forget()
+    openAgendaAt(notice.inicio)
+  })
+  shown.on('close', forget)
+  shown.on('failed', forget)
+  shown.show()
+}
+
 function syncTray(): void {
   const wanted = connection?.keepsRunning() ?? false
   if (!wanted) {
@@ -271,6 +301,7 @@ void app.whenReady().then(async () => {
   connection = createConnection({
     userData: app.getPath('userData'),
     onDataChanged: (topics) => sendToWindows('data:changed', topics),
+    onNotice: showNotice,
     onInfoChanged: (info) => {
       sendToWindows('connection:changed', info)
       syncTray()

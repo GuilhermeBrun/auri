@@ -69,7 +69,8 @@ export function createTransferService(options: {
         sharing: c.sharing,
         keepRunning: c.keepRunning,
         openAtLogin: c.openAtLogin,
-        remoteAccess: c.remoteAccess
+        remoteAccess: c.remoteAccess,
+        notices: c.notices
       },
       backup: {
         kind: b.destination?.kind ?? b.suggested,
@@ -148,6 +149,7 @@ export function createTransferService(options: {
       if (c.keepRunning !== undefined) await options.connection.setKeepRunning(c.keepRunning)
       if (c.openAtLogin !== undefined) await options.connection.setOpenAtLogin(c.openAtLogin)
       if (c.remoteAccess !== undefined) await options.connection.setRemoteAccess(c.remoteAccess)
+      if (c.notices !== undefined) await options.connection.setNotices(c.notices)
       const current = options.backup.info()
       if (b.frequency || b.dailyTime) {
         await options.backup.setFrequency(

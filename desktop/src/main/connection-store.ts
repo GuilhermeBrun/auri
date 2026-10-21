@@ -18,6 +18,7 @@ const storeSchema = z.object({
   keepRunning: z.boolean().default(true),
   openAtLogin: z.boolean().default(true),
   remoteAccess: z.boolean().default(true),
+  notices: z.boolean().default(true),
   devices: z
     .array(
       z.object({

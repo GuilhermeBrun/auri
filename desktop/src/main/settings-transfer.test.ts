@@ -23,7 +23,8 @@ const RECEPCAO: SettingsSnapshot = {
     sharing: true,
     keepRunning: true,
     openAtLogin: true,
-    remoteAccess: false
+    remoteAccess: false,
+    notices: true
   },
   backup: { kind: 'google', frequency: 'daily', dailyTime: '19:00' },
   clinic: {
@@ -57,7 +58,8 @@ const NOVO: SettingsSnapshot = {
     sharing: false,
     keepRunning: true,
     openAtLogin: true,
-    remoteAccess: true
+    remoteAccess: true,
+    notices: true
   },
   backup: { kind: null, frequency: 'daily', dailyTime: '19:00' },
   clinic: {
