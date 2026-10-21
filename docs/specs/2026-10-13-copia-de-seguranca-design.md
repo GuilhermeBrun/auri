@@ -51,9 +51,14 @@ computador quebrar, um computador novo com o Auri restaura tudo com a senha ou o
     em versões antigas que a própria nuvem guarde no histórico dela).
   - O código aparece borrado até clicar (como o código de pareamento), com Copiar e Imprimir.
 - **Frequência escolhida pelo usuário:** todo dia num horário (padrão 19h; se o computador estava
-  desligado, sai ao abrir), a cada alteração (5 minutos depois da última mudança) ou só quando
-  pedir. "Fazer cópia agora" sempre. Ficam as últimas 30 cópias. Mais de 3 dias sem cópia vira
+  desligado, sai ao abrir), a cada alteração (5 minutos depois da última mudança, no máximo uma a
+  cada 2 horas) ou só quando pedir. "Fazer cópia agora" sempre. Mais de 3 dias sem cópia vira
   aviso.
+- **Retenção escalonada (20/10).** De cada computador ficam as 2 mais recentes, a mais nova de
+  cada um dos últimos 7 dias com cópia, de cada uma das últimas 8 semanas e de cada um dos últimos
+  12 meses: no máximo 29 arquivos (uns 23 no uso diário), cobrindo cerca de um ano. Os dias são os
+  do relógio local; cópias de outra chave na mesma pasta nunca são apagadas. A aba mostra
+  "N cópias · tamanho" e só avisa do espaço a partir de 2 GB.
 - **Restaurar substitui só os dados**, nunca as configurações. Antes guarda o estado atual neste
   computador e oferece "Desfazer restauração". Copias deste mesmo computador abrem sem senha (a
   chave está no cofre); de outro, com a senha ou o código.

@@ -14,7 +14,9 @@ import {
 } from './archive'
 import { BackupFileError } from './crypto'
 
-export const KEEP_BACKUPS = 30
+export type Retention = { recent: number; daily: number; weekly: number; monthly: number }
+
+export const RETENTION: Retention = { recent: 2, daily: 7, weekly: 8, monthly: 12 }
 
 export function backupFolder(root: string): string {
   return join(root, 'Auri', 'Cópias')
@@ -83,7 +85,7 @@ export async function createBackup(options: {
     const packed = packBackup(options.keyring, meta, await readFile(snapshot))
     const file = await freeName(options.folder, backupFileName(now), options.keyring.keyId)
     await writeAtomic(file, packed)
-    await pruneBackups(options.folder, KEEP_BACKUPS)
+    await pruneBackups(options.folder, options.keyring.keyId, file)
     return {
       file,
       name: basename(file),
@@ -130,9 +132,58 @@ export async function listBackups(folder: string): Promise<BackupEntry[]> {
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
 }
 
-export async function pruneBackups(folder: string, keep: number): Promise<void> {
-  const entries = await listBackups(folder)
-  await Promise.all(entries.slice(keep).map((entry) => rm(entry.file, { force: true })))
+const dayKey = (date: Date): string =>
+  `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`
+
+const weekKey = (date: Date): string =>
+  dayKey(new Date(date.getFullYear(), date.getMonth(), date.getDate() - ((date.getDay() + 6) % 7)))
+
+const monthKey = (date: Date): string => `${date.getFullYear()}-${date.getMonth() + 1}`
+
+export function backupsToKeep<T extends { createdAt: string }>(
+  entries: T[],
+  retention: Retention = RETENTION
+): Set<T> {
+  const dated = entries.map((entry) => ({ entry, time: Date.parse(entry.createdAt) }))
+  const keep = new Set(dated.filter((d) => Number.isNaN(d.time)).map((d) => d.entry))
+  const ordered = dated.filter((d) => !Number.isNaN(d.time)).sort((a, b) => b.time - a.time)
+  for (const { entry } of ordered.slice(0, retention.recent)) keep.add(entry)
+  const tiers: Array<[number, (date: Date) => string]> = [
+    [retention.daily, dayKey],
+    [retention.weekly, weekKey],
+    [retention.monthly, monthKey]
+  ]
+  for (const [limit, key] of tiers) {
+    const seen = new Set<string>()
+    for (const { entry, time } of ordered) {
+      if (seen.size >= limit) break
+      const bucket = key(new Date(time))
+      if (seen.has(bucket)) continue
+      seen.add(bucket)
+      keep.add(entry)
+    }
+  }
+  return keep
+}
+
+export async function pruneBackups(
+  folder: string,
+  keyId: string,
+  protect?: string,
+  retention: Retention = RETENTION
+): Promise<number> {
+  const own = (await listBackups(folder)).filter((entry) => entry.keyId === keyId)
+  const keep = backupsToKeep(own, retention)
+  const drop = own.filter((entry) => !keep.has(entry) && entry.file !== protect)
+  await Promise.all(drop.map((entry) => rm(entry.file, { force: true })))
+  return drop.length
+}
+
+export function backupUsage(entries: Pick<BackupEntry, 'size'>[]): {
+  count: number
+  bytes: number
+} {
+  return { count: entries.length, bytes: entries.reduce((sum, entry) => sum + entry.size, 0) }
 }
 
 function validateDatabase(file: string): void {
