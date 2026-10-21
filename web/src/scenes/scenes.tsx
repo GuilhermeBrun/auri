@@ -5,8 +5,11 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
+  ClipboardPaste,
   Clock,
+  Copy,
   FilePen,
+  FolderOpen,
   HardDrive,
   Hourglass,
   Laptop,
@@ -230,12 +233,39 @@ export function AgendaScene() {
 
 type Status = 'pending' | 'waiting' | 'confirmed'
 
-const CONFIRM_ROWS = [
-  { time: '08:00', name: 'Manuela Cruz', who: 'Débora (Mãe) · (65) 99020-1147' },
-  { time: '09:00', name: 'Theo Martins', who: 'Juliana (Mãe) · (65) 99014-1105' },
-  { time: '10:30', name: 'Alice Costa', who: 'Fernanda (Mãe) · (65) 99010-1077' },
-  { time: '11:30', name: 'Lucas Nunes', who: 'Adriana (Mãe) · (65) 99017-1126' }
+const CONFIRM_GROUPS = [
+  {
+    day: 'Hoje',
+    rows: [
+      {
+        time: '11:30',
+        name: 'Davi Lima',
+        who: 'Patrícia (Mãe) · (65) 99031-1188',
+        until: '11:15'
+      }
+    ]
+  },
+  {
+    day: 'Quarta-feira, 21/10',
+    rows: [
+      {
+        time: '08:00',
+        name: 'Manuela Cruz',
+        who: 'Débora (Mãe) · (65) 99020-1147',
+        until: '12:24'
+      },
+      {
+        time: '09:00',
+        name: 'Theo Martins',
+        who: 'Juliana (Mãe) · (65) 99014-1105',
+        until: '12:24'
+      },
+      { time: '10:30', name: 'Alice Costa', who: 'Fernanda (Mãe) · (65) 99010-1077' }
+    ]
+  }
 ]
+
+const CONFIRM_TOTAL = CONFIRM_GROUPS.reduce((total, group) => total + group.rows.length, 0)
 
 const CONFIRM_BEATS: Beat[] = [
   { ms: 700 },
@@ -249,7 +279,20 @@ const CONFIRM_BEATS: Beat[] = [
   { ms: 500, hide: true }
 ]
 
-function StatusCell({ status }: { status: Status }) {
+function SendIcons() {
+  return (
+    <>
+      <span className="sc-icon-sm">
+        <Copy />
+      </span>
+      <span className="sc-icon-sm">
+        <Send />
+      </span>
+    </>
+  )
+}
+
+function StatusCell({ status, until }: { status: Status; until?: string }) {
   if (status === 'confirmed') {
     return (
       <span className="sc-status sc-in" key="confirmed">
@@ -261,14 +304,17 @@ function StatusCell({ status }: { status: Status }) {
   if (status === 'waiting') {
     return (
       <span className="sc-status sc-in" key="waiting">
-        <Clock />
-        até 12:24
+        <span className="sc-until">
+          <Clock />
+          até {until}
+        </span>
+        <SendIcons />
       </span>
     )
   }
   return (
-    <span className="sc-status sc-faint" key="pending">
-      Não enviada
+    <span className="sc-status" key="pending">
+      <SendIcons />
     </span>
   )
 }
@@ -277,9 +323,11 @@ export function ConfirmationScene() {
   const timeline = useTimeline(CONFIRM_BEATS, 7)
   const { beat } = timeline
   const status = (row: number): Status => {
-    if ((row === 0 && beat >= 6) || (row === 2 && beat >= 7)) return 'confirmed'
+    if ((row === 1 && beat >= 6) || (row === 0 && beat >= 7)) return 'confirmed'
     return row < 3 && beat >= 2 + row ? 'waiting' : 'pending'
   }
+  const left = CONFIRM_TOTAL - Math.min(Math.max(beat - 1, 0), 3)
+  let index = 0
   return (
     <Stage
       timeline={timeline}
@@ -290,28 +338,36 @@ export function ConfirmationScene() {
         <Week days={WEEK} sessions={BASE} now={{ day: 1, at: 9.75 }} width={592} />
         <div className="sc-dim" />
         <div className="sc-dialog sc-confirm">
-          <b className="sc-dialog-title">Confirmações de quarta-feira, 21/10</b>
+          <b className="sc-dialog-title">Confirmações</b>
           <p className="sc-dialog-text">
-            Cada família tem 2 horas para responder a partir do envio. Sem resposta, o horário fica
-            livre.
+            Prazo de 2 horas, ou até 15 min antes da sessão. Sem resposta, a falta é cobrada.
           </p>
-          <div className="sc-rows">
-            {CONFIRM_ROWS.map((row, i) => (
-              <div key={row.name} className="sc-row">
-                <b className="sc-row-time">{row.time}</b>
-                <span className="sc-two">
-                  <b>{row.name}</b>
-                  <span>{row.who}</span>
-                </span>
-                <StatusCell status={status(i)} />
-              </div>
-            ))}
-          </div>
-          <div className="sc-dialog-foot">
-            <span className="sc-btn">Fechar</span>
+          {CONFIRM_GROUPS.map((group) => (
+            <div key={group.day} className="sc-rows">
+              <span className="sc-rows-day">{group.day}</span>
+              {group.rows.map((row) => {
+                const i = index++
+                return (
+                  <div key={row.name} className="sc-row">
+                    <b className="sc-row-time">{row.time}</b>
+                    <span className="sc-two">
+                      <b>{row.name}</b>
+                      <span>{row.who}</span>
+                    </span>
+                    <StatusCell status={status(i)} until={row.until} />
+                  </div>
+                )
+              })}
+            </div>
+          ))}
+          <div className="sc-dialog-foot sc-foot-split">
+            <span className="sc-btn sc-btn-ghost">
+              <ClipboardPaste />
+              Colar resposta
+            </span>
             <span className="sc-btn sc-btn-solid" data-target="send">
               <Send />
-              Enviar a próxima
+              {left > 1 ? `Enviar a próxima (${left})` : 'Enviar a próxima'}
             </span>
           </div>
         </div>
@@ -506,7 +562,7 @@ export function AnamneseScene() {
       beats={ANAMNESE_BEATS}
       label="Animação: a anamnese em roteiro, um tema por vez"
     >
-      <Window active="Pacientes" trail={['Pacientes', 'Alice Costa Martins']}>
+      <Window active="Pacientes" trail={['Pacientes', 'Alice Costa Martins', 'Anamnese']}>
         <div className="sc-page">
           <PatientHead tab="Anamnese" saved="Salva hoje às 10:12" />
           <div className="sc-anamnese">
@@ -635,7 +691,6 @@ export function ArrivalScene() {
                 Ao assinar, Fernanda Costa confirma que Alice Costa chegou para a sessão de hoje.
               </span>
               <div className="sc-dialog-foot">
-                <span className="sc-btn">Cancelar</span>
                 <span className="sc-btn sc-btn-solid" data-target="confirm">
                   <PenLine />
                   Confirmar chegada
@@ -679,7 +734,7 @@ export function TermsScene() {
       beats={TERM_BEATS}
       label="Animação: o termo vai pelo WhatsApp e volta assinado"
     >
-      <Window active="Pacientes" trail={['Pacientes', 'Alice Costa Martins']}>
+      <Window active="Pacientes" trail={['Pacientes', 'Alice Costa Martins', 'Termos']}>
         <div className="sc-page">
           <PatientHead tab="Termos" />
           <div className="sc-terms">
@@ -772,7 +827,7 @@ export function FinanceScene() {
       beats={FINANCE_BEATS}
       label="Animação: o pagamento entra na conta do paciente"
     >
-      <Window active="Pacientes" trail={['Pacientes', 'Alice Costa Martins']}>
+      <Window active="Pacientes" trail={['Pacientes', 'Alice Costa Martins', 'Financeiro']}>
         <div className="sc-page">
           <PatientHead tab="Financeiro" />
           <div className="sc-balance">
@@ -784,7 +839,7 @@ export function FinanceScene() {
             </span>
             <span className="sc-actions">
               <span className="sc-btn">Cobrar</span>
-              <span className="sc-btn sc-btn-strong" data-target="pay">
+              <span className="sc-btn sc-btn-solid" data-target="pay">
                 Registrar pagamento
               </span>
             </span>
@@ -821,7 +876,6 @@ export function FinanceScene() {
                 <span>Transferência</span>
               </span>
               <div className="sc-dialog-foot">
-                <span className="sc-btn">Cancelar</span>
                 <span className="sc-btn sc-btn-solid" data-target="ok">
                   Registrar
                 </span>
@@ -858,47 +912,74 @@ export function BackupScene() {
       beats={BACKUP_BEATS}
       label="Animação: uma cópia cifrada vai para a pasta da nuvem"
     >
-      <Window active="Armazenamento" settings trail={['Configurações', 'Armazenamento']}>
+      <Window
+        active="Armazenamento"
+        settings
+        trail={['Configurações', 'Armazenamento', 'Cópia de segurança']}
+      >
         <div className="sc-page sc-settings">
           <b className="sc-section-title">Cópia de segurança</b>
-          <span className="sc-small">
-            Uma cópia cifrada dos pacientes e da agenda, numa pasta da nuvem, para não perder nada
-            se este computador quebrar.
-          </span>
-          <span className="sc-group-label">Cópia</span>
-          <div className="sc-block sc-backup">
-            <i className={done ? 'sc-dot' : 'sc-dot sc-dot-empty'} />
-            <span className="sc-two" key={String(done)}>
-              <b className={done ? 'sc-in' : undefined}>
-                {done ? 'Última cópia agora' : 'Última cópia ontem às 19:00'}
-              </b>
-              <span>iCloud Drive · todo dia às 19:00</span>
-            </span>
-            <span
-              className="sc-btn sc-btn-surface sc-loading-btn"
-              data-target="copy"
-              data-loading={loading ? '' : undefined}
-            >
-              <span className="sc-loading-label">Fazer cópia agora</span>
-              {loading && (
-                <span className="sc-symbol">
-                  <AuriSymbol />
-                  <span className="sc-symbol-fill">
-                    <AuriSymbol />
-                  </span>
+          <div className="sc-groups">
+            <div className="sc-group sc-backup">
+              <i className="sc-dot" />
+              <span className="sc-two" key={String(done)}>
+                <b className={done ? 'sc-in' : undefined}>
+                  {done ? 'Última cópia hoje às 10:12' : 'Última cópia ontem às 19:00'}
+                </b>
+                <span>
+                  {done ? 'iCloud Drive · 13 cópias · 49 MB' : 'iCloud Drive · 12 cópias · 45 MB'}
                 </span>
-              )}
-            </span>
-          </div>
-          <span className="sc-group-label">Frequência</span>
-          <div className="sc-block sc-row-between">
-            <span className="sc-two">
-              <b>Todo dia às 19:00</b>
-              <span>Mesmo com o Auri fechado, a cópia sai na próxima vez que ele abrir.</span>
-            </span>
+              </span>
+              <span className="sc-actions sc-actions-tight">
+                <span className="sc-btn">
+                  <FolderOpen />
+                  Abrir pasta
+                </span>
+                <span
+                  className="sc-btn sc-loading-btn"
+                  data-target="copy"
+                  data-loading={loading ? '' : undefined}
+                >
+                  <span className="sc-loading-label">Fazer cópia agora</span>
+                  {loading && (
+                    <span className="sc-symbol">
+                      <AuriSymbol />
+                      <span className="sc-symbol-fill">
+                        <AuriSymbol />
+                      </span>
+                    </span>
+                  )}
+                </span>
+              </span>
+            </div>
+            <div className="sc-group sc-row-between">
+              <span className="sc-two">
+                <b>iCloud Drive</b>
+                <span className="sc-sensitive">iCloud Drive/Auri/Cópias</span>
+              </span>
+              <span className="sc-btn">Trocar</span>
+            </div>
+            <div className="sc-group sc-row-between">
+              <span className="sc-two">
+                <b>Senha</b>
+                <span>Também desliga o computador da recepção.</span>
+              </span>
+              <span className="sc-actions sc-actions-tight">
+                <span className="sc-btn">Alterar</span>
+                <span className="sc-btn">Esqueci</span>
+                <span className="sc-btn">Novo código</span>
+              </span>
+            </div>
+            <div className="sc-group sc-row-between">
+              <span className="sc-two">
+                <b>Restaurar dados</b>
+                <span>Troca os pacientes e a agenda pelos da cópia.</span>
+              </span>
+              <span className="sc-btn">Restaurar…</span>
+            </div>
           </div>
         </div>
-        <Toast show={done && beat <= 3} title="Cópia feita" text="no iCloud Drive, cifrada" />
+        <Toast show={done && beat <= 3} title="Cópia feita" />
       </Window>
     </Stage>
   )
@@ -924,52 +1005,65 @@ export function ConnectionScene() {
       beats={CONNECTION_BEATS}
       label="Animação: outros computadores da clínica usam os dados da recepção"
     >
-      <Window active="Armazenamento" settings trail={['Configurações', 'Armazenamento']}>
+      <Window active="Armazenamento" settings trail={['Configurações', 'Armazenamento', 'Conexão']}>
         <div className="sc-page sc-settings">
           <b className="sc-section-title">Conexão</b>
-          <span className="sc-small">
-            Qual computador guarda os pacientes e a agenda, e quais outros podem usá-los.
-          </span>
-          <span className="sc-group-label">Onde ficam os dados</span>
-          <div className="sc-block sc-cards">
-            <span className="sc-card" data-active="">
-              <HardDrive />
-              <b>Este computador guarda os dados</b>
-              <Check />
-            </span>
-            <span className="sc-card">
-              <Laptop />
-              <b>Usar os dados de outro computador</b>
-            </span>
-          </div>
-          <span className="sc-group-label">Rede</span>
-          <div className="sc-block sc-row-between">
-            <span className="sc-two" key={String(on)}>
-              <b>Compartilhar com outros computadores da rede</b>
-              <span>
-                {on
-                  ? 'Ligado: os computadores da clínica podem pedir para entrar.'
-                  : 'Desligado: nenhum outro computador consegue acessar os dados deste.'}
-              </span>
-            </span>
-            <span className="sc-switch" data-on={on ? '' : undefined} data-target="switch">
-              <i />
-            </span>
-          </div>
-          {devices.length > 0 && (
-            <>
-              <span className="sc-group-label sc-in">Computadores conectados</span>
-              <div className="sc-block sc-devices sc-in">
-                {devices.map((device) => (
-                  <span key={device} className="sc-device sc-in">
-                    <Laptop />
-                    <b>{device}</b>
-                    <span>conectado agora</span>
+          <div className="sc-groups">
+            <div className="sc-group">
+              <span className="sc-group-label">Onde ficam os dados</span>
+              <div className="sc-cards">
+                <span className="sc-card" data-active="">
+                  <span className="sc-card-top">
+                    <HardDrive />
+                    <Check />
                   </span>
-                ))}
+                  <b>Este computador guarda os dados</b>
+                  <span>Os pacientes e a agenda ficam aqui.</span>
+                </span>
+                <span className="sc-card">
+                  <span className="sc-card-top">
+                    <Laptop />
+                  </span>
+                  <b>Usar os dados de outro computador</b>
+                  <span>Como o consultório, com os dados da recepção.</span>
+                </span>
               </div>
-            </>
-          )}
+            </div>
+            <div className="sc-group">
+              <span className="sc-group-label">Rede</span>
+              <div className="sc-row-between">
+                <span className="sc-two" key={String(on)}>
+                  <b>Compartilhar com outros computadores da rede</b>
+                  {on && <span className="sc-in">Só com código, e tudo viaja cifrado.</span>}
+                </span>
+                <span className="sc-switch" data-on={on ? '' : undefined} data-target="switch">
+                  <i />
+                </span>
+              </div>
+              {on && (
+                <span className="sc-btn sc-pair sc-in">
+                  <Plus />
+                  Conectar computador
+                </span>
+              )}
+            </div>
+            {devices.length > 0 && (
+              <div className="sc-group sc-in">
+                <span className="sc-group-label">Computadores conectados</span>
+                <div className="sc-devices">
+                  {devices.map((device) => (
+                    <span key={device} className="sc-device sc-in">
+                      <i className="sc-dot" />
+                      <span className="sc-two">
+                        <b>{device}</b>
+                        <span>Conectado agora</span>
+                      </span>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </Window>
     </Stage>

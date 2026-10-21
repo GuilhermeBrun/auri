@@ -5,6 +5,9 @@ import {
   CalendarDays,
   Check,
   Database,
+  Ellipsis,
+  Keyboard,
+  MessageCircle,
   PanelLeftClose,
   Settings,
   SlidersHorizontal,
@@ -108,12 +111,14 @@ const MAIN = [
   { label: 'Agenda', icon: <CalendarDays /> },
   { label: 'Pacientes', icon: <Users /> },
   { label: 'Financeiro', icon: <Wallet /> },
-  { label: 'Clínica', icon: <Building /> }
+  { label: 'Clínica', icon: <Building /> },
+  { label: 'WhatsApp', icon: <MessageCircle /> }
 ]
 
 const SETTINGS = [
   { label: 'Geral', icon: <SlidersHorizontal /> },
   { label: 'Aparência', icon: <SunMoon /> },
+  { label: 'Atalhos', icon: <Keyboard /> },
   { label: 'Armazenamento', icon: <Database /> }
 ]
 
@@ -159,6 +164,11 @@ export function Window({
             </span>
           ))}
         </nav>
+        {!settings && (
+          <span className="nav-more">
+            <Ellipsis />
+          </span>
+        )}
         <span className="win-foot">
           {settings ? <ArrowLeft /> : <Settings />}
           {settings ? 'Voltar' : 'Configurações'}
@@ -188,7 +198,7 @@ export function Window({
   )
 }
 
-export function Toast({ show, title, text }: { show: boolean; title: string; text: string }) {
+export function Toast({ show, title, text }: { show: boolean; title: string; text?: string }) {
   return (
     <div className={`toast sc-toast${show ? ' show' : ''}`}>
       <span className="toast-icon">
@@ -196,7 +206,7 @@ export function Toast({ show, title, text }: { show: boolean; title: string; tex
       </span>
       <span className="toast-text">
         <b>{title}</b>
-        <span>{text}</span>
+        {text && <span>{text}</span>}
       </span>
     </div>
   )
