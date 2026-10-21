@@ -6,7 +6,7 @@ import { FUNCIONAMENTO_PADRAO } from '@shared/agenda'
 import type { Clinic } from '@shared/schemas'
 import { renderRoute } from '@renderer/testing'
 
-const { clinic, tipos, etiquetas } = vi.hoisted(() => {
+const { clinic, tipos } = vi.hoisted(() => {
   Object.assign(Element.prototype, {
     hasPointerCapture: () => false,
     releasePointerCapture: () => {},
@@ -26,16 +26,27 @@ const { clinic, tipos, etiquetas } = vi.hoisted(() => {
           id: 1,
           nome: 'Sessão',
           categoria: 'sessao',
-          cor: 'grafite',
+          cor: '#6b7280',
           duracao: 30,
+          sistema: null,
           arquivado: false
         },
         {
           id: 2,
           nome: 'Avaliação',
           categoria: 'avaliacao',
-          cor: 'azul',
+          cor: '#2563eb',
           duracao: 60,
+          sistema: null,
+          arquivado: false
+        },
+        {
+          id: 13,
+          nome: 'Reserva',
+          categoria: 'compromisso',
+          cor: '#6b7280',
+          duracao: 60,
+          sistema: 'reserva',
           arquivado: false
         }
       ])
@@ -43,17 +54,16 @@ const { clinic, tipos, etiquetas } = vi.hoisted(() => {
     save: vi.fn(),
     archive: vi.fn()
   }
-  const etiquetas = { list: vi.fn(() => Promise.resolve([])), save: vi.fn(), archive: vi.fn() }
   Object.assign(window, {
     platform: 'win32',
-    api: { clinic, terms, tipos, etiquetas },
+    api: { clinic, terms, tipos },
     backup: bridge(),
     connection: bridge(),
     prefs: bridge(),
     updates: bridge(),
     reports: bridge()
   })
-  return { clinic, tipos, etiquetas }
+  return { clinic, tipos }
 })
 
 import { ClinicPage } from './ClinicPage'
@@ -198,55 +208,96 @@ describe('Clínica', () => {
   it('cadastra um exame com cor e duração, sem salvar o resto da página', async () => {
     clinic.get.mockResolvedValue(vazia)
     tipos.save.mockImplementation((_id, input) =>
-      Promise.resolve({ id: 9, ...input, arquivado: false })
+      Promise.resolve({ id: 9, ...input, sistema: null, arquivado: false })
     )
     renderRoute('/clinica', '/clinica', <ClinicPage />)
-    const tiposLista = (await screen.findByText('Avaliação')).closest('ul') as HTMLElement
-    expect(within(tiposLista).getByText(/30 min/)).toBeTruthy()
-    expect(within(tiposLista).getAllByText(/60 min/).length).toBeGreaterThan(0)
-    await userEvent.click(screen.getByRole('button', { name: 'Novo tipo' }))
-    const dialog = await screen.findByRole('dialog', { name: 'Novo tipo' })
+    const sessoes = (await screen.findByRole('heading', { name: 'Sessões' })).parentElement!
+    expect(within(sessoes).getByText('30 min')).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Compromissos' })).toBeTruthy()
+    await userEvent.click(screen.getByRole('button', { name: 'Nova etiqueta' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Nova etiqueta' })
+    expect(within(dialog).queryByRole('combobox', { name: 'Duração padrão' })).toBeNull()
     await userEvent.type(within(dialog).getByLabelText('Nome'), 'Audiometria')
-    expect(within(dialog).getByRole('button', { name: 'Exame' }).getAttribute('aria-pressed')).toBe(
-      'true'
+    await userEvent.click(within(dialog).getByRole('combobox', { name: 'Categoria' }))
+    await userEvent.click(await screen.findByRole('option', { name: 'Exame' }))
+    expect(within(dialog).getByRole('combobox', { name: 'Duração padrão' }).textContent).toContain(
+      '60 min'
     )
-    await userEvent.click(within(dialog).getByRole('radio', { name: 'Ardósia' }))
+    await userEvent.click(within(dialog).getByRole('radio', { name: 'Céu' }))
     await userEvent.click(within(dialog).getByRole('button', { name: 'Salvar' }))
     await waitFor(() =>
       expect(tipos.save).toHaveBeenCalledWith(null, {
         nome: 'Audiometria',
         categoria: 'exame',
-        cor: 'ardosia',
+        cor: '#0ea5e9',
         duracao: 60
       })
     )
     expect(clinic.save).not.toHaveBeenCalled()
   })
 
-  it('não deixa mudar a categoria de um tipo existente', async () => {
+  it('troca a categoria de uma etiqueta existente', async () => {
     clinic.get.mockResolvedValue(vazia)
-    renderRoute('/clinica', '/clinica', <ClinicPage />)
-    await userEvent.click(await screen.findByRole('button', { name: /Avaliação/ }))
-    const dialog = await screen.findByRole('dialog', { name: 'Tipo · Avaliação' })
-    expect(within(dialog).queryByRole('group', { name: 'Categoria' })).toBeNull()
-    expect(within(dialog).getByRole('button', { name: 'Arquivar' })).toBeTruthy()
-  })
-
-  it('cadastra uma etiqueta e recusa sem nome', async () => {
-    clinic.get.mockResolvedValue(vazia)
-    etiquetas.save.mockImplementation((_id, input) =>
-      Promise.resolve({ id: 3, ...input, arquivado: false })
+    tipos.save.mockImplementation((id, input) =>
+      Promise.resolve({ id, ...input, sistema: null, arquivado: false })
     )
     renderRoute('/clinica', '/clinica', <ClinicPage />)
-    expect(await screen.findByText('Nenhuma etiqueta ainda.')).toBeTruthy()
-    await userEvent.click(screen.getByRole('button', { name: 'Nova etiqueta' }))
+    await userEvent.click(await screen.findByRole('button', { name: /Avaliação/ }))
+    const dialog = await screen.findByRole('dialog', { name: 'Avaliação' })
+    await userEvent.click(within(dialog).getByRole('combobox', { name: 'Categoria' }))
+    await userEvent.click(await screen.findByRole('option', { name: 'Exame' }))
+    expect(within(dialog).getByRole('button', { name: 'Arquivar' })).toBeTruthy()
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Salvar' }))
+    await waitFor(() =>
+      expect(tipos.save).toHaveBeenCalledWith(2, {
+        nome: 'Avaliação',
+        categoria: 'exame',
+        cor: '#2563eb',
+        duracao: 60
+      })
+    )
+  })
+
+  it('a Reserva fica sempre compromisso', async () => {
+    clinic.get.mockResolvedValue(vazia)
+    renderRoute('/clinica', '/clinica', <ClinicPage />)
+    await userEvent.click(await screen.findByRole('button', { name: /Reserva/ }))
+    const dialog = await screen.findByRole('dialog', { name: 'Reserva' })
+    expect(within(dialog).queryByRole('combobox', { name: 'Categoria' })).toBeNull()
+    expect(within(dialog).getByText('Compromisso')).toBeTruthy()
+  })
+
+  it('cadastra uma marca com a roda de cor e recusa sem nome', async () => {
+    clinic.get.mockResolvedValue(vazia)
+    tipos.save.mockImplementation((_id, input) =>
+      Promise.resolve({ id: 3, ...input, sistema: null, arquivado: false })
+    )
+    renderRoute('/clinica', '/clinica', <ClinicPage />)
+    await userEvent.click(await screen.findByRole('button', { name: 'Nova etiqueta' }))
     const dialog = await screen.findByRole('dialog', { name: 'Nova etiqueta' })
     await userEvent.click(within(dialog).getByRole('button', { name: 'Salvar' }))
     expect(await within(dialog).findByText('Dê um nome à etiqueta')).toBeTruthy()
     await userEvent.type(within(dialog).getByLabelText('Nome'), 'Convênio')
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Outra cor' }))
+    const matiz = within(dialog).getByRole('slider', { name: 'Matiz' })
+    expect(matiz.getAttribute('aria-valuenow')).toBe('199')
+    matiz.focus()
+    await userEvent.keyboard('{Shift>}{ArrowRight}{/Shift}')
+    expect(matiz.getAttribute('aria-valuenow')).toBe('209')
+    const codigo = within(dialog).getByRole('textbox', { name: 'Código da cor' })
+    await userEvent.clear(codigo)
+    await userEvent.type(codigo, 'C026D3')
+    expect(
+      within(dialog).getByRole('slider', { name: 'Matiz' }).getAttribute('aria-valuenow')
+    ).toBe('293')
     await userEvent.click(within(dialog).getByRole('button', { name: 'Salvar' }))
     await waitFor(() =>
-      expect(etiquetas.save).toHaveBeenCalledWith(null, { nome: 'Convênio', cor: 'ardosia' })
+      expect(tipos.save).toHaveBeenCalledWith(null, {
+        nome: 'Convênio',
+        categoria: 'marca',
+        cor: '#c026d3',
+        duracao: null
+      })
     )
   })
 })

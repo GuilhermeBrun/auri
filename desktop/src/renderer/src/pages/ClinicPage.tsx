@@ -18,7 +18,7 @@ import { logoDataUrl } from '@shared/clinic'
 import { formatPhone } from '@shared/masks'
 import { clinicInputSchema, funcionamentoSchema, type Clinic } from '@shared/schemas'
 import { Page } from '@renderer/components/Layout'
-import { EtiquetasSection, TiposSection } from '@renderer/components/TiposClinica'
+import { EtiquetasSection } from '@renderer/components/TiposClinica'
 import { Button } from '@renderer/components/ui/button'
 import { Callout } from '@renderer/components/ui/callout'
 import { ErrorState } from '@renderer/components/ui/error'
@@ -327,7 +327,6 @@ function ClinicForm({ clinic }: { clinic: Clinic }): React.JSX.Element {
                 sugestões de horário e de encaixe.
               </p>
             </FormSection>
-            <TiposSection />
             <EtiquetasSection />
             <FormSection
               id="termos"

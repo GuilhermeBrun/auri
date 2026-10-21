@@ -3,6 +3,7 @@ import { render, type RenderResult } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { MemoryRouter, Route, Routes } from 'react-router'
 import { emptyPatientInput, type Appointment, type Patient } from '@shared/schemas'
+import type { TipoAtendimento } from '@shared/tipos'
 import { ToastContext, type ToastInput } from '@renderer/lib/toast'
 
 export function fakePatient(over: Partial<Patient> = {}): Patient {
@@ -26,9 +27,29 @@ let nextId = 100
 export const AVALIACAO = {
   tipo_id: 2,
   tipo_nome: 'Avaliação',
-  tipo_cor: 'azul',
+  tipo_cor: '#2563eb',
   categoria: 'avaliacao'
 } as const
+
+const etiqueta = (
+  id: number,
+  nome: string,
+  categoria: TipoAtendimento['categoria'],
+  cor: string,
+  duracao: number | null,
+  sistema: TipoAtendimento['sistema'] = null
+): TipoAtendimento => ({ id, nome, categoria, cor, duracao, sistema, arquivado: false })
+
+export const ETIQUETAS_SEMENTE: TipoAtendimento[] = [
+  etiqueta(1, 'Sessão', 'sessao', '#6b7280', 30),
+  etiqueta(2, 'Avaliação', 'avaliacao', '#2563eb', 60),
+  etiqueta(3, 'Exame', 'exame', '#7c3aed', 60),
+  etiqueta(9, 'Palestra', 'compromisso', '#ea580c', 60),
+  etiqueta(10, 'Curso', 'compromisso', '#4f46e5', 60),
+  etiqueta(11, 'Hospital', 'compromisso', '#e11d48', 60),
+  etiqueta(12, 'Reunião', 'compromisso', '#0d9488', 60),
+  etiqueta(13, 'Reserva', 'compromisso', '#6b7280', 60, 'reserva')
+]
 
 export function fakeAppointment(over: Partial<Appointment> & { inicio: string }): Appointment {
   const [day, time] = over.inicio.split('T')
@@ -42,7 +63,7 @@ export function fakeAppointment(over: Partial<Appointment> & { inicio: string })
     observacao: '',
     tipo_id: 1,
     tipo_nome: 'Sessão',
-    tipo_cor: 'grafite',
+    tipo_cor: '#6b7280',
     categoria: 'sessao',
     etiquetas: [],
     presenca: '',

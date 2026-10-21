@@ -6,7 +6,7 @@ import { FUNCIONAMENTO_PADRAO } from '@shared/agenda'
 import type { Commitment } from '@shared/commitments'
 import type { Appointment, Clinic } from '@shared/schemas'
 import type { WaitlistEntry } from '@shared/waitlist'
-import { fakeAppointment, fakePatient, renderRoute } from '@renderer/testing'
+import { ETIQUETAS_SEMENTE, fakeAppointment, fakePatient, renderRoute } from '@renderer/testing'
 
 vi.hoisted(() => {
   const bridge = (): unknown =>
@@ -33,6 +33,11 @@ vi.hoisted(() => {
   }
   globalThis.requestIdleCallback ??= (() => 0) as unknown as typeof requestIdleCallback
   globalThis.cancelIdleCallback ??= () => {}
+  Object.assign(Element.prototype, {
+    hasPointerCapture: () => false,
+    releasePointerCapture: () => {},
+    scrollIntoView: () => {}
+  })
   Object.defineProperty(document, 'elementFromPoint', { value: () => null, configurable: true })
 })
 
@@ -57,7 +62,10 @@ const clinic: Clinic = {
 function commitment(over: Partial<Commitment>): Commitment {
   return {
     id: 1,
-    tipo: 'reuniao',
+    etiqueta_id: 12,
+    etiqueta_nome: 'Reunião',
+    cor: '#0d9488',
+    reserva: false,
     titulo: '',
     inicio: '2026-10-15T14:00',
     fim: '2026-10-15T15:00',
@@ -68,10 +76,18 @@ function commitment(over: Partial<Commitment>): Commitment {
   }
 }
 
-const hospital = commitment({ tipo: 'hospital', titulo: 'Hospital Fictício' })
+const hospital = commitment({
+  etiqueta_id: 11,
+  etiqueta_nome: 'Hospital',
+  cor: '#e11d48',
+  titulo: 'Hospital Fictício'
+})
 const reserva = commitment({
   id: 2,
-  tipo: 'reserva',
+  etiqueta_id: 13,
+  etiqueta_nome: 'Reserva',
+  cor: '#6b7280',
+  reserva: true,
   inicio: '2026-10-16T09:00',
   fim: '2026-10-16T10:00'
 })
@@ -119,6 +135,7 @@ function setup(appointments: Appointment[] = [], commitments: Commitment[] = [])
     },
     patients: { list: vi.fn(async () => [fakePatient()]) },
     attendance: { listByPatient: vi.fn(async () => []) },
+    tipos: { list: vi.fn(async () => ETIQUETAS_SEMENTE) },
     waitlist: { list: vi.fn(async () => [espera]) },
     encaixe: {
       sugerir: vi.fn(async () => [
@@ -173,13 +190,14 @@ describe('compromissos na agenda', () => {
     const tipo = within(dialog).getByRole('group', { name: 'O que marcar' })
     await user.click(within(tipo).getByRole('button', { name: 'Compromisso' }))
     const novo = await screen.findByRole('dialog', { name: 'Novo compromisso' })
-    await user.click(within(novo).getByRole('button', { name: 'Palestra' }))
+    await user.click(within(novo).getByRole('combobox', { name: 'Etiqueta' }))
+    await user.click(await screen.findByRole('option', { name: 'Palestra' }))
     await user.type(within(novo).getByRole('textbox', { name: /Título/ }), 'Escola Fictícia')
     expect(within(novo).getByText(/Palestra de 30 min na quarta-feira, 14 de outubro/)).toBeTruthy()
     await user.click(within(novo).getByRole('button', { name: 'Bloquear horário' }))
     await waitFor(() =>
       expect(api.commitments.create).toHaveBeenCalledWith({
-        tipo: 'palestra',
+        etiqueta_id: 9,
         titulo: 'Escola Fictícia',
         inicio: '2026-10-14T10:30',
         fim: '2026-10-14T11:00',
