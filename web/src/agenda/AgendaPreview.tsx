@@ -85,6 +85,8 @@ type Gesture = {
   origin: { x: number; y: number }
   lift: HTMLElement | null
   label: HTMLElement | null
+  columns: { day: number; left: number; right: number; top: number; height: number }[]
+  hour: number
   target: (Drag & { day: number }) | null
   done: AbortController
 }
@@ -294,8 +296,13 @@ export function AgendaPreview() {
     element.classList.remove('show')
     void element.offsetWidth
     element.classList.add('show')
+    const action = element.querySelector<HTMLElement>('[data-undo]')
+    if (action) action.inert = false
     const timer = window.setTimeout(
-      () => element.classList.remove('show'),
+      () => {
+        element.classList.remove('show')
+        if (action) action.inert = true
+      },
       toast.undo ? 6000 : 4000
     )
     return () => clearTimeout(timer)
@@ -409,15 +416,31 @@ export function AgendaPreview() {
     lift.className = 'lift'
     lift.style.width = `${card.width}px`
     lift.style.height = `${card.height}px`
-    const body = document.createElement('div')
-    body.className = 'lift-card'
-    body.append(copy)
+    const shell = document.createElement('div')
+    shell.className = 'lift-card'
+    shell.append(copy)
     const label = document.createElement('span')
     label.className = 'lift-time'
-    lift.append(body, label)
+    lift.append(shell, label)
     layer.append(lift)
     g.lift = lift
     g.label = label
+    const body = bodyRef.current
+    const base = body?.getBoundingClientRect()
+    if (body && base) {
+      g.hour = body.querySelector('.hour')?.getBoundingClientRect().height ?? 0
+      g.columns = Array.from(body.querySelectorAll<HTMLElement>('.col'), (col) => {
+        const r = col.getBoundingClientRect()
+        return {
+          day: Number(col.dataset.day),
+          left: r.left - base.left,
+          right: r.right - base.left,
+          top: r.top - base.top,
+          height: r.height
+        }
+      })
+    }
+    if (g.card.isConnected) g.card.setPointerCapture?.(g.pointer)
     placeLift(g, g.origin.x, g.origin.y)
     winRef.current?.setAttribute('data-dragging', '')
     setGhost(null)
@@ -430,22 +453,19 @@ export function AgendaPreview() {
     const body = bodyRef.current
     const session = store.find(g.id)
     if (!body || !session || !g.label) return
-    const hour = body.querySelector('.hour')?.getBoundingClientRect().height ?? 0
-    const column = Array.from(body.querySelectorAll<HTMLElement>('.col')).find((col) => {
-      const box = col.getBoundingClientRect()
-      return x >= box.left && x < box.right
-    })
+    const base = body.getBoundingClientRect()
+    const { hour } = g
+    const column = g.columns.find((col) => x - base.left >= col.left && x - base.left < col.right)
     if (!column || hour <= 0) {
       g.target = null
       g.label.hidden = true
       setDrag({ id: g.id, day: null, start: session.start, refused: false })
       return
     }
-    const box = column.getBoundingClientRect()
-    const free = FIRST + (y - g.grab.y - box.top) / hour
-    const last = FIRST + box.height / hour - session.len
+    const free = FIRST + (y - g.grab.y - base.top - column.top) / hour
+    const last = FIRST + column.height / hour - session.len
     const start = Math.min(Math.max(Math.round(free / SNAP) * SNAP, FIRST), last)
-    const day = Number(column.dataset.day)
+    const { day } = column
     const refused = problem(session, day, start) !== null
     g.label.hidden = false
     g.label.textContent = `${clock(start)} – ${clock(start + session.len)}`
@@ -514,6 +534,8 @@ export function AgendaPreview() {
       origin: { x: 0, y: 0 },
       lift: null,
       label: null,
+      columns: [],
+      hour: 0,
       target: null,
       done
     }
@@ -551,6 +573,7 @@ export function AgendaPreview() {
       signal: done.signal
     })
     window.addEventListener('pointercancel', () => end(true), { signal: done.signal })
+    window.addEventListener('blur', () => end(true), { signal: done.signal })
     window.addEventListener('keydown', (key) => key.key === 'Escape' && end(true), {
       signal: done.signal
     })
@@ -590,7 +613,7 @@ export function AgendaPreview() {
         if (session) {
           showToast(
             'trash',
-            'Agendamento excluído',
+            isBlock(session.kind) ? 'Compromisso excluído' : 'Agendamento excluído',
             `${shortName(session.name)} · ${shortDate(session.day)}`
           )
         }
