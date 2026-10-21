@@ -24,24 +24,23 @@ const ACTION: Record<
 > = {
   'not-installed': {
     label: () => 'Instalar',
-    after: (name) =>
-      `Siga as etapas do instalador e entre com sua conta no ${name}. O Auri percebe sozinho.`
+    after: (name) => `Siga o instalador e entre com sua conta no ${name}.`
   },
   'signed-out': {
     label: (name) => `Abrir o ${name}`,
-    after: (name) => `Entre com sua conta na janela do ${name}. O Auri percebe sozinho.`
+    after: (name) => `Entre com sua conta na janela do ${name}.`
   },
   closed: {
     label: (name) => `Abrir o ${name}`,
-    after: (name) => `Espere o ${name} terminar de abrir. O Auri percebe sozinho.`
+    after: (name) => `Espere o ${name} terminar de abrir.`
   },
   off: {
     label: () => 'Abrir Ajustes',
-    after: () => 'Ligue o iCloud Drive nos Ajustes do Sistema. O Auri percebe sozinho.'
+    after: () => 'Ligue o iCloud Drive nos Ajustes do Sistema.'
   },
   denied: {
     label: () => 'Abrir Ajustes',
-    after: () => 'Em Arquivos e Pastas, permita o acesso do Auri. O Auri percebe sozinho.'
+    after: () => 'Em Arquivos e Pastas, permita o acesso do Auri.'
   }
 }
 

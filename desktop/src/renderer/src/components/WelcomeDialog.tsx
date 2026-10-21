@@ -57,8 +57,7 @@ const STEPS = [
   },
   {
     title: 'Já usa o Auri?',
-    description:
-      'Se este computador está substituindo outro, traga o que estava lá. Cada parte é opcional.'
+    description: 'Traga o que estava no outro computador. Tudo é opcional.'
   }
 ]
 
@@ -125,12 +124,12 @@ export function WelcomeDialog(): React.JSX.Element {
               <Part
                 icon={<CalendarDays />}
                 title="Agenda"
-                description="As sessões da semana num relance, sem dois horários no mesmo lugar."
+                description="As sessões da semana num relance."
               />
               <Part
                 icon={<Users />}
                 title="Pacientes"
-                description="A ficha de cada um, com a anamnese e o registro de todas as sessões."
+                description="A ficha, a anamnese e as sessões de cada um."
               />
             </>
           )}
@@ -139,12 +138,12 @@ export function WelcomeDialog(): React.JSX.Element {
               <Part
                 icon={<DatabaseBackup />}
                 title="Cópia de segurança"
-                description="Cifrada, na pasta do Google Drive, OneDrive ou iCloud. Só abre com a senha que você criar."
+                description="Cifrada, na sua nuvem. Só abre com a sua senha."
               />
               <Part
                 icon={<Network />}
                 title="Outros computadores"
-                description="O consultório pode usar os mesmos dados da recepção, pela rede da clínica ou pela internet."
+                description="O consultório usa os mesmos dados da recepção."
               />
             </>
           )}
@@ -153,7 +152,7 @@ export function WelcomeDialog(): React.JSX.Element {
               <Part
                 icon={<DatabaseBackup />}
                 title="Pacientes e agenda"
-                description="Da cópia de segurança no Google Drive, OneDrive, iCloud ou num arquivo. Pede a senha da cópia."
+                description="Da cópia de segurança. Pede a senha da cópia."
                 done={restored}
               >
                 {restored ? (
@@ -167,7 +166,7 @@ export function WelcomeDialog(): React.JSX.Element {
               <Part
                 icon={<SlidersHorizontal />}
                 title="Configurações"
-                description="Aparência, conexão e as escolhas da cópia, de um arquivo exportado no outro computador."
+                description="De um arquivo exportado no outro computador."
                 done={imported}
               >
                 {imported ? (

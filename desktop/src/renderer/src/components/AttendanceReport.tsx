@@ -70,12 +70,7 @@ export function AttendanceReportDialog({
   onOpenChange: (open: boolean) => void
 }): React.JSX.Element {
   return (
-    <Dialog
-      open={open}
-      onOpenChange={onOpenChange}
-      title="Relatório de presença"
-      description="Sessões do período, com a assinatura de chegada de cada uma, em PDF."
-    >
+    <Dialog open={open} onOpenChange={onOpenChange} title="Relatório de presença">
       {open && <ReportForm patientId={patientId} onClose={() => onOpenChange(false)} />}
     </Dialog>
   )

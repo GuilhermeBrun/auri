@@ -22,7 +22,6 @@ export function ReceiveTerm(): React.JSX.Element {
       open={receiving !== null}
       onOpenChange={(open) => !open && closeReceive()}
       title="Termo assinado"
-      description="Confira o que chegou antes de guardar na ficha."
     >
       {receiving && <Receive key={receiving.id} initial={receiving.texto} />}
     </Dialog>
