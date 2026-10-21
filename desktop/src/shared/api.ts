@@ -308,6 +308,7 @@ export type BackupInfo = {
   welcome: boolean
   suggested: BackupDestination['kind'] | null
   destinationProblem: DestinationProblem | null
+  stored: { count: number; bytes: number } | null
 }
 
 export type DestinationProblem = {
