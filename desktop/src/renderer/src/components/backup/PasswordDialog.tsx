@@ -143,18 +143,9 @@ function PasswordForm({
         <span className="text-xs text-ink-soft">
           {save.isPending && 'Regravando as cópias da pasta…'}
         </span>
-        <div className="flex gap-2">
-          <Button variant="secondary" onClick={onClose}>
-            Cancelar
-          </Button>
-          <Button type="submit" loading={save.isPending}>
-            {mode === 'change'
-              ? 'Alterar senha'
-              : mode === 'reset'
-                ? 'Criar senha'
-                : 'Gerar código'}
-          </Button>
-        </div>
+        <Button type="submit" loading={save.isPending}>
+          {mode === 'change' ? 'Alterar senha' : mode === 'reset' ? 'Criar senha' : 'Gerar código'}
+        </Button>
       </DialogFooter>
     </form>
   )

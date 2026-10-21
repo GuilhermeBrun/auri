@@ -241,15 +241,17 @@ try {
       'Esse horário já está ocupado: João Interface Fictício, das 09:00 às 09:30'
     )
     expect(await appointments()).toHaveLength(1)
-    await dialog.getByRole('button', { name: 'Cancelar', exact: true }).click()
+    await dialog.getByRole('button', { name: 'Fechar', exact: true }).click()
+    await expect(dialog).not.toBeVisible()
   })
-  await check('UI: sessão adjacente é aceita e cancelar mantém os dados', async () => {
+  await check('UI: sessão adjacente é aceita e fechar sem agendar mantém os dados', async () => {
     const dialog = await newAppointment('09:30', 'Sessão B Fictícia')
     await dialog.getByRole('button', { name: 'Agendar', exact: true }).click()
     await expect(dialog).not.toBeVisible()
     expect(await appointments()).toHaveLength(2)
     const cancel = await newAppointment('11:00', 'Rascunho não salvo')
-    await cancel.getByRole('button', { name: 'Cancelar', exact: true }).click()
+    await cancel.getByRole('button', { name: 'Fechar', exact: true }).click()
+    await expect(cancel).not.toBeVisible()
     expect(await appointments()).toHaveLength(2)
   })
   await check('UI: remarcação com conflito e exclusão exigem confirmação', async () => {
@@ -265,7 +267,8 @@ try {
       dialog.getByRole('button', { name: 'Confirmar exclusão', exact: true })
     ).toBeVisible()
     expect(await appointments()).toHaveLength(2)
-    await dialog.getByRole('button', { name: 'Cancelar', exact: true }).click()
+    await dialog.getByRole('button', { name: 'Fechar', exact: true }).click()
+    await expect(dialog).not.toBeVisible()
     await page.locator('.rbc-event').filter({ hasText: 'João' }).nth(1).click()
     await page.getByRole('button', { name: 'Excluir', exact: true }).click()
     await page.getByRole('button', { name: 'Confirmar exclusão', exact: true }).click()

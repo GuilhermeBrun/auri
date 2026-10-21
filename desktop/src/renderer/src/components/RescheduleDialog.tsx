@@ -37,24 +37,16 @@ export function RescheduleDialog({
       title="Remarcar"
       description={`${appointment.patient_nome} · ${horarioTexto(appointment)}`}
     >
-      {open && (
-        <RescheduleBody
-          appointment={appointment}
-          onCancel={() => onOpenChange(false)}
-          onMoved={onMoved}
-        />
-      )}
+      {open && <RescheduleBody appointment={appointment} onMoved={onMoved} />}
     </Dialog>
   )
 }
 
 function RescheduleBody({
   appointment,
-  onCancel,
   onMoved
 }: {
   appointment: Appointment
-  onCancel: () => void
   onMoved: (appointment: Appointment) => void
 }): React.JSX.Element {
   const toast = useToast()
@@ -160,14 +152,9 @@ function RescheduleBody({
         >
           Mais adiante
         </Button>
-        <div className="flex gap-2">
-          <Button variant="secondary" onClick={onCancel}>
-            Cancelar
-          </Button>
-          <Button type="submit" disabled={!chosen} loading={move.isPending}>
-            Remarcar
-          </Button>
-        </div>
+        <Button type="submit" disabled={!chosen} loading={move.isPending}>
+          Remarcar
+        </Button>
       </DialogFooter>
     </form>
   )

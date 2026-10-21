@@ -108,13 +108,11 @@ function FormDialog({
 }
 
 function Footer({
-  onCancel,
   submit,
   loading,
   disabled,
   danger
 }: {
-  onCancel: () => void
   submit: ReactNode
   loading: boolean
   disabled?: boolean
@@ -123,19 +121,14 @@ function Footer({
   return (
     <DialogFooter>
       <span />
-      <div className="flex gap-2">
-        <Button variant="secondary" onClick={onCancel}>
-          Cancelar
-        </Button>
-        <Button
-          type="submit"
-          variant={danger ? 'danger' : 'primary'}
-          loading={loading}
-          disabled={disabled}
-        >
-          {submit}
-        </Button>
-      </div>
+      <Button
+        type="submit"
+        variant={danger ? 'danger' : 'primary'}
+        loading={loading}
+        disabled={disabled}
+      >
+        {submit}
+      </Button>
     </DialogFooter>
   )
 }
@@ -311,7 +304,7 @@ function PaymentForm({
         </Field>
         {pay.error && <ErrorText>{pay.error.message}</ErrorText>}
       </DialogBody>
-      <Footer onCancel={onClose} submit="Registrar" loading={pay.isPending} />
+      <Footer submit="Registrar" loading={pay.isPending} />
     </form>
   )
 }
@@ -382,7 +375,7 @@ function VoidForm({
         </Field>
         {run.error && <ErrorText>{run.error.message}</ErrorText>}
       </DialogBody>
-      <Footer onCancel={onClose} submit="Estornar" loading={run.isPending} danger />
+      <Footer submit="Estornar" loading={run.isPending} danger />
     </form>
   )
 }
@@ -644,11 +637,7 @@ function BillingForm({
         )}
         {save.error && <ErrorText>{save.error.message}</ErrorText>}
       </DialogBody>
-      <Footer
-        onCancel={onClose}
-        submit={contratarAgora ? 'Salvar e contratar' : 'Salvar'}
-        loading={save.isPending}
-      />
+      <Footer submit={contratarAgora ? 'Salvar e contratar' : 'Salvar'} loading={save.isPending} />
     </form>
   )
 }
@@ -795,7 +784,6 @@ function ChargeForm({
         {error && <ErrorText>{error.message}</ErrorText>}
       </DialogBody>
       <Footer
-        onCancel={onClose}
         submit={plan ? 'Contratar' : 'Lançar cobrança'}
         loading={charge.isPending || contract.isPending}
         disabled={plan !== null && !isIsoDate(data)}
@@ -889,7 +877,6 @@ function PackageForm({
         {contract.error && <ErrorText>{contract.error.message}</ErrorText>}
       </DialogBody>
       <Footer
-        onCancel={onClose}
         submit="Contratar"
         loading={contract.isPending}
         disabled={!plan || !isIsoDate(inicio)}
@@ -967,12 +954,7 @@ function LaunchForm({
         </Field>
         {launch.error && <ErrorText>{launch.error.message}</ErrorText>}
       </DialogBody>
-      <Footer
-        onCancel={onClose}
-        submit="Lançar"
-        loading={launch.isPending}
-        disabled={service === ''}
-      />
+      <Footer submit="Lançar" loading={launch.isPending} disabled={service === ''} />
     </form>
   )
 }

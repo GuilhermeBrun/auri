@@ -136,7 +136,7 @@ function ArrivalForm({
             {` · ${appointment.tipo_nome}`}
           </p>
         </div>
-        <Button variant="ghost" size="icon" aria-label="Cancelar" onClick={onCancel}>
+        <Button variant="ghost" size="icon" aria-label="Fechar" onClick={onCancel}>
           <X />
         </Button>
       </header>
@@ -203,9 +203,6 @@ function ArrivalForm({
       </div>
 
       <footer className="flex items-center justify-end gap-2 px-10 pt-2 pb-8">
-        <Button variant="secondary" size="lg" onClick={onCancel}>
-          Cancelar
-        </Button>
         <Button type="submit" size="lg" disabled={!pronto} loading={sign.isPending}>
           <PenLine /> Confirmar chegada
         </Button>
