@@ -610,7 +610,7 @@ function CustomColors(): React.JSX.Element {
   const now = scheme()
   const change = (patch: Partial<ThemeColors>): void => setThemeColors({ ...colors, ...patch })
   return (
-    <div className="flex flex-col gap-4">
+    <>
       <ColorField
         label="Destaque"
         description="Botões e seleção."
@@ -620,20 +620,27 @@ function CustomColors(): React.JSX.Element {
       />
       <ColorField
         label="Fundo"
-        description="Telas e barra lateral."
+        description={
+          isDefault(colors) ? (
+            'Telas e barra lateral.'
+          ) : (
+            <>
+              Telas e barra lateral.{' '}
+              <button
+                type="button"
+                className="font-medium text-ink underline-offset-2 hover:underline"
+                onClick={() => apply(DEFAULT_COLORS)}
+              >
+                Voltar ao grafite
+              </button>
+            </>
+          )
+        }
         value={colors.canvas}
         shown={BASE_TOKENS[now].surface}
         onChange={(canvas) => change({ canvas })}
       />
-      {!isDefault(colors) && (
-        <div>
-          <Button variant="secondary" size="sm" onClick={() => apply(DEFAULT_COLORS)}>
-            <RotateCcw />
-            Voltar ao grafite
-          </Button>
-        </div>
-      )}
-    </div>
+    </>
   )
 }
 
@@ -642,21 +649,22 @@ function TextSizePicker(): React.JSX.Element {
   const largest = useLargestTextSize()
   const mod = isMac ? '⌘' : 'Ctrl'
   return (
-    <div className="flex flex-col gap-3">
-      <div className="self-start">
-        <Segmented
-          label="Tamanho do texto"
-          value={String(Math.min(size, largest))}
-          options={TEXT_SIZES.map((s) => [String(s), TEXT_SIZE_LABELS[s]] as const)}
-          disabled={TEXT_SIZES.filter((s) => s > largest).map(String)}
-          onChange={(value) => setTextSize(TEXT_SIZES.find((s) => String(s) === value) ?? 1)}
-        />
+    <div className="flex items-center justify-between gap-6">
+      <div className="min-w-0">
+        <div className="text-[13px] font-medium">Tamanho</div>
+        <p className="mt-0.5 text-xs text-ink-soft">
+          {largest < TEXT_SIZES[TEXT_SIZES.length - 1]
+            ? 'Os tamanhos maiores não cabem nesta tela.'
+            : `Atalho: ${mod} + e ${mod} −.`}
+        </p>
       </div>
-      <p className="text-xs text-ink-soft">
-        {largest < TEXT_SIZES[TEXT_SIZES.length - 1]
-          ? 'Os tamanhos maiores não cabem nesta tela.'
-          : `Atalho: ${mod} + e ${mod} −.`}
-      </p>
+      <Segmented
+        label="Tamanho do texto"
+        value={String(Math.min(size, largest))}
+        options={TEXT_SIZES.map((s) => [String(s), TEXT_SIZE_LABELS[s]] as const)}
+        disabled={TEXT_SIZES.filter((s) => s > largest).map(String)}
+        onChange={(value) => setTextSize(TEXT_SIZES.find((s) => String(s) === value) ?? 1)}
+      />
     </div>
   )
 }
@@ -672,13 +680,13 @@ export function AppearancePage(): React.JSX.Element {
             </SettingsGroup>
           </PageSection>
           <PageSection id="cores" title="Cores">
-            <SettingsGroup className="flex flex-col gap-8">
+            <SettingsGroup rows>
               <PresetPicker />
               <CustomColors />
               <AdvancedSection />
             </SettingsGroup>
           </PageSection>
-          <PageSection id="texto" title="Tamanho do texto">
+          <PageSection id="texto" title="Texto">
             <SettingsGroup>
               <TextSizePicker />
             </SettingsGroup>

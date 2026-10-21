@@ -49,32 +49,58 @@ export function PageSection({
         {title}
       </h2>
       {description && <p className="mt-1 text-[13px] text-ink-soft">{description}</p>}
-      <div className={cn(description ? 'mt-6' : 'mt-4', 'flex flex-col gap-8')}>{children}</div>
+      <div className={cn(description ? 'mt-5' : 'mt-3', 'flex flex-col')}>{children}</div>
     </section>
   )
 }
 
+const ROWS =
+  'flex flex-col [&>*]:py-4 [&>*:first-child]:pt-0 [&>*:last-child]:pb-0 [&>*+*]:border-t [&>*+*]:border-line [&>[role=alert]]:border-t-0 [&>[role=alert]]:pt-0'
+
 export function SettingsGroup({
   label,
-  bare = false,
+  rows = false,
   className,
   children
 }: {
   label?: string
-  bare?: boolean
+  rows?: boolean
   className?: string
   children: ReactNode
 }): React.JSX.Element {
   const id = useId()
   return (
-    <section aria-labelledby={label ? id : undefined}>
+    <section
+      aria-labelledby={label ? id : undefined}
+      className="border-t border-line py-5 first:border-t-0 first:pt-0 last:pb-0"
+    >
       {label && (
-        <h3 id={id} className="mb-2 text-xs font-medium text-ink-soft">
+        <h3 id={id} className="mb-3 text-xs font-medium text-ink-soft">
           {label}
         </h3>
       )}
-      <div className={cn(!bare && 'rounded-card bg-fill p-4', className)}>{children}</div>
+      <div className={cn(rows && ROWS, className)}>{children}</div>
     </section>
+  )
+}
+
+export function SettingRow({
+  title,
+  description,
+  children
+}: {
+  title: ReactNode
+  description?: ReactNode
+  children?: ReactNode
+}): React.JSX.Element {
+  return (
+    <div className="flex items-center justify-between gap-6">
+      <div className="min-w-0">
+        <div className="text-[13px] font-medium">{title}</div>
+        {description && <div className="mt-0.5 text-xs text-ink-soft">{description}</div>}
+      </div>
+      {children && <div className="flex shrink-0 items-center gap-2">{children}</div>}
+    </div>
   )
 }
 
