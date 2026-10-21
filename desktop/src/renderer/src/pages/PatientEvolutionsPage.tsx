@@ -143,9 +143,7 @@ function PatientEvolutionsPage({ patientId }: { patientId: number }): React.JSX.
                       Ver todas
                     </Button>
                   }
-                >
-                  Escolha outro período ou veja todas as evoluções.
-                </EmptyState>
+                />
               ) : (
                 <EvolutionList
                   evolutions={shown}
@@ -179,8 +177,7 @@ function NoEvolutions({ patientId }: { patientId: number }): React.JSX.Element {
         </Button>
       }
     >
-      A evolução se escreve no registro de cada sessão. Todas aparecem aqui, da mais recente para a
-      mais antiga.
+      A evolução se escreve no registro de cada sessão.
     </EmptyState>
   )
 }

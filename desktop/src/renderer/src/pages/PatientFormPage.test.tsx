@@ -94,7 +94,7 @@ describe('responsável na ficha', () => {
   it('outra pessoa pede nome e parentesco antes de salvar', async () => {
     const update = await abrir({})
     await userEvent.click(screen.getByRole('button', { name: 'Outra pessoa' }))
-    expect(screen.getByText(/só respondem pelo paciente menor de idade/)).toBeTruthy()
+    expect(screen.getByText(/só respondem pelo menor/)).toBeTruthy()
     await userEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
     expect(await screen.findByText('Informe o nome do responsável')).toBeTruthy()
     expect(screen.getByText('Escolha o parentesco')).toBeTruthy()
@@ -103,7 +103,7 @@ describe('responsável na ficha', () => {
 
   it('paciente maior de idade assina ele mesmo e tem celular próprio', async () => {
     await abrir({ data_nascimento: '1990-03-02' })
-    expect(await screen.findByText(/Paciente maior de idade/)).toBeTruthy()
+    expect(await screen.findByText(/Maior de idade/)).toBeTruthy()
     expect(screen.queryByRole('group', { name: 'Responsável pelo paciente' })).toBeNull()
     expect(screen.getAllByText('Celular')).toHaveLength(3)
   })

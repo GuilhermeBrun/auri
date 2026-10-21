@@ -252,7 +252,7 @@ export function PatientsPage(): React.JSX.Element {
       ) : patients.length === 0 ? (
         searching ? (
           <EmptyState icon={<Search />} title={`Nenhum paciente encontrado para “${busca.trim()}”`}>
-            Confira a grafia ou busque pelo nome da mãe ou pelo CPF.
+            Busque também pelo nome da mãe ou pelo CPF.
           </EmptyState>
         ) : (
           <EmptyState
@@ -262,9 +262,7 @@ export function PatientsPage(): React.JSX.Element {
                 <Plus /> Cadastrar o primeiro paciente
               </Button>
             }
-          >
-            Comece pela ficha de entrada: dados do paciente, dos pais e da escola.
-          </EmptyState>
+          />
         )
       ) : (
         <PatientTable patients={patients} savedId={savedId} />

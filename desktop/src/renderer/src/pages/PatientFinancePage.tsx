@@ -101,10 +101,7 @@ function PatientFinancePage({ patientId }: { patientId: number }): React.JSX.Ele
                 Definir forma de cobrança
               </Button>
             }
-          >
-            Particular por sessão, pacote ou convênio. Depois, as sessões com presença aparecem aqui
-            para lançar, junto com os pagamentos.
-          </EmptyState>
+          />
         ) : (
           <FinanceBody
             patient={patient.data}
@@ -281,7 +278,7 @@ function FinanceBody({
                       : 'venceu'
                   }`
                 : ''}
-              . As sessões são cobradas avulsas até contratar outro.
+              . Sessões cobradas avulsas.
             </p>
           )}
         </Section>
@@ -376,9 +373,6 @@ function Pending({
         )
       }
     >
-      <p className="mb-2 text-xs text-ink-soft">
-        Sessões com presença que ainda não entraram no extrato.
-      </p>
       <ul className="-mx-3 flex flex-col">
         {pendentes.map((s) => (
           <li
@@ -486,12 +480,7 @@ function Statement({
   const packageCharges = new Set(
     finance.charges.filter((c) => c.motivo === 'pacote').map((c) => c.id)
   )
-  if (list.length === 0)
-    return (
-      <p className="text-[13px] text-ink-faint">
-        Nada lançado ainda. As cobranças e os pagamentos aparecem aqui, do mais novo ao mais antigo.
-      </p>
-    )
+  if (list.length === 0) return <p className="text-[13px] text-ink-faint">Nada lançado ainda.</p>
   return (
     <ul className="-mx-3 flex flex-col">
       {list.map((row) => {
