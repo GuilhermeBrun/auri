@@ -12,6 +12,7 @@ import { SETTINGS_CRUMB } from '@renderer/lib/settings'
 import { useSettingsImport } from '@renderer/lib/settings-import'
 import { useToast } from '@renderer/lib/toast'
 import { setUpdateState, useUpdates } from '@renderer/lib/updates'
+import { setWhatsAppEnabled, useWhatsAppEnabled } from '@renderer/lib/whatsapp'
 import type { UpdateChannel, UpdateState } from '@shared/api'
 
 function describe(state: UpdateState): string {
@@ -55,6 +56,30 @@ function Row({
       </div>
       {children && <div className="shrink-0">{children}</div>}
     </div>
+  )
+}
+
+function WhatsApp(): React.JSX.Element {
+  const enabled = useWhatsAppEnabled()
+  const toast = useToast()
+  return (
+    <PageSection id="whatsapp" title="WhatsApp">
+      <SettingsGroup>
+        <SwitchField
+          label="WhatsApp no Auri"
+          description={
+            enabled
+              ? 'No menu lateral, sempre aberto. Desligado, sai da conta e some do Auri.'
+              : 'As conversas abrem fora do Auri.'
+          }
+          checked={enabled}
+          onCheckedChange={(on) => {
+            setWhatsAppEnabled(on)
+            if (!on) toast({ title: 'WhatsApp tirado do Auri' })
+          }}
+        />
+      </SettingsGroup>
+    </PageSection>
   )
 }
 
@@ -222,6 +247,7 @@ export function GeneralPage(): React.JSX.Element {
               </SettingsGroup>
             )}
           </PageSection>
+          <WhatsApp />
           <Transfer />
           <ErrorReports />
         </div>

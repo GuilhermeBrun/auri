@@ -1,4 +1,4 @@
-import { clipboard, ipcMain } from 'electron'
+import { app, clipboard, ipcMain, shell } from 'electron'
 import { z } from 'zod'
 import type { AuriTransfer, IpcResult } from '../shared/api'
 import type {
@@ -21,7 +21,7 @@ import { DATA_CHANNELS, errorMessage } from './operations'
 import type { PrefsStore } from './prefs'
 import type { UpdateService } from './updates'
 import { assertTrustedSender } from './ipc-security'
-import type { WhatsAppWindow } from './whatsapp-window'
+import type { WhatsAppView } from './whatsapp-view'
 import { chooseLogo } from './logo'
 import { documentFont, htmlToPdf, openPdf, savePdf } from './pdf'
 
@@ -33,7 +33,7 @@ export type IpcServices = {
   updates: UpdateService
   reports: ErrorReportService
   inbox: Caixa
-  whatsapp: WhatsAppWindow
+  whatsapp: WhatsAppView
 }
 
 const cut = (max: number) =>
@@ -170,13 +170,30 @@ export function registerIpc({
       termPdfName(record)
     )
   })
-  handle('terms:openWhatsApp', (numero: unknown, texto: unknown) => {
+  handle('terms:openWhatsApp', async (numero: unknown, texto: unknown) => {
     const phone = z
       .string()
       .regex(/^\d{10,15}$/)
       .parse(numero)
-    whatsapp.open(phone, z.string().max(6000).parse(texto))
+    const message = z.string().max(6000).parse(texto)
+    if (whatsapp.open(phone, message)) return
+    const text = encodeURIComponent(message)
+    const desktop = app.getApplicationNameForProtocol('whatsapp://') !== ''
+    await shell.openExternal(
+      desktop
+        ? `whatsapp://send?phone=${phone}&text=${text}`
+        : `https://wa.me/${phone}?text=${text}`
+    )
   })
+  const bounds = z.object({
+    x: z.number().finite(),
+    y: z.number().finite(),
+    width: z.number().finite().min(0),
+    height: z.number().finite().min(0)
+  })
+  handle('whatsapp:show', (value: unknown) => whatsapp.show(bounds.parse(value)))
+  handle('whatsapp:hide', () => whatsapp.hide())
+  handle('whatsapp:unread', () => whatsapp.unread())
   handle('terms:takeIncoming', () => inbox.retirar())
   handle('confirmacoes:takeIncoming', () => inbox.retirarConfirmacoes())
 

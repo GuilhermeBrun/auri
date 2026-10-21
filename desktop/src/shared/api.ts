@@ -205,7 +205,17 @@ export interface AuriPrefs {
   onChange(listener: (prefs: UiPrefs) => void): () => void
 }
 
-export const DEFAULT_UI_PREFS: UiPrefs = { sidebarOpen: true, theme: 'system' }
+export const DEFAULT_UI_PREFS: UiPrefs = { sidebarOpen: true, theme: 'system', whatsapp: true }
+
+export type WhatsAppBounds = { x: number; y: number; width: number; height: number }
+
+export interface AuriWhatsApp {
+  show(bounds: WhatsAppBounds): Promise<void>
+  hide(): Promise<void>
+  unread(): Promise<number>
+  onUnread(listener: (count: number) => void): () => void
+  onOpen(listener: () => void): () => void
+}
 
 export const PREFS_ARG = '--auri-prefs='
 
