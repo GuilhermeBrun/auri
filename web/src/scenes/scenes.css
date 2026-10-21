@@ -78,7 +78,7 @@
 }
 
 .sc-lift[data-moving] {
-  transform: translate(var(--dx), var(--dy));
+  transform: translate(calc(100% + 4px), calc(var(--dy) * var(--row)));
 }
 
 .sc-lift-card {

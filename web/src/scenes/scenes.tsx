@@ -213,8 +213,6 @@ const AGENDA_BEATS: Beat[] = [
   { ms: 500, hide: true }
 ]
 
-const COLUMN = (592 - 52) / 5
-
 export function AgendaScene() {
   const timeline = useTimeline(AGENDA_BEATS, 7)
   const { beat } = timeline
@@ -268,8 +266,7 @@ export function AgendaScene() {
                   style={vars({
                     '--top': 9.5 - FIRST,
                     '--len': 0.75,
-                    '--dx': `${COLUMN}px`,
-                    '--dy': `${46}px`
+                    '--dy': 1
                   })}
                 >
                   <span className="sc-lift-card">
