@@ -35,10 +35,10 @@ site não responder em 1,5 s (para o toque ainda abrir o app do WhatsApp) ou sem
 link longo. No Auri, "Colar resposta" e o `auri://` aceitam os dois: o curto é buscado no site
 antes de ler, e a conferência e o guardar usam a mesma busca.
 
-| Guardado | Some do site |
-| --- | --- |
+| Guardado            | Some do site                          |
+| ------------------- | ------------------------------------- |
 | Termo e confirmação | Um dia depois do prazo para responder |
-| Resposta | 30 dias depois de enviada |
+| Resposta            | 30 dias depois de enviada             |
 
 ## O site e o banco
 
@@ -53,16 +53,15 @@ alguém gravando o máximo todo dia. O primeiro a gravar um `id` fica; um segund
 nada.
 
 Em produção a migração roda sozinha pelo workflow **Banco do site** quando o `main` recebe um
-arquivo novo em `web/db/migracoes/` (ver `docs/relatorios-de-erro.md`, seção Migrações). A
-`002_links_curtos` já foi aplicada à mão em 21/10. Até a migração rodar, o `PUT` responde `503` e
-o Auri manda o link longo.
+arquivo novo em `web/db/migracoes/` (ver `docs/relatorios-de-erro.md`, seção Migrações). Até a
+migração rodar, o `PUT` responde `503` e o Auri manda o link longo.
 
 ## Segurança
 
-| Tentativa | O que impede |
-| --- | --- |
-| Ler um termo ou resposta pelo banco ou pela API | O conteúdo está cifrado com uma chave que só existe no código, depois do `#`. |
-| Adivinhar links | O código tem 128 bits sorteados; o `id` é um SHA-256 dele. |
-| Trocar o termo de alguém | Só quem tem o código calcula o `id`, e o primeiro `PUT` de um `id` fica. |
-| Forjar uma resposta | A resposta continua cifrada e conferida com a chave da ida, como no link longo. |
-| Encher o banco | Limites acima, no próprio banco, e o Firewall da Vercel: no máximo 60 pedidos por minuto por IP em `/api/` (desde 21/10). |
+| Tentativa                                       | O que impede                                                                                                              |
+| ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| Ler um termo ou resposta pelo banco ou pela API | O conteúdo está cifrado com uma chave que só existe no código, depois do `#`.                                             |
+| Adivinhar links                                 | O código tem 128 bits sorteados; o `id` é um SHA-256 dele.                                                                |
+| Trocar o termo de alguém                        | Só quem tem o código calcula o `id`, e o primeiro `PUT` de um `id` fica.                                                  |
+| Forjar uma resposta                             | A resposta continua cifrada e conferida com a chave da ida, como no link longo.                                           |
+| Encher o banco                                  | Limites acima, no próprio banco, e o Firewall da Vercel: no máximo 60 pedidos por minuto por IP em `/api/` (desde 21/10). |

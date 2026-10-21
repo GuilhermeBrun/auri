@@ -1,6 +1,6 @@
 # Auri
 
-Cadastro de pacientes e agenda para clínica de fonoaudiologia. App desktop para Mac e Windows (Electron + React), com os dados guardados localmente em SQLite.
+Prontuário, agenda e gestão para clínica de fonoaudiologia. App desktop para Mac e Windows (Electron + React), com os dados guardados localmente em SQLite, e o site [auri.dev.br](https://auri.dev.br).
 
 ## Onde ficam os dados
 
@@ -9,7 +9,7 @@ Arquivo `auri.db`, na pasta de dados do app:
 - **macOS:** `~/Library/Application Support/Auri/auri.db`
 - **Windows:** `%APPDATA%\Auri\auri.db`
 
-Em **Configurações → Cópia de segurança**, configure cópias cifradas em uma pasta local,
+Em **Configurações → Armazenamento → Cópia de segurança**, configure cópias cifradas em uma pasta local,
 pendrive ou pasta sincronizada com a nuvem. A cópia pode ser diária, após alterações ou
 manual; guarde a senha e o código de recuperação. O Auri precisa estar aberto para executar
 as cópias automáticas. Apenas o computador que guarda os dados realiza essas cópias.
@@ -24,11 +24,14 @@ O repositório tem um projeto por pasta, cada um com o próprio `package.json` e
 do app).
 
 - `desktop/`: o app (Electron + React + SQLite) e os scripts de release.
-- `web/`: o site [auri.dev.br](https://auri.dev.br) (React + Vite+, pré-renderizado), com a
-  página de download e o feed de atualização. Publicado pela Vercel; os instaladores ficam nas
-  releases do GitHub (ver [docs/ci.md](docs/ci.md)).
-- `docs/`: documentação para quem desenvolve (pessoas e agentes): CI e releases, identidade
-  visual e, em `docs/specs/`, o desenho de cada funcionalidade maior.
+- `web/`: o site [auri.dev.br](https://auri.dev.br) (React + Vite+, pré-renderizado): página de
+  download, feed de atualização, as páginas que a família abre pelo celular (`/assinar`,
+  `/recebido`, `/confirmar`, `/resposta`) e as funções `api/erros.ts` (relatórios de erro) e
+  `api/links.ts` (links curtos). Publicado pela Vercel; os instaladores ficam nas releases do
+  GitHub (ver [docs/ci.md](docs/ci.md)).
+- `docs/`: documentação para quem desenvolve (pessoas e agentes): [CI e releases](docs/ci.md),
+  [identidade visual](docs/identidade-visual.md), [relatórios de erro](docs/relatorios-de-erro.md),
+  [links curtos](docs/links-curtos.md) e, em `docs/specs/`, o desenho de cada funcionalidade maior.
 
 ## Desenvolvimento
 
@@ -70,7 +73,7 @@ Estrutura (em `desktop/`):
 - `src/preload/`: expõe `window.api`. O contrato fica em `src/shared/api.ts`.
 - `src/renderer/`: telas (React + Tailwind).
 - `docs/qualidade/`: banco de exemplo dos testes e capturas de referência da interface.
-- `scripts/release/`: versões do alpha e da estável e montagem do site de atualização.
+- `scripts/release/`: versões do alpha e da estável e tradução da pilha dos relatórios de erro.
 - `vite.config.ts`: configuração única do build Electron, testes, lint e formatação com Vite+.
 
 A identidade visual (cores, tipografia, componentes) está em
@@ -78,12 +81,12 @@ A identidade visual (cores, tipografia, componentes) está em
 
 ## Antes de abrir um PR
 
-O CI do GitHub roda só quando o PR sai do rascunho e confere apenas lint, build e testes (o job
-`Check`). O resto é testado aqui, no Mac, antes do PR:
+O CI do GitHub roda só quando o PR sai do rascunho e confere formato, lint, tipos, build e
+testes do app e do site (o job `Check`). O resto é testado aqui, no Mac, antes do PR:
 
-1. **Sempre:** `npm run ci:local`, os mesmos passos do `Check` (formato, lint, tipos, código sem
-   uso, build, testes e scripts de release). Também roda sozinho antes de cada `git push`, com o
-   cache do Vite+ nos passos que não mudaram.
+1. **Sempre:** `npm run ci:local` (em `desktop/`), os mesmos passos do `Check`, inclusive os do
+   site. Também roda sozinho antes de cada `git push`, com o cache do Vite+ nos passos que não
+   mudaram.
 2. **Conforme o que mudou:**
 
 | Mudou                                                              | Rodar                                                  |
@@ -94,23 +97,11 @@ O CI do GitHub roda só quando o PR sai do rascunho e confere apenas lint, build
 | Empacotamento, `electron-builder.yml`, atualização, dependências   | `npm run ci:mac`                                       |
 | Algo só do Windows (caminhos, instaladores das nuvens, instalador) | `gh workflow run windows.yml --ref <branch>`           |
 
-O `npm run ci:mac` cobre todas as linhas do Mac de uma vez (testes, E2E, interface, pacote e
-instalador, ~2 min) e também deve rodar antes de cada versão estável. O `visual:aceitar` precisa
-das capturas do Windows, geradas pelo workflow Referências visuais (ver [docs/ci.md](docs/ci.md)).
+O `npm run ci:mac` cobre todas as linhas do Mac de uma vez e também roda antes de cada versão
+estável.
 
-3. **Abrir o PR como rascunho** e marcar como pronto só quando terminar. O CI do Actions (pago)
-   roda uma vez quando o PR fica pronto e de novo a cada push depois disso, ou quando o `main`
-   andou e o PR precisa de "Update branch". Para rodar só uma vez: um PR pronto de cada vez,
-   mesclado antes de marcar o próximo. Ao ficar pronto, o PR também passa pela revisão do Codex,
-   que segue as regras do [AGENTS.md](AGENTS.md) (ver "Revisão" em [docs/ci.md](docs/ci.md)).
-
-```bash
-gh pr create --draft
-```
-
-```bash
-gh pr ready
-```
+3. **Abrir o PR como rascunho** (`gh pr create --draft`) e marcar como pronto (`gh pr ready`) só
+   quando terminar. Como o CI e a revisão funcionam depois disso está em [docs/ci.md](docs/ci.md).
 
 ## Instaladores
 
@@ -120,7 +111,7 @@ npm run build:mac   # dist/auri-<versão>-arm64.dmg (só Apple Silicon)
 npm run build:win   # dist/auri-<versão>-setup.exe (pode ser gerado no próprio Mac)
 ```
 
-O better-sqlite3 já traz binários prontos para cada sistema, então os dois instaladores saem do Mac. As versões publicadas saem do workflow Release (alpha diário e estável manual) e os instaladores são testados no Windows pelo workflow Windows; ver [docs/ci.md](docs/ci.md).
+O better-sqlite3 já traz binários prontos para cada sistema, então os dois instaladores saem do Mac. As versões publicadas saem do workflow Release; ver [docs/ci.md](docs/ci.md).
 
 O app tem só assinatura ad-hoc: não há certificado da Apple nem da Microsoft.
 

@@ -1,4 +1,4 @@
-# Auri — proposta de marca v1
+# Auri — marca v1
 
 O símbolo combina um “a” orgânico com uma referência abstrata à escuta. Na assinatura, ele ocupa o lugar da primeira letra do nome e se une a “uri”, com proporções e alinhamento ajustados. O desenho usa uma silhueta contínua e espaços internos abertos para preservar a leitura em tamanhos pequenos. As letras são desenhadas em vetor, em minúsculas.
 
@@ -19,7 +19,7 @@ O símbolo combina um “a” orgânico com uma referência abstrata à escuta. 
 
 Use grafite `#1B1B22` sobre fundos claros e branco `#FFFFFF` sobre o grafite. Preserve as proporções e a margem presente nos arquivos. Prefira o SVG para interfaces e ampliação. O símbolo foi inspecionado a 24, 40 e 64 pixels na apresentação.
 
-No ícone do aplicativo, o quadrado ocupa 824px do canvas de 1024px, com 100px de margem por lado. O símbolo centralizado ocupa aproximadamente 530px de largura, deixando espaço ao redor. O fundo varia discretamente de `#303039` a `#17171D`; o contorno iluminado e a sombra definem a borda sobre o Dock escuro.
+No ícone do aplicativo, o quadrado ocupa 824px do canvas de 1024px, com 100px de margem por lado. O fundo varia discretamente de `#303039` a `#17171D`. `auri-app.png` é o mesmo arquivo de `desktop/build/icon.png` e `desktop/resources/icon.png`. Esta pasta não entra no pacote do app; o uso da marca na interface está em `docs/identidade-visual.md`.
 
 ## Produção
 
