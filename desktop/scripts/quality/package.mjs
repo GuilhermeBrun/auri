@@ -47,6 +47,13 @@ async function check(name, fn) {
   }
 }
 
+const isAppWindow = (window) => window.url().startsWith('file:')
+
+async function appWindow() {
+  await expect.poll(() => application.windows().some(isAppWindow), { timeout: 30_000 }).toBe(true)
+  return application.windows().find(isAppWindow)
+}
+
 async function launch(data) {
   mkdirSync(data, { recursive: true })
   const env = { ...process.env, TZ: 'America/Cuiaba', AURI_ERROS_URL: '' }
@@ -57,7 +64,7 @@ async function launch(data) {
     env,
     timeout: 45_000
   })
-  const page = await application.firstWindow()
+  const page = await appWindow()
   expect(realpathSync(await application.evaluate(({ app }) => app.getPath('userData')))).toBe(
     realpathSync(data)
   )
@@ -185,7 +192,7 @@ try {
   console.error(error)
   process.exitCode = 1
   if (application) {
-    const page = await application.firstWindow().catch(() => null)
+    const page = application.windows().find(isAppWindow)
     if (page && !page.isClosed())
       await page.screenshot({ path: '.quality/package/falha.png' }).catch(() => {})
   }
