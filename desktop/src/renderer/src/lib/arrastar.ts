@@ -84,10 +84,10 @@ export async function gravar(
     const appointment = await gravarSessao(api, item.appointment, destino, computador)
     return { kind: 'appointment', appointment }
   }
-  const { tipo, titulo, observacao, id, updated_at } = item.commitment
+  const { etiqueta_id, titulo, observacao, id, updated_at } = item.commitment
   const commitment = await api.commitments.update(
     id,
-    { tipo, titulo, observacao, ...destino },
+    { etiqueta_id, titulo, observacao, ...destino },
     updated_at
   )
   return { kind: 'commitment', commitment }
