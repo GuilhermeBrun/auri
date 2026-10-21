@@ -241,6 +241,7 @@ export function createWhatsAppView({
       const mine = ++request
       clipboard
         .writeText(text)
+        .catch((error: unknown) => console.error('[whatsapp] mensagem não foi copiada', error))
         .then(() => contents.loadURL(whatsAppUrl(phone)))
         .then(() => pasteWhenReady(contents, mine, text))
         .catch((error: unknown) => {

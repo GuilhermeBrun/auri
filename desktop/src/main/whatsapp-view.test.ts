@@ -223,6 +223,24 @@ describe('WhatsApp dentro do Auri', () => {
     }
   })
 
+  it('abre a conversa mesmo se a mensagem não foi copiada, e aí não cola nada', async () => {
+    const { whatsapp, main } = setup()
+    main.loaded()
+    const [view] = mocks.views
+    const error = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    mocks.clipboardText.value = 'outra coisa'
+    mocks.writeText.mockRejectedValueOnce(new Error('área ocupada'))
+    whatsapp.open('5565900000000', 'Oi')
+    await vi.waitFor(() =>
+      expect(view.webContents.loadURL).toHaveBeenLastCalledWith(
+        'https://web.whatsapp.com/send?phone=5565900000000'
+      )
+    )
+    await vi.waitFor(() => expect(view.webContents.executeJavaScript).toHaveBeenCalled())
+    expect(view.webContents.paste).not.toHaveBeenCalled()
+    error.mockRestore()
+  })
+
   it('não cola a mensagem antiga se outra conversa foi aberta, e desiste se o campo não aparece', async () => {
     vi.useFakeTimers()
     try {

@@ -40,6 +40,7 @@ const installUpdate = vi.fn(() => {
 })
 beforeEach(() => {
   vi.clearAllMocks()
+  openWhatsApp.mockReturnValue(true)
   handlers.clear()
   listeners.clear()
   registerIpc({
@@ -176,6 +177,5 @@ describe('handlers IPC', () => {
     expect(openExternal).toHaveBeenLastCalledWith(
       'https://web.whatsapp.com/send?phone=5565900000000'
     )
-    openWhatsApp.mockReturnValue(true)
   })
 })
