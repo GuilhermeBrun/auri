@@ -577,7 +577,7 @@ function AdvancedSection(): React.JSX.Element {
   const colors = useThemeColors()
   const [open, setOpen] = useState(() => hasOverrides(colors))
   return (
-    <SettingsGroup label="Cada cor">
+    <div>
       <button
         type="button"
         aria-expanded={open}
@@ -600,7 +600,7 @@ function AdvancedSection(): React.JSX.Element {
           <AdvancedColors />
         </div>
       )}
-    </SettingsGroup>
+    </div>
   )
 }
 
@@ -610,7 +610,7 @@ function CustomColors(): React.JSX.Element {
   const now = scheme()
   const change = (patch: Partial<ThemeColors>): void => setThemeColors({ ...colors, ...patch })
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-4">
       <ColorField
         label="Destaque"
         description="Botões e seleção."
@@ -672,13 +672,11 @@ export function AppearancePage(): React.JSX.Element {
             </SettingsGroup>
           </PageSection>
           <PageSection id="cores" title="Cores">
-            <SettingsGroup label="Prontas">
+            <SettingsGroup className="flex flex-col gap-8">
               <PresetPicker />
-            </SettingsGroup>
-            <SettingsGroup label="Personalizar">
               <CustomColors />
+              <AdvancedSection />
             </SettingsGroup>
-            <AdvancedSection />
           </PageSection>
           <PageSection id="texto" title="Tamanho do texto">
             <SettingsGroup>
