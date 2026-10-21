@@ -35,6 +35,7 @@ import { createConnection, type Connection } from './connection'
 import { DatabaseTooNewError } from './db/migrations'
 import { createErrorReports, type ErrorReportService } from './error-reports'
 import { registerIpc } from './ipc'
+import { macMenu } from './menu'
 import { createLinksCurtos } from './links-curtos'
 import { trustRenderer } from './ipc-security'
 import { pathToFileURL } from 'node:url'
@@ -271,6 +272,16 @@ function showWindow(): void {
   window.focus()
 }
 
+function openSettings(): void {
+  const existed = BrowserWindow.getAllWindows().length > 0
+  showWindow()
+  const [window] = BrowserWindow.getAllWindows()
+  if (!window) return
+  const send = (): void => window.webContents.send('settings:open', undefined)
+  if (existed && !window.webContents.isLoading()) send()
+  else window.webContents.once('did-finish-load', send)
+}
+
 function openAgendaAt(inicio: string): void {
   const existed = BrowserWindow.getAllWindows().length > 0
   showWindow()
@@ -365,7 +376,10 @@ void app.whenReady().then(async () => {
   electronApp.setAppUserModelId('com.auri.app')
   if (app.isPackaged && process.platform === 'win32') app.setAsDefaultProtocolClient(ESQUEMA)
 
-  if (process.platform === 'darwin') app.dock?.setIcon(icon)
+  if (process.platform === 'darwin') {
+    app.dock?.setIcon(icon)
+    Menu.setApplicationMenu(Menu.buildFromTemplate(macMenu(app.name, openSettings)))
+  }
 
   const skipBackup = (): void => {
     skipQuitBackup = true
