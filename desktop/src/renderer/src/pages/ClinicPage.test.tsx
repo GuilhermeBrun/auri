@@ -216,7 +216,9 @@ describe('Clínica', () => {
     expect(screen.getByRole('heading', { name: 'Compromissos' })).toBeTruthy()
     await userEvent.click(screen.getByRole('button', { name: 'Nova etiqueta' }))
     const dialog = await screen.findByRole('dialog', { name: 'Nova etiqueta' })
-    expect(within(dialog).queryByRole('combobox', { name: 'Duração padrão' })).toBeNull()
+    expect(within(dialog).getByRole('combobox', { name: 'Categoria' }).textContent).toContain(
+      'Sessão'
+    )
     await userEvent.type(within(dialog).getByLabelText('Nome'), 'Audiometria')
     await userEvent.click(within(dialog).getByRole('combobox', { name: 'Categoria' }))
     await userEvent.click(await screen.findByRole('option', { name: 'Exame' }))
@@ -267,7 +269,7 @@ describe('Clínica', () => {
     expect(within(dialog).getByText('Compromisso')).toBeTruthy()
   })
 
-  it('cadastra uma marca com a roda de cor e recusa sem nome', async () => {
+  it('cadastra uma etiqueta com a roda de cor e recusa sem nome', async () => {
     clinic.get.mockResolvedValue(vazia)
     tipos.save.mockImplementation((_id, input) =>
       Promise.resolve({ id: 3, ...input, sistema: null, arquivado: false })
@@ -277,13 +279,13 @@ describe('Clínica', () => {
     const dialog = await screen.findByRole('dialog', { name: 'Nova etiqueta' })
     await userEvent.click(within(dialog).getByRole('button', { name: 'Salvar' }))
     expect(await within(dialog).findByText('Dê um nome à etiqueta')).toBeTruthy()
-    await userEvent.type(within(dialog).getByLabelText('Nome'), 'Convênio')
+    await userEvent.type(within(dialog).getByLabelText('Nome'), 'Terapia')
     await userEvent.click(within(dialog).getByRole('button', { name: 'Outra cor' }))
     const matiz = within(dialog).getByRole('slider', { name: 'Matiz' })
-    expect(matiz.getAttribute('aria-valuenow')).toBe('199')
+    expect(matiz.getAttribute('aria-valuenow')).toBe('220')
     matiz.focus()
     await userEvent.keyboard('{Shift>}{ArrowRight}{/Shift}')
-    expect(matiz.getAttribute('aria-valuenow')).toBe('209')
+    expect(matiz.getAttribute('aria-valuenow')).toBe('230')
     const codigo = within(dialog).getByRole('textbox', { name: 'Código da cor' })
     await userEvent.clear(codigo)
     await userEvent.type(codigo, 'C026D3')
@@ -293,10 +295,10 @@ describe('Clínica', () => {
     await userEvent.click(within(dialog).getByRole('button', { name: 'Salvar' }))
     await waitFor(() =>
       expect(tipos.save).toHaveBeenCalledWith(null, {
-        nome: 'Convênio',
-        categoria: 'marca',
+        nome: 'Terapia',
+        categoria: 'sessao',
         cor: '#c026d3',
-        duracao: null
+        duracao: 60
       })
     )
   })

@@ -83,16 +83,6 @@ let api: {
   tipos: Record<string, ReturnType<typeof vi.fn>>
 }
 
-const marca = (id: number, nome: string, cor: string): TipoAtendimento => ({
-  id,
-  nome,
-  categoria: 'marca',
-  cor,
-  duracao: null,
-  sistema: null,
-  arquivado: false
-})
-const CONVENIO = { id: 7, nome: 'Convênio', cor: '#db2777' } as const
 const TIPOS: TipoAtendimento[] = [
   {
     id: 1,
@@ -129,9 +119,7 @@ const TIPOS: TipoAtendimento[] = [
     duracao: 60,
     sistema: null,
     arquivado: false
-  },
-  marca(CONVENIO.id, CONVENIO.nome, CONVENIO.cor),
-  marca(8, 'Primeira vez', '#d97706')
+  }
 ]
 
 function setup(appointments: Appointment[], funcionamento = FUNCIONAMENTO_PADRAO): void {
@@ -275,34 +263,33 @@ const draftAt = (inicio: Date, duracao = 30): AppointmentDraft => ({
   patient: { id: 1, nome: 'Helena Fictícia Andrade' }
 })
 
-describe('tipos e etiquetas na agenda', () => {
+describe('etiquetas na agenda', () => {
   const exame = fakeAppointment({
     inicio: '2026-10-15T09:00',
     patient_nome: 'Eva Fictícia',
     tipo_id: 4,
     tipo_nome: 'Audiometria',
     tipo_cor: '#7c3aed',
-    categoria: 'exame',
-    etiquetas: [CONVENIO]
+    categoria: 'exame'
   })
   const comum = fakeAppointment({ inicio: '2026-10-16T09:00', patient_nome: 'Fábio Fictício' })
 
-  it('o cartão mostra o nome do tipo, a cor e as etiquetas', async () => {
+  it('o cartão mostra o nome e a cor da etiqueta', async () => {
     setup([exame, comum])
     renderRoute('/agenda', '/agenda', <AgendaPage />)
     const card = await eventOf('Eva Fictícia')
     expect(within(card).getByText(/Audiometria/)).toBeTruthy()
-    expect(within(card).getByRole('img', { name: 'Etiquetas: Convênio' })).toBeTruthy()
+    expect(within(card).queryByRole('img', { name: /Etiquetas/ })).toBeNull()
     const wrapper = card.closest<HTMLElement>('.rbc-event') ?? card
     expect(wrapper.style.getPropertyValue('--tipo-cor')).toBe('#7c3aed')
   })
 
-  it('filtra a agenda por marca e por etiqueta principal', async () => {
+  it('filtra a agenda pela etiqueta da sessão', async () => {
     setup([exame, comum])
     renderRoute('/agenda', '/agenda', <AgendaPage />)
     await eventOf('Fábio Fictício')
     await userEvent.click(screen.getByRole('combobox', { name: 'Filtrar por etiqueta' }))
-    await userEvent.click(await screen.findByRole('option', { name: 'Convênio' }))
+    await userEvent.click(await screen.findByRole('option', { name: 'Audiometria' }))
     await waitFor(() =>
       expect(screen.queryByText('Fábio Fictício', { selector: '.name-full' })).toBeNull()
     )
@@ -316,7 +303,7 @@ describe('tipos e etiquetas na agenda', () => {
     )
   })
 
-  it('o diálogo usa a duração do tipo e grava tipo e etiquetas', async () => {
+  it('o diálogo usa a duração da etiqueta e grava a etiqueta, sem marcas', async () => {
     setup([])
     renderRoute(
       '/agenda',
@@ -328,14 +315,13 @@ describe('tipos e etiquetas na agenda', () => {
     await userEvent.click(tipo)
     await userEvent.click(await screen.findByRole('option', { name: 'Audiometria' }))
     expect(screen.getByRole('combobox', { name: 'Duração' }).textContent).toContain('45 min')
-    await userEvent.click(screen.getByRole('button', { name: 'Primeira vez' }))
+    expect(screen.queryByText('Marcas')).toBeNull()
     expect(screen.getByText(/Audiometria de 45 min/)).toBeTruthy()
     await userEvent.click(screen.getByRole('button', { name: 'Agendar' }))
     await waitFor(() =>
       expect(api.appointments.create).toHaveBeenCalledWith(
         expect.objectContaining({
           tipo_id: 4,
-          etiquetas: [8],
           inicio: '2026-10-15T09:00',
           fim: '2026-10-15T09:45'
         })

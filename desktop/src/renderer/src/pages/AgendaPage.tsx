@@ -311,7 +311,7 @@ function EventContent({ event }: EventProps<CalendarEvent>): React.JSX.Element {
   if (event.kind !== 'appointment') return <BlockContent event={event} />
   const short = differenceInMinutes(event.end, event.start) < 45
   const start = formatTime(event.start)
-  const { tipo_nome: tipoText, assinatura, etiquetas, pedido } = event.appointment
+  const { tipo_nome: tipoText, assinatura, pedido } = event.appointment
   const confirmado = !assinatura && confirmacao(event.appointment) === 'confirmado'
   const aguardando = !confirmado && pedido?.estado === 'aguardando'
   return (
@@ -347,17 +347,6 @@ function EventContent({ event }: EventProps<CalendarEvent>): React.JSX.Element {
               aria-label={PEDIDO_LABELS.sem_resposta}
               className="ml-1 inline size-3 -translate-y-px stroke-[2] opacity-75"
             />
-          )}
-          {etiquetas.length > 0 && (
-            <span
-              role="img"
-              aria-label={`Etiquetas: ${etiquetas.map((e) => e.nome).join(', ')}`}
-              className="ml-1 inline-flex -translate-y-px gap-0.5 align-middle"
-            >
-              {etiquetas.map((e) => (
-                <CorPonto key={e.id} cor={e.cor} className="size-1.5" />
-              ))}
-            </span>
           )}
           <span
             className={cn('event-tipo text-xs font-normal opacity-75', !short && 'event-tipo-long')}
@@ -519,11 +508,10 @@ function tooltip(event: CalendarEvent): string {
     const nome = commitmentName(event.commitment)
     return `${timeRange(event)} · ${nome}${observacao ? `\n${observacao}` : ''}`
   }
-  const { tipo_nome, presenca, observacao, etiquetas } = event.appointment
+  const { tipo_nome, presenca, observacao } = event.appointment
   const { assinatura, pedido } = event.appointment
   const tags = [
     tipo_nome,
-    ...etiquetas.map((e) => e.nome),
     presenca ? PRESENCA_LABELS[presenca] : '',
     pedido && pedido.estado !== 'confirmado' ? PEDIDO_LABELS[pedido.estado] : '',
     !presenca && !assinatura ? CONFIRMACAO_LABELS[confirmacao(event.appointment)] : '',
@@ -944,12 +932,7 @@ export function AgendaPage(): React.JSX.Element {
     () =>
       etiqueta === null
         ? allEvents
-        : allEvents.filter(
-            (e) =>
-              e.kind !== 'appointment' ||
-              e.appointment.tipo_id === etiqueta ||
-              e.appointment.etiquetas.some((x) => x.id === etiqueta)
-          ),
+        : allEvents.filter((e) => e.kind !== 'appointment' || e.appointment.tipo_id === etiqueta),
     [allEvents, etiqueta]
   )
 

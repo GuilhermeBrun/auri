@@ -6,25 +6,17 @@ import {
   type Appointment,
   type AppointmentInput
 } from '../../shared/schemas'
-import type { EtiquetaResumo } from '../../shared/tipos'
 import { getFuncionamento } from './clinic'
 import { assertAgendaFree } from './busy'
 import { assertUnchanged } from './concurrency'
 import type { Db } from './connection'
 import { estornarFalta } from './finance'
-import {
-  assertTipoUsavel,
-  setAppointmentEtiquetas,
-  TIPO_COLUMNS,
-  TIPO_JOIN,
-  tipoPadrao
-} from './tipos'
+import { assertTipoUsavel, TIPO_COLUMNS, TIPO_JOIN, tipoPadrao } from './tipos'
 
 type AppointmentRow = Omit<
   Appointment,
-  'observacao' | 'presenca' | 'evolucao' | 'assinatura' | 'etiquetas' | 'pedido'
+  'observacao' | 'presenca' | 'evolucao' | 'assinatura' | 'pedido'
 > & {
-  etiquetas: string
   pedido: string | null
   observacao: string | null
   presenca: Appointment['presenca'] | null
@@ -40,10 +32,6 @@ const SELECT = `
          a.evolucao, a.confirmado_em, a.created_at, a.updated_at, p.nome AS patient_nome,
          s.id AS assinatura_id, s.signer_nome AS assinatura_nome,
          s.signer_parentesco AS assinatura_parentesco, s.assinado_em AS assinatura_em,
-         (SELECT json_group_array(json_object('id', g.id, 'nome', g.nome, 'cor', g.cor))
-            FROM (SELECT g.id, g.nome, g.cor FROM appointment_tags x
-                  JOIN appointment_types g ON g.id = x.tag_id
-                  WHERE x.appointment_id = a.id ORDER BY g.nome COLLATE NOCASE) g) AS etiquetas,
          (SELECT json_object('estado', r.estado, 'resposta', r.resposta, 'prazo', r.prazo)
             FROM confirmation_requests r
             WHERE r.appointment_id = a.id AND r.estado <> 'cancelado'
@@ -64,7 +52,6 @@ function fromRow(row: AppointmentRow): Appointment {
   } = row
   return {
     ...rest,
-    etiquetas: JSON.parse(row.etiquetas) as EtiquetaResumo[],
     pedido: pedidoNaSessao(
       row.pedido === null ? null : (JSON.parse(row.pedido) as RegistroDoPedido),
       row.confirmado_em
@@ -164,7 +151,6 @@ export function createAppointment(
       )
       .run({ ...toParams(input), tipo_id: tipoId })
     const id = Number(result.lastInsertRowid)
-    if (input.etiquetas) setAppointmentEtiquetas(db, id, input.etiquetas)
     if (input.inicio >= toIsoLocalDateTime(agora)) {
       db.prepare(
         `UPDATE waitlist_entries
@@ -226,14 +212,6 @@ export function updateAppointment(
         remarcou ? 'Sessão remarcada na agenda.' : 'Falta desfeita na agenda.',
         computador
       )
-    if (input.etiquetas) {
-      setAppointmentEtiquetas(
-        db,
-        id,
-        input.etiquetas,
-        current.etiquetas.map((e) => e.id)
-      )
-    }
     return getAppointment(db, id)
   })()
 }

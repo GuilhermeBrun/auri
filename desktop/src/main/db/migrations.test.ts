@@ -169,6 +169,92 @@ describe('compatibilidade do banco', () => {
     ])
   })
 
+  it('tira a categoria Marca: apaga as marcas das sessões e mantém o resto', () => {
+    const tem = (db: Database.Database, nome: string): boolean =>
+      db.prepare('SELECT 1 FROM sqlite_master WHERE name = ?').get(nome) !== undefined
+    const gatilhos = (db: Database.Database): string[] =>
+      (
+        db.prepare("SELECT name FROM sqlite_master WHERE type = 'trigger' ORDER BY name").all() as {
+          name: string
+        }[]
+      ).map((t) => t.name)
+    const probe = new Database(':memory:')
+    opened.push(probe)
+    probe.function('normalize_text', (v: unknown) => v)
+    let version = 0
+    while (!(tem(probe, 'appointment_types') && !tem(probe, 'appointment_tags'))) {
+      migrate(probe, ++version)
+    }
+
+    const db = new Database(':memory:')
+    opened.push(db)
+    db.function('normalize_text', (v: unknown) => v)
+    db.pragma('foreign_keys = ON')
+    migrate(db, version - 1)
+    db.exec(`
+      INSERT INTO patients (id, nome) VALUES (1, 'Ana Fictícia');
+      INSERT INTO appointment_types (id, nome, categoria, cor, duracao, arquivado_em) VALUES
+        (20, 'Convênio', 'marca', '#2563eb', NULL, NULL),
+        (21, 'Primeira vez', 'marca', '#db2777', NULL, '2026-02-01T00:00:00.000Z'),
+        (22, 'Audiometria', 'exame', '#7c3aed', 45, NULL);
+      INSERT INTO appointments (id, patient_id, inicio, fim, tipo_id) VALUES
+        (10, 1, '2026-10-19T09:00', '2026-10-19T09:30', 1),
+        (11, 1, '2026-10-20T09:00', '2026-10-20T09:45', 22);
+      INSERT INTO appointment_tags (appointment_id, tag_id) VALUES (10, 20), (10, 21), (11, 20);
+      INSERT INTO commitments (id, etiqueta_id, inicio, fim) VALUES
+        (30, 7, '2026-10-21T08:00', '2026-10-21T09:00');
+      INSERT INTO waitlist_entries (patient_id, tipo_id, duracao) VALUES (1, 2, 60);
+    `)
+    const antes = gatilhos(db)
+    migrate(db)
+
+    expect(
+      db.prepare('SELECT id, nome, categoria, duracao FROM appointment_types ORDER BY id').all()
+    ).toEqual([
+      { id: 1, nome: 'Sessão', categoria: 'sessao', duracao: 30 },
+      { id: 2, nome: 'Avaliação', categoria: 'avaliacao', duracao: 60 },
+      { id: 3, nome: 'Exame', categoria: 'exame', duracao: 60 },
+      { id: 4, nome: 'Palestra', categoria: 'compromisso', duracao: 60 },
+      { id: 5, nome: 'Curso', categoria: 'compromisso', duracao: 60 },
+      { id: 6, nome: 'Hospital', categoria: 'compromisso', duracao: 60 },
+      { id: 7, nome: 'Reunião', categoria: 'compromisso', duracao: 60 },
+      { id: 8, nome: 'Reserva', categoria: 'compromisso', duracao: 60 },
+      { id: 22, nome: 'Audiometria', categoria: 'exame', duracao: 45 }
+    ])
+    expect(tem(db, 'appointment_tags')).toBe(false)
+    expect(gatilhos(db)).toEqual(antes.filter((nome) => nome !== 'appointment_tags_marca'))
+    expect(db.prepare('SELECT id, tipo_id, categoria FROM appointments ORDER BY id').all()).toEqual(
+      [
+        { id: 10, tipo_id: 1, categoria: 'sessao' },
+        { id: 11, tipo_id: 22, categoria: 'exame' }
+      ]
+    )
+    expect(db.prepare('SELECT id, etiqueta_id FROM commitments').all()).toEqual([
+      { id: 30, etiqueta_id: 7 }
+    ])
+    expect(db.prepare('SELECT tipo_id FROM waitlist_entries').all()).toEqual([{ tipo_id: 2 }])
+
+    const inserir = db.prepare(
+      'INSERT INTO appointment_types (nome, categoria, cor, duracao) VALUES (?, ?, ?, ?)'
+    )
+    expect(() => inserir.run('Convênio', 'marca', '#2563eb', 30)).toThrow(/CHECK/)
+    expect(() => inserir.run('Triagem', 'exame', '#2563eb', null)).toThrow(/NOT NULL/)
+    expect(() => db.prepare('DELETE FROM appointment_types WHERE id = 3').run()).toThrow(/arquive/)
+    expect(() =>
+      db.prepare("UPDATE appointment_types SET categoria = 'compromisso' WHERE id = 1").run()
+    ).toThrow('está em uso')
+    expect(() =>
+      db
+        .prepare(
+          "INSERT INTO appointments (patient_id, inicio, fim, tipo_id) VALUES (1, '2026-10-22T09:00', '2026-10-22T09:30', 7)"
+        )
+        .run()
+    ).toThrow('Escolha uma etiqueta de sessão')
+    expect(db.pragma('foreign_keys', { simple: true })).toBe(1)
+    expect(db.pragma('foreign_key_check')).toEqual([])
+    expect(db.pragma('integrity_check', { simple: true })).toBe('ok')
+  })
+
   it('recusa versão futura sem modificar o arquivo', () => {
     const file = join(dir, 'futuro.db')
     const db = new Database(file)

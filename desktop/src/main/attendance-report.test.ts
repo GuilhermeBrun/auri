@@ -46,7 +46,6 @@ function session(
     tipo_nome: 'Sessão',
     tipo_cor: 'grafite',
     categoria: 'sessao',
-    etiquetas: [],
     presenca,
     evolucao: '',
     confirmado_em: null,

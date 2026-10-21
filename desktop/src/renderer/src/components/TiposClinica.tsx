@@ -23,8 +23,7 @@ const GRUPOS: Record<CategoriaEtiqueta, string> = {
   sessao: 'Sessões',
   avaliacao: 'Avaliações',
   exame: 'Exames',
-  compromisso: 'Compromissos',
-  marca: 'Marcas'
+  compromisso: 'Compromissos'
 }
 
 function Linha({
@@ -34,7 +33,7 @@ function Linha({
   item: TipoAtendimento
   onEdit: (item: TipoAtendimento) => void
 }): React.JSX.Element {
-  const detalhe = [item.arquivado ? 'Arquivada' : '', item.duracao ? `${item.duracao} min` : '']
+  const detalhe = [item.arquivado ? 'Arquivada' : '', `${item.duracao} min`]
     .filter(Boolean)
     .join(' · ')
   return (
@@ -54,7 +53,7 @@ function Linha({
         >
           {item.nome}
         </span>
-        {detalhe && <span className="text-xs text-ink-soft tabular-nums">{detalhe}</span>}
+        <span className="text-xs text-ink-soft tabular-nums">{detalhe}</span>
         <ChevronRight className="size-4 text-ink-faint" aria-hidden />
       </button>
     </li>
@@ -125,8 +124,8 @@ function EtiquetaForm({
   const ids = useId()
   const toast = useToast()
   const [nome, setNome] = useState(etiqueta?.nome ?? '')
-  const [categoria, setCategoria] = useState<CategoriaEtiqueta>(etiqueta?.categoria ?? 'marca')
-  const [cor, setCor] = useState(etiqueta?.cor ?? COR_PADRAO.marca)
+  const [categoria, setCategoria] = useState<CategoriaEtiqueta>(etiqueta?.categoria ?? 'sessao')
+  const [cor, setCor] = useState(etiqueta?.cor ?? COR_PADRAO.sessao)
   const [corEscolhida, setCorEscolhida] = useState(etiqueta !== null)
   const [duracao, setDuracao] = useState(etiqueta?.duracao ?? 60)
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -153,12 +152,7 @@ function EtiquetaForm({
       onSubmit={(e) => {
         e.preventDefault()
         e.stopPropagation()
-        const parsed = tipoInputSchema.safeParse({
-          nome,
-          categoria,
-          cor,
-          duracao: categoria === 'marca' ? null : duracao
-        })
+        const parsed = tipoInputSchema.safeParse({ nome, categoria, cor, duracao })
         if (!parsed.success) return setErrors(issues(parsed.error))
         setErrors({})
         save.mutate(parsed.data)
@@ -171,7 +165,7 @@ function EtiquetaForm({
             value={nome}
             onChange={(e) => setNome(e.target.value)}
             aria-invalid={Boolean(errors.nome) || undefined}
-            placeholder="Convênio"
+            placeholder="Audiometria"
             autoFocus
           />
         </Field>
@@ -199,16 +193,14 @@ function EtiquetaForm({
               />
             )}
           </Field>
-          {categoria !== 'marca' && (
-            <Field label="Duração padrão" htmlFor={`${ids}-duracao`} className="w-36">
-              <Select
-                id={`${ids}-duracao`}
-                value={String(duracao)}
-                onValueChange={(v) => setDuracao(Number(v))}
-                options={duracoes.map((d) => ({ value: String(d), label: `${d} min` }))}
-              />
-            </Field>
-          )}
+          <Field label="Duração padrão" htmlFor={`${ids}-duracao`} className="w-36">
+            <Select
+              id={`${ids}-duracao`}
+              value={String(duracao)}
+              onValueChange={(v) => setDuracao(Number(v))}
+              options={duracoes.map((d) => ({ value: String(d), label: `${d} min` }))}
+            />
+          </Field>
         </div>
         <div className="flex flex-col gap-1.5">
           <span aria-hidden="true" className="text-xs font-medium text-ink">

@@ -50,7 +50,6 @@ function sessao(inicio: string, extra: Partial<Appointment> = {}): Appointment {
     tipo_nome: 'Sessão',
     tipo_cor: 'grafite',
     categoria: 'sessao',
-    etiquetas: [],
     presenca: '',
     evolucao: 'Treino de /r/.',
     assinatura: null,
