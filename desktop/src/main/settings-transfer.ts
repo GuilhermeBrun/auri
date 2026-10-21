@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { resumoFuncionamento } from '../shared/agenda'
 import { colorsLabel, sameColors, TEXT_SIZE_LABELS } from '../shared/aparencia'
 import type { SettingsChange } from '../shared/api'
+import { describeSidebar } from '../shared/sidebar'
 import {
   CATEGORIA_LABELS,
   COR_ANTIGA,
@@ -11,6 +12,7 @@ import {
 } from '../shared/tipos'
 import {
   clinicInputSchema,
+  sidebarItemsSchema,
   termModelInputSchema,
   textSizeSchema,
   themeColorsSchema,
@@ -56,6 +58,7 @@ const settingsFileSchema = z.object({
     .object({
       theme: themeSchema,
       sidebarOpen: z.boolean(),
+      sidebarItems: sidebarItemsSchema,
       textSize: textSizeSchema,
       colors: themeColorsSchema
     })
@@ -201,6 +204,12 @@ export function describeChanges(current: SettingsSnapshot, file: SettingsFile): 
   add('Tema', a.theme, file.appearance.theme, (v) => THEME[v])
   add('Barra lateral', a.sidebarOpen, file.appearance.sidebarOpen, (v) =>
     v ? 'Aberta' : 'Recolhida'
+  )
+  add(
+    'Itens da barra lateral',
+    describeSidebar(a.sidebarItems),
+    file.appearance.sidebarItems && describeSidebar(file.appearance.sidebarItems),
+    (v) => v
   )
   add('Tamanho do texto', a.textSize, file.appearance.textSize, (v) => TEXT_SIZE_LABELS[v])
   const colors = file.appearance.colors

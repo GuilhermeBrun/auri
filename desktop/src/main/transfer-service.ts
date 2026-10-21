@@ -65,6 +65,7 @@ export function createTransferService(options: {
       appearance: {
         theme: options.prefs.get().theme,
         sidebarOpen: options.prefs.get().sidebarOpen,
+        sidebarItems: options.prefs.get().sidebarItems,
         textSize: options.prefs.get().textSize,
         colors: options.prefs.get().colors
       },

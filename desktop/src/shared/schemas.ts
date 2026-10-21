@@ -342,8 +342,14 @@ export const themeColorsSchema = z.object({
     .default({ light: {}, dark: {} })
 })
 
+export const sidebarItemsSchema = z.object({
+  order: z.array(z.string().max(40)).max(20),
+  hidden: z.array(z.string().max(40)).max(20)
+})
+
 export const uiPrefsSchema = z.object({
   sidebarOpen: z.boolean(),
+  sidebarItems: sidebarItemsSchema,
   theme: themeSchema,
   whatsapp: z.boolean(),
   recepcao: z.boolean(),
