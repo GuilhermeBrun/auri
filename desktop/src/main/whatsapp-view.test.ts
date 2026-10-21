@@ -13,6 +13,11 @@ type Listener = (...args: unknown[]) => void
 const mocks = vi.hoisted(() => {
   const views: FakeView[] = []
   const openExternal = vi.fn()
+  const clipboardText = { value: '' }
+  const writeText = vi.fn((text: string) => {
+    clipboardText.value = text
+    return Promise.resolve()
+  })
   const running: Record<number, { renderProcessId: number }> = {}
   const kill = vi.fn()
   const fakeSession = {
@@ -31,6 +36,8 @@ const mocks = vi.hoisted(() => {
     closed = false
     webContents = {
       loadURL: vi.fn(() => Promise.resolve()),
+      executeJavaScript: vi.fn(() => Promise.resolve(true)),
+      paste: vi.fn(),
       focus: vi.fn(),
       close: vi.fn(() => {
         this.closed = true
@@ -56,7 +63,7 @@ const mocks = vi.hoisted(() => {
       this.bounds = bounds
     }
   }
-  return { views, openExternal, fakeSession, FakeView, running, kill }
+  return { views, openExternal, writeText, clipboardText, fakeSession, FakeView, running, kill }
 })
 
 vi.mock('electron', () => ({
@@ -70,7 +77,11 @@ vi.mock('electron', () => ({
   webContents: { getAllWebContents: () => [{ getOSProcessId: () => 11 }] },
   WebContentsView: mocks.FakeView,
   session: { fromPartition: vi.fn(() => mocks.fakeSession) },
-  shell: { openExternal: mocks.openExternal }
+  shell: { openExternal: mocks.openExternal },
+  clipboard: {
+    writeText: mocks.writeText,
+    readText: () => Promise.resolve(mocks.clipboardText.value)
+  }
 }))
 
 const zoom = { value: 1 }
@@ -115,10 +126,8 @@ beforeEach(() => {
 })
 
 describe('WhatsApp dentro do Auri', () => {
-  it('monta a conversa no WhatsApp Web com o texto codificado', () => {
-    expect(whatsAppUrl('5565900000000', 'Olá, Ana & cia?\nSessão #2')).toBe(
-      'https://web.whatsapp.com/send?phone=5565900000000&text=Ol%C3%A1%2C%20Ana%20%26%20cia%3F%0ASess%C3%A3o%20%232'
-    )
+  it('abre a conversa no WhatsApp Web só com o número, sem a mensagem na URL', () => {
+    expect(whatsAppUrl('5565900000000')).toBe('https://web.whatsapp.com/send?phone=5565900000000')
   })
 
   it('aceita só páginas https de web.whatsapp.com', () => {
@@ -166,7 +175,7 @@ describe('WhatsApp dentro do Auri', () => {
     expect(view.webContents.loadURL).toHaveBeenCalledWith('https://web.whatsapp.com/')
   })
 
-  it('mostra na área da tela, esconde ao sair e reaproveita a mesma vista na conversa', () => {
+  it('mostra na área da tela, esconde ao sair e reaproveita a mesma vista na conversa', async () => {
     const { whatsapp, main, onOpen } = setup()
     main.loaded()
     const [view] = mocks.views
@@ -177,8 +186,72 @@ describe('WhatsApp dentro do Auri', () => {
     expect(view.visible).toBe(false)
     expect(whatsapp.open('5565900000000', 'Oi')).toBe(true)
     expect(mocks.views).toHaveLength(1)
-    expect(view.webContents.loadURL).toHaveBeenLastCalledWith(whatsAppUrl('5565900000000', 'Oi'))
     expect(onOpen).toHaveBeenCalled()
+    await vi.waitFor(() =>
+      expect(view.webContents.loadURL).toHaveBeenLastCalledWith(
+        'https://web.whatsapp.com/send?phone=5565900000000'
+      )
+    )
+  })
+
+  it('a mensagem vai pela área de transferência e é colada quando o campo da conversa aparece', async () => {
+    vi.useFakeTimers()
+    try {
+      const { whatsapp, main } = setup()
+      main.loaded()
+      const [view] = mocks.views
+      const message =
+        'Olá, Maria! "Termo", de Ana.\nhttps://auri.dev.br/assinar#k8Zt3mN2pL5vB7xC9dF1gQ'
+      view.webContents.executeJavaScript
+        .mockResolvedValueOnce(false)
+        .mockResolvedValueOnce(false)
+        .mockResolvedValueOnce(true)
+      whatsapp.open('5565900000000', message)
+      expect(mocks.writeText).toHaveBeenCalledExactlyOnceWith(message)
+      await vi.advanceTimersByTimeAsync(0)
+      expect(view.webContents.loadURL).toHaveBeenLastCalledWith(
+        'https://web.whatsapp.com/send?phone=5565900000000'
+      )
+      expect(JSON.stringify(view.webContents.loadURL.mock.calls)).not.toMatch(/k8Zt|Maria|text=/)
+      expect(view.webContents.paste).not.toHaveBeenCalled()
+      await vi.advanceTimersByTimeAsync(1000)
+      expect(view.webContents.executeJavaScript).toHaveBeenCalledTimes(3)
+      expect(JSON.stringify(view.webContents.executeJavaScript.mock.calls)).not.toContain('k8Zt')
+      expect(view.webContents.paste).toHaveBeenCalledTimes(1)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('não cola a mensagem antiga se outra conversa foi aberta, e desiste se o campo não aparece', async () => {
+    vi.useFakeTimers()
+    try {
+      const { whatsapp, main } = setup()
+      main.loaded()
+      const [view] = mocks.views
+      view.webContents.executeJavaScript.mockResolvedValue(false)
+      whatsapp.open('5565900000000', 'Primeira')
+      await vi.advanceTimersByTimeAsync(500)
+      whatsapp.open('5565911111111', 'Segunda')
+      view.webContents.executeJavaScript.mockResolvedValue(true)
+      await vi.advanceTimersByTimeAsync(0)
+      expect(view.webContents.paste).toHaveBeenCalledTimes(1)
+      await vi.advanceTimersByTimeAsync(5000)
+      expect(view.webContents.paste).toHaveBeenCalledTimes(1)
+      view.webContents.executeJavaScript.mockClear()
+      view.webContents.executeJavaScript.mockResolvedValue(false)
+      whatsapp.open('5565900000000', 'Terceira')
+      await vi.advanceTimersByTimeAsync(60_000)
+      expect(view.webContents.executeJavaScript).toHaveBeenCalledTimes(60)
+      expect(view.webContents.paste).toHaveBeenCalledTimes(1)
+      whatsapp.open('5565900000000', 'Quarta')
+      mocks.clipboardText.value = 'outra coisa que a pessoa copiou'
+      view.webContents.executeJavaScript.mockResolvedValue(true)
+      await vi.advanceTimersByTimeAsync(1000)
+      expect(view.webContents.paste).toHaveBeenCalledTimes(1)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('acompanha o zoom do texto maior', () => {

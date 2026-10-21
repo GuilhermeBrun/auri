@@ -311,11 +311,17 @@ aceita pede uma versão nova, para um termo antigo continuar igual no PDF.
 ### Abrir o WhatsApp
 
 - No computador, `whatsapp://send?phone=…&text=…` quando o WhatsApp Desktop está instalado
-  (`app.getApplicationNameForProtocol`); senão `https://wa.me/<número>?text=…`, que leva ao
-  WhatsApp Web.
-- Por quê: pelo `wa.me`, o texto da mensagem (o link de ida, com a chave) vai como parâmetro numa
-  requisição ao site do WhatsApp; o `whatsapp://` entrega direto ao app. Na volta tanto faz, porque
-  o link não leva a chave.
+  (`app.getApplicationNameForProtocol`): o texto vai direto ao app, sem passar por site nenhum.
+- Com o WhatsApp dentro do Auri, ou sem o app instalado, a conversa abre em
+  `https://web.whatsapp.com/send?phone=<número>`, **sem `text=`**. A mensagem vai para a área de
+  transferência; dentro do Auri, ela é colada sozinha quando o campo da conversa aparece vazio
+  (até 30 s). Se não aparecer, o aviso pede para colar.
+- Por quê (21/10): com `text=` no `web.whatsapp.com` ou no `wa.me`, a mensagem inteira (nome do
+  responsável e do paciente, o título do termo e o link de ida, com o código depois do `#` codificado como
+  `%23`) ia como parâmetro na requisição ao site do WhatsApp, fora da cifra de ponta a ponta das
+  conversas, e no `wa.me` ainda ficava no histórico do navegador. Com o código, quem tem os logs
+  busca o termo cifrado no `auri.dev.br` e lê. O número fica na URL: o WhatsApp já o recebe ao
+  entregar a mensagem. Na volta tanto faz, porque o link não leva a chave.
 - No celular, "Enviar pelo WhatsApp" é um link `https://wa.me/…`: com o WhatsApp instalado, o
   sistema abre o app direto (link universal no iPhone, App Link no Android).
 

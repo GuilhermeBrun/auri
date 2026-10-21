@@ -9,14 +9,17 @@ import type { UpdateService } from './updates'
 import { trustRenderer } from './ipc-security'
 import { registerIpc } from './ipc'
 
-const { handlers, listeners } = vi.hoisted(() => ({
+const { handlers, listeners, protocolName, openExternal, writeText } = vi.hoisted(() => ({
   handlers: new Map<string, (event: IpcMainInvokeEvent, ...args: unknown[]) => unknown>(),
-  listeners: new Map<string, (event: IpcMainEvent, ...args: unknown[]) => unknown>()
+  listeners: new Map<string, (event: IpcMainEvent, ...args: unknown[]) => unknown>(),
+  protocolName: vi.fn(() => ''),
+  openExternal: vi.fn(),
+  writeText: vi.fn()
 }))
 vi.mock('electron', () => ({
-  app: { getApplicationNameForProtocol: () => '' },
-  shell: { openExternal: vi.fn() },
-  clipboard: { writeText: vi.fn() },
+  app: { getApplicationNameForProtocol: protocolName },
+  shell: { openExternal },
+  clipboard: { writeText },
   ipcMain: {
     handle: (name: string, fn: (event: IpcMainInvokeEvent, ...args: unknown[]) => unknown) =>
       handlers.set(name, fn),
@@ -138,7 +141,7 @@ describe('handlers IPC', () => {
     trustRenderer(sender, mainFrame.url)
     const event = { sender, senderFrame: mainFrame } as IpcMainInvokeEvent
     const open = handlers.get('terms:openWhatsApp')!
-    expect(await open(event, '5565900000000', 'Olá')).toEqual({ ok: true, data: undefined })
+    expect(await open(event, '5565900000000', 'Olá')).toEqual({ ok: true, data: 'copiada' })
     expect(openWhatsApp).toHaveBeenCalledExactlyOnceWith('5565900000000', 'Olá')
     for (const [numero, texto] of [
       ['65 90000-0000', 'Olá'],
@@ -148,5 +151,31 @@ describe('handlers IPC', () => {
     ])
       expect(await open(event, numero, texto)).toMatchObject({ ok: false })
     expect(openWhatsApp).toHaveBeenCalledTimes(1)
+  })
+  it('fora do Auri, só o app do WhatsApp recebe o texto; o site recebe só o número', async () => {
+    const mainFrame = { url: 'file:///auri/out/renderer/index.html' }
+    const sender = {
+      id: 302,
+      mainFrame,
+      isDestroyed: () => false,
+      once: () => undefined
+    } as unknown as WebContents
+    trustRenderer(sender, mainFrame.url)
+    const event = { sender, senderFrame: mainFrame } as IpcMainInvokeEvent
+    const open = handlers.get('terms:openWhatsApp')!
+    const message = 'Olá, Maria!\nhttps://auri.dev.br/assinar#k8Zt3mN2pL5vB7xC9dF1gQ'
+    openWhatsApp.mockReturnValue(false)
+    protocolName.mockReturnValueOnce('WhatsApp')
+    expect(await open(event, '5565900000000', message)).toEqual({ ok: true, data: 'pronta' })
+    expect(openExternal).toHaveBeenLastCalledWith(
+      `whatsapp://send?phone=5565900000000&text=${encodeURIComponent(message)}`
+    )
+    expect(writeText).not.toHaveBeenCalled()
+    expect(await open(event, '5565900000000', message)).toEqual({ ok: true, data: 'copiada' })
+    expect(writeText).toHaveBeenCalledExactlyOnceWith(message)
+    expect(openExternal).toHaveBeenLastCalledWith(
+      'https://web.whatsapp.com/send?phone=5565900000000'
+    )
+    openWhatsApp.mockReturnValue(true)
   })
 })

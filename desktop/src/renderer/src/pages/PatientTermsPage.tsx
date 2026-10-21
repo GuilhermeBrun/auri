@@ -17,6 +17,7 @@ import { patientQuery, patientTermsQuery, termModelsQuery } from '@renderer/lib/
 import { openReceive, signedLocal } from '@renderer/lib/terms'
 import { useReception } from '@renderer/lib/reception'
 import { useToast } from '@renderer/lib/toast'
+import { COLAR_NO_WHATSAPP } from '@renderer/lib/whatsapp'
 import { cn } from '@renderer/lib/utils'
 
 export function PatientTermsRoute(): React.JSX.Element {
@@ -167,12 +168,15 @@ function TermRow({ row, onSend }: { row: Linha; onSend: () => void }): React.JSX
   const resend = useMutation({
     mutationFn: async (via: 'whatsapp' | 'copiar') => {
       const link = await window.api.terms.link(atual!.id)
-      if (via === 'whatsapp') await window.api.terms.openWhatsApp(link.numero, link.mensagem)
-      else await navigator.clipboard.writeText(link.mensagem)
-      return via
+      if (via === 'copiar') {
+        await navigator.clipboard.writeText(link.mensagem)
+        return via
+      }
+      return window.api.terms.openWhatsApp(link.numero, link.mensagem)
     },
     onSuccess: (via) => {
       if (via === 'copiar') toast({ title: 'Mensagem copiada' })
+      if (via === 'copiada') toast({ title: 'Confira o WhatsApp', description: COLAR_NO_WHATSAPP })
     }
   })
   const cancel = useMutation({ mutationFn: () => window.api.terms.cancel(atual!.id) })

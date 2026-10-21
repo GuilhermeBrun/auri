@@ -3,6 +3,8 @@ import { prefsField, usePrefsField } from '@renderer/lib/prefs-field'
 
 const whatsapp = prefsField('whatsapp')
 
+export const COLAR_NO_WHATSAPP = 'Se a mensagem não aparecer na conversa, cole: ela está copiada.'
+
 export function useWhatsAppEnabled(): boolean {
   return usePrefsField(whatsapp)
 }
