@@ -12,6 +12,7 @@ import {
   Settings,
   SlidersHorizontal,
   SunMoon,
+  Undo,
   Users,
   Wallet,
   WindowLogo
@@ -127,12 +128,14 @@ export function Window({
   settings = false,
   trail,
   tools,
+  overlay,
   children
 }: {
   active: string
   settings?: boolean
   trail: string[]
   tools?: ReactNode
+  overlay?: ReactNode
   children: ReactNode
 }) {
   const items = settings ? SETTINGS : MAIN
@@ -194,11 +197,22 @@ export function Window({
         </div>
         <div className="sc-body">{children}</div>
       </div>
+      {overlay}
     </div>
   )
 }
 
-export function Toast({ show, title, text }: { show: boolean; title: string; text?: string }) {
+export function Toast({
+  show,
+  title,
+  text,
+  action
+}: {
+  show: boolean
+  title: string
+  text?: string
+  action?: string
+}) {
   return (
     <div className={`toast sc-toast${show ? ' show' : ''}`}>
       <span className="toast-icon">
@@ -208,6 +222,12 @@ export function Toast({ show, title, text }: { show: boolean; title: string; tex
         <b>{title}</b>
         {text && <span>{text}</span>}
       </span>
+      {action && (
+        <span className="toast-action">
+          <Undo />
+          {action}
+        </span>
+      )}
     </div>
   )
 }

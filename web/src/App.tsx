@@ -13,7 +13,7 @@ const FEATURES: { scene: keyof typeof SCENES; title: string; text: string }[] = 
   {
     scene: 'agenda',
     title: 'Agenda da clínica',
-    text: 'Dia, semana ou mês, só nos dias e horários em que a clínica atende. Cada etiqueta tem a sua cor, e um clique num horário livre agenda a sessão.'
+    text: 'Dia, semana ou mês, só nos dias e horários em que a clínica atende. Cada etiqueta tem a sua cor, um clique num horário livre agenda a sessão e, para remarcar, é só arrastar.'
   },
   {
     scene: 'confirmacao',

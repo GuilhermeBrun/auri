@@ -5,6 +5,7 @@ import {
   closesAt,
   dateOf,
   FIRST,
+  isBlock,
   isClosed,
   KINDS,
   LENGTH,
@@ -27,6 +28,7 @@ import {
 const vars = (values: Record<string, number>) => values as CSSProperties
 
 export type Slot = { day: number; start: number }
+export type Drag = { id: number; day: number | null; start: number; refused: boolean }
 
 const MARKS: Record<Mark, { label: string; icon: typeof PenLine }> = {
   signed: { label: 'Chegada assinada', icon: PenLine },
@@ -44,29 +46,44 @@ function MarkIcon({ mark }: { mark?: Mark }) {
   )
 }
 
-type GridProps = { state: State; store: Store; enter: Enter; ghost: Slot | null }
+type GridProps = {
+  state: State
+  store: Store
+  enter: Enter
+  ghost: Slot | null
+  drag: Drag | null
+}
 
 function Event({
   session,
   state,
   enter,
   index,
+  origin = false,
   month = false
 }: {
   session: Session
   state: State
   enter: Enter
   index: number
+  origin?: boolean
   month?: boolean
 }) {
   const classes = ['ev']
+  const block = isBlock(session.kind)
+  if (block) classes.push('ev-block')
+  if (origin) classes.push('origin')
   if (session.id === state.selected) classes.push('selected')
   if (session.id === state.arrived) classes.push('arrived')
   if (enter === 'all') classes.push('enter')
   if (enter === session.id) classes.push('enter', 'arrived')
   classes.push(`ev-${session.kind}`)
-  const name = state.mode === 'day' ? session.name : shortName(session.name)
-  const title = `${range(session)} · ${session.name}`
+  const name = block
+    ? `${KINDS[session.kind]} · ${session.name}`
+    : state.mode === 'day'
+      ? session.name
+      : shortName(session.name)
+  const title = `${range(session)} · ${block ? name : session.name}`
   if (month) {
     classes.push('ev-month')
     return (
@@ -78,8 +95,8 @@ function Event({
         style={vars({ '--d': index })}
       >
         <span className="ev-start">{clock(session.start)}</span>
-        {name}
-        <span className="ev-kind">{` · ${KINDS[session.kind]}`}</span>
+        {block ? KINDS[session.kind] : name}
+        <span className="ev-kind">{` · ${block ? session.name : KINDS[session.kind]}`}</span>
       </button>
     )
   }
@@ -92,15 +109,25 @@ function Event({
       style={vars({ '--top': session.start - FIRST, '--len': session.len, '--d': index })}
     >
       <span className="ev-name">
-        <span className="ev-name-text">{name}</span>
+        {block ? (
+          <span className="ev-name-text">
+            {KINDS[session.kind]}
+            <span className="ev-kind">{` · ${session.name}`}</span>
+          </span>
+        ) : (
+          <span className="ev-name-text">{name}</span>
+        )}
         <MarkIcon mark={session.mark} />
       </span>
-      <span className="ev-time">{`${KINDS[session.kind]} · ${range(session)}`}</span>
+      <span className="ev-time">
+        {block ? range(session) : `${KINDS[session.kind]} · ${range(session)}`}
+      </span>
     </button>
   )
 }
 
-function WeekGrid({ state, store, enter, ghost }: GridProps) {
+function WeekGrid({ state, store, enter, ghost, drag }: GridProps) {
+  const moving = drag ? store.find(drag.id) : null
   const days =
     state.mode === 'day'
       ? [state.focus]
@@ -156,9 +183,17 @@ function WeekGrid({ state, store, enter, ghost }: GridProps) {
                   state={state}
                   enter={enter}
                   index={index++}
+                  origin={session.id === drag?.id}
                 />
               ))}
               {day === TODAY && <div className="now" style={vars({ '--top': NOW - FIRST })} />}
+              {moving && drag?.day === day && (
+                <div
+                  className={`drop ev-${moving.kind}${drag.refused ? ' refused' : ''}`}
+                  aria-hidden="true"
+                  style={vars({ '--top': drag.start - FIRST, '--len': moving.len })}
+                />
+              )}
               {ghost?.day === day && (
                 <div
                   className="ghost"

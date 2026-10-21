@@ -49,8 +49,11 @@
   --media-from: #cdcdd8;
   --media-to: #ececf1;
   --media-glow: rgba(255, 255, 255, 0.7);
-  --tipo-grafite: #9a9aa8;
-  --tipo-azul: #4a6ea8;
+  --tipo-sessao: #6b7280;
+  --tipo-avaliacao: #2563eb;
+  --tipo-exame: #7c3aed;
+  --tipo-reuniao: #0d9488;
+  --app-tinta: 22%;
   --app-surface: #ffffff;
   --app-sidebar: #f4f4f7;
   --app-solid: #1b1b22;
@@ -109,8 +112,7 @@
     --media-from: #2a2a33;
     --media-to: #141418;
     --media-glow: rgba(190, 190, 220, 0.12);
-    --tipo-grafite: #6c6c7a;
-    --tipo-azul: #7f9fd6;
+    --app-tinta: 30%;
     --app-surface: #17171c;
     --app-sidebar: #101014;
     --app-solid: #42424d;
@@ -164,8 +166,7 @@
   --media-from: #2a2a33;
   --media-to: #141418;
   --media-glow: rgba(190, 190, 220, 0.12);
-  --tipo-grafite: #6c6c7a;
-  --tipo-azul: #7f9fd6;
+  --app-tinta: 30%;
   --app-surface: #17171c;
   --app-sidebar: #101014;
   --app-solid: #42424d;

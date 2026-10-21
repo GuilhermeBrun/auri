@@ -430,6 +430,85 @@ export function Check() {
     </Svg>
   )
 }
+export function ListPlus() {
+  return (
+    <Svg>
+      <>
+        <path d="M11 12H3" />
+        <path d="M16 6H3" />
+        <path d="M16 18H3" />
+        <path d="M18 9v6" />
+        <path d="M21 12h-6" />
+      </>
+    </Svg>
+  )
+}
+export function Pencil() {
+  return (
+    <Svg>
+      <>
+        <path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" />
+        <path d="m15 5 4 4" />
+      </>
+    </Svg>
+  )
+}
+export function Printer() {
+  return (
+    <Svg>
+      <>
+        <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+        <path d="M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6" />
+        <rect x="6" y="14" width="12" height="8" rx="1" />
+      </>
+    </Svg>
+  )
+}
+export function FileText() {
+  return (
+    <Svg>
+      <>
+        <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />
+        <path d="M14 2v4a2 2 0 0 0 2 2h4" />
+        <path d="M10 9H8" />
+        <path d="M16 13H8" />
+        <path d="M16 17H8" />
+      </>
+    </Svg>
+  )
+}
+export function Eraser() {
+  return (
+    <Svg>
+      <>
+        <path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21" />
+        <path d="M22 21H7" />
+        <path d="m5 11 9 9" />
+      </>
+    </Svg>
+  )
+}
+export function Undo() {
+  return (
+    <Svg>
+      <>
+        <path d="M9 14 4 9l5-5" />
+        <path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11" />
+      </>
+    </Svg>
+  )
+}
+export function CircleAlert() {
+  return (
+    <Svg>
+      <>
+        <circle cx="12" cy="12" r="10" />
+        <path d="M12 8v4" />
+        <path d="M12 16h.01" />
+      </>
+    </Svg>
+  )
+}
 export function Trash() {
   return (
     <Svg>
