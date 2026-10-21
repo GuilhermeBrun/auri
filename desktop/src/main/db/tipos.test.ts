@@ -1,15 +1,18 @@
 import Database from 'better-sqlite3'
 import { beforeEach, describe, expect, it } from 'vite-plus/test'
+import { paraBase64url } from '../../../../web/contrato/assinatura/base64url'
+import { codificar } from '../../../../web/contrato/assinatura/traco'
 import { emptyPatientInput } from '../../shared/schemas'
 import { tipoInputSchema } from '../../shared/tipos'
 import { createAppointment, getAppointment, updateAppointment } from './appointments'
-import { createCommitment } from './commitments'
+import { signArrival } from './attendance'
+import { createCommitment, getCommitment } from './commitments'
 import { openDatabase, type Db } from './connection'
 import { lancarSessao, saveService, setBilling } from './finance'
 import { migrate, SCHEMA_VERSION } from './migrations'
 import { createPatient } from './patients'
-import { archiveTipo, listTipos, saveTipo } from './tipos'
-import { addToWaitlist, listWaitlist } from './waitlist'
+import { listTipos, removeTipo, saveTipo, usoDoTipo } from './tipos'
+import { addToWaitlist, closeWaitlist, listWaitlist } from './waitlist'
 
 let db: Db
 let patientId: number
@@ -333,32 +336,10 @@ describe('etiquetas principais', () => {
     ).toThrow('Escolha uma etiqueta de sessão')
   })
 
-  it('recusa nome repetido em qualquer categoria e arquivar a última principal', () => {
+  it('recusa nome repetido em qualquer categoria', () => {
     expect(() =>
       saveTipo(db, null, { nome: ' reunião ', categoria: 'sessao', cor: '#2563eb', duracao: 30 })
     ).toThrow('Já existe uma etiqueta chamada')
-    expect(() => db.prepare('DELETE FROM appointment_types WHERE id = 3').run()).toThrow(/arquive/)
-    archiveTipo(db, 2, true)
-    archiveTipo(db, 3, true)
-    expect(() => archiveTipo(db, 1, true)).toThrow('pelo menos uma etiqueta de sessão')
-    for (const nome of ['Palestra', 'Curso', 'Hospital', 'Reunião']) archiveTipo(db, id(nome), true)
-    expect(() => archiveTipo(db, id('Reserva'), true)).toThrow('etiqueta de compromisso')
-  })
-
-  it('etiqueta arquivada sai das escolhas, mas os agendamentos antigos continuam com ela', () => {
-    const a = createAppointment(db, {
-      ...at('2026-10-19T09:00', '2026-10-19T10:00'),
-      tipo_id: 2
-    })
-    archiveTipo(db, 2, true)
-    expect(listTipos(db).at(-1)).toMatchObject({ id: 2, arquivado: true })
-    expect(() =>
-      createAppointment(db, { ...at('2026-10-20T09:00', '2026-10-20T10:00'), tipo_id: 2 })
-    ).toThrow('foi arquivada')
-    expect(updateAppointment(db, a.id, { ...at(a.inicio, a.fim), tipo_id: 2 }).tipo_nome).toBe(
-      'Avaliação'
-    )
-    expect(archiveTipo(db, 2, false).arquivado).toBe(false)
   })
 
   it('a lista de espera guarda a etiqueta', () => {
@@ -486,5 +467,131 @@ describe('cor', () => {
         )
         .run()
     ).toThrow(/CHECK/)
+  })
+})
+
+describe('excluir etiqueta', () => {
+  const AGORA = new Date(2026, 9, 20, 12, 0)
+  const TRACO = paraBase64url(
+    codificar([
+      [
+        [100, 200],
+        [300, 120],
+        [500, 260]
+      ]
+    ])
+  )
+
+  it('sem uso, exclui; recusa a Reserva e a última de sessão, avaliação ou exame', () => {
+    expect(usoDoTipo(db, 3)).toEqual({ agendamentos: 0, compromissos: 0, espera: 0 })
+    removeTipo(db, 3, null)
+    removeTipo(db, 2, null)
+    expect(() => removeTipo(db, 1, null)).toThrow(
+      'Deixe pelo menos uma etiqueta de sessão, avaliação ou exame.'
+    )
+    expect(() => removeTipo(db, id('Reserva'), null)).toThrow('A Reserva não pode ser excluída.')
+    for (const nome of ['Palestra', 'Curso', 'Hospital', 'Reunião']) removeTipo(db, id(nome), null)
+    expect(listTipos(db).map((t) => t.nome)).toEqual(['Sessão', 'Reserva'])
+    expect(() =>
+      db.prepare("DELETE FROM appointment_types WHERE sistema = 'reserva'").run()
+    ).toThrow('A Reserva não pode ser excluída.')
+    expect(
+      saveTipo(db, null, { nome: 'Exame', categoria: 'exame', cor: '#7c3aed', duracao: 60 }).nome
+    ).toBe('Exame')
+  })
+
+  it('em uso, passa agendamentos e lista de espera para outra do grupo, numa transação', () => {
+    const servico = saveService(db, null, { nome: 'Exame', valor_centavos: 19000 }).id
+    setBilling(db, patientId, {
+      forma: 'particular',
+      service_id: servico,
+      insurer_id: null,
+      carteirinha: '',
+      desde: '2026-10-01'
+    })
+    const audiometria = saveTipo(db, null, {
+      nome: 'Audiometria',
+      categoria: 'exame',
+      cor: '#7c3aed',
+      duracao: 45
+    })
+    const com = (inicio: string, fim: string) =>
+      createAppointment(db, { ...at(inicio, fim), tipo_id: audiometria.id })
+    const lancada = com('2026-10-19T09:00', '2026-10-19T09:45')
+    db.prepare("UPDATE appointments SET presenca = 'presente' WHERE id = ?").run(lancada.id)
+    lancarSessao(db, lancada.id, 'Recepção')
+    const assinada = com('2026-10-20T09:00', '2026-10-20T09:45')
+    signArrival(
+      db,
+      assinada.id,
+      { signer_nome: 'Mãe Fictícia', signer_papel: 'mae', signer_parentesco: 'Mãe', traco: TRACO },
+      'Recepção',
+      new Date(2026, 9, 20, 8, 55)
+    )
+    const futura = com('2026-10-22T09:00', '2026-10-22T09:45')
+    const outro = createPatient(db, { ...emptyPatientInput(), nome: 'Outro Fictício' }).id
+    addToWaitlist(db, { patient_id: outro, duracao: 45, tipo_id: audiometria.id })
+
+    expect(usoDoTipo(db, audiometria.id)).toEqual({ agendamentos: 3, compromissos: 0, espera: 1 })
+    expect(() => removeTipo(db, audiometria.id, null)).toThrow(
+      'Escolha a etiqueta que fica no lugar de “Audiometria”.'
+    )
+    expect(() => removeTipo(db, audiometria.id, id('Reunião'))).toThrow(
+      '“Reunião” não pode ficar no lugar de “Audiometria”.'
+    )
+    expect(() => removeTipo(db, audiometria.id, audiometria.id)).toThrow('não pode ficar no lugar')
+    expect(listTipos(db).some((t) => t.id === audiometria.id)).toBe(true)
+
+    removeTipo(db, audiometria.id, 2, AGORA)
+
+    expect(listTipos(db).some((t) => t.id === audiometria.id)).toBe(false)
+    expect(
+      [lancada, assinada, futura].map((a) => {
+        const depois = getAppointment(db, a.id)
+        return [depois.tipo_nome, depois.categoria]
+      })
+    ).toEqual([
+      ['Avaliação', 'exame'],
+      ['Avaliação', 'exame'],
+      ['Avaliação', 'avaliacao']
+    ])
+    expect(getAppointment(db, assinada.id).assinatura).not.toBeNull()
+    expect(listWaitlist(db)[0]).toMatchObject({ tipo_id: 2, tipo_nome: 'Avaliação' })
+    expect(() =>
+      updateAppointment(db, assinada.id, { ...at(assinada.inicio, assinada.fim), tipo_id: 1 })
+    ).toThrow('foi assinada')
+    expect(db.pragma('foreign_key_check')).toEqual([])
+  })
+
+  it('compromisso passa para outro compromisso, nunca para a Reserva', () => {
+    const c = createCommitment(db, {
+      etiqueta_id: id('Curso'),
+      inicio: '2026-10-21T14:00',
+      fim: '2026-10-21T15:00'
+    })
+    expect(usoDoTipo(db, id('Curso'))).toEqual({ agendamentos: 0, compromissos: 1, espera: 0 })
+    expect(() => removeTipo(db, id('Curso'), id('Reserva'))).toThrow(
+      '“Reserva” não pode ficar no lugar de “Curso”.'
+    )
+    expect(() => removeTipo(db, id('Curso'), 1)).toThrow(
+      '“Sessão” não pode ficar no lugar de “Curso”.'
+    )
+    removeTipo(db, id('Curso'), id('Reunião'))
+    expect(getCommitment(db, c.id).etiqueta_nome).toBe('Reunião')
+  })
+
+  it('quem já saiu da lista de espera não segura a etiqueta', () => {
+    const entry = addToWaitlist(db, { patient_id: patientId, duracao: 60, tipo_id: 3 })
+    closeWaitlist(db, entry.id, { motivo: 'removido' })
+    expect(usoDoTipo(db, 3)).toEqual({ agendamentos: 0, compromissos: 0, espera: 0 })
+    removeTipo(db, 3, null)
+    expect(db.prepare('SELECT tipo_id FROM waitlist_entries').get()).toEqual({ tipo_id: null })
+  })
+
+  it('o banco não apaga etiqueta em uso por fora da troca', () => {
+    createAppointment(db, at('2026-10-19T09:00', '2026-10-19T09:30'))
+    expect(() => db.prepare('DELETE FROM appointment_types WHERE id = 1').run()).toThrow(
+      /FOREIGN KEY/
+    )
   })
 })

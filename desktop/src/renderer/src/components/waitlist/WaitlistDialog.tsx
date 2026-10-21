@@ -98,7 +98,7 @@ function WaitlistForm({
   const [invalid, setInvalid] = useState<string | null>(null)
   const set = <K extends keyof Values>(key: K, value: Values[K]): void =>
     setValues((v) => ({ ...v, [key]: value }))
-  const { tipos, porId } = useTipos(entry?.tipo_id)
+  const { tipos, porId } = useTipos()
   const tipoId = values.tipo_id ?? (tipos.find((t) => t.categoria === 'sessao') ?? tipos.at(0))?.id
   const tipoNome = (tipoId === undefined ? undefined : porId(tipoId)?.nome) ?? 'Sessão'
 

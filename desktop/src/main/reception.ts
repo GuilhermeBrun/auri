@@ -44,7 +44,7 @@ const CLINICAL = ['anamneses:get', 'anamneses:save', 'documents:anamnese', 'docu
 const SETTINGS = [
   'clinic:save',
   'tipos:save',
-  'tipos:archive',
+  'tipos:remove',
   'terms:measureModel',
   'terms:saveModel',
   'terms:archiveModel',

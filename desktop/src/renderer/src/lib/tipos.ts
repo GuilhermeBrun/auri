@@ -6,21 +6,18 @@ export function corVar(cor: Cor): string {
   return cor
 }
 
-export function useTipos(atual?: number): {
+export function useTipos(): {
   tipos: TipoAtendimento[]
   porId: (id: number) => TipoAtendimento | undefined
 } {
   const { data = [] } = useQuery(tiposQuery())
   return {
-    tipos: data.filter((t) => ehPrincipal(t.categoria) && (!t.arquivado || t.id === atual)),
+    tipos: data.filter((t) => ehPrincipal(t.categoria)),
     porId: (id) => data.find((t) => t.id === id)
   }
 }
 
-export function useEtiquetas(
-  categoria: CategoriaEtiqueta,
-  atuais: readonly number[] = []
-): TipoAtendimento[] {
+export function useEtiquetas(categoria: CategoriaEtiqueta): TipoAtendimento[] {
   const { data = [] } = useQuery(tiposQuery())
-  return data.filter((t) => t.categoria === categoria && (!t.arquivado || atuais.includes(t.id)))
+  return data.filter((t) => t.categoria === categoria)
 }

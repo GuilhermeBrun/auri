@@ -351,7 +351,7 @@ export function AppointmentForm({
 
   const error = save.error ?? remove.error ?? voidSignature.error
   const values = useWatch({ control }) as FormValues
-  const { tipos, porId } = useTipos(editing?.tipo_id)
+  const { tipos, porId } = useTipos()
   const tipoId = values.tipo_id ?? (tipos.find((t) => t.categoria === 'sessao') ?? tipos.at(0))?.id
   const tipoNome = (tipoId === undefined ? undefined : porId(tipoId)?.nome) ?? 'Sessão'
   const durations = [

@@ -28,8 +28,7 @@ const { clinic, tipos } = vi.hoisted(() => {
           categoria: 'sessao',
           cor: '#6b7280',
           duracao: 30,
-          sistema: null,
-          arquivado: false
+          sistema: null
         },
         {
           id: 2,
@@ -37,8 +36,7 @@ const { clinic, tipos } = vi.hoisted(() => {
           categoria: 'avaliacao',
           cor: '#2563eb',
           duracao: 60,
-          sistema: null,
-          arquivado: false
+          sistema: null
         },
         {
           id: 13,
@@ -46,13 +44,13 @@ const { clinic, tipos } = vi.hoisted(() => {
           categoria: 'compromisso',
           cor: '#6b7280',
           duracao: 60,
-          sistema: 'reserva',
-          arquivado: false
+          sistema: 'reserva'
         }
       ])
     ),
     save: vi.fn(),
-    archive: vi.fn()
+    usage: vi.fn(),
+    remove: vi.fn()
   }
   Object.assign(window, {
     platform: 'win32',
@@ -208,7 +206,7 @@ describe('Clínica', () => {
   it('cadastra um exame com cor e duração, sem salvar o resto da página', async () => {
     clinic.get.mockResolvedValue(vazia)
     tipos.save.mockImplementation((_id, input) =>
-      Promise.resolve({ id: 9, ...input, sistema: null, arquivado: false })
+      Promise.resolve({ id: 9, ...input, sistema: null })
     )
     renderRoute('/clinica', '/clinica', <ClinicPage />)
     const sessoes = (await screen.findByRole('heading', { name: 'Sessões' })).parentElement!
@@ -240,15 +238,13 @@ describe('Clínica', () => {
 
   it('troca a categoria de uma etiqueta existente', async () => {
     clinic.get.mockResolvedValue(vazia)
-    tipos.save.mockImplementation((id, input) =>
-      Promise.resolve({ id, ...input, sistema: null, arquivado: false })
-    )
+    tipos.save.mockImplementation((id, input) => Promise.resolve({ id, ...input, sistema: null }))
     renderRoute('/clinica', '/clinica', <ClinicPage />)
     await userEvent.click(await screen.findByRole('button', { name: /Avaliação/ }))
     const dialog = await screen.findByRole('dialog', { name: 'Avaliação' })
     await userEvent.click(within(dialog).getByRole('combobox', { name: 'Categoria' }))
     await userEvent.click(await screen.findByRole('option', { name: 'Exame' }))
-    expect(within(dialog).getByRole('button', { name: 'Arquivar' })).toBeTruthy()
+    expect(within(dialog).getByRole('button', { name: 'Excluir' })).toBeTruthy()
     await userEvent.click(within(dialog).getByRole('button', { name: 'Salvar' }))
     await waitFor(() =>
       expect(tipos.save).toHaveBeenCalledWith(2, {
@@ -267,12 +263,78 @@ describe('Clínica', () => {
     const dialog = await screen.findByRole('dialog', { name: 'Reserva' })
     expect(within(dialog).queryByRole('combobox', { name: 'Categoria' })).toBeNull()
     expect(within(dialog).getByText('Compromisso')).toBeTruthy()
+    expect(within(dialog).queryByRole('button', { name: /Excluir/ })).toBeNull()
+  })
+
+  it('exclui uma etiqueta sem uso depois de confirmar', async () => {
+    clinic.get.mockResolvedValue(vazia)
+    tipos.usage.mockResolvedValue({ agendamentos: 0, compromissos: 0, espera: 0 })
+    tipos.remove.mockResolvedValue(undefined)
+    renderRoute('/clinica', '/clinica', <ClinicPage />)
+    await userEvent.click(await screen.findByRole('button', { name: /Avaliação/ }))
+    const dialog = await screen.findByRole('dialog', { name: 'Avaliação' })
+    expect(within(dialog).queryByRole('button', { name: /Arquivar|Cancelar/ })).toBeNull()
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Excluir' }))
+    expect(await within(dialog).findByText('Nenhum agendamento usa esta etiqueta.')).toBeTruthy()
+    expect(tipos.remove).not.toHaveBeenCalled()
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Confirmar exclusão' }))
+    await waitFor(() => expect(tipos.remove).toHaveBeenCalledWith(2, null))
+  })
+
+  it('em uso, pergunta para qual etiqueta do grupo passam os agendamentos', async () => {
+    clinic.get.mockResolvedValue(vazia)
+    tipos.usage.mockResolvedValue({ agendamentos: 12, compromissos: 0, espera: 1 })
+    tipos.remove.mockResolvedValue(undefined)
+    renderRoute('/clinica', '/clinica', <ClinicPage />)
+    await userEvent.click(await screen.findByRole('button', { name: /Avaliação/ }))
+    const dialog = await screen.findByRole('dialog', { name: 'Avaliação' })
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Excluir' }))
+    expect(
+      await within(dialog).findByText(
+        '12 agendamentos e 1 paciente da lista de espera estão com esta etiqueta.'
+      )
+    ).toBeTruthy()
+    const destino = within(dialog).getByRole('combobox', { name: 'Passam para' })
+    expect(destino.textContent).toContain('Sessão')
+    await userEvent.click(destino)
+    expect((await screen.findAllByRole('option')).map((o) => o.textContent?.trim())).toEqual([
+      'Sessão'
+    ])
+    await userEvent.keyboard('{Escape}')
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Excluir e passar' }))
+    await waitFor(() => expect(tipos.remove).toHaveBeenCalledWith(2, 1))
+  })
+
+  it('não deixa excluir a única etiqueta de sessão, avaliação ou exame', async () => {
+    clinic.get.mockResolvedValue(vazia)
+    const todas = tipos.list.getMockImplementation()!
+    tipos.list.mockResolvedValue([
+      { id: 1, nome: 'Sessão', categoria: 'sessao', cor: '#6b7280', duracao: 30, sistema: null }
+    ])
+    tipos.usage.mockResolvedValue({ agendamentos: 3, compromissos: 0, espera: 0 })
+    try {
+      renderRoute('/clinica', '/clinica', <ClinicPage />)
+      await userEvent.click(await screen.findByRole('button', { name: /Sessão/ }))
+      const dialog = await screen.findByRole('dialog', { name: 'Sessão' })
+      await userEvent.click(within(dialog).getByRole('button', { name: 'Excluir' }))
+      expect(
+        within(dialog).getByText(/É a única etiqueta de sessão, avaliação ou exame/)
+      ).toBeTruthy()
+      await waitFor(() =>
+        expect(
+          (within(dialog).getByRole('button', { name: /Excluir e passar/ }) as HTMLButtonElement)
+            .disabled
+        ).toBe(true)
+      )
+    } finally {
+      tipos.list.mockImplementation(todas)
+    }
   })
 
   it('cadastra uma etiqueta com a roda de cor e recusa sem nome', async () => {
     clinic.get.mockResolvedValue(vazia)
     tipos.save.mockImplementation((_id, input) =>
-      Promise.resolve({ id: 3, ...input, sistema: null, arquivado: false })
+      Promise.resolve({ id: 3, ...input, sistema: null })
     )
     renderRoute('/clinica', '/clinica', <ClinicPage />)
     await userEvent.click(await screen.findByRole('button', { name: 'Nova etiqueta' }))

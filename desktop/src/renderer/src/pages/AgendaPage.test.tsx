@@ -90,8 +90,7 @@ const TIPOS: TipoAtendimento[] = [
     categoria: 'sessao',
     cor: '#6b7280',
     duracao: 30,
-    sistema: null,
-    arquivado: false
+    sistema: null
   },
   {
     id: 2,
@@ -99,8 +98,7 @@ const TIPOS: TipoAtendimento[] = [
     categoria: 'avaliacao',
     cor: '#2563eb',
     duracao: 60,
-    sistema: null,
-    arquivado: false
+    sistema: null
   },
   {
     id: 4,
@@ -108,8 +106,7 @@ const TIPOS: TipoAtendimento[] = [
     categoria: 'exame',
     cor: '#7c3aed',
     duracao: 45,
-    sistema: null,
-    arquivado: false
+    sistema: null
   },
   {
     id: 12,
@@ -117,8 +114,7 @@ const TIPOS: TipoAtendimento[] = [
     categoria: 'compromisso',
     cor: '#0d9488',
     duracao: 60,
-    sistema: null,
-    arquivado: false
+    sistema: null
   }
 ]
 

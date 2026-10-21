@@ -49,7 +49,7 @@ export function createTransferService(options: {
       return {
         clinic,
         termModels: models.filter((model) => !model.arquivado),
-        tipos: tipos.filter((tipo) => !tipo.arquivado)
+        tipos
       }
     } catch {
       throw new Error(UNREACHABLE)

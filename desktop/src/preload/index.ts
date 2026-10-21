@@ -112,7 +112,8 @@ const api: AuriApi = {
   tipos: {
     list: () => invoke('tipos:list'),
     save: (id, input) => invoke('tipos:save', id, input),
-    archive: (id, arquivado) => invoke('tipos:archive', id, arquivado)
+    usage: (id) => invoke('tipos:usage', id),
+    remove: (id, destino) => invoke('tipos:remove', id, destino)
   },
   waitlist: {
     list: () => invoke('waitlist:list'),
