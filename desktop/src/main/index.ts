@@ -29,6 +29,7 @@ import { registerIpc } from './ipc'
 import { trustRenderer } from './ipc-security'
 import { pathToFileURL } from 'node:url'
 import { createPrefsStore, type PrefsStore } from './prefs'
+import { createReceptionLock } from './reception-lock'
 import { createTransferService } from './transfer-service'
 import { createWhatsAppView, type WhatsAppView } from './whatsapp-view'
 import { tamanhoDaJanela } from './window-size'
@@ -360,7 +361,8 @@ void app.whenReady().then(async () => {
     updates,
     reports: reports!,
     inbox,
-    whatsapp
+    whatsapp,
+    receptionLock: createReceptionLock(prefs, backup)
   })
   applyTheme(prefs.get().theme)
   nativeTheme.on('updated', syncWindowBackgrounds)

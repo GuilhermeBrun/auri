@@ -3,7 +3,7 @@ import type { IpcMainEvent, IpcMainInvokeEvent, WebContents } from 'electron'
 import type { Connection } from './connection'
 import type { BackupService } from './backup-service'
 import type { ErrorReportService } from './error-reports'
-import type { AuriTransfer } from '../shared/api'
+import { DEFAULT_UI_PREFS, type AuriTransfer } from '../shared/api'
 import type { PrefsStore } from './prefs'
 import type { UpdateService } from './updates'
 import { trustRenderer } from './ipc-security'
@@ -41,7 +41,7 @@ beforeEach(() => {
   listeners.clear()
   registerIpc({
     connection: { call } as unknown as Connection,
-    prefs: { save } as unknown as PrefsStore,
+    prefs: { save, get: () => DEFAULT_UI_PREFS } as unknown as PrefsStore,
     backup: {} as BackupService,
     transfer: { exportSettings } as unknown as AuriTransfer,
     updates: { check: checkUpdates, install: installUpdate } as unknown as UpdateService,
@@ -54,7 +54,8 @@ beforeEach(() => {
       show: vi.fn(),
       hide: vi.fn(),
       unread: () => 0
-    }
+    },
+    receptionLock: { enable: vi.fn(), disable: vi.fn() }
   })
 })
 
@@ -104,6 +105,8 @@ describe('handlers IPC', () => {
     )
     listeners.get('prefs:save')!(event as unknown as IpcMainEvent, { theme: 'dark' })
     expect(save).toHaveBeenCalledExactlyOnceWith({ theme: 'dark' })
+    listeners.get('prefs:save')!(event as unknown as IpcMainEvent, { recepcao: false })
+    expect(save).toHaveBeenLastCalledWith({})
     const crash = {
       name: 'TypeError',
       message: 'x is not a function',

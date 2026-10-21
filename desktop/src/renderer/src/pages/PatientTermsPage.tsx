@@ -15,6 +15,7 @@ import { Loading } from '@renderer/components/ui/loading'
 import { patientQuery, patientTermsQuery, termModelsQuery } from '@renderer/lib/queries'
 import { PATIENTS_CRUMB } from '@renderer/lib/session'
 import { openReceive, signedLocal } from '@renderer/lib/terms'
+import { useReception } from '@renderer/lib/reception'
 import { useToast } from '@renderer/lib/toast'
 import { cn } from '@renderer/lib/utils'
 
@@ -53,6 +54,7 @@ function PatientTermsPage({ patientId }: { patientId: number }): React.JSX.Eleme
   const models = useQuery(termModelsQuery())
   const requests = useQuery(patientTermsQuery(patientId))
   const [sending, setSending] = useState<TermModel | null>(null)
+  const reception = useReception()
   const error = patient.error ?? models.error ?? requests.error
   const rows = useMemo(
     () => (models.data && requests.data ? linhas(models.data, requests.data) : null),
@@ -102,12 +104,16 @@ function PatientTermsPage({ patientId }: { patientId: number }): React.JSX.Eleme
             icon={<FileSignature />}
             title="Nenhum modelo de termo"
             action={
-              <Button variant="secondary" onClick={() => void navigate('/clinica/termos/novo')}>
-                Criar modelo
-              </Button>
+              !reception && (
+                <Button variant="secondary" onClick={() => void navigate('/clinica/termos/novo')}>
+                  Criar modelo
+                </Button>
+              )
             }
           >
-            Os modelos ficam na tela Clínica.
+            {reception
+              ? 'Os modelos são criados no computador do consultório.'
+              : 'Os modelos ficam na tela Clínica.'}
           </EmptyState>
         ) : (
           <ul className="-mx-3 flex flex-col">

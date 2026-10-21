@@ -296,7 +296,8 @@ const OPERATIONS: Record<string, Operation> = {
     notice: (a, before) => (before ? sessionChange(before as Appointment, a as Appointment) : null)
   },
   'appointments:remove': {
-    run: (db, [id]) => removeAppointment(db, idSchema.parse(id)),
+    run: (db, [id, protegerEvolucao]) =>
+      removeAppointment(db, idSchema.parse(id), z.boolean().optional().parse(protegerEvolucao)),
     changes: ['appointments'],
     before: appointmentBefore,
     notice: (_, before) => (before ? sessao(before as Appointment, 'excluiu') : null)

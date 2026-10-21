@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes } from 'react-router'
+import { Navigate, Route, Routes, useParams } from 'react-router'
 import { Layout } from './components/Layout'
 import { AgendaPage } from './pages/AgendaPage'
 import { ClinicPage } from './pages/ClinicPage'
@@ -16,6 +16,23 @@ import { PatientsPage } from './pages/PatientsPage'
 import { GeneralPage } from './pages/GeneralPage'
 import { AppearancePage } from './pages/SettingsPage'
 import { WhatsAppPage } from './pages/WhatsAppPage'
+import { useReception } from './lib/reception'
+
+function Clinical({ children }: { children: React.JSX.Element }): React.JSX.Element {
+  const reception = useReception()
+  const { id } = useParams()
+  return reception ? <Navigate to={`/pacientes/${id}`} replace /> : children
+}
+
+function NotInReception({
+  fallback,
+  children
+}: {
+  fallback: string
+  children: React.JSX.Element
+}): React.JSX.Element {
+  return useReception() ? <Navigate to={fallback} replace /> : children
+}
 
 function App(): React.JSX.Element {
   return (
@@ -26,17 +43,59 @@ function App(): React.JSX.Element {
         <Route path="pacientes" element={<PatientsPage />} />
         <Route path="pacientes/novo" element={<PatientFormRoute />} />
         <Route path="pacientes/:id" element={<PatientFormRoute />} />
-        <Route path="pacientes/:id/anamnese" element={<PatientAnamneseRoute />} />
+        <Route
+          path="pacientes/:id/anamnese"
+          element={
+            <Clinical>
+              <PatientAnamneseRoute />
+            </Clinical>
+          }
+        />
         <Route path="pacientes/:id/sessoes" element={<PatientSessionsRoute />} />
-        <Route path="pacientes/:id/evolucoes" element={<PatientEvolutionsRoute />} />
+        <Route
+          path="pacientes/:id/evolucoes"
+          element={
+            <Clinical>
+              <PatientEvolutionsRoute />
+            </Clinical>
+          }
+        />
         <Route path="pacientes/:id/termos" element={<PatientTermsRoute />} />
         <Route path="pacientes/:id/financeiro" element={<PatientFinanceRoute />} />
         <Route path="financeiro" element={<FinancePage />} />
-        <Route path="financeiro/valores" element={<FinanceCatalogPage />} />
-        <Route path="clinica" element={<ClinicPage />} />
+        <Route
+          path="financeiro/valores"
+          element={
+            <NotInReception fallback="/financeiro">
+              <FinanceCatalogPage />
+            </NotInReception>
+          }
+        />
+        <Route
+          path="clinica"
+          element={
+            <NotInReception fallback="/agenda">
+              <ClinicPage />
+            </NotInReception>
+          }
+        />
+        <Route
+          path="clinica/termos/novo"
+          element={
+            <NotInReception fallback="/agenda">
+              <TermModelRoute />
+            </NotInReception>
+          }
+        />
+        <Route
+          path="clinica/termos/:id"
+          element={
+            <NotInReception fallback="/agenda">
+              <TermModelRoute />
+            </NotInReception>
+          }
+        />
         <Route path="whatsapp" element={<WhatsAppPage />} />
-        <Route path="clinica/termos/novo" element={<TermModelRoute />} />
-        <Route path="clinica/termos/:id" element={<TermModelRoute />} />
         <Route path="configuracoes" element={<Navigate to="geral" replace />} />
         <Route path="configuracoes/geral" element={<GeneralPage />} />
         <Route path="configuracoes/aparencia" element={<AppearancePage />} />

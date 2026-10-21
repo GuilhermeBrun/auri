@@ -33,6 +33,7 @@ import {
   spokenDate,
   timeRange
 } from '@renderer/lib/session'
+import { useReception } from '@renderer/lib/reception'
 import { cn } from '@renderer/lib/utils'
 
 export function PatientSessionsRoute(): React.JSX.Element {
@@ -367,6 +368,7 @@ function SessionRow({
   const inicio = parseIsoLocalDateTime(a.inicio)
   const missed = a.presenca === 'falta' || a.presenca === 'desmarcou'
   const active = records.find((r) => r.anulada === null)
+  const reception = useReception()
 
   return (
     <button
@@ -390,7 +392,8 @@ function SessionRow({
             {a.evolucao}
           </span>
         ) : (
-          a.presenca === 'presente' && <span className="text-xs text-ink-faint">Sem evolução</span>
+          a.presenca === 'presente' &&
+          !reception && <span className="text-xs text-ink-faint">Sem evolução</span>
         )}
       </span>
 

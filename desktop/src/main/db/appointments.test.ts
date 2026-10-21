@@ -221,6 +221,36 @@ describe('confirmação', () => {
     expect(desmarcado.confirmado_em).toBeNull()
   })
 
+  it('editar sem o campo mantém a evolução; com o campo vazio apaga', () => {
+    const a = createAppointment(db, {
+      ...at('2025-09-08T14:00', '2025-09-08T14:30'),
+      evolucao: 'Respondeu bem.'
+    })
+    const semCampo = updateAppointment(db, a.id, {
+      ...at('2025-09-08T15:00', '2025-09-08T15:30'),
+      observacao: 'Remarcado'
+    })
+    expect(semCampo.evolucao).toBe('Respondeu bem.')
+
+    const vazio = updateAppointment(db, a.id, {
+      ...at('2025-09-08T15:00', '2025-09-08T15:30'),
+      evolucao: ''
+    })
+    expect(vazio.evolucao).toBe('')
+  })
+
+  it('não exclui a sessão com evolução quando protegida', () => {
+    const a = createAppointment(db, {
+      ...at('2025-09-08T14:00', '2025-09-08T14:30'),
+      evolucao: 'Respondeu bem.'
+    })
+    expect(() => removeAppointment(db, a.id, true)).toThrow('computador da recepção')
+    const b = createAppointment(db, at('2025-09-09T14:00', '2025-09-09T14:30'))
+    removeAppointment(db, b.id, true)
+    removeAppointment(db, a.id)
+    expect(listAppointments(db, '2025-09-08T00:00', '2025-09-10T00:00')).toHaveLength(0)
+  })
+
   it('já nasce confirmado quando pedido', () => {
     const a = createAppointment(db, {
       ...at('2026-10-19T09:00', '2026-10-19T09:30'),

@@ -20,6 +20,7 @@ import { Field, Input } from '@renderer/components/ui/input'
 import { Segmented } from '@renderer/components/ui/segmented'
 import { useConnection } from '@renderer/lib/connection'
 import { clinicQuery } from '@renderer/lib/queries'
+import { useReception } from '@renderer/lib/reception'
 import { useToast } from '@renderer/lib/toast'
 
 const OUTRA = 'outra'
@@ -92,6 +93,7 @@ function SendForm({
         cpf: '',
         celular
       }
+  const reception = useReception()
   const pronto = destino.nome !== '' && destino.parentesco !== '' && isValidPhone(celular)
 
   const missing = clinic.data
@@ -129,14 +131,20 @@ function SendForm({
       <DialogBody className="flex flex-col gap-5">
         {missing.length > 0 && (
           <Callout tone="warning" title="Faltam dados da clínica">
-            Preencha {missing.join(', ')} na tela Clínica.{' '}
-            <button
-              type="button"
-              className="font-medium text-ink underline underline-offset-2"
-              onClick={() => void navigate('/clinica')}
-            >
-              Abrir a Clínica
-            </button>
+            {reception ? (
+              `Preencha ${missing.join(', ')} na tela Clínica, no computador do consultório.`
+            ) : (
+              <>
+                Preencha {missing.join(', ')} na tela Clínica.{' '}
+                <button
+                  type="button"
+                  className="font-medium text-ink underline underline-offset-2"
+                  onClick={() => void navigate('/clinica')}
+                >
+                  Abrir a Clínica
+                </button>
+              </>
+            )}
           </Callout>
         )}
         <fieldset className="flex flex-col gap-2">

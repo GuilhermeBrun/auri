@@ -18,7 +18,10 @@ import type { BackupService } from './backup-service'
 import type { Connection } from './connection'
 import type { ErrorReportService } from './error-reports'
 import { DATA_CHANNELS, errorMessage } from './operations'
+import { uiPrefsSchema } from '../shared/schemas'
 import type { PrefsStore } from './prefs'
+import { callAsReception, RECEPTION_LOCKED, RECEPTION_STORAGE_BLOCKED } from './reception'
+import type { ReceptionLock } from './reception-lock'
 import type { UpdateService } from './updates'
 import { assertTrustedSender } from './ipc-security'
 import type { WhatsAppView } from './whatsapp-view'
@@ -34,6 +37,7 @@ export type IpcServices = {
   reports: ErrorReportService
   inbox: Caixa
   whatsapp: WhatsAppView
+  receptionLock: ReceptionLock
 }
 
 const cut = (max: number) =>
@@ -62,8 +66,13 @@ export function registerIpc({
   updates,
   reports,
   inbox,
-  whatsapp
+  whatsapp,
+  receptionLock
 }: IpcServices): void {
+  const forward = (channel: string, args: unknown[]) => connection.call(channel, args)
+  const call = (channel: string, args: unknown[]) =>
+    prefs.get().recepcao ? callAsReception(forward, channel, args) : forward(channel, args)
+
   function handle<A extends unknown[], T>(
     channel: string,
     fn: (...args: A) => T | Promise<T>
@@ -71,6 +80,9 @@ export function registerIpc({
     ipcMain.handle(channel, async (event, ...args): Promise<IpcResult<T>> => {
       try {
         assertTrustedSender(event)
+        if (prefs.get().recepcao && RECEPTION_LOCKED.has(channel)) {
+          throw new Error(RECEPTION_STORAGE_BLOCKED)
+        }
         return { ok: true, data: await fn(...(args as A)) }
       } catch (error) {
         console.error(`[ipc] ${channel}: ${errorMessage(error)}`)
@@ -84,7 +96,7 @@ export function registerIpc({
     ipcMain.handle(channel, (event, ...args) => {
       try {
         assertTrustedSender(event)
-        return connection.call(channel, args)
+        return call(channel, args)
       } catch (error) {
         return { ok: false, error: errorMessage(error) }
       }
@@ -127,7 +139,7 @@ export function registerIpc({
 
   handle('clinic:chooseLogo', () => chooseLogo())
   handle('pdf:attendance', async (patientId: unknown, de: unknown, ate: unknown) => {
-    const result = await connection.call('attendance:report', [patientId, de, ate])
+    const result = await call('attendance:report', [patientId, de, ate])
     if (!result.ok) throw new Error(result.error)
     const report = result.data as AttendanceReport
     const html = attendanceReportHtml(report, { font: await documentFont() })
@@ -135,7 +147,7 @@ export function registerIpc({
   })
 
   handle('pdf:evolutions', async (patientId: unknown, de: unknown, ate: unknown) => {
-    const result = await connection.call('documents:evolutions', [patientId, de, ate])
+    const result = await call('documents:evolutions', [patientId, de, ate])
     if (!result.ok) throw new Error(result.error)
     const report = result.data as EvolutionReport
     const html = evolutionReportHtml(report, { font: await documentFont() })
@@ -143,7 +155,7 @@ export function registerIpc({
   })
 
   handle('pdf:patient', async (patientId: unknown) => {
-    const result = await connection.call('documents:patient', [patientId])
+    const result = await call('documents:patient', [patientId])
     if (!result.ok) throw new Error(result.error)
     const doc = result.data as PatientDocument
     await openPdf(
@@ -153,7 +165,7 @@ export function registerIpc({
   })
 
   handle('pdf:anamnese', async (patientId: unknown) => {
-    const result = await connection.call('documents:anamnese', [patientId])
+    const result = await call('documents:anamnese', [patientId])
     if (!result.ok) throw new Error(result.error)
     const doc = result.data as AnamneseDocument
     await openPdf(
@@ -163,7 +175,7 @@ export function registerIpc({
   })
 
   handle('pdf:term', async (signedId: unknown) => {
-    const result = await connection.call('terms:record', [signedId])
+    const result = await call('terms:record', [signedId])
     if (!result.ok) throw new Error(result.error)
     const record = result.data as SignedTermRecord
     await openPdf(
@@ -268,10 +280,16 @@ export function registerIpc({
     }
   })
 
+  handle('reception:enable', () => receptionLock.enable())
+  handle('reception:disable', (secret: unknown) =>
+    receptionLock.disable(secretSchema.optional().parse(secret))
+  )
+
+  const rendererPrefs = uiPrefsSchema.omit({ recepcao: true }).partial()
   ipcMain.on('prefs:save', (event, value: unknown) => {
     try {
       assertTrustedSender(event)
-      prefs.save(value)
+      prefs.save(rendererPrefs.parse(value))
     } catch (error) {
       console.error('[ipc] prefs:save', error)
     }

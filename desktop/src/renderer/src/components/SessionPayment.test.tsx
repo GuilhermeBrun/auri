@@ -11,7 +11,12 @@ vi.hoisted(() => {
       get: (target, key: string) =>
         (target[key] ??= () => (key === 'onChange' ? () => {} : new Promise(() => {})))
     })
-  Object.assign(window, { platform: 'darwin', backup: bridge(), connection: bridge() })
+  Object.assign(window, {
+    platform: 'darwin',
+    backup: bridge(),
+    connection: bridge(),
+    prefs: bridge()
+  })
   globalThis.ResizeObserver ??= class {
     observe(): void {}
     disconnect(): void {}
