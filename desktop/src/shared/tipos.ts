@@ -3,15 +3,14 @@ import { z } from 'zod'
 export const CATEGORIAS_PRINCIPAIS = ['sessao', 'avaliacao', 'exame'] as const
 export type Categoria = (typeof CATEGORIAS_PRINCIPAIS)[number]
 
-export const CATEGORIAS = [...CATEGORIAS_PRINCIPAIS, 'compromisso', 'marca'] as const
+export const CATEGORIAS = [...CATEGORIAS_PRINCIPAIS, 'compromisso'] as const
 export type CategoriaEtiqueta = (typeof CATEGORIAS)[number]
 
 export const CATEGORIA_LABELS: Record<CategoriaEtiqueta, string> = {
   sessao: 'Sessão',
   avaliacao: 'Avaliação',
   exame: 'Exame',
-  compromisso: 'Compromisso',
-  marca: 'Marca'
+  compromisso: 'Compromisso'
 }
 
 export function ehPrincipal(categoria: CategoriaEtiqueta): categoria is Categoria {
@@ -56,8 +55,7 @@ export const COR_PADRAO: Record<CategoriaEtiqueta, string> = {
   sessao: '#6b7280',
   avaliacao: '#2563eb',
   exame: '#7c3aed',
-  compromisso: '#0d9488',
-  marca: '#0ea5e9'
+  compromisso: '#0d9488'
 }
 
 export const DURACOES = [15, 30, 45, 60, 75, 90, 120] as const
@@ -75,18 +73,12 @@ export const duracaoEtiquetaSchema = z
   .max(240, 'Use no máximo 240 minutos')
   .multipleOf(15, 'Use múltiplos de 15 minutos')
 
-export const tipoInputSchema = z
-  .object({
-    nome: nome(40, 'Dê um nome à etiqueta'),
-    categoria: z.enum(CATEGORIAS),
-    cor: corSchema,
-    duracao: duracaoEtiquetaSchema.nullable()
-  })
-  .transform((t) => ({ ...t, duracao: t.categoria === 'marca' ? null : t.duracao }))
-  .refine((t) => t.categoria === 'marca' || t.duracao !== null, {
-    message: 'Escolha a duração padrão',
-    path: ['duracao']
-  })
+export const tipoInputSchema = z.object({
+  nome: nome(40, 'Dê um nome à etiqueta'),
+  categoria: z.enum(CATEGORIAS),
+  cor: corSchema,
+  duracao: duracaoEtiquetaSchema
+})
 
 export type TipoInput = z.input<typeof tipoInputSchema>
 
@@ -95,8 +87,6 @@ export type TipoAtendimento = z.output<typeof tipoInputSchema> & {
   sistema: Sistema | null
   arquivado: boolean
 }
-
-export type EtiquetaResumo = { id: number; nome: string; cor: Cor }
 
 export function consomePacote(categoria: Categoria): boolean {
   return categoria === 'sessao'

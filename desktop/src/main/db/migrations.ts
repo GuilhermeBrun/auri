@@ -897,7 +897,63 @@ ${onlyVoid('finance_payments', ['id', 'patient_id', 'data', 'valor_centavos', 'f
   `
   ALTER TABLE term_requests ADD COLUMN codigo TEXT;
   ALTER TABLE confirmation_requests ADD COLUMN codigo TEXT;
-  `
+  `,
+  {
+    semChavesEstrangeiras: (db) => {
+      const principal = `('sessao', 'avaliacao', 'exame')`
+      db.exec('DROP TABLE appointment_tags')
+      const gatilhos = db
+        .prepare(
+          `SELECT name, sql FROM sqlite_master
+           WHERE type = 'trigger' AND tbl_name <> 'appointment_types'
+             AND sql LIKE '%appointment_types%'`
+        )
+        .all() as { name: string; sql: string }[]
+      for (const { name } of gatilhos) db.exec(`DROP TRIGGER ${name}`)
+      db.exec(`
+    CREATE TABLE etiquetas_sem_marca (
+      id           INTEGER PRIMARY KEY,
+      nome         TEXT NOT NULL CHECK (length(trim(nome)) > 0),
+      categoria    TEXT NOT NULL
+        CHECK (categoria IN ('sessao', 'avaliacao', 'exame', 'compromisso')),
+      cor          TEXT NOT NULL
+        CHECK (cor GLOB '#[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]'),
+      duracao      INTEGER NOT NULL CHECK (duracao BETWEEN 15 AND 240 AND duracao % 15 = 0),
+      sistema      TEXT UNIQUE CHECK (sistema IN ('reserva')),
+      arquivado_em TEXT,
+      created_at   TEXT NOT NULL DEFAULT ${NOW},
+      CHECK (sistema IS NULL OR categoria = 'compromisso')
+    );
+
+    INSERT INTO etiquetas_sem_marca
+      (id, nome, categoria, cor, duracao, sistema, arquivado_em, created_at)
+    SELECT id, nome, categoria, cor, duracao, sistema, arquivado_em, created_at
+    FROM appointment_types WHERE categoria <> 'marca';
+
+    DROP TABLE appointment_types;
+    ALTER TABLE etiquetas_sem_marca RENAME TO appointment_types;
+
+    CREATE TRIGGER appointment_types_no_delete
+    BEFORE DELETE ON appointment_types
+    BEGIN
+      SELECT RAISE(ABORT, 'Uma etiqueta não pode ser apagada: arquive.');
+    END;
+
+    CREATE TRIGGER appointment_types_categoria_em_uso
+    BEFORE UPDATE OF categoria ON appointment_types
+    WHEN NEW.categoria IS NOT OLD.categoria AND (
+      (NEW.categoria NOT IN ${principal} AND (
+        EXISTS (SELECT 1 FROM appointments WHERE tipo_id = OLD.id)
+        OR EXISTS (SELECT 1 FROM waitlist_entries WHERE tipo_id = OLD.id)))
+      OR (NEW.categoria <> 'compromisso' AND EXISTS (SELECT 1 FROM commitments WHERE etiqueta_id = OLD.id))
+    )
+    BEGIN
+      SELECT RAISE(ABORT, 'Esta etiqueta está em uso e não pode mudar para essa categoria.');
+    END;
+    `)
+      for (const { sql } of gatilhos) db.exec(sql)
+    }
+  }
 ]
 
 export class DatabaseTooNewError extends Error {

@@ -7,7 +7,7 @@ import { useParams } from 'react-router'
 import { parseIsoLocalDateTime } from '@shared/dates'
 import type { Appointment, AttendanceRecord, Patient, Presenca } from '@shared/schemas'
 import { AttendanceChart } from '@renderer/components/AttendanceChart'
-import { EtiquetasMarca, TipoMarca } from '@renderer/components/TipoMarca'
+import { TipoMarca } from '@renderer/components/TipoMarca'
 import { DateBlock } from '@renderer/components/DateBlock'
 import { AttendanceReportDialog, MonthReportButton } from '@renderer/components/AttendanceReport'
 import { AppointmentDialog, type AppointmentDraft } from '@renderer/components/AppointmentDialog'
@@ -385,7 +385,6 @@ function SessionRow({
             {timeRange(a)}
           </span>
           <TipoMarca nome={a.tipo_nome} cor={a.tipo_cor} />
-          <EtiquetasMarca etiquetas={a.etiquetas} />
         </span>
         {a.evolucao ? (
           <span className="line-clamp-2 text-[13px] text-ink-soft" title={a.evolucao}>

@@ -36,7 +36,7 @@ const etiqueta = (
   nome: string,
   categoria: TipoAtendimento['categoria'],
   cor: string,
-  duracao: number | null,
+  duracao: number,
   sistema: TipoAtendimento['sistema'] = null
 ): TipoAtendimento => ({ id, nome, categoria, cor, duracao, sistema, arquivado: false })
 
@@ -65,7 +65,6 @@ export function fakeAppointment(over: Partial<Appointment> & { inicio: string })
     tipo_nome: 'Sessão',
     tipo_cor: '#6b7280',
     categoria: 'sessao',
-    etiquetas: [],
     presenca: '',
     evolucao: '',
     confirmado_em: null,

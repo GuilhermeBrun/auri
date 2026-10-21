@@ -28,9 +28,6 @@ const at = (inicio: string, fim: string) => ({
 
 const id = (nome: string): number => listTipos(db).find((t) => t.nome === nome)!.id
 
-const marca = (nome: string, cor = '#2563eb') =>
-  saveTipo(db, null, { nome, categoria: 'marca', cor, duracao: null })
-
 function versaoQueTem(sql: string): number {
   const probe = new Database(':memory:')
   try {
@@ -85,13 +82,13 @@ describe('migração dos tipos', () => {
 })
 
 describe('migração para uma lista só de etiquetas', () => {
-  function antigo(): Database.Database {
+  const unificada = (): number =>
+    versaoQueTem("SELECT 1 FROM pragma_table_info('commitments') WHERE name = 'etiqueta_id'")
+
+  function antigo(alvo = SCHEMA_VERSION): Database.Database {
     const legacy = new Database(':memory:')
     legacy.pragma('foreign_keys = ON')
-    migrate(
-      legacy,
-      versaoQueTem("SELECT 1 FROM pragma_table_info('commitments') WHERE name = 'etiqueta_id'") - 1
-    )
+    migrate(legacy, unificada() - 1)
     legacy.exec(`
       INSERT INTO patients (id, nome) VALUES (1, 'Ana Fictícia');
       INSERT INTO appointment_types (id, nome, categoria, cor, duracao, arquivado_em) VALUES
@@ -110,12 +107,12 @@ describe('migração para uma lista só de etiquetas', () => {
         (21, 'reserva', NULL, '2026-10-21T10:00', '2026-10-21T11:00'),
         (22, 'reuniao', NULL, '2026-10-21T12:00', '2026-10-21T13:00');
     `)
-    migrate(legacy)
+    migrate(legacy, alvo)
     return legacy
   }
 
   it('leva tipos, etiquetas e compromissos para a mesma tabela sem perder nada', () => {
-    const legacy = antigo()
+    const legacy = antigo(unificada())
     const linhas = legacy
       .prepare(
         `SELECT id, nome, categoria, cor, duracao, sistema, arquivado_em IS NOT NULL AS arquivado
@@ -273,7 +270,7 @@ describe('migração para uma lista só de etiquetas', () => {
       legacy.prepare('SELECT sistema FROM appointment_types WHERE nome = ?').get('Encaixe')
     ).toEqual({ sistema: 'reserva' })
     expect(() =>
-      saveTipo(legacy, 13, { nome: 'Encaixe', categoria: 'marca', cor: '#16a34a', duracao: null })
+      saveTipo(legacy, 13, { nome: 'Encaixe', categoria: 'sessao', cor: '#16a34a', duracao: 60 })
     ).toThrow('A Reserva é sempre um compromisso.')
     legacy.close()
   })
@@ -323,10 +320,9 @@ describe('etiquetas principais', () => {
     expect(c.tipo_nome).toBe('Avaliação')
   })
 
-  it('compromisso e marca não viram etiqueta principal da sessão', () => {
-    const convenio = marca('Convênio')
+  it('compromisso não vira etiqueta da sessão', () => {
     expect(() =>
-      createAppointment(db, { ...at('2026-10-19T09:00', '2026-10-19T09:30'), tipo_id: convenio.id })
+      createAppointment(db, { ...at('2026-10-19T09:00', '2026-10-19T09:30'), tipo_id: id('Curso') })
     ).toThrow('não é uma etiqueta de sessão')
     expect(() =>
       db
@@ -339,7 +335,7 @@ describe('etiquetas principais', () => {
 
   it('recusa nome repetido em qualquer categoria e arquivar a última principal', () => {
     expect(() =>
-      saveTipo(db, null, { nome: ' reunião ', categoria: 'marca', cor: '#2563eb', duracao: null })
+      saveTipo(db, null, { nome: ' reunião ', categoria: 'sessao', cor: '#2563eb', duracao: 30 })
     ).toThrow('Já existe uma etiqueta chamada')
     expect(() => db.prepare('DELETE FROM appointment_types WHERE id = 3').run()).toThrow(/arquive/)
     archiveTipo(db, 2, true)
@@ -402,7 +398,7 @@ describe('troca de categoria', () => {
     expect(nova.categoria).toBe('avaliacao')
   })
 
-  it('para compromisso ou marca só sem uso incompatível', () => {
+  it('para compromisso só sem uso incompatível', () => {
     const audiometria = saveTipo(db, null, {
       nome: 'Audiometria',
       categoria: 'exame',
@@ -414,8 +410,8 @@ describe('troca de categoria', () => {
       tipo_id: audiometria.id
     })
     expect(() =>
-      saveTipo(db, audiometria.id, { ...audiometria, categoria: 'marca', duracao: null })
-    ).toThrow('“Audiometria” está em 1 agendamento. Para virar Marca, crie outra etiqueta.')
+      saveTipo(db, audiometria.id, { ...audiometria, categoria: 'compromisso' })
+    ).toThrow('“Audiometria” está em 1 agendamento. Para virar Compromisso, crie outra etiqueta.')
 
     const livre = saveTipo(db, null, {
       nome: 'Triagem',
@@ -423,19 +419,10 @@ describe('troca de categoria', () => {
       cor: '#16a34a',
       duracao: 30
     })
-    expect(saveTipo(db, livre.id, { ...livre, categoria: 'marca', duracao: null })).toMatchObject({
-      categoria: 'marca',
-      duracao: null
+    expect(saveTipo(db, livre.id, { ...livre, categoria: 'compromisso' })).toMatchObject({
+      categoria: 'compromisso',
+      duracao: 30
     })
-
-    const convenio = marca('Convênio')
-    createAppointment(db, {
-      ...at('2026-10-19T10:00', '2026-10-19T10:30'),
-      etiquetas: [convenio.id]
-    })
-    expect(() =>
-      saveTipo(db, convenio.id, { ...convenio, categoria: 'sessao', duracao: 30 })
-    ).toThrow('está em 1 agendamento')
 
     createCommitment(db, {
       etiqueta_id: id('Curso'),
@@ -445,34 +432,32 @@ describe('troca de categoria', () => {
     expect(() =>
       saveTipo(db, id('Curso'), {
         nome: 'Curso',
-        categoria: 'marca',
+        categoria: 'sessao',
         cor: '#4f46e5',
-        duracao: null
+        duracao: 60
       })
     ).toThrow('está em 1 compromisso')
     expect(
       saveTipo(db, id('Palestra'), {
         nome: 'Palestra',
-        categoria: 'marca',
+        categoria: 'sessao',
         cor: '#ea580c',
-        duracao: null
+        duracao: 60
       }).categoria
-    ).toBe('marca')
+    ).toBe('sessao')
   })
 
   it('o banco também recusa a troca que deixaria dados incoerentes', () => {
     createAppointment(db, at('2026-10-19T09:00', '2026-10-19T09:30'))
     expect(() =>
-      db
-        .prepare("UPDATE appointment_types SET categoria = 'marca', duracao = NULL WHERE id = 1")
-        .run()
+      db.prepare("UPDATE appointment_types SET categoria = 'compromisso' WHERE id = 1").run()
     ).toThrow('está em uso')
   })
 })
 
 describe('cor', () => {
   it('aceita só hex de seis dígitos e guarda em minúsculas', () => {
-    const base = { nome: 'X', categoria: 'marca' as const, duracao: null }
+    const base = { nome: 'X', categoria: 'sessao' as const, duracao: 30 }
     expect(tipoInputSchema.parse({ ...base, cor: ' #AbCdEf ' }).cor).toBe('#abcdef')
     for (const cor of ['azul', '#abc', '#abcdeg', 'abcdef', '#abcdef0']) {
       expect(tipoInputSchema.safeParse({ ...base, cor }).success).toBe(false)
@@ -485,55 +470,21 @@ describe('cor', () => {
     ).toThrow(/CHECK/)
   })
 
-  it('marca não tem duração e as outras categorias exigem', () => {
-    expect(
-      tipoInputSchema.parse({ nome: 'X', categoria: 'marca', cor: '#2563eb', duracao: 30 }).duracao
-    ).toBeNull()
+  it('toda etiqueta tem duração e não há mais a categoria Marca', () => {
     expect(
       tipoInputSchema.safeParse({ nome: 'X', categoria: 'exame', cor: '#2563eb', duracao: null })
         .success
     ).toBe(false)
-  })
-})
-
-describe('marcas', () => {
-  it('cadastra, marca várias num agendamento e mantém quando a edição não manda', () => {
-    const convenio = marca('Convênio', '#2563eb')
-    const primeira = marca('Primeira vez', '#db2777')
-    const a = createAppointment(db, {
-      ...at('2026-10-19T09:00', '2026-10-19T09:30'),
-      etiquetas: [primeira.id, convenio.id, convenio.id]
-    })
-    expect(a.etiquetas).toEqual([
-      { id: convenio.id, nome: 'Convênio', cor: '#2563eb' },
-      { id: primeira.id, nome: 'Primeira vez', cor: '#db2777' }
-    ])
-    const semCampo = updateAppointment(db, a.id, { ...at(a.inicio, a.fim), observacao: 'x' })
-    expect(semCampo.etiquetas).toHaveLength(2)
-    const so = updateAppointment(db, a.id, { ...at(a.inicio, a.fim), etiquetas: [convenio.id] })
-    expect(so.etiquetas.map((e) => e.nome)).toEqual(['Convênio'])
-    expect(getAppointment(db, a.id).etiquetas).toEqual(so.etiquetas)
-  })
-
-  it('só marca entra nas marcas da sessão', () => {
-    expect(() =>
-      createAppointment(db, { ...at('2026-10-19T09:00', '2026-10-19T09:30'), etiquetas: [2] })
-    ).toThrow('“Avaliação” não é uma marca.')
-  })
-
-  it('marca arquivada não entra em agendamento novo, mas fica nos que já tinham', () => {
-    const e = marca('Convênio')
-    const a = createAppointment(db, {
-      ...at('2026-10-19T09:00', '2026-10-19T09:30'),
-      etiquetas: [e.id]
-    })
-    archiveTipo(db, e.id, true)
-    expect(listTipos(db).at(-1)).toMatchObject({ id: e.id, arquivado: true })
-    expect(() =>
-      createAppointment(db, { ...at('2026-10-20T09:00', '2026-10-20T09:30'), etiquetas: [e.id] })
-    ).toThrow('foi arquivada')
     expect(
-      updateAppointment(db, a.id, { ...at(a.inicio, a.fim), etiquetas: [e.id] }).etiquetas
-    ).toHaveLength(1)
+      tipoInputSchema.safeParse({ nome: 'X', categoria: 'marca', cor: '#2563eb', duracao: 30 })
+        .success
+    ).toBe(false)
+    expect(() =>
+      db
+        .prepare(
+          "INSERT INTO appointment_types (nome, categoria, cor, duracao) VALUES ('X', 'marca', '#2563eb', 30)"
+        )
+        .run()
+    ).toThrow(/CHECK/)
   })
 })

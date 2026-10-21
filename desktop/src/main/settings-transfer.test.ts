@@ -50,8 +50,7 @@ const RECEPCAO: SettingsSnapshot = {
   ],
   tipos: [
     ...TIPOS_SEMENTE,
-    { nome: 'Audiometria', categoria: 'exame', cor: '#0ea5e9', duracao: 45 },
-    { nome: 'Convênio', categoria: 'marca', cor: '#2563eb', duracao: null }
+    { nome: 'Audiometria', categoria: 'exame', cor: '#0ea5e9', duracao: 45 }
   ]
 }
 
@@ -140,8 +139,7 @@ describe('arquivo de configurações', () => {
       },
       { label: 'Logo da clínica', from: 'Sem logo', to: 'O do arquivo' },
       { label: 'Modelo de termo “Uso de imagem”', from: 'Não tem', to: 'Novo' },
-      { label: 'Etiqueta “Audiometria”', from: 'Não tem', to: 'Nova (Exame, 45 min)' },
-      { label: 'Etiqueta “Convênio”', from: 'Não tem', to: 'Nova (Marca)' }
+      { label: 'Etiqueta “Audiometria”', from: 'Não tem', to: 'Nova (Exame, 45 min)' }
     ])
     expect(describeChanges(RECEPCAO, file)).toEqual([])
   })
@@ -169,7 +167,7 @@ describe('arquivo de configurações', () => {
     ).toThrow('versão mais nova')
   })
 
-  it('lê o formato antigo, com cores por nome e etiquetas separadas', () => {
+  it('lê o formato antigo, com cores por nome, e deixa as marcas de fora', () => {
     const file = parseSettingsFile(
       JSON.stringify({
         app: 'auri',
@@ -185,12 +183,16 @@ describe('arquivo de configurações', () => {
     )
     expect(file.tipos).toEqual([
       { nome: 'Sessão', categoria: 'sessao', cor: '#6b7280', duracao: 30 },
-      { nome: 'Audiometria', categoria: 'exame', cor: '#0ea5e9', duracao: 45 },
-      { nome: 'Convênio', categoria: 'marca', cor: '#2563eb', duracao: null }
+      { nome: 'Audiometria', categoria: 'exame', cor: '#0ea5e9', duracao: 45 }
     ])
-    expect(describeChanges(NOVO, file).map((c) => c.label)).toEqual([
-      'Etiqueta “Audiometria”',
-      'Etiqueta “Convênio”'
-    ])
+    expect(describeChanges(NOVO, file).map((c) => c.label)).toEqual(['Etiqueta “Audiometria”'])
+  })
+
+  it('ignora as marcas de um arquivo da versão com a categoria Marca', () => {
+    const antigo = JSON.parse(buildSettingsFile(RECEPCAO))
+    antigo.tipos.push({ nome: 'Convênio', categoria: 'marca', cor: '#2563eb', duracao: null })
+    const file = parseSettingsFile(JSON.stringify(antigo))
+    expect(file.tipos).toEqual(RECEPCAO.tipos)
+    expect(describeChanges(RECEPCAO, file)).toEqual([])
   })
 })

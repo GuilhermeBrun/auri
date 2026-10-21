@@ -16,7 +16,7 @@ export const TIPO_COLUMNS = `t.id AS tipo_id, t.nome AS tipo_nome, t.cor AS tipo
 export const TIPO_JOIN = 'JOIN appointment_types t ON t.id = a.tipo_id'
 
 const ORDEM_CATEGORIA = `CASE categoria WHEN 'sessao' THEN 0 WHEN 'avaliacao' THEN 1
-  WHEN 'exame' THEN 2 WHEN 'compromisso' THEN 3 ELSE 4 END`
+  WHEN 'exame' THEN 2 ELSE 3 END`
 
 const COLUNAS = 'id, nome, categoria, cor, duracao, sistema, arquivado_em'
 
@@ -71,17 +71,12 @@ function emUso(db: Db, tipo: TipoAtendimento): string | null {
     )
     return espera > 0 ? 'a fila de espera' : null
   }
-  if (tipo.categoria === 'marca') {
-    const n = contar(db, 'SELECT count(*) AS n FROM appointment_tags WHERE tag_id = ?', tipo.id)
-    return n > 0 ? plural(n, 'agendamento', 'agendamentos') : null
-  }
   const n = contar(db, 'SELECT count(*) AS n FROM commitments WHERE etiqueta_id = ?', tipo.id)
   return n > 0 ? plural(n, 'compromisso', 'compromissos') : null
 }
 
 function assertUltimoAtivo(db: Db, tipo: TipoAtendimento): void {
   const grupo = GRUPO(tipo.categoria)
-  if (grupo === 'marca') return
   const outros = listTipos(db).filter(
     (t) => t.id !== tipo.id && !t.arquivado && GRUPO(t.categoria) === grupo
   )
@@ -201,25 +196,4 @@ export function assertCompromissoUsavel(
     throw new Error(`A etiqueta “${tipo.nome}” foi arquivada. Escolha outra.`)
   }
   return tipo
-}
-
-export function setAppointmentEtiquetas(
-  db: Db,
-  appointmentId: number,
-  ids: readonly number[],
-  antes: readonly number[] = []
-): void {
-  const unicos = [...new Set(ids)]
-  for (const id of unicos) {
-    const etiqueta = getTipo(db, id)
-    if (etiqueta.categoria !== 'marca') {
-      throw new Error(`“${etiqueta.nome}” não é uma marca.`)
-    }
-    if (etiqueta.arquivado && !antes.includes(id)) {
-      throw new Error(`A etiqueta “${etiqueta.nome}” foi arquivada.`)
-    }
-  }
-  db.prepare('DELETE FROM appointment_tags WHERE appointment_id = ?').run(appointmentId)
-  const insert = db.prepare('INSERT INTO appointment_tags (appointment_id, tag_id) VALUES (?, ?)')
-  for (const id of unicos) insert.run(appointmentId, id)
 }

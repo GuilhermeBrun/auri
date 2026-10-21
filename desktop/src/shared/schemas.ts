@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import type { Funcionamento } from './agenda'
 import type { PedidoNaSessao } from './confirmacao'
-import type { Categoria, Cor, EtiquetaResumo } from './tipos'
+import type { Categoria, Cor } from './tipos'
 import { isValidCpf } from './cpf'
 import { isIsoDate, isIsoLocalDateTime } from './dates'
 import { isValidPhone } from './masks'
@@ -206,8 +206,7 @@ export const appointmentInputSchema = z
     tipo_id: idSchema.optional(),
     presenca: z.enum([...PRESENCAS, '']).default(''),
     evolucao: text(10000).optional(),
-    confirmado: z.boolean().optional(),
-    etiquetas: z.array(idSchema).max(10, 'Use no máximo 10 etiquetas').optional()
+    confirmado: z.boolean().optional()
   })
   .refine((a) => a.fim > a.inicio, {
     message: 'O horário de término deve ser depois do início',
@@ -225,7 +224,7 @@ export type ArrivalSignature = {
 
 export type Appointment = Omit<
   z.output<typeof appointmentInputSchema>,
-  'confirmado' | 'tipo_id' | 'etiquetas' | 'evolucao'
+  'confirmado' | 'tipo_id' | 'evolucao'
 > & {
   id: number
   evolucao: string
@@ -233,7 +232,6 @@ export type Appointment = Omit<
   tipo_nome: string
   tipo_cor: Cor
   categoria: Categoria
-  etiquetas: EtiquetaResumo[]
   confirmado_em: string | null
   pedido: PedidoNaSessao | null
   patient_nome: string

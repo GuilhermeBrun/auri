@@ -212,7 +212,6 @@ describe('aba Sessões do paciente', () => {
         fim: past.fim,
         observacao: '',
         tipo_id: 2,
-        etiquetas: [],
         presenca: '',
         evolucao: 'Treino de /r/ em sílabas.'
       })

@@ -5,7 +5,6 @@ import type { SettingsChange } from '../shared/api'
 import {
   CATEGORIA_LABELS,
   COR_ANTIGA,
-  type CategoriaEtiqueta,
   mesmoNome,
   tipoInputSchema,
   type TipoInput
@@ -35,62 +34,57 @@ const tipoDoArquivo = z
     nome: z.string(),
     categoria: z.string(),
     cor: corDoArquivo,
-    duracao: z.number().nullable().default(null)
+    duracao: z.number()
   })
   .pipe(tipoInputSchema)
 
-const marcaDoArquivo = z
-  .object({ nome: z.string(), cor: corDoArquivo })
-  .transform((m) => ({
-    ...m,
-    categoria: 'marca' as CategoriaEtiqueta,
-    duracao: null as number | null
-  }))
-  .pipe(tipoInputSchema)
+const tiposDoArquivo = z
+  .array(z.looseObject({ categoria: z.unknown() }))
+  .max(400)
+  .default([])
+  .transform((tipos) => tipos.filter((tipo) => tipo.categoria !== 'marca'))
+  .pipe(z.array(tipoDoArquivo))
 
 export const SETTINGS_FORMAT = 2
 
-const settingsFileSchema = z
-  .object({
-    app: z.literal('auri'),
-    kind: z.literal('configuracoes'),
-    format: z.union([z.literal(1), z.literal(SETTINGS_FORMAT)]),
-    exportedAt: z.string(),
-    appearance: z
-      .object({
-        theme: themeSchema,
-        sidebarOpen: z.boolean(),
-        textSize: textSizeSchema,
-        colors: themeColorsSchema
-      })
-      .partial()
-      .default({}),
-    connection: z
-      .object({
-        role: z.enum(['server', 'client']),
-        name: z.string().trim().min(1).max(60),
-        sharing: z.boolean(),
-        keepRunning: z.boolean(),
-        openAtLogin: z.boolean(),
-        remoteAccess: z.boolean(),
-        notices: z.boolean()
-      })
-      .partial()
-      .default({}),
-    backup: z
-      .object({
-        kind: kindSchema,
-        frequency: z.enum(['daily', 'change', 'manual']),
-        dailyTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/)
-      })
-      .partial()
-      .default({}),
-    clinic: clinicInputSchema.partial().default({}),
-    termModels: z.array(termModelInputSchema).max(200).default([]),
-    tipos: z.array(tipoDoArquivo).max(400).default([]),
-    etiquetas: z.array(marcaDoArquivo).max(200).default([])
-  })
-  .transform(({ etiquetas, ...file }) => ({ ...file, tipos: [...file.tipos, ...etiquetas] }))
+const settingsFileSchema = z.object({
+  app: z.literal('auri'),
+  kind: z.literal('configuracoes'),
+  format: z.union([z.literal(1), z.literal(SETTINGS_FORMAT)]),
+  exportedAt: z.string(),
+  appearance: z
+    .object({
+      theme: themeSchema,
+      sidebarOpen: z.boolean(),
+      textSize: textSizeSchema,
+      colors: themeColorsSchema
+    })
+    .partial()
+    .default({}),
+  connection: z
+    .object({
+      role: z.enum(['server', 'client']),
+      name: z.string().trim().min(1).max(60),
+      sharing: z.boolean(),
+      keepRunning: z.boolean(),
+      openAtLogin: z.boolean(),
+      remoteAccess: z.boolean(),
+      notices: z.boolean()
+    })
+    .partial()
+    .default({}),
+  backup: z
+    .object({
+      kind: kindSchema,
+      frequency: z.enum(['daily', 'change', 'manual']),
+      dailyTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/)
+    })
+    .partial()
+    .default({}),
+  clinic: clinicInputSchema.partial().default({}),
+  termModels: z.array(termModelInputSchema).max(200).default([]),
+  tipos: tiposDoArquivo
+})
 
 export type SettingsFile = z.output<typeof settingsFileSchema>
 

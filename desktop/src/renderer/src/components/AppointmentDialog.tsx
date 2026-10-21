@@ -18,7 +18,6 @@ import { isIsoDate, parseIsoLocalDateTime, toIsoLocalDateTime } from '@shared/da
 import { shortName } from '@shared/names'
 import { PRESENCAS, type Appointment, type AppointmentInput } from '@shared/schemas'
 import { ArrivalSignature } from '@renderer/components/ArrivalSignature'
-import { EtiquetasEscolha } from '@renderer/components/EtiquetasEscolha'
 import { PatientCombobox } from '@renderer/components/PatientCombobox'
 import { TipoSelect } from '@renderer/components/TipoSelect'
 import { SessionPayment } from '@renderer/components/SessionPayment'
@@ -68,7 +67,6 @@ const baseSchema = z.object({
   duracao: z.number().int().min(5).max(600),
   observacao: z.string().trim().max(1000, 'Use no máximo 1000 caracteres'),
   tipo_id: z.number().int().optional(),
-  etiquetas: z.array(z.number().int()),
   presenca: z.enum([...PRESENCAS, '']),
   evolucao: z.string().trim().max(10000, 'Use no máximo 10000 caracteres'),
   confirmado: z.boolean()
@@ -113,7 +111,6 @@ function initialValues(draft: AppointmentDraft): FormValues {
       duracao: draft.duracao,
       observacao: '',
       tipo_id: draft.tipo_id,
-      etiquetas: [],
       presenca: '',
       evolucao: '',
       confirmado: false
@@ -128,7 +125,6 @@ function initialValues(draft: AppointmentDraft): FormValues {
     duracao: differenceInMinutes(parseIsoLocalDateTime(a.fim), inicio),
     observacao: a.observacao,
     tipo_id: a.tipo_id,
-    etiquetas: a.etiquetas.map((e) => e.id),
     presenca: a.presenca,
     evolucao: a.evolucao,
     confirmado: a.confirmado_em !== null
@@ -150,7 +146,6 @@ function toInput(values: ValidValues, now: Date, signed: boolean): AppointmentIn
     fim: toIsoLocalDateTime(addMinutes(parseIsoLocalDateTime(inicio), values.duracao)),
     observacao: values.observacao,
     tipo_id: values.tipo_id,
-    etiquetas: values.etiquetas,
     presenca: signed || hasStarted(values.data, values.hora, now) ? values.presenca : '',
     evolucao: values.evolucao,
     confirmado: values.confirmado
@@ -339,7 +334,6 @@ export function AppointmentForm({
                 fim: gone.fim,
                 observacao: gone.observacao,
                 tipo_id: gone.tipo_id,
-                etiquetas: gone.etiquetas.map((e) => e.id),
                 presenca: gone.presenca === 'presente' ? '' : gone.presenca,
                 evolucao: gone.evolucao,
                 ...(gone.confirmado_em ? { confirmado: true } : {})
@@ -586,11 +580,6 @@ export function AppointmentForm({
             )}
           </div>
         )}
-        <Controller
-          control={control}
-          name="etiquetas"
-          render={({ field }) => <EtiquetasEscolha value={field.value} onChange={field.onChange} />}
-        />
         {editing && started && <SessionPayment appointment={editing} onLeave={onClose} />}
         <Field label="Observação" error={errors.observacao?.message}>
           <Textarea
