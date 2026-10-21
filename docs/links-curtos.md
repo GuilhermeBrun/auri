@@ -47,14 +47,10 @@ O banco cuida dos limites a cada gravação: apaga os vencidos, recusa mais de 3
 (`53400` → `503`), até 6000 caracteres só de base64url e pontos, e no máximo 60 dias de vida. O
 primeiro a gravar um `id` fica; um segundo `PUT` igual não muda nada.
 
-Para ligar em produção, com o endereço do dono:
-
-```sh
-cd web
-DATABASE_URL=<endereço do dono> npm run erros:migrar
-```
-
-Até a migração rodar, o `PUT` responde `503` e o Auri manda o link longo.
+Em produção a migração roda sozinha pelo workflow **Banco do site** quando o `main` recebe um
+arquivo novo em `web/db/migracoes/` (ver `docs/relatorios-de-erro.md`, seção Migrações). A
+`002_links_curtos` já foi aplicada à mão em 21/10. Até a migração rodar, o `PUT` responde `503` e
+o Auri manda o link longo.
 
 ## Segurança
 

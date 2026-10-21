@@ -124,6 +124,10 @@ Depois de cada release, o job Atualização chama o Deploy Hook da Vercel (secre
 `VERCEL_DEPLOY_HOOK`) para o site ler a versão nova. Para refazer o site sem release:
 `gh workflow run release.yml -f channel=site`.
 
+O banco do site (Neon) é migrado pelo workflow **Banco do site** (`banco.yml`) quando um push no
+`main` mexe em `web/db/`, com o segredo `NEON_DONO_URL` do ambiente `producao` (só o `main`
+recebe). Detalhes em `docs/relatorios-de-erro.md`, seção Migrações.
+
 ## Proteções do repositório
 
 Configuradas no GitHub (não ficam em arquivo):
