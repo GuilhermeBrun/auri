@@ -15,9 +15,13 @@ const HOST = 'web.whatsapp.com'
 const HOME = `https://${HOST}/`
 const PARTITION = 'persist:whatsapp'
 const ALLOWED_PERMISSIONS = new Set(['notifications', 'clipboard-sanitized-write'])
-const COMPOSER = `(() => {
+export const COMPOSER = `(() => {
   const campo = document.querySelector('#main footer [contenteditable="true"]')
-  if (!campo || campo.textContent !== '') return false
+  if (!campo) return false
+  const vazio = campo.hasAttribute('data-lexical-editor')
+    ? !campo.querySelector('[data-lexical-text]')
+    : campo.textContent.trim() === ''
+  if (!vazio) return false
   campo.focus()
   return document.activeElement === campo
 })()`
@@ -175,7 +179,10 @@ export function createWhatsAppView({
       if (mine !== request || contents.isDestroyed()) return
       if (await contents.executeJavaScript(COMPOSER).catch(() => false)) {
         const copied = await clipboard.readText()
-        if (mine === request && !contents.isDestroyed() && copied === text) contents.paste()
+        if (mine !== request || contents.isDestroyed() || copied !== text) return
+        contents.paste()
+        await new Promise((resolve) => setTimeout(resolve, PASTE_INTERVAL))
+        if ((await clipboard.readText()) === text) clipboard.clear()
         return
       }
       await new Promise((resolve) => setTimeout(resolve, PASTE_INTERVAL))

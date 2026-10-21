@@ -22,7 +22,7 @@ import { useConnection } from '@renderer/lib/connection'
 import { clinicQuery } from '@renderer/lib/queries'
 import { useReception } from '@renderer/lib/reception'
 import { useToast } from '@renderer/lib/toast'
-import { COLAR_NO_WHATSAPP } from '@renderer/lib/whatsapp'
+import { abrirOuCopiar, COLAR_NO_WHATSAPP } from '@renderer/lib/whatsapp'
 
 const OUTRA = 'outra'
 
@@ -113,20 +113,16 @@ function SendForm({
         info?.name || 'Este computador'
       )
       void queryClient.invalidateQueries({ queryKey: ['terms'] })
-      if (via === 'copiar') {
-        await navigator.clipboard.writeText(sent.mensagem)
-        return via
-      }
-      return window.api.terms.openWhatsApp(sent.numero, sent.mensagem)
+      return abrirOuCopiar(via, sent.numero, sent.mensagem)
     },
-    onSuccess: (via) => {
+    onSuccess: (aberto) => {
       toast(
-        via === 'copiar'
+        aberto === null
           ? { title: 'Mensagem copiada' }
           : {
               title: 'Termo enviado',
               description:
-                via === 'pronta' ? 'Confira o WhatsApp e toque em enviar.' : COLAR_NO_WHATSAPP
+                aberto === 'pronta' ? 'Confira o WhatsApp e toque em enviar.' : COLAR_NO_WHATSAPP
             }
       )
       onClose()

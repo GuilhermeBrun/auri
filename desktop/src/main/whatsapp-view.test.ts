@@ -80,7 +80,10 @@ vi.mock('electron', () => ({
   shell: { openExternal: mocks.openExternal },
   clipboard: {
     writeText: mocks.writeText,
-    readText: () => Promise.resolve(mocks.clipboardText.value)
+    readText: () => Promise.resolve(mocks.clipboardText.value),
+    clear: () => {
+      mocks.clipboardText.value = ''
+    }
   }
 }))
 
@@ -218,6 +221,15 @@ describe('WhatsApp dentro do Auri', () => {
       expect(view.webContents.executeJavaScript).toHaveBeenCalledTimes(3)
       expect(JSON.stringify(view.webContents.executeJavaScript.mock.calls)).not.toContain('k8Zt')
       expect(view.webContents.paste).toHaveBeenCalledTimes(1)
+      expect(mocks.clipboardText.value).toBe(message)
+      await vi.advanceTimersByTimeAsync(500)
+      expect(mocks.clipboardText.value).toBe('')
+      view.webContents.executeJavaScript.mockResolvedValue(true)
+      whatsapp.open('5565900000000', message)
+      await vi.advanceTimersByTimeAsync(0)
+      mocks.clipboardText.value = 'a pessoa copiou outra coisa depois'
+      await vi.advanceTimersByTimeAsync(500)
+      expect(mocks.clipboardText.value).toBe('a pessoa copiou outra coisa depois')
     } finally {
       vi.useRealTimers()
     }
