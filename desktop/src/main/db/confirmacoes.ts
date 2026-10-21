@@ -8,8 +8,11 @@ import {
   type Funcionamento
 } from '../../shared/agenda'
 import {
+  PERTO_DEMAIS,
   PRAZO_DA_CONFIRMACAO_MS,
   TOLERANCIA_DA_RESPOSTA_MS,
+  prazoCurtoDemais,
+  prazoDaConfirmacao,
   type AvisosDaConfirmacao,
   type ConfirmacaoEnvio,
   type ConfirmacaoLista,
@@ -47,7 +50,11 @@ const MINUTOS_DO_PRAZO = PRAZO_DA_CONFIRMACAO_MS / 60_000
 
 const minutosDoDia = (data: Date): number => data.getHours() * 60 + data.getMinutes()
 
-export function janelaDeEnvio(funcionamento: Funcionamento, agora: Date): JanelaDeEnvio {
+export function janelaDeEnvio(
+  funcionamento: Funcionamento,
+  agora: Date,
+  prazo: Date = new Date(agora.getTime() + PRAZO_DA_CONFIRMACAO_MS)
+): JanelaDeEnvio {
   const horario = horarioDoDia(funcionamento, agora)
   if (!horario || !abertoNoHorario(funcionamento, agora)) {
     return {
@@ -56,11 +63,15 @@ export function janelaDeEnvio(funcionamento: Funcionamento, agora: Date): Janela
         'A clínica está fechada agora. Envie com a clínica aberta, até 2 horas antes de fechar, para o prazo não vencer com ela fechada.'
     }
   }
-  const ultimo = minutesOf(horario.fecha) - MINUTOS_DO_PRAZO
+  const minutos = Math.ceil((prazo.getTime() - agora.getTime()) / 60_000)
+  const ultimo = minutesOf(horario.fecha) - minutos
   if (minutosDoDia(agora) > ultimo) {
     return {
       aberta: false,
-      motivo: `A clínica fecha às ${horario.fecha}: o prazo de 2 horas venceria com ela fechada. Envie amanhã cedo ou até as ${timeOf(Math.max(ultimo, 0))}.`
+      motivo:
+        minutos < MINUTOS_DO_PRAZO
+          ? `A clínica fecha às ${horario.fecha}: o prazo venceria com ela fechada. Confirme com a família por telefone.`
+          : `A clínica fecha às ${horario.fecha}: o prazo de 2 horas venceria com ela fechada. Envie amanhã cedo ou até as ${timeOf(Math.max(ultimo, 0))}.`
     }
   }
   return { aberta: true, ate: timeOf(ultimo) }
@@ -160,18 +171,17 @@ export function enviarConfirmacao(
     const falta = faltaDaClinica(clinic)
     if (falta.length > 0)
       throw new Error(`Para pedir confirmação, preencha na tela Clínica: ${falta.join(', ')}.`)
-    const janela = janelaDeEnvio(clinic.funcionamento, agora)
-    if (!janela.aberta) throw new Error(janela.motivo)
     const inicio = parseIsoLocalDateTime(a.inicio)
-    if (inicio.getTime() - agora.getTime() < PRAZO_DA_CONFIRMACAO_MS)
-      throw new Error('A sessão começa em menos de 2 horas. Confirme com a família por telefone.')
+    if (prazoCurtoDemais(inicio, agora)) throw new Error(PERTO_DEMAIS)
+    const prazo = prazoDaConfirmacao(inicio, agora)
+    const janela = janelaDeEnvio(clinic.funcionamento, agora, prazo)
+    if (!janela.aberta) throw new Error(janela.motivo)
     const patient = getPatient(db, a.patient_id)
     const contato = contatoPrincipal(patient, agora)
     if (!contato) throw new Error('Cadastre o contato principal na ficha do paciente.')
     if (!isValidPhone(contato.celular))
       throw new Error(`Cadastre o celular de ${contato.nome.split(' ')[0]} na ficha do paciente.`)
 
-    const prazo = new Date(agora.getTime() + PRAZO_DA_CONFIRMACAO_MS)
     const confirmacao = confirmacaoValida({
       id: novoEnvio(),
       ate: Math.floor(prazo.getTime() / 1000),

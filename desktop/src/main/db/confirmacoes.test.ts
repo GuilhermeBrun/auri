@@ -147,6 +147,32 @@ describe('envio', () => {
     })
   })
 
+  it('sessão em menos de 2 horas: prazo até 15 minutos antes dela', () => {
+    const encaixe = marcar('2026-10-19T10:00', '2026-10-19T10:30')
+    const envio = enviarConfirmacao(db, encaixe, PC, AGORA)
+    expect(envio.prazo).toBe(minutos(75).toISOString())
+    expect(envio.mensagem).toContain('até as 09:45')
+    const quase = marcar('2026-10-19T09:00', '2026-10-19T09:30')
+    expect(enviarConfirmacao(db, quase, PC, AGORA).prazo).toBe(minutos(15).toISOString())
+  })
+
+  it('perto de fechar, o prazo curto também precisa vencer com a clínica aberta', () => {
+    expect(
+      janelaDeEnvio(
+        FUNCIONAMENTO_PADRAO,
+        new Date(2026, 9, 19, 19, 30),
+        new Date(2026, 9, 19, 19, 45)
+      )
+    ).toEqual({ aberta: true, ate: '19:45' })
+    expect(
+      janelaDeEnvio(
+        FUNCIONAMENTO_PADRAO,
+        new Date(2026, 9, 19, 19, 50),
+        new Date(2026, 9, 19, 20, 5)
+      )
+    ).toMatchObject({ aberta: false, motivo: expect.stringContaining('por telefone') })
+  })
+
   it('reenviar devolve o mesmo link', () => {
     const primeiro = enviarConfirmacao(db, sessaoId, PC, AGORA)
     const segundo = enviarConfirmacao(db, sessaoId, PC, minutos(10))
@@ -155,8 +181,8 @@ describe('envio', () => {
 
   it('recusa fora da janela, perto da sessão, sem celular ou já confirmada', () => {
     expect(() => enviarConfirmacao(db, sessaoId, PC, new Date(2026, 9, 19, 19))).toThrow(/fecha/)
-    const logo = marcar('2026-10-19T10:00', '2026-10-19T10:30')
-    expect(() => enviarConfirmacao(db, logo, PC, AGORA)).toThrow(/menos de 2 horas/)
+    const logo = marcar('2026-10-19T08:55', '2026-10-19T09:25')
+    expect(() => enviarConfirmacao(db, logo, PC, AGORA)).toThrow(/menos de 30 minutos/)
     const semCelular = marcar('2026-10-20T08:00', '2026-10-20T08:30', paciente('Caio', ''))
     expect(() => enviarConfirmacao(db, semCelular, PC, AGORA)).toThrow(/celular de Maria/)
     updateAppointment(db, sessaoId, {

@@ -1,9 +1,26 @@
 import { Copy, Send } from 'lucide-react'
-import { PEDIDO_LABELS, type PedidoNaSessao } from '@shared/confirmacao'
+import {
+  PEDIDO_LABELS,
+  PERTO_DEMAIS,
+  PRAZO_DA_CONFIRMACAO_MS,
+  prazoCurtoDemais,
+  prazoDaConfirmacao,
+  type PedidoNaSessao
+} from '@shared/confirmacao'
+import { parseIsoLocalDateTime } from '@shared/dates'
 import type { Appointment } from '@shared/schemas'
 import { Button } from '@renderer/components/ui/button'
 import { horaDe } from '@renderer/lib/confirmacoes'
 import { useEnviarConfirmacao, type Via } from './useEnviar'
+
+function prazoAntes(inicio: string, agora = new Date()): string {
+  const sessao = parseIsoLocalDateTime(inicio)
+  if (prazoCurtoDemais(sessao, agora)) return PERTO_DEMAIS
+  const prazo = prazoDaConfirmacao(sessao, agora)
+  return prazo.getTime() - agora.getTime() < PRAZO_DA_CONFIRMACAO_MS
+    ? `A família tem até as ${horaDe(prazo.toISOString())} para responder.`
+    : 'A família tem 2 horas para responder.'
+}
 
 export function ConfirmacaoDaSessao({
   appointment
@@ -21,7 +38,7 @@ export function ConfirmacaoDaSessao({
     ? `Prazo até as ${horaDe(pedido.prazo)}. Sem resposta, a falta é cobrada.`
     : pedido
       ? PEDIDO_LABELS[pedido.estado]
-      : 'A família tem 2 horas para responder.'
+      : prazoAntes(appointment.inicio)
   const botao = (via: Via) => (
     <Button
       variant={via === 'whatsapp' ? 'secondary' : 'ghost'}
