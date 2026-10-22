@@ -231,7 +231,8 @@ private struct WidgetsView: View {
       }
       Section {
       } footer: {
-        Text("Para pôr um widget, toque e segure a tela inicial, toque em Editar › Adicionar Widget e procure por Auri.")
+        Text(
+          "Para pôr um widget, toque e segure a tela inicial, toque em Editar › Adicionar Widget e procure por Auri.")
       }
     }
     .navigationTitle("Widgets")
@@ -252,7 +253,8 @@ private struct EsteIPhoneView: View {
       Section {
         LabeledContent("Versão do Auri", value: "\(versao) (\(build))")
       } footer: {
-        Text("A chave que identifica este iPhone fica guardada só nele, no Chaveiro, e não vai para o backup do iCloud.")
+        Text(
+          "A chave que identifica este iPhone fica guardada só nele, no Chaveiro, e não vai para o backup do iCloud.")
       }
     }
     .navigationTitle("Este iPhone")

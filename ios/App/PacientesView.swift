@@ -127,9 +127,14 @@ struct ListaDePacientes<Linha: View>: View {
       return primeira.map { $0.isLetter ? String($0) : "#" } ?? "#"
     }
     return porLetra.keys.sorted { a, b in a == "#" ? false : b == "#" ? true : a < b }.map { letra in
-      (letra, porLetra[letra]!.sorted {
-        $0.nome.compare($1.nome, options: [.caseInsensitive, .diacriticInsensitive], locale: Locale(identifier: "pt_BR")) == .orderedAscending
-      })
+      (
+        letra,
+        porLetra[letra]!.sorted {
+          $0.nome.compare(
+            $1.nome, options: [.caseInsensitive, .diacriticInsensitive], locale: Locale(identifier: "pt_BR"))
+            == .orderedAscending
+        }
+      )
     }
   }
 }

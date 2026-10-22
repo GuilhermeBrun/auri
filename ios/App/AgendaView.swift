@@ -14,7 +14,7 @@ struct AgendaView: View {
   let destino: Destino
 
   @State private var caminho: [RotaDaAgenda] = [
-    .mes(DataLocal.inicioDoMes(.now)), .dia(DataLocal.inicioDoDia(.now))
+    .mes(DataLocal.inicioDoMes(.now)), .dia(DataLocal.inicioDoDia(.now)),
   ]
   @State private var novaSessao: NovaSessao?
   @State private var buscando = false

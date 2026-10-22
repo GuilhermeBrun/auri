@@ -7,6 +7,12 @@ const installed = (cwd) => {
   return (modified('node_modules/.package-lock.json') ?? 0) > (modified('package-lock.json') ?? 0)
 }
 
+const iphone = [
+  { name: 'iPhone: dependências', command: 'npm', args: ['ci'], cwd: '../ios', skip: installed },
+  { name: 'iPhone: formato, lint e tipos', command: 'npm', args: ['run', 'check'], cwd: '../ios' },
+  { name: 'iPhone: conexão no Bare', command: 'npm', args: ['run', 'teste'], cwd: '../ios' }
+]
+
 const profiles = {
   local: [
     { name: 'Lint: formato, lint e tipos', cached: 'check' },
@@ -17,7 +23,8 @@ const profiles = {
     { name: 'Site: dependências', command: 'npm', args: ['ci'], cwd: '../web', skip: installed },
     { name: 'Site: formato, lint e tipos', cached: 'check', cwd: '../web' },
     { name: 'Site: testes', cached: 'test', cwd: '../web' },
-    { name: 'Site: build', cached: 'build:exemplo', cwd: '../web' }
+    { name: 'Site: build', cached: 'build:exemplo', cwd: '../web' },
+    ...iphone
   ],
   mac: [
     {
@@ -39,14 +46,36 @@ const profiles = {
     { name: 'Pacote: conferência', command: 'npm', args: ['run', 'test:package'] },
     { name: 'Instalador', command: 'npm', args: ['run', 'build:mac'] },
     { name: 'Instalador: conferência', command: 'npm', args: ['run', 'test:installer'] }
+  ],
+  ios: [
+    ...iphone,
+    { name: 'iPhone: projeto do Xcode', command: 'npm', args: ['run', 'preparar'], cwd: '../ios' },
+    {
+      name: 'iPhone: formato do Swift',
+      command: 'npm',
+      args: ['run', 'formato:swift'],
+      cwd: '../ios'
+    },
+    {
+      name: 'iPhone: testes em Swift',
+      command: 'npm',
+      args: ['run', 'testes:swift'],
+      cwd: '../ios'
+    },
+    {
+      name: 'iPhone: interface no simulador',
+      command: 'npm',
+      args: ['run', 'telas'],
+      cwd: '../ios'
+    }
   ]
 }
 
 const profile = process.argv[2] ?? 'local'
 const steps = profiles[profile]
 if (!steps) throw new Error(`Perfil desconhecido: ${profile}`)
-if (profile === 'mac' && process.platform !== 'darwin') {
-  console.error('O `npm run ci:mac` testa o Auri no Mac: rode num Mac.')
+if ((profile === 'mac' || profile === 'ios') && process.platform !== 'darwin') {
+  console.error(`O \`npm run ci:${profile}\` precisa de um Mac.`)
   process.exit(1)
 }
 
@@ -90,7 +119,7 @@ if (results.at(-1).startsWith('✗')) {
   console.error(
     profile === 'local'
       ? '\nCI local reprovou. Corrija antes do push, ou use `git push --no-verify`.'
-      : '\nCI do Mac reprovou.'
+      : `\nCI ${profile} reprovou.`
   )
   process.exit(1)
 }

@@ -15,9 +15,13 @@ const addons = readdirSync(`${raiz}App/addons`)
   .sort()
 writeFileSync(
   `${raiz}App/addons/addons.yml`,
-  ['targets:', '  Auri:', '    dependencies:', ...addons.map((nome) => `      - framework: ${nome}`), ''].join(
-    '\n'
-  )
+  [
+    'targets:',
+    '  Auri:',
+    '    dependencies:',
+    ...addons.map((nome) => `      - framework: ${nome}`),
+    ''
+  ].join('\n')
 )
 
 rodar(bin('bare-pack'), [

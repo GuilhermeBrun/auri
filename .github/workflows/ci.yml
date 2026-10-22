@@ -58,3 +58,16 @@ jobs:
         if: ${{ !cancelled() && steps.deps-web.outcome == 'success' }}
         working-directory: web
         run: npm run build:exemplo
+      - id: deps-ios
+        if: ${{ !cancelled() }}
+        uses: ./.github/actions/setup-deps
+        with:
+          directory: ios
+      - name: 'iPhone: formato, lint e tipos'
+        if: ${{ !cancelled() && steps.deps-ios.outcome == 'success' }}
+        working-directory: ios
+        run: npm run check
+      - name: 'iPhone: conexão no Bare'
+        if: ${{ !cancelled() && steps.deps-ios.outcome == 'success' && steps.deps.outcome == 'success' }}
+        working-directory: ios
+        run: npm run teste

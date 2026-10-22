@@ -23,6 +23,7 @@
     "test:e2e": "node scripts/e2e.mjs .quality/e2e",
     "ci:local": "node scripts/ci-local.mjs",
     "ci:mac": "node scripts/ci-local.mjs mac",
+    "ci:ios": "node scripts/ci-local.mjs ios",
     "check": "vp check",
     "test:ui": "node scripts/quality/ui.mjs",
     "test:package": "node scripts/quality/package.mjs",

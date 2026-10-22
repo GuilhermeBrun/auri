@@ -17,7 +17,9 @@ o minuto inteiro.
 | Release Smoke | `node --test scripts/release/*.test.mjs` (versões e tradução da pilha de erros)          |
 | Site          | `npm run check`, `npm test` e `npm run build:exemplo`                                    |
 
-Os passos do app rodam em `desktop/` e os do site em `web/`.
+Os passos do app rodam em `desktop/`, os do site em `web/` e os do iPhone em `ios/`: formato, lint
+e tipos do worklet e o teste da conexão (o cliente do iPhone no runtime Bare contra as operações do
+desktop, numa DHT local), que pega quando uma mudança no desktop quebra o celular.
 
 Os passos rodam mesmo depois de um erro, para o PR mostrar todos de uma vez. O `Check` é o único
 check exigido pela proteção do `main`, que também exige o PR **atualizado com o `main`**: o que
@@ -77,6 +79,15 @@ o do Linux. Rodar antes de cada estável e em mudanças que mexem no Mac:
 
 ```bash
 npm run ci:mac
+```
+
+O app do iPhone também só compila no Mac. Rodar quando o PR mexe em `ios/` ou no código que ele usa
+do desktop (`desktop/src/main/net/`, `desktop/src/shared/`, `operations.ts`): projeto do Xcode,
+formato do Swift, testes em Swift e os testes de interface no simulador, com as capturas em
+`ios/build/telas/`.
+
+```bash
+npm run ci:ios
 ```
 
 Mudanças visuais: `gh workflow run referencias-visuais.yml --ref <branch>` (capturas do Windows) e

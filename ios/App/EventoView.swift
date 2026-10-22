@@ -29,7 +29,8 @@ struct EventoView: View {
           }
           LabeledContent("Presença", value: presenca(sessao.presenca))
           if let confirmado = sessao.confirmadoEm.flatMap(DataLocal.data) {
-            LabeledContent("Confirmada", value: confirmado.formatado(.dateTime.day().month(.abbreviated).hour().minute()))
+            LabeledContent(
+              "Confirmada", value: confirmado.formatado(.dateTime.day().month(.abbreviated).hour().minute()))
           }
         }
         if let observacao = sessao.observacao, !observacao.isEmpty {

@@ -7,6 +7,7 @@ final class ConexaoUITests: XCTestCase {
     let qr = try XCTUnwrap(ProcessInfo.processInfo.environment["AURI_QR"], "Rode com TEST_RUNNER_AURI_QR")
     let app = XCUIApplication()
     app.launchEnvironment["AURI_QR"] = qr
+    app.launchEnvironment["AURI_BOOTSTRAP"] = ProcessInfo.processInfo.environment["AURI_BOOTSTRAP"]
     app.launch()
 
     XCTAssertTrue(elemento(app, contendo: "Boas-vindas ao Auri").waitForExistence(timeout: 10))
@@ -110,6 +111,7 @@ final class ConexaoUITests: XCTestCase {
     let qr = try XCTUnwrap(ProcessInfo.processInfo.environment["AURI_QR"])
     let app = XCUIApplication()
     app.launchEnvironment["AURI_QR"] = qr
+    app.launchEnvironment["AURI_BOOTSTRAP"] = ProcessInfo.processInfo.environment["AURI_BOOTSTRAP"]
     app.launch()
 
     XCTAssertTrue(app.buttons["Continuar"].waitForExistence(timeout: 10))
@@ -161,17 +163,21 @@ final class ConexaoUITests: XCTestCase {
     auri.tap()
     sleep(2)
     anexar(atalhos.screenshot(), "22-atalhos-auri")
-    let marcar = atalhos.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", "Marcar sessão")).firstMatch
+    let marcar = atalhos.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", "Marcar sessão"))
+      .firstMatch
     XCTAssertTrue(marcar.waitForExistence(timeout: 10))
     marcar.tap()
-    let ana = springboard.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", "Ana Beatriz")).firstMatch
-    let anaNoApp = atalhos.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", "Ana Beatriz")).firstMatch
+    let ana = springboard.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", "Ana Beatriz"))
+      .firstMatch
+    let anaNoApp = atalhos.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", "Ana Beatriz"))
+      .firstMatch
     let apareceu = ana.waitForExistence(timeout: 30) || anaNoApp.waitForExistence(timeout: 5)
     anexar(XCUIScreen.main.screenshot(), "23-atalho-paciente")
     XCTAssertTrue(apareceu)
     (ana.exists ? ana : anaNoApp).tap()
     sleep(2)
-    let proximoMes = springboard.buttons["Next Month"].exists ? springboard.buttons["Next Month"] : atalhos.buttons["Next Month"]
+    let proximoMes =
+      springboard.buttons["Next Month"].exists ? springboard.buttons["Next Month"] : atalhos.buttons["Next Month"]
     if proximoMes.exists {
       proximoMes.tap()
       sleep(1)
@@ -195,8 +201,12 @@ final class ConexaoUITests: XCTestCase {
         break
       }
     }
-    let marcada = springboard.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", "marcada para")).firstMatch
-    let marcadaNoApp = atalhos.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", "marcada para")).firstMatch
+    let marcada = springboard.descendants(matching: .any).matching(
+      NSPredicate(format: "label CONTAINS %@", "marcada para")
+    ).firstMatch
+    let marcadaNoApp = atalhos.descendants(matching: .any).matching(
+      NSPredicate(format: "label CONTAINS %@", "marcada para")
+    ).firstMatch
     sleep(2)
     anexar(XCUIScreen.main.screenshot(), "25a-atalho-depois")
     let terminou = marcada.waitForExistence(timeout: 40) || marcadaNoApp.waitForExistence(timeout: 5)

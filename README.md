@@ -61,7 +61,11 @@ cd ios
 npm install
 npm run preparar   # empacota o worklet, liga os addons nativos, baixa o BareKit e gera o Auri.xcodeproj
 npm run servidor   # computador de teste: as operações do desktop num banco em memória com pacientes e sessões fictícios; mostra o QR code (e grava build/qrcode.png) e o convite em texto
-npm run teste -- '<convite>' internet   # o cliente do iPhone no runtime Bare, sem o app
+npm run check      # formato, lint e tipos do worklet (oxfmt e oxlint com a configuração do desktop)
+npm run teste      # o cliente do iPhone no runtime Bare contra dois computadores de teste, numa DHT local
+npm run testes:swift   # testes em Swift (modelos, datas, resumo dos widgets)
+npm run formato:swift  # swift-format com a configuração de ios/.swift-format
+npm run telas      # testes de interface no simulador; capturas em build/telas/
 ```
 
 Depois do `preparar`, abrir `ios/Auri.xcodeproj` no Xcode ou rodar
@@ -69,14 +73,10 @@ Depois do `preparar`, abrir `ios/Auri.xcodeproj` no Xcode ou rodar
 de novo quando mudar o worklet ou o código de conexão do desktop.
 
 O simulador não tem câmera. No teste de interface, o app em Debug recebe o convite pela variável
-`AURI_QR` no lugar da leitura: com o `npm run servidor` aberto (o QR vale uma vez, por 5 minutos), ele
-passa pelas boas-vindas, pareia e lista os pacientes, e guarda as capturas das telas no resultado.
-
-```bash
-cd ios
-./scripts/telas.sh   # sobe o servidor de teste, roda o teste e grava as capturas em build/telas/
-./scripts/telas.sh "platform=iOS Simulator,name=iPhone 18 Pro" vazio   # o mesmo sem pacientes
-```
+`AURI_QR` no lugar da leitura e a DHT local por `AURI_BOOTSTRAP`. O `npm run telas` sobe a DHT e o
+computador de teste, escolhe o simulador, percorre as telas, os avisos, o Face ID, os widgets na tela
+inicial e o "Marcar sessão" pelos Atalhos, e grava as capturas em `build/telas/`. Para o caso sem
+pacientes: `sh scripts/telas.sh "$(node scripts/simulador.mjs)" vazio`.
 
 O ícone do app e os ícones das abas (os mesmos da barra lateral do desktop) saem de
 `node scripts/icones.mjs`, que gera `App/Assets.xcassets` a partir da marca e do `lucide-react` do
@@ -120,7 +120,7 @@ O CI do GitHub roda só quando o PR sai do rascunho e confere formato, lint, tip
 testes do app e do site (o job `Check`). O resto é testado aqui, no Mac, antes do PR:
 
 1. **Sempre:** `npm run ci:local` (em `desktop/`), os mesmos passos do `Check`, inclusive os do
-   site. Também roda sozinho antes de cada `git push`, com o cache do Vite+ nos passos que não
+   site e a conexão do iPhone. Também roda sozinho antes de cada `git push`, com o cache do Vite+ nos passos que não
    mudaram.
 2. **Conforme o que mudou:**
 
@@ -131,6 +131,7 @@ testes do app e do site (o job `Check`). O resto é testado aqui, no Mac, antes 
 | Processo main, IPC, banco, cópia de segurança, conexão, importação | `npm run build && npm run test:e2e`                    |
 | Empacotamento, `electron-builder.yml`, atualização, dependências   | `npm run ci:mac`                                       |
 | Algo só do Windows (caminhos, instaladores das nuvens, instalador) | `gh workflow run windows.yml --ref <branch>`           |
+| `ios/` ou o que ele usa do desktop (`net/`, `shared/`, operações)  | `npm run ci:ios`                                       |
 
 O `npm run ci:mac` cobre todas as linhas do Mac de uma vez e também roda antes de cada versão
 estável.

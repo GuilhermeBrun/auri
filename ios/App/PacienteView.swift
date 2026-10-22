@@ -14,7 +14,8 @@ struct PacienteView: View {
       if let paciente {
         ficha(paciente)
       } else if let erro {
-        ContentUnavailableView("Ficha indisponível", systemImage: "person.crop.circle.badge.exclamationmark", description: Text(erro))
+        ContentUnavailableView(
+          "Ficha indisponível", systemImage: "person.crop.circle.badge.exclamationmark", description: Text(erro))
       } else {
         ProgressView()
       }
@@ -234,13 +235,16 @@ struct AnamneseView: View {
       } else if anamnese == nil {
         ProgressView()
       } else if temas.isEmpty {
-        ContentUnavailableView("Sem anamnese", systemImage: "doc.text", description: Text("A anamnese é preenchida no computador do consultório."))
+        ContentUnavailableView(
+          "Sem anamnese", systemImage: "doc.text",
+          description: Text("A anamnese é preenchida no computador do consultório."))
       }
     }
     .navigationTitle("Anamnese")
     .task {
       do {
-        anamnese = try await conexao.operacao("anamneses:get", [.numero(Double(paciente.id))]).decodificar(Anamnese.self)
+        anamnese = try await conexao.operacao("anamneses:get", [.numero(Double(paciente.id))]).decodificar(
+          Anamnese.self)
       } catch {
         erro = error.localizedDescription
       }
@@ -251,7 +255,7 @@ struct AnamneseView: View {
     [
       ("Queixa", a.queixa), ("Gestação e parto", a.gestacao), ("Alimentação", a.alimentacao),
       ("Sono", a.sono), ("Desenvolvimento", a.desenvolvimento), ("Saúde", a.saude),
-      ("Rotina", a.rotina), ("Terapias", a.terapias), ("Observações", a.observacoes)
+      ("Rotina", a.rotina), ("Terapias", a.terapias), ("Observações", a.observacoes),
     ].compactMap { titulo, texto in
       guard let texto, !texto.isEmpty else { return nil }
       return (titulo, texto)
@@ -269,7 +273,9 @@ struct EvolucoesView: View {
   var body: some View {
     let comEvolucao = (sessoes ?? [])
       .compactMap { sessao -> (Sessao, Date, String)? in
-        guard let texto = sessao.evolucao, !texto.isEmpty, let inicio = DataLocal.data(sessao.inicio) else { return nil }
+        guard let texto = sessao.evolucao, !texto.isEmpty, let inicio = DataLocal.data(sessao.inicio) else {
+          return nil
+        }
         return (sessao, inicio, texto)
       }
       .sorted { $0.1 > $1.1 }
@@ -284,7 +290,9 @@ struct EvolucoesView: View {
       } else if sessoes == nil {
         ProgressView()
       } else if comEvolucao.isEmpty {
-        ContentUnavailableView("Nenhuma evolução", systemImage: "text.document", description: Text("As evoluções são escritas no computador do consultório."))
+        ContentUnavailableView(
+          "Nenhuma evolução", systemImage: "text.document",
+          description: Text("As evoluções são escritas no computador do consultório."))
       }
     }
     .navigationTitle("Evoluções")

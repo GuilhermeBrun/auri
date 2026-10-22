@@ -143,7 +143,9 @@ struct BloqueioView: View {
         .disabled(!disponivel)
       } footer: {
         if disponivel {
-          Text("O Auri pede o \(metodo) ao abrir e ao voltar para o app. Se não reconhecer, dá para usar o código do iPhone.")
+          Text(
+            "O Auri pede o \(metodo) ao abrir e ao voltar para o app. Se não reconhecer, dá para usar o código do iPhone."
+          )
         } else {
           Text("Para usar o bloqueio, defina um código no iPhone em Ajustes › Face ID e Código.")
         }

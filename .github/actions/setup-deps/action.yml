@@ -3,7 +3,7 @@ description: Node fixo e node_modules em cache (Electron e SQLite já compilados
 
 inputs:
   directory:
-    description: Pasta do projeto (desktop ou web), com o package.json e o package-lock.json.
+    description: Pasta do projeto (desktop, web ou ios), com o package.json e o package-lock.json.
     default: desktop
 
 runs:

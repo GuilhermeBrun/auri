@@ -39,7 +39,10 @@ rmSync(catalogo, { recursive: true, force: true })
 escrever(`${catalogo}/Contents.json`, json({ info: { author: 'xcode', version: 1 } }))
 
 for (const [nome, lucide] of Object.entries(ICONES)) {
-  const fonte = readFileSync(`${desktop}node_modules/lucide-react/dist/esm/icons/${lucide}.mjs`, 'utf8')
+  const fonte = readFileSync(
+    `${desktop}node_modules/lucide-react/dist/esm/icons/${lucide}.mjs`,
+    'utf8'
+  )
   const nos = Function(`return ${fonte.match(/node: (\[[\s\S]*?\n {2}\])/)[1]}`)()
   const svg =
     '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" ' +
@@ -52,7 +55,10 @@ for (const [nome, lucide] of Object.entries(ICONES)) {
     json({
       images: [{ filename: `${nome}.svg`, idiom: 'universal' }],
       info: { author: 'xcode', version: 1 },
-      properties: { 'preserves-vector-representation': true, 'template-rendering-intent': 'template' }
+      properties: {
+        'preserves-vector-representation': true,
+        'template-rendering-intent': 'template'
+      }
     })
   )
 }
@@ -88,9 +94,24 @@ const svgDoIcone = `<svg xmlns="http://www.w3.org/2000/svg" width="1024" height=
 const temp = mkdtempSync(`${tmpdir()}/auri-icone-`)
 try {
   writeFileSync(`${temp}/icone.svg`, svgDoIcone)
-  execFileSync('qlmanage', ['-t', '-s', '1024', '-o', temp, `${temp}/icone.svg`], { stdio: 'ignore' })
+  execFileSync('qlmanage', ['-t', '-s', '1024', '-o', temp, `${temp}/icone.svg`], {
+    stdio: 'ignore'
+  })
   const sips = (...args) => execFileSync('sips', args, { stdio: 'ignore' })
-  sips('-z', '1024', '1024', '-s', 'format', 'jpeg', '-s', 'formatOptions', '100', `${temp}/icone.svg.png`, '--out', `${temp}/icone.jpg`)
+  sips(
+    '-z',
+    '1024',
+    '1024',
+    '-s',
+    'format',
+    'jpeg',
+    '-s',
+    'formatOptions',
+    '100',
+    `${temp}/icone.svg.png`,
+    '--out',
+    `${temp}/icone.jpg`
+  )
   sips('-s', 'format', 'png', `${temp}/icone.jpg`, '--out', `${temp}/icone.png`)
   mkdirSync(`${catalogo}/AppIcon.appiconset`, { recursive: true })
   renameSync(`${temp}/icone.png`, `${catalogo}/AppIcon.appiconset/icone.png`)

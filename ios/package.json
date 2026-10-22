@@ -3,9 +3,15 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "check": "npm run formato && npm run lint && npm run tipos",
+    "formato": "oxfmt --check worklet scripts",
+    "formato:swift": "xcrun swift-format lint --recursive --strict App Widget Compartilhado Tests UITests",
+    "lint": "oxlint --deny-warnings worklet scripts",
     "preparar": "node scripts/preparar.mjs",
     "servidor": "node scripts/construir.mjs && node scripts/servidor.mjs",
-    "teste": "node scripts/construir.mjs && bare build/teste.cjs",
+    "telas": "sh scripts/telas.sh",
+    "teste": "node scripts/construir.mjs && node scripts/testar.mjs",
+    "testes:swift": "sh scripts/testes-swift.sh",
     "tipos": "tsc -p tsconfig.json"
   },
   "dependencies": {
@@ -21,7 +27,10 @@
     "bare": "1.36.0",
     "bare-link": "4.0.1",
     "bare-pack": "3.0.2",
+    "brittle": "^4.5.0",
     "esbuild": "0.28.2",
+    "oxfmt": "^0.73.0",
+    "oxlint": "^1.88.0",
     "qrcode": "^1.5.4",
     "typescript": "^7.0.2"
   }

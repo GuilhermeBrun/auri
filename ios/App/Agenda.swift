@@ -123,7 +123,7 @@ final class Agenda {
       "patient_id": .numero(Double(paciente)),
       "inicio": .texto(DataLocal.texto(inicio)),
       "fim": .texto(DataLocal.texto(fim)),
-      "observacao": .texto(observacao)
+      "observacao": .texto(observacao),
     ]
     if let etiqueta { dados["tipo_id"] = .numero(Double(etiqueta)) }
     _ = try await conexao.operacao("appointments:create", [.objeto(dados)])

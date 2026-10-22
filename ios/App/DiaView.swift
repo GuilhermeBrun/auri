@@ -135,8 +135,10 @@ private struct LinhaDoTempo: View {
       }
       .onAppear {
         let primeira = eventos.first.map { DataLocal.calendario.component(.hour, from: $0.inicio) }
-        let alvo = foco ?? (DataLocal.calendario.isDateInToday(dia)
-          ? DataLocal.calendario.component(.hour, from: .now) : (primeira ?? 8))
+        let alvo =
+          foco
+          ?? (DataLocal.calendario.isDateInToday(dia)
+            ? DataLocal.calendario.component(.hour, from: .now) : (primeira ?? 8))
         leitor.scrollTo(max(alvo - 1, 0), anchor: .top)
       }
     }

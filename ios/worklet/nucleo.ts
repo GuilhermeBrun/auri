@@ -24,7 +24,12 @@ const endereco = z.object({
 const servidor = z.object({ chave: hex, nome, enderecos: z.array(endereco).max(8) })
 
 export const entrada = z.discriminatedUnion('t', [
-  z.object({ t: z.literal('iniciar'), semente: hex.length(64), nome }),
+  z.object({
+    t: z.literal('iniciar'),
+    semente: hex.length(64),
+    nome,
+    bootstrap: z.array(endereco).max(8).optional()
+  }),
   z.object({
     t: z.literal('parear'),
     id: z.number().int().nonnegative(),
@@ -53,11 +58,12 @@ export type Saida =
   | { t: 'resposta'; id: number; result: IpcResult<unknown> }
   | { t: 'falha'; mensagem: string }
 
-export function criarNucleo(opcoes: {
-  enviar: (saida: Saida) => void
-  bootstrap?: Bootstrap
-}): { receber(mensagem: unknown): void; fechar(): Promise<void> } {
+export function criarNucleo(opcoes: { enviar: (saida: Saida) => void; bootstrap?: Bootstrap }): {
+  receber(mensagem: unknown): void
+  fechar(): Promise<void>
+} {
   const { enviar } = opcoes
+  let bootstrap = opcoes.bootstrap
   let chaves: { publicKey: Buffer; secretKey: Buffer } | null = null
   let meuNome = 'iPhone'
   let atual: { cliente: ReturnType<typeof createSyncClient>; servidor: Servidor } | null = null
@@ -73,7 +79,7 @@ export function criarNucleo(opcoes: {
   }
 
   function discar(): ReturnType<typeof createRemoteDialer> {
-    discador ??= createRemoteDialer({ keyPair: minhasChaves(), bootstrap: opcoes.bootstrap })
+    discador ??= createRemoteDialer({ keyPair: minhasChaves(), bootstrap })
     return discador
   }
 
@@ -99,7 +105,8 @@ export function criarNucleo(opcoes: {
       if (pareado.publicKey !== convite.chave) {
         return responder(id, {
           ok: false,
-          error: 'O computador que respondeu não é o do QR code. Gere outro QR code e tente de novo.'
+          error:
+            'O computador que respondeu não é o do QR code. Gere outro QR code e tente de novo.'
         })
       }
       responder(id, {
@@ -108,7 +115,9 @@ export function criarNucleo(opcoes: {
       })
     } catch (error) {
       const motivos = (error as AggregateError).errors.map((e: Error) => e.message)
-      const doComputador = motivos.find((motivo) => !motivo.startsWith('Não foi possível conectar a '))
+      const doComputador = motivos.find(
+        (motivo) => !motivo.startsWith('Não foi possível conectar a ')
+      )
       responder(id, {
         ok: false,
         error:
@@ -167,6 +176,7 @@ export function criarNucleo(opcoes: {
         case 'iniciar':
           chaves = SecretStream.keyPair(Buffer.from(m.semente, 'hex'))
           meuNome = m.nome
+          if (m.bootstrap) bootstrap = m.bootstrap
           return enviar({ t: 'pronto', chave: chaves.publicKey.toString('hex') })
         case 'parear':
           return void parear(m.id, m.qr)

@@ -161,7 +161,8 @@ struct NovaSessaoView: View {
     let base = dia ?? agora
     if calendario.isDate(base, inSameDayAs: agora) {
       let proxima = calendario.date(byAdding: .hour, value: 1, to: agora) ?? agora
-      return calendario.date(bySettingHour: calendario.component(.hour, from: proxima), minute: 0, second: 0, of: proxima) ?? proxima
+      return calendario.date(
+        bySettingHour: calendario.component(.hour, from: proxima), minute: 0, second: 0, of: proxima) ?? proxima
     }
     return calendario.date(bySettingHour: 9, minute: 0, second: 0, of: base) ?? base
   }

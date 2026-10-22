@@ -11,6 +11,11 @@ import { runOperation } from '../../desktop/src/main/operations'
 import { escreverConvite } from '../worklet/convite'
 
 const PORTA = Number(process.argv[2] ?? 47391)
+const NOME = process.env.AURI_NOME ?? 'Recepção de teste'
+const BOOTSTRAP = process.env.AURI_BOOTSTRAP?.split(',').map((endereco) => {
+  const [host, port] = endereco.split(':')
+  return { host, port: Number(port) }
+})
 
 const db = openDatabase(':memory:')
 
@@ -70,15 +75,19 @@ const EVOLUCOES = [
 
 const hoje = new Date()
 const HORAS = [8, 9, 10, 14, 15, 16]
+const livresParaOTeste = new Set([0, 1, 2].map((n) => (hoje.getHours() + n) % 24))
 for (let d = -21; d <= 42 && pacientes.length > 0; d++) {
   const data = dia(hoje, d)
   const semana = data.getDay()
   if (semana === 0 || semana === 6) continue
   HORAS.forEach((hora, h) => {
-    if ((d * 7 + h * 3) % 5 === 0) return
-    const paciente = pacientes[(((d * 6 + h) % pacientes.length) + pacientes.length) % pacientes.length]
+    if ((d * 7 + h * 3) % 5 === 0 || livresParaOTeste.has(hora)) return
+    const paciente =
+      pacientes[(((d * 6 + h) % pacientes.length) + pacientes.length) % pacientes.length]
     const tipo =
-      (d + h) % 7 === 0 ? avaliacao : deSessao[(((d + h) % deSessao.length) + deSessao.length) % deSessao.length]
+      (d + h) % 7 === 0
+        ? avaliacao
+        : deSessao[(((d + h) % deSessao.length) + deSessao.length) % deSessao.length]
     const inicio = new Date(data.getFullYear(), data.getMonth(), data.getDate(), hora)
     const fim = new Date(inicio.getTime() + tipo.duracao * 60_000)
     op('appointments:create', {
@@ -101,18 +110,19 @@ for (let d = -21; d <= 42 && pacientes.length > 0; d++) {
   }
 }
 
-if (pacientes.length > 0) op('anamneses:save', pacientes[0].id, {
-  data: '2026-03-02',
-  queixa: 'Troca de sons na fala (r por l) e dificuldade para contar histórias.',
-  gestacao: 'Sem intercorrências.',
-  alimentacao: 'Come de tudo, mastigação adequada.',
-  sono: 'Dorme bem, cerca de 10 horas por noite.',
-  desenvolvimento: 'Primeiras palavras com 1 ano e 2 meses.',
-  saude: 'Otites de repetição até os 3 anos.',
-  rotina: 'Escola pela manhã, natação às quartas.',
-  terapias: 'Nenhuma antes.',
-  observacoes: 'Família muito participativa.'
-})
+if (pacientes.length > 0)
+  op('anamneses:save', pacientes[0].id, {
+    data: '2026-03-02',
+    queixa: 'Troca de sons na fala (r por l) e dificuldade para contar histórias.',
+    gestacao: 'Sem intercorrências.',
+    alimentacao: 'Come de tudo, mastigação adequada.',
+    sono: 'Dorme bem, cerca de 10 horas por noite.',
+    desenvolvimento: 'Primeiras palavras com 1 ano e 2 meses.',
+    saude: 'Otites de repetição até os 3 anos.',
+    rotina: 'Escola pela manhã, natação às quartas.',
+    terapias: 'Nenhuma antes.',
+    observacoes: 'Família muito participativa.'
+  })
 
 const keyPair = SecretStream.keyPair()
 const pareados = new Set<string>()
@@ -120,7 +130,7 @@ const codes = createPairingCodes()
 
 const server = createSyncServer({
   keyPair,
-  name: () => 'Recepção de teste',
+  name: () => NOME,
   schemaVersion: SCHEMA_VERSION,
   isPaired: (chave) => pareados.has(chave),
   codes,
@@ -175,7 +185,8 @@ async function main(): Promise<void> {
     keyPair,
     isPaired: (chave) => pareados.has(chave),
     attach: server.attach,
-    onReach: (alcance) => console.log(`pela internet: ${alcance}`)
+    onReach: (alcance) => console.log(`pela internet: ${alcance}`),
+    bootstrap: BOOTSTRAP
   })
 
   const { code } = codes.issue()

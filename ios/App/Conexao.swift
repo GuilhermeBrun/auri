@@ -58,6 +58,20 @@ final class Conexao {
 
   private static let chaveDoServidor = "servidor"
 
+  private static var bootstrapDeTeste: JSONValor? {
+    #if DEBUG
+      guard let texto = ProcessInfo.processInfo.environment["AURI_BOOTSTRAP"] else { return nil }
+      return .lista(
+        texto.split(separator: ",").compactMap { endereco in
+          let partes = endereco.split(separator: ":")
+          guard partes.count == 2, let porta = Double(partes[1]) else { return nil }
+          return .objeto(["host": .texto(String(partes[0])), "port": .numero(porta)])
+        })
+    #else
+      nil
+    #endif
+  }
+
   init() {
     servidor = UserDefaults.standard.data(forKey: Self.chaveDoServidor)
       .flatMap { try? JSONDecoder().decode(Servidor.self, from: $0) }
@@ -85,7 +99,11 @@ final class Conexao {
       }
     }
     do {
-      enviar(["t": .texto("iniciar"), "semente": .texto(try Chaves.semente()), "nome": .texto("iPhone")])
+      var inicio: [String: JSONValor] = [
+        "t": .texto("iniciar"), "semente": .texto(try Chaves.semente()), "nome": .texto("iPhone"),
+      ]
+      if let bootstrap = Self.bootstrapDeTeste { inicio["bootstrap"] = bootstrap }
+      enviar(inicio)
     } catch {
       situacao = .falha("Não foi possível guardar a chave deste iPhone no Chaveiro.")
       return

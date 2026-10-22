@@ -24,7 +24,7 @@ enum Chaves {
     [
       kSecClass as String: kSecClassGenericPassword,
       kSecAttrService as String: servico,
-      kSecAttrAccount as String: conta
+      kSecAttrAccount as String: conta,
     ]
   }
 

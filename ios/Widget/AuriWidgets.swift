@@ -46,7 +46,7 @@ struct ProximasSessoes: Widget {
     .description("As próximas sessões da agenda da clínica.")
     .supportedFamilies([
       .systemSmall, .systemMedium, .systemLarge,
-      .accessoryRectangular, .accessoryInline, .accessoryCircular
+      .accessoryRectangular, .accessoryInline, .accessoryCircular,
     ])
   }
 }
@@ -93,7 +93,7 @@ private extension Resumo {
       itens: [
         item(14, "Ana Beatriz", "Linguagem", "#7c3aed"),
         item(15, "Bruno Exemplo", "Avaliação", "#2563eb"),
-        item(16, "Carla Fictícia", "Motricidade", "#ea580c")
+        item(16, "Carla Fictícia", "Motricidade", "#ea580c"),
       ],
       atualizado: .now
     )
@@ -274,10 +274,13 @@ private struct LinhaDoWidget: View {
           .font(.caption.weight(.semibold))
           .lineLimit(1)
           .privacySensitive()
-        Text(item.titulo == item.etiqueta ? VisaoDoWidget.horario(item) : "\(VisaoDoWidget.horario(item)) · \(item.etiqueta)")
-          .font(.caption2)
-          .foregroundStyle(.secondary)
-          .lineLimit(1)
+        Text(
+          item.titulo == item.etiqueta
+            ? VisaoDoWidget.horario(item) : "\(VisaoDoWidget.horario(item)) · \(item.etiqueta)"
+        )
+        .font(.caption2)
+        .foregroundStyle(.secondary)
+        .lineLimit(1)
       }
     }
     .fixedSize(horizontal: false, vertical: true)

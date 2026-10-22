@@ -116,7 +116,7 @@ struct AtalhosDoAuri: AppShortcutsProvider {
       phrases: [
         "Marcar sessão no \(.applicationName)",
         "Nova sessão no \(.applicationName)",
-        "Agendar no \(.applicationName)"
+        "Agendar no \(.applicationName)",
       ],
       shortTitle: "Marcar sessão",
       systemImageName: "calendar.badge.plus"

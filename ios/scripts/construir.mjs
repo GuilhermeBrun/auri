@@ -26,11 +26,11 @@ await build({
 
 await build({
   ...comum,
-  entryPoints: ['worklet/teste.ts'],
-  outfile: 'build/teste.cjs',
+  entryPoints: ['worklet/nucleo.test.ts'],
+  outfile: 'build/nucleo.test.cjs',
   platform: 'neutral',
   mainFields: ['module', 'main'],
-  external: daBare,
+  external: [...daBare, 'brittle'],
   alias: { ...comum.alias, 'node:net': 'bare-net', 'node:crypto': 'bare-crypto' }
 })
 
