@@ -57,6 +57,16 @@ final class ConexaoUITests: XCTestCase {
     app.tabBars.buttons["Conexão"].tap()
     XCTAssertTrue(app.navigationBars["Conexão"].waitForExistence(timeout: 10))
     anexar(app, "10-conexao")
+
+    elemento(app, contendo: "Recepção de teste").tap()
+    XCTAssertTrue(app.buttons["Esquecer este computador"].waitForExistence(timeout: 10))
+    anexar(app, "12-computador")
+    app.navigationBars.buttons.firstMatch.tap()
+
+    elemento(app, contendo: "Acesso pela internet").tap()
+    app.buttons["Testar agora"].tap()
+    XCTAssertTrue(app.staticTexts["Resposta"].waitForExistence(timeout: 60))
+    anexar(app, "13-internet")
   }
 
   func testPacientesVazio() throws {

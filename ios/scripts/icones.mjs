@@ -10,7 +10,13 @@ const catalogo = `${raiz}App/Assets.xcassets`
 const marca = readFileSync(`${desktop}src/renderer/src/components/ui/brand.tsx`, 'utf8')
 const simbolo = marca.match(/SYMBOL_PATH =\s*'([^']+)'/)[1]
 
-const ICONES = { agenda: 'calendar-days', pacientes: 'users', conexao: 'network' }
+const ICONES = {
+  agenda: 'calendar-days',
+  pacientes: 'users',
+  conexao: 'network',
+  internet: 'globe',
+  iphone: 'smartphone'
+}
 
 const json = (dados) => JSON.stringify(dados, null, 2) + '\n'
 
@@ -47,6 +53,19 @@ for (const [nome, lucide] of Object.entries(ICONES)) {
     })
   )
 }
+
+escrever(
+  `${catalogo}/simbolo.imageset/simbolo.svg`,
+  `<svg xmlns="http://www.w3.org/2000/svg" width="122" height="116" viewBox="-2 -2 122 116"><path fill="#000000" d="${simbolo}"/></svg>\n`
+)
+escrever(
+  `${catalogo}/simbolo.imageset/Contents.json`,
+  json({
+    images: [{ filename: 'simbolo.svg', idiom: 'universal' }],
+    info: { author: 'xcode', version: 1 },
+    properties: { 'preserves-vector-representation': true, 'template-rendering-intent': 'template' }
+  })
+)
 
 const escala = 5.2
 const svgDoIcone = `<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
