@@ -1,6 +1,7 @@
 @preconcurrency import BareKit
 import Foundation
 import Observation
+import os
 
 struct Endereco: Codable, Equatable, Sendable {
   var host: String
@@ -14,7 +15,6 @@ struct Servidor: Codable, Equatable, Sendable {
 }
 
 enum Situacao: Equatable {
-  case semComputador
   case conectando
   case conectado(pelaInternet: Bool)
   case semConexao
@@ -43,9 +43,9 @@ struct ErroDoAuri: LocalizedError {
 @MainActor
 @Observable
 final class Conexao {
-  private(set) var situacao: Situacao
+  private(set) var situacao: Situacao = .conectando
   private(set) var servidor: Servidor?
-  private(set) var registro: [String] = []
+  private(set) var mudancas = 0
 
   private var worklet: Worklet?
   private var canal: Canal?
@@ -53,14 +53,18 @@ final class Conexao {
   private var proximo = 1
   private var esperando: [Int: CheckedContinuation<JSONValor, Error>] = [:]
   private var resto = Data()
+  private let registro = Logger(subsystem: "com.auri.ios", category: "conexao")
 
   private static let chaveDoServidor = "servidor"
 
   init() {
-    let guardado = UserDefaults.standard.data(forKey: Self.chaveDoServidor)
+    servidor = UserDefaults.standard.data(forKey: Self.chaveDoServidor)
       .flatMap { try? JSONDecoder().decode(Servidor.self, from: $0) }
-    servidor = guardado
-    situacao = guardado == nil ? .semComputador : .conectando
+  }
+
+  var conectado: Bool {
+    if case .conectado = situacao { return true }
+    return false
   }
 
   func iniciar() {
@@ -76,7 +80,7 @@ final class Conexao {
           self?.receber(dados)
         }
       } catch {
-        self?.anotar("A conexão interna do app fechou.")
+        self?.registro.error("O worklet fechou.")
       }
     }
     do {
@@ -96,34 +100,19 @@ final class Conexao {
     worklet?.resume()
   }
 
-  func parear(host: String, porta: Int, codigo: String) async throws {
-    let dados = try await pedir([
-      "t": .texto("parear"),
-      "endereco": .objeto(["host": .texto(host), "port": .numero(Double(porta))]),
-      "codigo": .texto(codigo)
-    ])
+  func parear(qr: String) async throws {
+    let dados = try await pedir(["t": .texto("parear"), "qr": .texto(qr)])
     let novo = try dados.decodificar(Servidor.self)
     UserDefaults.standard.set(try JSONEncoder().encode(novo), forKey: Self.chaveDoServidor)
     servidor = novo
-    anotar("Pareado com \(novo.nome).")
     conectar(novo)
-  }
-
-  func conectar(_ alvo: Servidor, soPelaInternet: Bool = false) {
-    var rota = alvo
-    if soPelaInternet { rota.enderecos = [] }
-    guard let valor = try? JSONDecoder().decode(JSONValor.self, from: JSONEncoder().encode(rota)) else {
-      return
-    }
-    situacao = .conectando
-    enviar(["t": .texto("conectar"), "servidor": valor])
   }
 
   func esquecer() {
     enviar(["t": .texto("desconectar")])
     UserDefaults.standard.removeObject(forKey: Self.chaveDoServidor)
     servidor = nil
-    situacao = .semComputador
+    situacao = .conectando
   }
 
   func operacao(_ canal: String, _ args: [JSONValor] = []) async throws -> JSONValor {
@@ -135,8 +124,25 @@ final class Conexao {
     return Int(dados["ms"]?.numero ?? 0)
   }
 
-  func anotarTeste(_ ms: Int) {
-    anotar("Pela internet, \(servidor?.nome ?? "o computador") respondeu em \(ms) ms.")
+  var descricao: String {
+    let nome = servidor?.nome ?? "o computador"
+    switch situacao {
+    case .conectando: return "Conectando…"
+    case .conectado(let pelaInternet):
+      return pelaInternet ? "Conectado pela internet" : "Conectado pela rede da clínica"
+    case .semConexao: return "Sem conexão com \(nome)"
+    case .versao: return "\(nome) usa outra versão do Auri"
+    case .removido: return "Este iPhone foi desconectado de \(nome)"
+    case .falha(let mensagem): return mensagem
+    }
+  }
+
+  private func conectar(_ alvo: Servidor) {
+    guard let valor = try? JSONDecoder().decode(JSONValor.self, from: JSONEncoder().encode(alvo)) else {
+      return
+    }
+    situacao = .conectando
+    enviar(["t": .texto("conectar"), "servidor": valor])
   }
 
   private func pedir(_ mensagem: [String: JSONValor]) async throws -> JSONValor {
@@ -174,12 +180,10 @@ final class Conexao {
 
   private func tratar(_ mensagem: JSONValor) {
     switch mensagem["t"]?.texto {
-    case "pronto":
-      anotar("Chave deste iPhone criada.")
     case "estado":
       atualizar(status: mensagem["status"]?.texto, via: mensagem["via"]?.texto)
     case "evento":
-      anotar("Dados mudaram no computador.")
+      mudancas += 1
     case "resposta":
       guard let id = mensagem["id"]?.numero.map(Int.init),
         let continuacao = esperando.removeValue(forKey: id)
@@ -191,7 +195,7 @@ final class Conexao {
         continuacao.resume(throwing: ErroDoAuri(mensagem: resultado?["error"]?.texto ?? "Erro inesperado"))
       }
     case "falha":
-      anotar(mensagem["mensagem"]?.texto ?? "Erro inesperado")
+      registro.error("Falha no worklet: \(mensagem["mensagem"]?.texto ?? "", privacy: .public)")
     default:
       break
     }
@@ -205,26 +209,6 @@ final class Conexao {
     case "version": situacao = .versao
     case "revoked": situacao = .removido
     default: return
-    }
-    anotar(descricao)
-  }
-
-  private func anotar(_ texto: String) {
-    registro.insert(texto, at: 0)
-    if registro.count > 50 { registro.removeLast() }
-  }
-
-  var descricao: String {
-    let nome = servidor?.nome ?? "o computador"
-    switch situacao {
-    case .semComputador: return "Nenhum computador conectado"
-    case .conectando: return "Conectando a \(nome)…"
-    case .conectado(let pelaInternet):
-      return pelaInternet ? "Conectado pela internet" : "Conectado pela rede da clínica"
-    case .semConexao: return "Sem conexão com \(nome)"
-    case .versao: return "\(nome) usa outra versão do Auri"
-    case .removido: return "Este iPhone foi desconectado de \(nome)"
-    case .falha(let mensagem): return mensagem
     }
   }
 }

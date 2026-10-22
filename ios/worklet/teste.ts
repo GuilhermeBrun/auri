@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto'
 import { criarNucleo, type Saida } from './nucleo'
 
-const [host, porta, codigo, rota] = Bare.argv.slice(2)
+const [qr, rota] = Bare.argv.slice(2)
 
 let proximo = 1
 const esperando = new Map<number, (saida: Extract<Saida, { t: 'resposta' }>) => void>()
@@ -25,7 +25,7 @@ async function main(): Promise<void> {
   const semente = randomBytes(32)
   nucleo.receber({ t: 'iniciar', semente: semente.toString('hex'), nome: 'iPhone de teste' })
 
-  const pareado = await pedir({ t: 'parear', endereco: { host, port: Number(porta) }, codigo })
+  const pareado = await pedir({ t: 'parear', qr })
   console.log('parear', JSON.stringify(pareado.result))
   if (!pareado.result.ok) throw new Error('não pareou')
 

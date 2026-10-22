@@ -17,10 +17,12 @@
   },
   "devDependencies": {
     "@types/node": "^24.19.2",
+    "@types/qrcode": "^1.5.6",
     "bare": "1.36.0",
     "bare-link": "4.0.1",
     "bare-pack": "3.0.2",
     "esbuild": "0.28.2",
+    "qrcode": "^1.5.4",
     "typescript": "^7.0.2"
   }
 }

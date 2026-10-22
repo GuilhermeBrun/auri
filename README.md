@@ -60,20 +60,21 @@ Precisa do Xcode e do XcodeGen (`brew install xcodegen`).
 cd ios
 npm install
 npm run preparar   # empacota o worklet, liga os addons nativos, baixa o BareKit e gera o Auri.xcodeproj
-npm run servidor   # computador de teste com pacientes fictícios: mostra a porta e o código de pareamento
-npm run teste -- 127.0.0.1 47391 <código> internet   # o cliente do iPhone no runtime Bare, sem o app
+npm run servidor   # computador de teste com pacientes fictícios: mostra o QR code (e grava build/qrcode.png) e o convite em texto
+npm run teste -- '<convite>' internet   # o cliente do iPhone no runtime Bare, sem o app
 ```
 
 Depois do `preparar`, abrir `ios/Auri.xcodeproj` no Xcode ou rodar
 `xcodebuild -project ios/Auri.xcodeproj -scheme Auri -sdk iphonesimulator build`. Rodar o `preparar`
 de novo quando mudar o worklet ou o código de conexão do desktop.
 
-Teste de interface no simulador, com o `npm run servidor` aberto (o código vale uma vez, por 5
-minutos): pareia, conecta pela rede local e pela internet e lista os pacientes.
+O simulador não tem câmera. No teste de interface, o app em Debug recebe o convite pela variável
+`AURI_QR` no lugar da leitura: com o `npm run servidor` aberto (o QR vale uma vez, por 5 minutos), ele
+passa pelas boas-vindas, pareia e lista os pacientes, e guarda as capturas das telas no resultado.
 
 ```bash
 cd ios
-TEST_RUNNER_AURI_CODIGO=<código> xcodebuild test -project Auri.xcodeproj -scheme Auri -destination 'platform=iOS Simulator,name=iPhone 18 Pro'
+TEST_RUNNER_AURI_QR='<convite>' xcodebuild test -project Auri.xcodeproj -scheme Auri -destination 'platform=iOS Simulator,name=iPhone 18 Pro'
 ```
 
 ### App (`desktop/`)

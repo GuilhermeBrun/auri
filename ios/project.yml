@@ -28,6 +28,7 @@ targets:
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
         NSLocalNetworkUsageDescription: O Auri procura o computador da clínica nesta rede para conectar mais rápido.
+        NSCameraUsageDescription: O Auri usa a câmera para ler o QR code mostrado no computador da clínica.
     dependencies:
       - framework: App/frameworks/BareKit.xcframework
       - package: BareKit

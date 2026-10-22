@@ -6,10 +6,10 @@ import {
   createSyncClient,
   pairWithServer,
   probeServer,
-  type Address,
   type ClientStatus
 } from '../../desktop/src/main/net/client'
 import { createRemoteDialer, type Bootstrap } from '../../desktop/src/main/net/remote'
+import { lerConvite } from './convite'
 
 const hex = z
   .string()
@@ -27,8 +27,7 @@ export const entrada = z.discriminatedUnion('t', [
   z.object({
     t: z.literal('parear'),
     id: z.number().int().nonnegative(),
-    endereco,
-    codigo: z.string().max(40)
+    qr: z.string().max(2000)
   }),
   z.object({ t: z.literal('conectar'), servidor }),
   z.object({
@@ -81,21 +80,40 @@ export function criarNucleo(opcoes: {
     atual = null
   }
 
-  async function parear(id: number, alvo: Address, codigo: string): Promise<void> {
-    try {
-      const pareado = await pairWithServer({
+  async function parear(id: number, qr: string): Promise<void> {
+    const convite = lerConvite(qr)
+    if (!convite) return responder(id, { ok: false, error: 'Este QR code não é do Auri.' })
+    const tentativas = convite.enderecos.map((alvo) =>
+      pairWithServer({
         keyPair: minhasChaves(),
         name: meuNome,
         schemaVersion: SCHEMA_VERSION,
         address: alvo,
-        code: codigo
+        code: convite.codigo
       })
+    )
+    try {
+      const pareado = await Promise.any(tentativas)
+      if (pareado.publicKey !== convite.chave) {
+        return responder(id, {
+          ok: false,
+          error: 'O computador que respondeu não é o do QR code. Gere outro QR code e tente de novo.'
+        })
+      }
       responder(id, {
         ok: true,
-        data: { chave: pareado.publicKey, nome: pareado.name, enderecos: [alvo] }
+        data: { chave: pareado.publicKey, nome: pareado.name, enderecos: convite.enderecos }
       })
     } catch (error) {
-      responder(id, { ok: false, error: (error as Error).message })
+      const motivos = (error as AggregateError).errors.map((e: Error) => e.message)
+      const doComputador = motivos.find((motivo) => !motivo.startsWith('Não foi possível conectar a '))
+      responder(id, {
+        ok: false,
+        error:
+          doComputador ??
+          'Não foi possível chegar ao computador. Na primeira conexão, o iPhone precisa estar no ' +
+            'mesmo Wi-Fi que ele, com o Auri aberto.'
+      })
     }
   }
 
@@ -144,7 +162,7 @@ export function criarNucleo(opcoes: {
           meuNome = m.nome
           return enviar({ t: 'pronto', chave: chaves.publicKey.toString('hex') })
         case 'parear':
-          return void parear(m.id, m.endereco, m.codigo)
+          return void parear(m.id, m.qr)
         case 'conectar':
           return conectar(m.servidor)
         case 'operacao':

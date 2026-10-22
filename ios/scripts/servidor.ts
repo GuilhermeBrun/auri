@@ -1,15 +1,20 @@
+import { networkInterfaces } from 'node:os'
 import SecretStream from '@hyperswarm/secret-stream'
+import QRCode from 'qrcode'
 import { SCHEMA_VERSION } from '../../desktop/src/main/db/migrations'
-import { createPairingCodes, formatCode } from '../../desktop/src/main/net/pairing'
+import { createPairingCodes } from '../../desktop/src/main/net/pairing'
 import { createRemoteListener } from '../../desktop/src/main/net/remote'
 import { createSyncServer } from '../../desktop/src/main/net/server'
+import { escreverConvite } from '../worklet/convite'
 
 const PORTA = Number(process.argv[2] ?? 47391)
 
 const PACIENTES = [
   { id: 1, nome: 'Ana Teste', ativo: 1 },
   { id: 2, nome: 'Bruno Exemplo', ativo: 1 },
-  { id: 3, nome: 'Carla Fictícia', ativo: 1 }
+  { id: 3, nome: 'Carla Fictícia', ativo: 1 },
+  { id: 4, nome: 'Davi Modelo', ativo: 1 },
+  { id: 5, nome: 'Elisa Simulada', ativo: 1 }
 ]
 
 const keyPair = SecretStream.keyPair()
@@ -34,6 +39,14 @@ const server = createSyncServer({
   }
 })
 
+function enderecosDaRede(porta: number): { host: string; port: number }[] {
+  const daRede = Object.values(networkInterfaces())
+    .flat()
+    .filter((rede) => rede && rede.family === 'IPv4' && !rede.internal)
+    .map((rede) => ({ host: rede!.address, port: porta }))
+  return [...daRede, { host: '127.0.0.1', port: porta }].slice(0, 8)
+}
+
 async function main(): Promise<void> {
   const porta = await server.listen({ port: PORTA })
 
@@ -45,9 +58,15 @@ async function main(): Promise<void> {
   })
 
   const { code } = codes.issue()
-  console.log(`porta ${porta}, versão do banco ${SCHEMA_VERSION}`)
-  console.log(`chave ${keyPair.publicKey.toString('hex')}`)
-  console.log(`código ${formatCode(code)} (5 minutos)`)
+  const convite = escreverConvite({
+    chave: keyPair.publicKey.toString('hex'),
+    codigo: code,
+    enderecos: enderecosDaRede(porta)
+  })
+  console.log(await QRCode.toString(convite, { type: 'terminal', small: true }))
+  await QRCode.toFile('build/qrcode.png', convite, { width: 480 })
+  console.log(`porta ${porta}, versão do banco ${SCHEMA_VERSION}, QR code válido por 5 minutos`)
+  console.log(`convite ${convite}`)
 }
 
 void main()

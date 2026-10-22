@@ -7,8 +7,14 @@ struct AuriApp: App {
 
   var body: some Scene {
     WindowGroup {
-      ProvaView(conexao: conexao)
-        .onAppear { conexao.iniciar() }
+      Group {
+        if conexao.servidor == nil {
+          BoasVindasView(conexao: conexao)
+        } else {
+          PrincipalView(conexao: conexao)
+        }
+      }
+      .onAppear { conexao.iniciar() }
     }
     .onChange(of: fase) { _, nova in
       switch nova {
