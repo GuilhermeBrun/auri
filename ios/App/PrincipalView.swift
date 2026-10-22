@@ -3,45 +3,38 @@ import SwiftUI
 struct PrincipalView: View {
   let conexao: Conexao
 
-  @State private var vendoConexao = false
+  @State private var agenda: Agenda
+  @State private var cadastro: Cadastro
+  @State private var novaSessao: NovaSessao?
+
+  init(conexao: Conexao) {
+    self.conexao = conexao
+    _agenda = State(initialValue: Agenda(conexao: conexao))
+    _cadastro = State(initialValue: Cadastro(conexao: conexao))
+  }
 
   var body: some View {
     TabView {
       Tab("Agenda", systemImage: "calendar") {
+        AgendaView(conexao: conexao, agenda: agenda, cadastro: cadastro)
+      }
+      Tab("Pacientes", systemImage: "person.crop.circle") {
         NavigationStack {
-          ContentUnavailableView(
-            "Agenda em construção",
-            systemImage: "calendar",
-            description: Text("A agenda chega na próxima versão do app.")
-          )
-          .navigationTitle("Agenda")
-          .toolbar { botaoDaConexao }
+          PacientesView(conexao: conexao, cadastro: cadastro) { novaSessao = NovaSessao(paciente: $0) }
         }
       }
-      Tab("Pacientes", systemImage: "person.2") {
+      Tab("Conexão", systemImage: "desktopcomputer") {
         NavigationStack {
-          PacientesView(conexao: conexao)
-            .navigationTitle("Pacientes")
-            .toolbar { botaoDaConexao }
+          ConexaoView(conexao: conexao)
         }
       }
     }
-    .sheet(isPresented: $vendoConexao) {
-      ConexaoView(conexao: conexao)
+    .sheet(item: $novaSessao) { nova in
+      NovaSessaoView(agenda: agenda, cadastro: cadastro, nova: nova)
     }
-  }
-
-  private var botaoDaConexao: some ToolbarContent {
-    ToolbarItem(placement: .topBarTrailing) {
-      Button {
-        vendoConexao = true
-      } label: {
-        Image(
-          systemName: conexao.conectado
-            ? "desktopcomputer" : "desktopcomputer.trianglebadge.exclamationmark"
-        )
-      }
-      .accessibilityLabel("Conexão: \(conexao.descricao)")
+    .task(id: [conexao.conectado ? 1 : 0, conexao.mudancas]) {
+      guard conexao.conectado else { return }
+      await cadastro.carregar()
     }
   }
 }

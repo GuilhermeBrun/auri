@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto'
 import { criarNucleo, type Saida } from './nucleo'
 
-const [qr, rota] = Bare.argv.slice(2)
+const [qr, rota, canal, args] = Bare.argv.slice(2)
 
 let proximo = 1
 const esperando = new Map<number, (saida: Extract<Saida, { t: 'resposta' }>) => void>()
@@ -35,8 +35,12 @@ async function main(): Promise<void> {
     servidor: rota === 'internet' ? { ...servidor, enderecos: [] } : servidor
   })
 
-  const lista = await pedir({ t: 'operacao', canal: 'patients:list', args: [] })
-  console.log('patients:list', JSON.stringify(lista.result))
+  const lista = await pedir({
+    t: 'operacao',
+    canal: canal ?? 'patients:list',
+    args: args ? JSON.parse(args) : []
+  })
+  console.log(canal ?? 'patients:list', JSON.stringify(lista.result))
 
   const teste = await pedir({ t: 'testar' })
   console.log('testar pela internet', JSON.stringify(teste.result))

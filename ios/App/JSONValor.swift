@@ -63,6 +63,8 @@ enum JSONValor: Codable, Equatable, Sendable {
   }
 
   func decodificar<T: Decodable>(_ tipo: T.Type) throws -> T {
-    try JSONDecoder().decode(tipo, from: JSONEncoder().encode(self))
+    let decodificador = JSONDecoder()
+    decodificador.keyDecodingStrategy = .convertFromSnakeCase
+    return try decodificador.decode(tipo, from: JSONEncoder().encode(self))
   }
 }

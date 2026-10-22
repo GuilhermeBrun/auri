@@ -39,5 +39,5 @@ await build({
   entryPoints: ['scripts/servidor.ts'],
   outfile: 'build/servidor.cjs',
   platform: 'node',
-  external: daBare
+  external: [...daBare, 'better-sqlite3', 'electron']
 })

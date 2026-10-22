@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "preparar": "node scripts/preparar.mjs",
-    "servidor": "node scripts/construir.mjs && node build/servidor.cjs",
+    "servidor": "node scripts/construir.mjs && node scripts/servidor.mjs",
     "teste": "node scripts/construir.mjs && bare build/teste.cjs",
     "tipos": "tsc -p tsconfig.json"
   },

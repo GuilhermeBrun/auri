@@ -24,6 +24,9 @@ targets:
       path: App/Info.plist
       properties:
         CFBundleDisplayName: Auri
+        CFBundleDevelopmentRegion: pt-BR
+        CFBundleLocalizations:
+          - pt-BR
         UILaunchScreen: {}
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait

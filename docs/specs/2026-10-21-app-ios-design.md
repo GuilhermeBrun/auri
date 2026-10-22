@@ -38,6 +38,12 @@ colhe a assinatura de chegada no iPhone. O app mostra as etiquetas da clínica.
 - **Contrato próprio do celular**, com versão própria: o iPhone atualiza depois do desktop (revisão
   da Apple, usuário que não atualiza), então ele não pode depender da versão do banco.
 - **Dois canais, como no desktop:** TestFlight faz o papel do alpha e a App Store o da estável.
+- **Modelos da Apple:** a Agenda segue o app Calendário (ano, mês com marcadores, dia com a linha
+  do tempo, detalhe, busca e "+"), e Pacientes segue o app Contatos (lista por letra com índice
+  lateral, ficha com avatar e ações rápidas). Conexão é a terceira aba. Nas telas de paciente, a
+  ação no alto é marcar sessão.
+- **Primeira vez:** tela de boas-vindas e, ao avançar, só a câmera lendo o QR code, sem digitar
+  endereço ou código.
 
 ## Arquitetura
 
@@ -141,8 +147,8 @@ Regras:
 
 - Dia, na grade do horário de funcionamento, e Semana. Trocar de dia e voltar para hoje.
 - Sessões e compromissos com a cor da etiqueta e o nome curto do paciente (`shared/names.ts`).
-- Marcar sessão: paciente (busca), data, hora, etiqueta, duração e repetição semanal. Também sobre
-  uma reserva.
+- Marcar sessão: paciente (busca), data, hora, etiqueta e duração. Também sobre uma reserva. A
+  repetição semanal não existe no desktop hoje; entra no celular quando entrar lá.
 - Detalhe da sessão: remarcar (no formulário ou arrastando na grade), desmarcar, presença
   (assinatura do paciente ou responsável na tela do iPhone; desfazer com motivo), falta e cobrança
   da falta, situação financeira da sessão e renovação de pacote. A evolução aparece só em leitura,
@@ -193,8 +199,8 @@ do iOS 27 (Liquid Glass), com componentes do sistema como vêm. Onde a HIG e
 - Títulos curtos, título grande que encolhe ao rolar, botões padrão de voltar e fechar, símbolos sem
   contorno. Uma ação principal por tela, à direita; o resto num menu Mais
   ([Toolbars](https://developer.apple.com/design/human-interface-guidelines/toolbars)).
-- Conexão (computador, estado, como está conectado, Desconectar, versão) num botão de símbolo na
-  barra da Agenda, abrindo uma sheet.
+- Abas Agenda, Pacientes e Conexão. Conexão mostra o computador, o estado, o teste pela internet e
+  "Esquecer este computador".
 
 **Agenda**
 

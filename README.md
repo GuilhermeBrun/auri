@@ -60,7 +60,7 @@ Precisa do Xcode e do XcodeGen (`brew install xcodegen`).
 cd ios
 npm install
 npm run preparar   # empacota o worklet, liga os addons nativos, baixa o BareKit e gera o Auri.xcodeproj
-npm run servidor   # computador de teste com pacientes fictícios: mostra o QR code (e grava build/qrcode.png) e o convite em texto
+npm run servidor   # computador de teste: as operações do desktop num banco em memória com pacientes e sessões fictícios; mostra o QR code (e grava build/qrcode.png) e o convite em texto
 npm run teste -- '<convite>' internet   # o cliente do iPhone no runtime Bare, sem o app
 ```
 
@@ -74,8 +74,10 @@ passa pelas boas-vindas, pareia e lista os pacientes, e guarda as capturas das t
 
 ```bash
 cd ios
-TEST_RUNNER_AURI_QR='<convite>' xcodebuild test -project Auri.xcodeproj -scheme Auri -destination 'platform=iOS Simulator,name=iPhone 18 Pro'
+./scripts/telas.sh   # sobe o servidor de teste, roda o teste e grava as capturas em build/telas/
 ```
+
+O `npm run servidor` usa o Electron e o `better-sqlite3` do `desktop/` (rodar `npm install` lá antes).
 
 ### App (`desktop/`)
 

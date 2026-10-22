@@ -5,6 +5,10 @@ struct AuriApp: App {
   @State private var conexao = Conexao()
   @Environment(\.scenePhase) private var fase
 
+  init() {
+    UIDatePicker.appearance().minuteInterval = 5
+  }
+
   var body: some Scene {
     WindowGroup {
       Group {
