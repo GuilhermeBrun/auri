@@ -68,6 +68,14 @@ Depois do `preparar`, abrir `ios/Auri.xcodeproj` no Xcode ou rodar
 `xcodebuild -project ios/Auri.xcodeproj -scheme Auri -sdk iphonesimulator build`. Rodar o `preparar`
 de novo quando mudar o worklet ou o código de conexão do desktop.
 
+Teste de interface no simulador, com o `npm run servidor` aberto (o código vale uma vez, por 5
+minutos): pareia, conecta pela rede local e pela internet e lista os pacientes.
+
+```bash
+cd ios
+TEST_RUNNER_AURI_CODIGO=<código> xcodebuild test -project Auri.xcodeproj -scheme Auri -destination 'platform=iOS Simulator,name=iPhone 18 Pro'
+```
+
 ### App (`desktop/`)
 
 Os comandos abaixo rodam dentro de `desktop/`.

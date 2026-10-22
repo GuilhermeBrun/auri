@@ -1,6 +1,7 @@
 # App do iPhone — design
 
-Data: 21/10/2026. Estado: proposta; nada implementado.
+Data: 21/10/2026. Estado: etapa 1 (prova de conceito) feita no simulador; falta o teste num iPhone
+de verdade pelo 4G.
 
 ## Objetivo
 

@@ -37,3 +37,24 @@ targets:
           - '*.swift'
       - path: App/app.bundle
         buildPhase: resources
+  AuriUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.auri.ios.uitests
+        SWIFT_VERSION: '6.0'
+        TARGETED_DEVICE_FAMILY: '1'
+        GENERATE_INFOPLIST_FILE: YES
+    sources:
+      - path: UITests
+    dependencies:
+      - target: Auri
+schemes:
+  Auri:
+    build:
+      targets:
+        Auri: all
+    test:
+      targets:
+        - AuriUITests
