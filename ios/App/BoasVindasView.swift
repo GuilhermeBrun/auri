@@ -7,52 +7,52 @@ struct BoasVindasView: View {
 
   var body: some View {
     ScrollView {
-      VStack(alignment: .leading, spacing: 40) {
-        Text("Boas-vindas ao Auri")
-          .font(.largeTitle.bold())
-          .frame(maxWidth: .infinity, alignment: .center)
-          .multilineTextAlignment(.center)
-          .padding(.top, 72)
+      VStack(alignment: .leading, spacing: 36) {
+        VStack(alignment: .leading, spacing: 2) {
+          Text("Boas-vindas ao Auri")
+            .font(.title.bold())
+          Text("A agenda e os pacientes da clínica no seu iPhone.")
+            .font(.title)
+            .foregroundStyle(.secondary)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isHeader)
 
-        VStack(alignment: .leading, spacing: 28) {
+        VStack(alignment: .leading, spacing: 24) {
           Recurso(
-            simbolo: "calendar",
+            icone: "agenda",
             titulo: "Agenda",
             texto: "Veja o dia, marque e remarque sessões de onde estiver."
           )
           Recurso(
-            simbolo: "person.text.rectangle",
+            icone: "pacientes",
             titulo: "Pacientes",
             texto: "Consulte a ficha, as sessões, a anamnese e as evoluções."
           )
           Recurso(
-            simbolo: "lock.laptopcomputer",
+            icone: "conexao",
             titulo: "Dados na clínica",
-            texto:
-              "Tudo continua guardado no computador da clínica. O iPhone se conecta a ele com cifra, de dentro ou de fora."
+            texto: "Tudo continua no computador da clínica. O iPhone se conecta a ele com cifra, de dentro ou de fora."
           )
         }
       }
+      .frame(maxWidth: .infinity, alignment: .leading)
       .padding(.horizontal, 32)
+      .padding(.top, 64)
     }
     .scrollBounceBehavior(.basedOnSize)
     .safeAreaInset(edge: .bottom) {
-      VStack(spacing: 16) {
-        Text("No computador da clínica, abra Configurações › Armazenamento › Conexão e escolha Conectar celular.")
-          .font(.footnote)
-          .foregroundStyle(.secondary)
-          .multilineTextAlignment(.center)
-        Button {
-          lendo = true
-        } label: {
-          Text("Conectar ao computador")
-            .frame(maxWidth: .infinity)
-        }
-        .buttonStyle(.glassProminent)
-        .controlSize(.large)
+      Button {
+        lendo = true
+      } label: {
+        Text("Continuar")
+          .font(.headline)
+          .frame(maxWidth: .infinity)
       }
+      .buttonStyle(.glassProminent)
+      .controlSize(.extraLarge)
       .padding(.horizontal, 32)
-      .padding(.bottom, 16)
+      .padding(.bottom, 12)
     }
     .fullScreenCover(isPresented: $lendo) {
       LeitorQRView(conexao: conexao)
@@ -61,22 +61,22 @@ struct BoasVindasView: View {
 }
 
 private struct Recurso: View {
-  let simbolo: String
+  let icone: String
   let titulo: String
   let texto: String
 
   var body: some View {
-    HStack(alignment: .top, spacing: 16) {
-      Image(systemName: simbolo)
-        .font(.title)
+    HStack(alignment: .top, spacing: 18) {
+      Image(icone)
+        .resizable()
+        .scaledToFit()
+        .frame(width: 34, height: 34)
         .foregroundStyle(.tint)
-        .frame(width: 44)
         .accessibilityHidden(true)
       VStack(alignment: .leading, spacing: 2) {
         Text(titulo)
           .font(.headline)
         Text(texto)
-          .font(.subheadline)
           .foregroundStyle(.secondary)
       }
     }

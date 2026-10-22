@@ -15,15 +15,15 @@ struct PrincipalView: View {
 
   var body: some View {
     TabView {
-      Tab("Agenda", systemImage: "calendar") {
+      Tab("Agenda", image: "agenda") {
         AgendaView(conexao: conexao, agenda: agenda, cadastro: cadastro)
       }
-      Tab("Pacientes", systemImage: "person.crop.circle") {
+      Tab("Pacientes", image: "pacientes") {
         NavigationStack {
           PacientesView(conexao: conexao, cadastro: cadastro) { novaSessao = NovaSessao(paciente: $0) }
         }
       }
-      Tab("Conexão", systemImage: "desktopcomputer") {
+      Tab("Conexão", image: "conexao") {
         NavigationStack {
           ConexaoView(conexao: conexao)
         }

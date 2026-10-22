@@ -75,7 +75,12 @@ passa pelas boas-vindas, pareia e lista os pacientes, e guarda as capturas das t
 ```bash
 cd ios
 ./scripts/telas.sh   # sobe o servidor de teste, roda o teste e grava as capturas em build/telas/
+./scripts/telas.sh "platform=iOS Simulator,name=iPhone 18 Pro" vazio   # o mesmo sem pacientes
 ```
+
+O ícone do app e os ícones das abas (os mesmos da barra lateral do desktop) saem de
+`node scripts/icones.mjs`, que gera `App/Assets.xcassets` a partir da marca e do `lucide-react` do
+`desktop/`.
 
 O `npm run servidor` usa o Electron e o `better-sqlite3` do `desktop/` (rodar `npm install` lá antes).
 

@@ -3,15 +3,16 @@ import XCTest
 @MainActor
 final class ConexaoUITests: XCTestCase {
   func testPercorreAsTelasConectadoPeloQRCode() throws {
+    try XCTSkipIf(ProcessInfo.processInfo.environment["AURI_VAZIO"] != nil, "Precisa dos dados de exemplo")
     let qr = try XCTUnwrap(ProcessInfo.processInfo.environment["AURI_QR"], "Rode com TEST_RUNNER_AURI_QR")
     let app = XCUIApplication()
     app.launchEnvironment["AURI_QR"] = qr
     app.launch()
 
-    XCTAssertTrue(app.staticTexts["Boas-vindas ao Auri"].waitForExistence(timeout: 10))
+    XCTAssertTrue(elemento(app, contendo: "Boas-vindas ao Auri").waitForExistence(timeout: 10))
     anexar(app, "01-boas-vindas")
 
-    app.buttons["Conectar ao computador"].tap()
+    app.buttons["Continuar"].tap()
     XCTAssertTrue(app.tabBars.buttons["Pacientes"].waitForExistence(timeout: 30))
     sleep(3)
     anexar(app, "02-mes")
@@ -56,6 +57,21 @@ final class ConexaoUITests: XCTestCase {
     app.tabBars.buttons["Conexão"].tap()
     XCTAssertTrue(app.navigationBars["Conexão"].waitForExistence(timeout: 10))
     anexar(app, "10-conexao")
+  }
+
+  func testPacientesVazio() throws {
+    try XCTSkipUnless(ProcessInfo.processInfo.environment["AURI_VAZIO"] != nil, "Só com o servidor vazio")
+    let qr = try XCTUnwrap(ProcessInfo.processInfo.environment["AURI_QR"])
+    let app = XCUIApplication()
+    app.launchEnvironment["AURI_QR"] = qr
+    app.launch()
+
+    XCTAssertTrue(app.buttons["Continuar"].waitForExistence(timeout: 10))
+    app.buttons["Continuar"].tap()
+    XCTAssertTrue(app.tabBars.buttons["Pacientes"].waitForExistence(timeout: 30))
+    app.tabBars.buttons["Pacientes"].tap()
+    XCTAssertTrue(app.staticTexts["Nenhum paciente"].waitForExistence(timeout: 30))
+    anexar(app, "11-pacientes-vazio")
   }
 
   private func elemento(_ app: XCUIApplication, igual texto: String) -> XCUIElement {

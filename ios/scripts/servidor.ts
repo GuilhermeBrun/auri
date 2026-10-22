@@ -41,7 +41,7 @@ const FAMILIAS = [
   ['Miguel Provisório', '2015-05-28', 'Simone Provisório']
 ]
 
-const pacientes = FAMILIAS.map(([nome, nascimento, mae], i) =>
+const pacientes = (process.env.AURI_VAZIO ? [] : FAMILIAS).map(([nome, nascimento, mae], i) =>
   op<{ id: number }>('patients:create', {
     ...emptyPatientInput(),
     nome,
@@ -70,7 +70,7 @@ const EVOLUCOES = [
 
 const hoje = new Date()
 const HORAS = [8, 9, 10, 14, 15, 16]
-for (let d = -21; d <= 42; d++) {
+for (let d = -21; d <= 42 && pacientes.length > 0; d++) {
   const data = dia(hoje, d)
   const semana = data.getDay()
   if (semana === 0 || semana === 6) continue
@@ -101,7 +101,7 @@ for (let d = -21; d <= 42; d++) {
   }
 }
 
-op('anamneses:save', pacientes[0].id, {
+if (pacientes.length > 0) op('anamneses:save', pacientes[0].id, {
   data: '2026-03-02',
   queixa: 'Troca de sons na fala (r por l) e dificuldade para contar histórias.',
   gestacao: 'Sem intercorrências.',

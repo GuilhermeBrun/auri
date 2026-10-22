@@ -30,7 +30,15 @@ struct PacientesView: View {
 
   var body: some View {
     Group {
-      if let pacientes = cadastro.pacientes {
+      if let pacientes = cadastro.pacientes, pacientes.isEmpty {
+        ContentUnavailableView {
+          Label("Nenhum paciente", systemImage: "person.crop.circle.fill")
+        } description: {
+          Text("Os pacientes cadastrados no computador da clínica aparecem aqui.")
+        } actions: {
+          Button("Atualizar") { Task { await cadastro.carregar() } }
+        }
+      } else if let pacientes = cadastro.pacientes {
         ListaDePacientes(pacientes: pacientes, busca: busca) { paciente in
           NavigationLink(value: paciente.id) { LinhaDoPaciente(paciente: paciente) }
         }

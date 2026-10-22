@@ -74,7 +74,12 @@ struct LeitorQRView: View {
     Group {
       switch etapa {
       case .lendo:
-        Text("Aponte a câmera para o QR code na tela do computador.")
+        VStack(spacing: 4) {
+          Text("Aponte a câmera para o QR code do computador.")
+          Text("No computador: Configurações › Armazenamento › Conexão › Conectar celular.")
+            .font(.footnote)
+            .foregroundStyle(.secondary)
+        }
       case .conectando:
         HStack(spacing: 12) {
           ProgressView()

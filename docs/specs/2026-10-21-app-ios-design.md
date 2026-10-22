@@ -42,8 +42,11 @@ colhe a assinatura de chegada no iPhone. O app mostra as etiquetas da clínica.
   do tempo, detalhe, busca e "+"), e Pacientes segue o app Contatos (lista por letra com índice
   lateral, ficha com avatar e ações rápidas). Conexão é a terceira aba. Nas telas de paciente, a
   ação no alto é marcar sessão.
-- **Primeira vez:** tela de boas-vindas e, ao avançar, só a câmera lendo o QR code, sem digitar
-  endereço ou código.
+- **Primeira vez:** tela de boas-vindas no modelo do "Novidades" do Calendário e, ao tocar em
+  Continuar, só a câmera lendo o QR code, sem digitar endereço ou código.
+- **Ícones do Auri:** o ícone do app usa a marca (símbolo branco sobre o grafite), e as abas e as
+  boas-vindas usam os mesmos ícones da barra lateral do desktop (Agenda, Pacientes, Conexão) em vez
+  dos SF Symbols.
 
 ## Arquitetura
 
