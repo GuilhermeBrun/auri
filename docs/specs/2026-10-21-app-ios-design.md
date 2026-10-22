@@ -181,6 +181,18 @@ Regras:
 - A permissão é pedida ao entrar no app depois de conectar; Conexão › Avisos liga e desliga. Com as
   prévias escondidas na tela bloqueada, aparece só "Mudança na agenda".
 
+**Widgets**
+
+- "A seguir", como o widget do Calendário: pequeno (próxima sessão), médio (as próximas três) e
+  grande (o resto do dia) na tela inicial; na tela bloqueada, linha, retângulo e círculo, só com
+  horários e contagem. Tocar abre a agenda no horário.
+- O widget não conecta ao computador: o app grava um resumo de hoje e amanhã no App Group
+  (`group.com.auri.ios`, gravação atômica, proteção até o primeiro desbloqueio) sempre que a agenda
+  carrega, e o iOS acorda o app de tempos em tempos (`BGAppRefreshTask`) para atualizar.
+- Sem nomes por padrão: horário e etiqueta. Conexão › Widgets liga o nome curto do paciente
+  (`shortName`), marcado como privado, então nunca aparece com o iPhone bloqueado.
+- Esquecer o computador apaga o resumo.
+
 **Estados:** conectando; conectado pela rede da clínica ou pela internet; sem conexão (computador
 desligado, sem internet ou rede restritiva), com "Tentar de novo"; acesso removido; versão
 incompatível. Os textos seguem os do consultório.
@@ -282,8 +294,8 @@ do iOS 27 (Liquid Glass), com componentes do sistema como vêm. Onde a HIG e
   ID (ou o código do iPhone) ao abrir e ao voltar do segundo plano, imediatamente ou depois de 1, 5
   ou 15 minutos. Ligar ou desligar pede o Face ID antes. A HIG prefere o "Exigir Face ID" do próprio
   iOS; o ajuste no app ficou a pedido, por serem dados de saúde.
-- Dados de pacientes só em memória: nada em disco, nada em log, e a tela fica coberta na miniatura do
-  alternador de apps.
+- Dados de pacientes só em memória: nada em log, e a tela fica coberta na miniatura do alternador de
+  apps. A exceção é o resumo de hoje e amanhã para os widgets (abaixo), sem nomes por padrão.
 - Chave do aparelho no Keychain, só neste aparelho e fora do backup do iCloud
   (`kSecAttrAccessibleWhenUnlockedThisDeviceOnly`).
 - A mensagem de confirmação vai para o WhatsApp do iPhone pelo esquema do próprio app, sem passar

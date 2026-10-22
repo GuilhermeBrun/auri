@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ConexaoView: View {
   let conexao: Conexao
+  let agenda: Agenda
   let avisos: Avisos
   let bloqueio: Bloqueio
 
@@ -42,6 +43,15 @@ struct ConexaoView: View {
             Text("Avisos")
           } icon: {
             IconeDeAjuste(nome: "avisos", cor: .red)
+          }
+        }
+        NavigationLink {
+          WidgetsView(agenda: agenda)
+        } label: {
+          Label {
+            Text("Widgets")
+          } icon: {
+            IconeDeAjuste(nome: "widgets", cor: .indigo)
           }
         }
         NavigationLink {
@@ -202,6 +212,34 @@ private struct AvisosView: View {
       if ligados { Task { await avisos.pedirSeNecessario() } }
     }
     .task { await avisos.atualizar() }
+  }
+}
+
+private struct WidgetsView: View {
+  let agenda: Agenda
+
+  @State private var nomes = Agenda.nomesNosWidgets
+
+  var body: some View {
+    List {
+      Section {
+        Toggle("Mostrar nomes dos pacientes", isOn: $nomes)
+      } footer: {
+        Text(
+          "Desligado, os widgets mostram só o horário e a etiqueta de cada sessão. Ligado, mostram o nome curto do paciente na tela inicial; na tela bloqueada, os nomes ficam sempre escondidos."
+        )
+      }
+      Section {
+      } footer: {
+        Text("Para pôr um widget, toque e segure a tela inicial, toque em Editar › Adicionar Widget e procure por Auri.")
+      }
+    }
+    .navigationTitle("Widgets")
+    .navigationBarTitleDisplayMode(.inline)
+    .onChange(of: nomes) { _, valor in
+      Agenda.nomesNosWidgets = valor
+      agenda.atualizarResumo()
+    }
   }
 }
 

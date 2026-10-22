@@ -2,13 +2,23 @@ import SwiftUI
 
 @main
 struct AuriApp: App {
-  @State private var conexao = Conexao()
-  @State private var avisos = Avisos()
+  @State private var conexao: Conexao
+  @State private var agenda: Agenda
+  @State private var cadastro: Cadastro
+  @State private var destino: Destino
+  @State private var avisos: Avisos
   @State private var bloqueio = Bloqueio()
   @Environment(\.scenePhase) private var fase
 
   init() {
     UIDatePicker.appearance().minuteInterval = 5
+    let conexao = Conexao()
+    let destino = Destino()
+    _conexao = State(initialValue: conexao)
+    _agenda = State(initialValue: Agenda(conexao: conexao))
+    _cadastro = State(initialValue: Cadastro(conexao: conexao))
+    _destino = State(initialValue: destino)
+    _avisos = State(initialValue: Avisos(destino: destino))
   }
 
   var body: some Scene {
@@ -17,7 +27,14 @@ struct AuriApp: App {
         if conexao.servidor == nil {
           BoasVindasView(conexao: conexao)
         } else {
-          PrincipalView(conexao: conexao, avisos: avisos, bloqueio: bloqueio)
+          PrincipalView(
+            conexao: conexao,
+            agenda: agenda,
+            cadastro: cadastro,
+            destino: destino,
+            avisos: avisos,
+            bloqueio: bloqueio
+          )
         }
       }
       .overlay {
@@ -34,18 +51,31 @@ struct AuriApp: App {
         conexao.iniciar()
         if conexao.servidor != nil { bloqueio.abrir() }
       }
+      .onOpenURL { url in
+        guard url.scheme == "auri", url.host == "agenda" else { return }
+        let texto = URLComponents(url: url, resolvingAgainstBaseURL: false)?
+          .queryItems?.first { $0.name == "data" }?.value
+        destino.data = texto.flatMap(DataLocal.data) ?? .now
+      }
+      .onChange(of: conexao.servidor == nil) { _, semServidor in
+        if semServidor { agenda.esquecer() }
+      }
     }
     .onChange(of: fase) { _, nova in
       switch nova {
       case .background:
         conexao.suspender()
         bloqueio.saiu()
+        if conexao.servidor != nil { Agenda.agendarAtualizacao() }
       case .active:
         conexao.retomar()
         bloqueio.voltou()
         Task { await avisos.atualizar() }
       default: break
       }
+    }
+    .backgroundTask(.appRefresh(Resumo.tarefa)) { [agenda] in
+      await agenda.atualizarEmSegundoPlano()
     }
   }
 }

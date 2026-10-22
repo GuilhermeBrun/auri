@@ -119,6 +119,44 @@ final class ConexaoUITests: XCTestCase {
     anexar(app, "11-pacientes-vazio")
   }
 
+  func testWidgetsNaTelaInicial() throws {
+    try XCTSkipIf(ProcessInfo.processInfo.environment["AURI_VAZIO"] != nil, "Precisa dos dados de exemplo")
+    XCUIDevice.shared.press(.home)
+    sleep(1)
+    for tamanho in ["Medium", "Small"] {
+      adicionarWidget(tamanho)
+    }
+    sleep(2)
+    anexar(XCUIScreen.main.screenshot(), "19-widgets")
+  }
+
+  private func adicionarWidget(_ tamanho: String) {
+    springboard.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.62)).press(forDuration: 1.5)
+    let editar = springboard.buttons["Edit"]
+    if editar.waitForExistence(timeout: 5) { editar.tap() }
+    let adicionar = springboard.buttons["Add Widget"]
+    XCTAssertTrue(adicionar.waitForExistence(timeout: 5))
+    adicionar.tap()
+    let busca = springboard.searchFields.firstMatch
+    XCTAssertTrue(busca.waitForExistence(timeout: 5))
+    busca.tap()
+    busca.typeText("Auri")
+    let resultado = springboard.cells.containing(NSPredicate(format: "label CONTAINS %@", "Auri")).firstMatch
+    XCTAssertTrue(resultado.waitForExistence(timeout: 5))
+    resultado.tap()
+    sleep(1)
+    if tamanho == "Medium" { springboard.swipeLeft() }
+    sleep(1)
+    anexar(XCUIScreen.main.screenshot(), "19-galeria-\(tamanho)")
+    let confirmar = springboard.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Add Widget")).firstMatch
+    XCTAssertTrue(confirmar.waitForExistence(timeout: 10))
+    confirmar.tap()
+    sleep(1)
+    let pronto = springboard.buttons["Done"]
+    if pronto.waitForExistence(timeout: 3) { pronto.tap() }
+    sleep(1)
+  }
+
   private func elemento(_ app: XCUIApplication, igual texto: String) -> XCUIElement {
     app.descendants(matching: .any).matching(NSPredicate(format: "label == %@", texto)).firstMatch
   }

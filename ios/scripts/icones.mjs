@@ -17,7 +17,8 @@ const ICONES = {
   internet: 'globe',
   iphone: 'smartphone',
   avisos: 'bell',
-  bloqueio: 'scan-face'
+  bloqueio: 'scan-face',
+  widgets: 'layout-grid'
 }
 
 const json = (dados) => JSON.stringify(dados, null, 2) + '\n'

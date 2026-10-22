@@ -2,12 +2,13 @@ import SwiftUI
 
 struct PrincipalView: View {
   let conexao: Conexao
+  let agenda: Agenda
+  let cadastro: Cadastro
+  let destino: Destino
   let avisos: Avisos
   let bloqueio: Bloqueio
 
   @State private var aba = Aba.agenda
-  @State private var agenda: Agenda
-  @State private var cadastro: Cadastro
   @State private var novaSessao: NovaSessao?
 
   enum Aba: Hashable {
@@ -16,18 +17,10 @@ struct PrincipalView: View {
     case conexao
   }
 
-  init(conexao: Conexao, avisos: Avisos, bloqueio: Bloqueio) {
-    self.conexao = conexao
-    self.avisos = avisos
-    self.bloqueio = bloqueio
-    _agenda = State(initialValue: Agenda(conexao: conexao))
-    _cadastro = State(initialValue: Cadastro(conexao: conexao))
-  }
-
   var body: some View {
     TabView(selection: $aba) {
       Tab("Agenda", image: "agenda", value: Aba.agenda) {
-        AgendaView(conexao: conexao, agenda: agenda, cadastro: cadastro, avisos: avisos)
+        AgendaView(conexao: conexao, agenda: agenda, cadastro: cadastro, destino: destino)
       }
       Tab("Pacientes", image: "pacientes", value: Aba.pacientes) {
         NavigationStack {
@@ -36,12 +29,12 @@ struct PrincipalView: View {
       }
       Tab("Conexão", image: "conexao", value: Aba.conexao) {
         NavigationStack {
-          ConexaoView(conexao: conexao, avisos: avisos, bloqueio: bloqueio)
+          ConexaoView(conexao: conexao, agenda: agenda, avisos: avisos, bloqueio: bloqueio)
         }
       }
     }
-    .onChange(of: avisos.destino) { _, destino in
-      if destino != nil { aba = .agenda }
+    .onChange(of: destino.data, initial: true) { _, data in
+      if data != nil { aba = .agenda }
     }
     .task { await avisos.pedirSeNecessario() }
     .sheet(item: $novaSessao) { nova in

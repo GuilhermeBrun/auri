@@ -10,10 +10,16 @@ struct Aviso: Sendable {
 
 @MainActor
 @Observable
+final class Destino {
+  var data: Date?
+}
+
+@MainActor
+@Observable
 final class Avisos: NSObject, UNUserNotificationCenterDelegate {
   private(set) var permitidos = false
   private(set) var negados = false
-  var destino: Date?
+  private let destino: Destino
 
   var ligados: Bool {
     didSet { UserDefaults.standard.set(ligados, forKey: Self.chave) }
@@ -22,7 +28,8 @@ final class Avisos: NSObject, UNUserNotificationCenterDelegate {
   private static let chave = "avisos"
   private static let categoria = "agenda"
 
-  override init() {
+  init(destino: Destino) {
+    self.destino = destino
     ligados = UserDefaults.standard.object(forKey: Self.chave) as? Bool ?? true
     super.init()
     let central = UNUserNotificationCenter.current()
@@ -75,6 +82,6 @@ final class Avisos: NSObject, UNUserNotificationCenterDelegate {
     didReceive response: UNNotificationResponse
   ) async {
     let inicio = response.notification.request.content.userInfo["inicio"] as? String
-    await MainActor.run { destino = inicio.flatMap(DataLocal.data) }
+    await MainActor.run { destino.data = inicio.flatMap(DataLocal.data) }
   }
 }

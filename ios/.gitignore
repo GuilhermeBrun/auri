@@ -3,4 +3,6 @@ App/addons/
 App/frameworks/
 App/app.bundle
 App/Info.plist
+Widget/Info.plist
+*.entitlements
 *.xcodeproj

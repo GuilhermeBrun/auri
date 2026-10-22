@@ -1,5 +1,7 @@
+import BackgroundTasks
 import Foundation
 import Observation
+import WidgetKit
 
 @MainActor
 @Observable
@@ -65,9 +67,54 @@ final class Agenda {
         .mapValues { $0.sorted { $0.inicio < $1.inicio } }
       carregada = true
       erro = nil
+      atualizarResumo()
     } catch {
       erro = error.localizedDescription
     }
+  }
+
+  static var nomesNosWidgets: Bool {
+    get { UserDefaults.standard.bool(forKey: "widgets-nomes") }
+    set { UserDefaults.standard.set(newValue, forKey: "widgets-nomes") }
+  }
+
+  func atualizarResumo() {
+    let hoje = DataLocal.inicioDoDia(.now)
+    let dias = [hoje, DataLocal.somar(.day, 1, a: hoje)]
+    let nomes = Self.nomesNosWidgets
+    let itens = dias.flatMap { eventos(em: $0) }.map { evento in
+      let titulo: String
+      switch evento.origem {
+      case .sessao(let sessao): titulo = nomes ? Resumo.nomeCurto(sessao.patientNome) : sessao.tipoNome
+      case .compromisso: titulo = evento.titulo
+      }
+      return Resumo.Item(inicio: evento.inicio, fim: evento.fim, cor: evento.cor, titulo: titulo)
+    }
+    try? Resumo(itens: itens, atualizado: .now).gravar()
+    WidgetCenter.shared.reloadAllTimelines()
+  }
+
+  func atualizarEmSegundoPlano() async {
+    Self.agendarAtualizacao()
+    guard conexao.servidor != nil else { return }
+    conexao.iniciar()
+    conexao.retomar()
+    for _ in 0..<40 where !conexao.conectado {
+      try? await Task.sleep(for: .milliseconds(500))
+    }
+    if conexao.conectado { await carregar() }
+  }
+
+  static func agendarAtualizacao() {
+    let pedido = BGAppRefreshTaskRequest(identifier: Resumo.tarefa)
+    pedido.earliestBeginDate = Date.now.addingTimeInterval(30 * 60)
+    try? BGTaskScheduler.shared.submit(pedido)
+  }
+
+  func esquecer() {
+    porDia = [:]
+    Resumo.apagar()
+    WidgetCenter.shared.reloadAllTimelines()
   }
 
   func marcar(paciente: Int, inicio: Date, minutos: Int, etiqueta: Int?, observacao: String) async throws {
