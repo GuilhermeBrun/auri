@@ -148,6 +148,8 @@ Regras:
 
 **Agenda** (tudo o que a agenda do computador faz, menos escrever evolução)
 
+- Abre no dia de hoje; voltar leva ao mês e depois ao ano, como no Calendário.
+
 - Dia, na grade do horário de funcionamento, e Semana. Trocar de dia e voltar para hoje.
 - Sessões e compromissos com a cor da etiqueta e o nome curto do paciente (`shared/names.ts`).
 - Marcar sessão: paciente (busca), data, hora, etiqueta e duração. Também sobre uma reserva. A
