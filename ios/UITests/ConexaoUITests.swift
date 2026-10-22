@@ -51,6 +51,12 @@ final class ConexaoUITests: XCTestCase {
     XCTAssertTrue(app.navigationBars["Nova sessão"].waitForExistence(timeout: 10))
     sleep(1)
     anexar(app, "09-nova-sessao")
+    app.buttons["Etiqueta"].tap()
+    sleep(2)
+    anexar(app, "09b-etiquetas")
+    XCTAssertTrue(app.buttons["Linguagem"].waitForExistence(timeout: 5))
+    app.buttons["Linguagem"].tap()
+    sleep(1)
     app.navigationBars["Nova sessão"].buttons.element(boundBy: 1).tap()
     XCTAssertTrue(app.navigationBars["Nova sessão"].waitForNonExistence(timeout: 15))
 

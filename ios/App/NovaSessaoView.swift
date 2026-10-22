@@ -35,11 +35,40 @@ struct NovaSessaoView: View {
         }
 
         Section {
-          Picker("Etiqueta", selection: $etiqueta) {
-            ForEach(agenda.etiquetasDeSessao) { item in
-              Text(item.nome).tag(Optional(item.id))
+          Menu {
+            Picker("Etiqueta", selection: $etiqueta) {
+              ForEach(gruposDeEtiquetas, id: \.titulo) { grupo in
+                Section(grupo.titulo) {
+                  ForEach(grupo.etiquetas) { item in
+                    Label {
+                      Text(item.nome)
+                    } icon: {
+                      Image(uiImage: Self.ponto(item.cor))
+                    }
+                    .tag(Optional(item.id))
+                  }
+                }
+              }
             }
+          } label: {
+            HStack(spacing: 6) {
+              Text("Etiqueta")
+                .foregroundStyle(.primary)
+              Spacer()
+              if let escolhida {
+                Circle().fill(Color(hex: escolhida.cor)).frame(width: 10, height: 10)
+                Text(escolhida.nome)
+                  .foregroundStyle(.secondary)
+              }
+              Image(systemName: "chevron.up.chevron.down")
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(.secondary)
+            }
+            .contentShape(.rect)
           }
+          .buttonStyle(.plain)
+          .accessibilityLabel("Etiqueta")
+          .accessibilityValue(escolhida?.nome ?? "nenhuma")
           DatePicker("Início", selection: $inicio)
           Picker("Duração", selection: $minutos) {
             ForEach(Self.duracoes, id: \.self) { Text("\($0) min").tag($0) }
@@ -87,6 +116,22 @@ struct NovaSessaoView: View {
         if etiqueta == nil { etiqueta = agenda.etiquetasDeSessao.first?.id }
       }
     }
+  }
+
+  private var escolhida: Etiqueta? {
+    agenda.etiquetas.first { $0.id == etiqueta }
+  }
+
+  private var gruposDeEtiquetas: [(titulo: String, etiquetas: [Etiqueta])] {
+    [("sessao", "Sessões"), ("avaliacao", "Avaliações"), ("exame", "Exames")].compactMap { categoria, titulo in
+      let etiquetas = agenda.etiquetasDeSessao.filter { $0.categoria == categoria }
+      return etiquetas.isEmpty ? nil : (titulo, etiquetas)
+    }
+  }
+
+  private static func ponto(_ cor: String) -> UIImage {
+    let imagem = UIImage(systemName: "circle.fill") ?? UIImage()
+    return imagem.withTintColor(UIColor(Color(hex: cor)), renderingMode: .alwaysOriginal)
   }
 
   private func salvar() {
