@@ -90,6 +90,18 @@ final class ConexaoUITests: XCTestCase {
     elemento(app, contendo: "Avisos").tap()
     XCTAssertTrue(app.switches.firstMatch.waitForExistence(timeout: 10))
     anexar(app, "16-avisos")
+    app.navigationBars.buttons.firstMatch.tap()
+
+    elemento(app, contendo: "Face ID").tap()
+    XCTAssertTrue(app.switches.firstMatch.waitForExistence(timeout: 10))
+    anexar(app, "17-face-id")
+
+    XCUIDevice.shared.press(.home)
+    sleep(2)
+    app.activate()
+    XCTAssertTrue(app.staticTexts["Auri bloqueado"].waitForExistence(timeout: 10))
+    sleep(1)
+    anexar(XCUIScreen.main.screenshot(), "18-bloqueio")
   }
 
   func testPacientesVazio() throws {

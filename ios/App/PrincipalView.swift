@@ -3,6 +3,7 @@ import SwiftUI
 struct PrincipalView: View {
   let conexao: Conexao
   let avisos: Avisos
+  let bloqueio: Bloqueio
 
   @State private var aba = Aba.agenda
   @State private var agenda: Agenda
@@ -15,9 +16,10 @@ struct PrincipalView: View {
     case conexao
   }
 
-  init(conexao: Conexao, avisos: Avisos) {
+  init(conexao: Conexao, avisos: Avisos, bloqueio: Bloqueio) {
     self.conexao = conexao
     self.avisos = avisos
+    self.bloqueio = bloqueio
     _agenda = State(initialValue: Agenda(conexao: conexao))
     _cadastro = State(initialValue: Cadastro(conexao: conexao))
   }
@@ -34,7 +36,7 @@ struct PrincipalView: View {
       }
       Tab("Conexão", image: "conexao", value: Aba.conexao) {
         NavigationStack {
-          ConexaoView(conexao: conexao, avisos: avisos)
+          ConexaoView(conexao: conexao, avisos: avisos, bloqueio: bloqueio)
         }
       }
     }

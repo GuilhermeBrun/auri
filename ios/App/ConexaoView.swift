@@ -3,6 +3,7 @@ import SwiftUI
 struct ConexaoView: View {
   let conexao: Conexao
   let avisos: Avisos
+  let bloqueio: Bloqueio
 
   var body: some View {
     List {
@@ -41,6 +42,15 @@ struct ConexaoView: View {
             Text("Avisos")
           } icon: {
             IconeDeAjuste(nome: "avisos", cor: .red)
+          }
+        }
+        NavigationLink {
+          BloqueioView(bloqueio: bloqueio)
+        } label: {
+          Label {
+            Text(bloqueio.metodo == "código do iPhone" ? "Bloqueio" : bloqueio.metodo)
+          } icon: {
+            IconeDeAjuste(nome: "bloqueio", cor: .green)
           }
         }
         NavigationLink {

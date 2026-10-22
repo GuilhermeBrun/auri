@@ -263,8 +263,8 @@ do iOS 27 (Liquid Glass), com componentes do sistema como vêm. Onde a HIG e
   frase completa: "O Auri usa a câmera para ler o QR code mostrado no computador da clínica." e
   "O Auri procura o computador da clínica nesta rede para conectar mais rápido."
   ([Privacy](https://developer.apple.com/design/human-interface-guidelines/privacy)).
-- Bloqueio: "Desbloquear com Face ID" (ou Touch ID, conforme o aparelho), sempre ligado, sem ajuste
-  no app, com o código do iPhone como alternativa do sistema
+- Bloqueio: "Desbloquear com Face ID" (ou Touch ID, conforme o aparelho), com o código do iPhone
+  como alternativa do sistema
   ([Managing accounts](https://developer.apple.com/design/human-interface-guidelines/managing-accounts)).
 
 **Acessibilidade**
@@ -278,7 +278,10 @@ do iOS 27 (Liquid Glass), com componentes do sistema como vêm. Onde a HIG e
 
 ## Segurança do aparelho
 
-- Face ID ou o código do iPhone ao abrir e ao voltar depois de 5 minutos fora (LocalAuthentication).
+- Conexão › Face ID: "Exigir Face ID", ligado por padrão, como nos apps de banco. O app pede o Face
+  ID (ou o código do iPhone) ao abrir e ao voltar do segundo plano, imediatamente ou depois de 1, 5
+  ou 15 minutos. Ligar ou desligar pede o Face ID antes. A HIG prefere o "Exigir Face ID" do próprio
+  iOS; o ajuste no app ficou a pedido, por serem dados de saúde.
 - Dados de pacientes só em memória: nada em disco, nada em log, e a tela fica coberta na miniatura do
   alternador de apps.
 - Chave do aparelho no Keychain, só neste aparelho e fora do backup do iCloud
