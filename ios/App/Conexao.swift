@@ -197,7 +197,7 @@ final class Conexao {
     }
   }
 
-  private func receber(_ dados: Data) {
+  func receber(_ dados: Data) {
     resto.append(dados)
     while let fim = resto.firstIndex(of: 0x0A) {
       let linha = resto[resto.startIndex..<fim]

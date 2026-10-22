@@ -2,8 +2,10 @@ import test from 'brittle'
 import { randomBytes } from 'node:crypto'
 import { lerConvite, escreverConvite } from './convite'
 import { criarNucleo, type Saida } from './nucleo'
+import contratoGravado from '../Tests/Contrato/contrato.json'
 
-const [conviteDaRecepcao, conviteDoOutro, bootstrapTexto] = Bare.argv.slice(2)
+const [conviteDaRecepcao, conviteDoOutro, bootstrapTexto, modo, conviteDoAntigo] =
+  Bare.argv.slice(2)
 const bootstrap = bootstrapTexto.split(',').map((endereco) => {
   const [host, port] = endereco.split(':')
   return { host, port: Number(port) }
@@ -123,6 +125,54 @@ test('conecta só pela internet', async (t) => {
   t.ok(teste.ok)
 })
 
+const OPERACOES_DO_IPHONE: [string, unknown[]][] = [
+  ['patients:list', []],
+  ['patients:get', [1]],
+  ['appointments:listRange', ['2026-01-01T00:00', '2030-01-01T00:00']],
+  ['appointments:listByPatient', [1]],
+  ['commitments:listRange', ['2026-01-01T00:00', '2030-01-01T00:00']],
+  ['tipos:list', []],
+  ['anamneses:get', [1]]
+]
+
+const tipo = (valor: unknown): string =>
+  valor === null ? 'null' : Array.isArray(valor) ? 'lista' : typeof valor
+
+function conferir(esperado: unknown, atual: unknown, caminho: string, faltas: string[]): void {
+  if (esperado === null || atual === null) return
+  if (tipo(esperado) !== tipo(atual)) {
+    faltas.push(`${caminho}: era ${tipo(esperado)}, veio ${tipo(atual)}`)
+  } else if (Array.isArray(esperado) && Array.isArray(atual)) {
+    if (esperado.length > 0 && atual.length > 0)
+      conferir(esperado[0], atual[0], `${caminho}[0]`, faltas)
+  } else if (tipo(esperado) === 'object') {
+    const objeto = atual as Record<string, unknown>
+    for (const [chave, valor] of Object.entries(esperado as Record<string, unknown>)) {
+      if (!(chave in objeto)) faltas.push(`${caminho}.${chave} sumiu`)
+      else conferir(valor, objeto[chave], `${caminho}.${chave}`, faltas)
+    }
+  }
+}
+
+test('o desktop responde no formato que o app do iPhone lê', async (t) => {
+  const atual: Record<string, unknown> = {}
+  for (const [canal, args] of OPERACOES_DO_IPHONE) {
+    const resposta = await iphone.pedir({ t: 'operacao', canal, args })
+    t.ok(resposta.ok)
+    const dados = resposta.ok ? resposta.data : null
+    atual[canal] = Array.isArray(dados) ? dados.slice(0, 1) : dados
+  }
+  if (modo === 'gravar') {
+    console.log(`CONTRATO ${JSON.stringify(atual)}`)
+    return
+  }
+  const faltas: string[] = []
+  for (const [canal, esperado] of Object.entries(contratoGravado)) {
+    conferir(esperado, atual[canal], canal, faltas)
+  }
+  t.alike(faltas, [], 'Se a mudança no desktop foi de propósito: npm run contrato')
+})
+
 test('vale a regra do computador: sem sessão no domingo', async (t) => {
   const domingo = proximo(0)
   const resposta = await iphone.pedir({
@@ -158,6 +208,46 @@ test('marca, recusa horário ocupado e recebe o aviso da recepção', async (t) 
   t.ok(aviso.titulo.startsWith('Recepção marcou a sessão de'))
   t.ok(aviso.corpo.startsWith('Amanhã às 18:00'))
   await iphone.esperar((s) => s.t === 'evento')
+})
+
+test('volta sozinho quando a conexão cai', async (t) => {
+  iphone.esquecer()
+  const derrubou = await iphone.pedir({ t: 'operacao', canal: 'teste:derrubar', args: [] })
+  t.ok(derrubou.ok)
+  await iphone.esperar((s) => s.t === 'estado' && s.status === 'offline')
+  iphone.esquecer()
+  await iphone.esperar((s) => s.t === 'estado' && s.status === 'connected')
+  const etiquetas = await iphone.pedir({ t: 'operacao', canal: 'tipos:list', args: [] })
+  t.ok(etiquetas.ok)
+})
+
+test('recusa computador com outra versão do Auri', async (t) => {
+  const outroIphone = cliente()
+  const resposta = await outroIphone.pedir({ t: 'parear', qr: conviteDoAntigo })
+  t.is(resposta.ok, false)
+  t.ok(!resposta.ok && resposta.error.includes('versões diferentes'))
+  await outroIphone.nucleo.fechar()
+})
+
+test('iPhone removido na recepção não recebe mais nada, por nenhum caminho', async (t) => {
+  iphone.esquecer()
+  iphone.nucleo.receber({
+    t: 'conectar',
+    servidor: { chave: recepcao.chave, nome: 'Recepção de teste', enderecos: recepcao.enderecos }
+  })
+  await iphone.esperar((s) => s.t === 'estado' && s.status === 'connected' && s.via === 'local')
+  iphone.esquecer()
+  await iphone.pedir({ t: 'operacao', canal: 'teste:remover', args: [] })
+  await iphone.esperar((s) => s.t === 'estado' && s.status === 'revoked')
+  const pelaRede = await iphone.pedir({ t: 'operacao', canal: 'patients:list', args: [] })
+  t.is(pelaRede.ok, false)
+
+  iphone.nucleo.receber({
+    t: 'conectar',
+    servidor: { chave: recepcao.chave, nome: 'Recepção de teste', enderecos: [] }
+  })
+  const pelaInternet = await iphone.pedir({ t: 'operacao', canal: 'patients:list', args: [] })
+  t.is(pelaInternet.ok, false)
 })
 
 test('fecha', async (t) => {

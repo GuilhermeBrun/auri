@@ -18,6 +18,7 @@ struct MesView: View {
       .scrollTargetLayout()
     }
     .scrollPosition(id: $visivel, anchor: .top)
+    .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
     .safeAreaInset(edge: .top, spacing: 0) {
       CabecalhoDaSemana()
     }

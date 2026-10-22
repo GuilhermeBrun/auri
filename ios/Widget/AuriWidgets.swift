@@ -106,16 +106,11 @@ struct VisaoDoWidget: View {
   @Environment(\.widgetFamily) private var familia
 
   private var hoje: [Resumo.Item] {
-    let calendario = Calendar.current
-    return (entrada.resumo?.itens ?? []).filter {
-      calendario.isDate($0.inicio, inSameDayAs: entrada.date) && $0.fim > entrada.date
-    }
+    entrada.resumo?.restantes(em: entrada.date) ?? []
   }
 
   private var amanha: [Resumo.Item] {
-    let calendario = Calendar.current
-    guard let dia = calendario.date(byAdding: .day, value: 1, to: entrada.date) else { return [] }
-    return (entrada.resumo?.itens ?? []).filter { calendario.isDate($0.inicio, inSameDayAs: dia) }
+    entrada.resumo?.doDiaSeguinte(a: entrada.date) ?? []
   }
 
   var body: some View {

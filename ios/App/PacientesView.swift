@@ -35,8 +35,13 @@ struct PacientesView: View {
           Label("Nenhum paciente", systemImage: "person.crop.circle.fill")
         } description: {
           Text("Os pacientes cadastrados no computador da clínica aparecem aqui.")
+            .fixedSize(horizontal: false, vertical: true)
         } actions: {
-          Button("Atualizar") { Task { await cadastro.carregar() } }
+          Button {
+            Task { await cadastro.carregar() }
+          } label: {
+            Text("Atualizar").frame(minHeight: 44).contentShape(.rect)
+          }
         }
       } else if let pacientes = cadastro.pacientes {
         ListaDePacientes(pacientes: pacientes, busca: busca) { paciente in
@@ -47,8 +52,13 @@ struct PacientesView: View {
           Label("Sem pacientes", systemImage: "exclamationmark.triangle")
         } description: {
           Text(erro)
+            .fixedSize(horizontal: false, vertical: true)
         } actions: {
-          Button("Tentar de novo") { Task { await cadastro.carregar() } }
+          Button {
+            Task { await cadastro.carregar() }
+          } label: {
+            Text("Tentar de novo").frame(minHeight: 44).contentShape(.rect)
+          }
         }
       } else {
         ProgressView()
@@ -80,18 +90,16 @@ struct ListaDePacientes<Linha: View>: View {
   @ViewBuilder let linha: (Paciente) -> Linha
 
   var body: some View {
-    let encontrados = filtrar(pacientes)
+    let encontrados = Paciente.filtrar(pacientes, busca: busca)
     if pacientes.isEmpty {
-      ContentUnavailableView(
-        "Nenhum paciente",
-        systemImage: "person.crop.circle",
-        description: Text("Os pacientes cadastrados no computador aparecem aqui.")
-      )
+      Indisponivel(
+        "Nenhum paciente", icone: "person.crop.circle",
+        descricao: "Os pacientes cadastrados no computador aparecem aqui.")
     } else if encontrados.isEmpty {
       ContentUnavailableView.search(text: busca)
     } else {
       List {
-        ForEach(secoes(encontrados), id: \.letra) { secao in
+        ForEach(Paciente.secoes(encontrados), id: \.letra) { secao in
           Section {
             ForEach(secao.pacientes) { linha($0) }
           } header: {
@@ -109,32 +117,6 @@ struct ListaDePacientes<Linha: View>: View {
       }
       .listStyle(.plain)
       .listSectionIndexVisibility(.visible)
-    }
-  }
-
-  private func filtrar(_ lista: [Paciente]) -> [Paciente] {
-    let termo = busca.trimmingCharacters(in: .whitespaces)
-    guard !termo.isEmpty else { return lista }
-    return lista.filter { $0.nome.range(of: termo, options: [.caseInsensitive, .diacriticInsensitive]) != nil }
-  }
-
-  private func secoes(_ lista: [Paciente]) -> [(letra: String, pacientes: [Paciente])] {
-    let porLetra = Dictionary(grouping: lista) { paciente in
-      let primeira = paciente.nome
-        .folding(options: [.diacriticInsensitive, .caseInsensitive], locale: Locale(identifier: "pt_BR"))
-        .uppercased()
-        .first
-      return primeira.map { $0.isLetter ? String($0) : "#" } ?? "#"
-    }
-    return porLetra.keys.sorted { a, b in a == "#" ? false : b == "#" ? true : a < b }.map { letra in
-      (
-        letra,
-        porLetra[letra]!.sorted {
-          $0.nome.compare(
-            $1.nome, options: [.caseInsensitive, .diacriticInsensitive], locale: Locale(identifier: "pt_BR"))
-            == .orderedAscending
-        }
-      )
     }
   }
 }
@@ -155,7 +137,7 @@ struct Avatar: View {
   let tamanho: CGFloat
 
   var body: some View {
-    Text(iniciais)
+    Text(Paciente.iniciais(nome))
       .font(.system(size: tamanho * 0.4, weight: .medium, design: .rounded))
       .foregroundStyle(.white)
       .frame(width: tamanho, height: tamanho)
@@ -170,9 +152,25 @@ struct Avatar: View {
       .accessibilityHidden(true)
   }
 
-  private var iniciais: String {
-    let partes = nome.split(separator: " ").filter { $0.count > 2 || $0 == $0.uppercased() }
-    let letras = [partes.first, partes.count > 1 ? partes.last : nil].compactMap { $0?.first }
-    return String(letras).uppercased()
+}
+
+struct Indisponivel: View {
+  let titulo: String
+  let icone: String
+  let descricao: String
+
+  init(_ titulo: String, icone: String, descricao: String) {
+    self.titulo = titulo
+    self.icone = icone
+    self.descricao = descricao
+  }
+
+  var body: some View {
+    ContentUnavailableView {
+      Label(titulo, systemImage: icone)
+    } description: {
+      Text(descricao)
+        .fixedSize(horizontal: false, vertical: true)
+    }
   }
 }

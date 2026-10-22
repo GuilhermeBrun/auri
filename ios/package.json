@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "check": "npm run formato && npm run lint && npm run tipos",
+    "contrato": "node scripts/construir.mjs && node scripts/testar.mjs --gravar",
     "formato": "oxfmt --check worklet scripts",
     "formato:swift": "xcrun swift-format lint --recursive --strict App Widget Compartilhado Tests UITests",
     "lint": "oxlint --deny-warnings worklet scripts",

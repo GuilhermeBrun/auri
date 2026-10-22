@@ -6,6 +6,7 @@
     "strict": true,
     "noEmit": true,
     "skipLibCheck": true,
+    "resolveJsonModule": true,
     "types": ["node"]
   },
   "include": ["worklet", "scripts/servidor.ts", "../desktop/src/main/net/*.d.ts"]

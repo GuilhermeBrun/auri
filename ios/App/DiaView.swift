@@ -5,6 +5,7 @@ struct DiaView: View {
   let abrirEvento: (Evento) -> Void
 
   @State private var dia: Date
+  @Environment(\.dynamicTypeSize) private var tamanhoDoTexto
   private let foco: Int?
 
   init(agenda: Agenda, inicial: Date, abrirEvento: @escaping (Evento) -> Void) {
@@ -23,14 +24,20 @@ struct DiaView: View {
         .padding(.vertical, 8)
         .frame(maxWidth: .infinity)
         .overlay(alignment: .bottom) { Rectangle().fill(.separator).frame(height: 0.5) }
-      LinhaDoTempo(dia: dia, foco: foco, eventos: agenda.eventos(em: dia), abrirEvento: abrirEvento)
-        .id(dia)
-        .simultaneousGesture(
-          DragGesture(minimumDistance: 40).onEnded { gesto in
-            guard abs(gesto.translation.width) > abs(gesto.translation.height) * 2 else { return }
-            withAnimation { dia = DataLocal.somar(.day, gesto.translation.width < 0 ? 1 : -1, a: dia) }
-          }
-        )
+      Group {
+        if tamanhoDoTexto.isAccessibilitySize {
+          ListaDoDia(eventos: agenda.eventos(em: dia), abrirEvento: abrirEvento)
+        } else {
+          LinhaDoTempo(dia: dia, foco: foco, eventos: agenda.eventos(em: dia), abrirEvento: abrirEvento)
+        }
+      }
+      .id(dia)
+      .simultaneousGesture(
+        DragGesture(minimumDistance: 40).onEnded { gesto in
+          guard abs(gesto.translation.width) > abs(gesto.translation.height) * 2 else { return }
+          withAnimation { dia = DataLocal.somar(.day, gesto.translation.width < 0 ? 1 : -1, a: dia) }
+        }
+      )
     }
     .navigationTitle(dia.formatado(.dateTime.day().month(.abbreviated)))
     .navigationBarTitleDisplayMode(.inline)
@@ -38,6 +45,35 @@ struct DiaView: View {
       ToolbarItem(placement: .principal) { Text("") }
       ToolbarItem(placement: .topBarLeading) {
         Button("Hoje") { withAnimation { dia = DataLocal.inicioDoDia(.now) } }
+      }
+    }
+  }
+}
+
+private struct ListaDoDia: View {
+  let eventos: [Evento]
+  let abrirEvento: (Evento) -> Void
+
+  var body: some View {
+    List(eventos) { evento in
+      Button {
+        abrirEvento(evento)
+      } label: {
+        HStack(spacing: 12) {
+          RoundedRectangle(cornerRadius: 2).fill(Color(hex: evento.cor)).frame(width: 5)
+          VStack(alignment: .leading, spacing: 2) {
+            Text(evento.titulo)
+              .font(.headline)
+            Text("\(evento.inicio.hora) – \(evento.fim.hora)")
+              .foregroundStyle(.secondary)
+          }
+        }
+      }
+      .foregroundStyle(.primary)
+    }
+    .overlay {
+      if eventos.isEmpty {
+        ContentUnavailableView("Nenhuma sessão neste dia", systemImage: "calendar")
       }
     }
   }
@@ -76,6 +112,7 @@ private struct FaixaDaSemana: View {
       }
     }
     .padding(.vertical, 6)
+    .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
     .gesture(
       DragGesture(minimumDistance: 30).onEnded { gesto in
         withAnimation { dia = DataLocal.somar(.day, gesto.translation.width < 0 ? 7 : -7, a: dia) }
@@ -113,12 +150,18 @@ private struct LinhaDoTempo: View {
           }
           GeometryReader { espaco in
             let largura = espaco.size.width - margem - 4
-            ForEach(colunas, id: \.evento.id) { item in
+            ForEach(eventos.emColunas(), id: \.evento.id) { item in
               BlocoDoEvento(evento: item.evento)
+                .frame(height: max(altura(de: item.evento), 22))
                 .frame(
                   width: largura / CGFloat(item.total) - 2,
-                  height: max(altura(de: item.evento), 22)
+                  height: max(altura(de: item.evento), 44),
+                  alignment: .top
                 )
+                .contentShape(.rect)
+                .contentShape(.accessibility, .rect)
+                .accessibilityElement(children: .combine)
+                .accessibilityAddTraits(.isButton)
                 .offset(
                   x: margem + largura / CGFloat(item.total) * CGFloat(item.coluna),
                   y: topo + posicao(de: item.evento.inicio)
@@ -127,7 +170,7 @@ private struct LinhaDoTempo: View {
             }
             if DataLocal.calendario.isDateInToday(dia) {
               Agora(margem: margem)
-                .offset(y: topo + posicao(de: .now) - 5)
+                .offset(y: topo + posicao(de: .now) - 22)
             }
           }
         }
@@ -151,33 +194,6 @@ private struct LinhaDoTempo: View {
 
   private func altura(de evento: Evento) -> CGFloat {
     CGFloat(evento.fim.timeIntervalSince(evento.inicio) / 3600) * alturaDaHora - 2
-  }
-
-  private var colunas: [(evento: Evento, coluna: Int, total: Int)] {
-    var grupos: [[Evento]] = []
-    var fimDoGrupo = Date.distantPast
-    for evento in eventos {
-      if evento.inicio >= fimDoGrupo || grupos.isEmpty {
-        grupos.append([evento])
-      } else {
-        grupos[grupos.count - 1].append(evento)
-      }
-      fimDoGrupo = max(fimDoGrupo, evento.fim)
-    }
-    return grupos.flatMap { grupo in
-      var fins: [Date] = []
-      var lugares: [(Evento, Int)] = []
-      for evento in grupo {
-        if let livre = fins.firstIndex(where: { $0 <= evento.inicio }) {
-          fins[livre] = evento.fim
-          lugares.append((evento, livre))
-        } else {
-          fins.append(evento.fim)
-          lugares.append((evento, fins.count - 1))
-        }
-      }
-      return lugares.map { (evento: $0.0, coluna: $0.1, total: fins.count) }
-    }
   }
 }
 
@@ -203,9 +219,6 @@ private struct BlocoDoEvento: View {
     .frame(maxHeight: .infinity, alignment: .top)
     .background(cor.opacity(0.2))
     .clipShape(.rect(cornerRadius: 6))
-    .contentShape(.rect)
-    .accessibilityElement(children: .combine)
-    .accessibilityAddTraits(.isButton)
   }
 }
 
@@ -222,7 +235,10 @@ private struct Agora: View {
       Circle().fill(.red).frame(width: 8, height: 8)
       Rectangle().fill(.red).frame(height: 1.5)
     }
-    .frame(height: 10)
-    .accessibilityHidden(true)
+    .frame(height: 44)
+    .allowsHitTesting(false)
+    .accessibilityElement(children: .ignore)
+    .accessibilityLabel("Agora, \(Date.now.hora)")
+    .accessibilityAddTraits(.isStaticText)
   }
 }

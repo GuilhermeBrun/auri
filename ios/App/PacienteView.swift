@@ -14,8 +14,7 @@ struct PacienteView: View {
       if let paciente {
         ficha(paciente)
       } else if let erro {
-        ContentUnavailableView(
-          "Ficha indisponível", systemImage: "person.crop.circle.badge.exclamationmark", description: Text(erro))
+        Indisponivel("Ficha indisponível", icone: "person.crop.circle.badge.exclamationmark", descricao: erro)
       } else {
         ProgressView()
       }
@@ -169,7 +168,7 @@ struct SessoesDoPacienteView: View {
     }
     .overlay {
       if let erro {
-        ContentUnavailableView("Sessões indisponíveis", systemImage: "calendar", description: Text(erro))
+        Indisponivel("Sessões indisponíveis", icone: "calendar", descricao: erro)
       } else if sessoes == nil {
         ProgressView()
       } else if lista.isEmpty {
@@ -231,13 +230,12 @@ struct AnamneseView: View {
     }
     .overlay {
       if let erro {
-        ContentUnavailableView("Anamnese indisponível", systemImage: "doc.text", description: Text(erro))
+        Indisponivel("Anamnese indisponível", icone: "doc.text", descricao: erro)
       } else if anamnese == nil {
         ProgressView()
       } else if temas.isEmpty {
-        ContentUnavailableView(
-          "Sem anamnese", systemImage: "doc.text",
-          description: Text("A anamnese é preenchida no computador do consultório."))
+        Indisponivel(
+          "Sem anamnese", icone: "doc.text", descricao: "A anamnese é preenchida no computador do consultório.")
       }
     }
     .navigationTitle("Anamnese")
@@ -286,13 +284,13 @@ struct EvolucoesView: View {
     }
     .overlay {
       if let erro {
-        ContentUnavailableView("Evoluções indisponíveis", systemImage: "text.document", description: Text(erro))
+        Indisponivel("Evoluções indisponíveis", icone: "text.document", descricao: erro)
       } else if sessoes == nil {
         ProgressView()
       } else if comEvolucao.isEmpty {
-        ContentUnavailableView(
-          "Nenhuma evolução", systemImage: "text.document",
-          description: Text("As evoluções são escritas no computador do consultório."))
+        Indisponivel(
+          "Nenhuma evolução", icone: "text.document",
+          descricao: "As evoluções são escritas no computador do consultório.")
       }
     }
     .navigationTitle("Evoluções")

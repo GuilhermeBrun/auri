@@ -13,6 +13,10 @@ final class Bloqueio {
 
     var id: Int { rawValue }
 
+    func venceu(desde saida: Date, ate agora: Date) -> Bool {
+      agora.timeIntervalSince(saida) >= Double(rawValue)
+    }
+
     var nome: String {
       switch self {
       case .imediatamente: return "Imediatamente"
@@ -36,7 +40,7 @@ final class Bloqueio {
   private var saiuEm: Date?
 
   init() {
-    exigir = UserDefaults.standard.object(forKey: "bloqueio") as? Bool ?? true
+    exigir = UserDefaults.standard.object(forKey: "bloqueio") == nil || UserDefaults.standard.bool(forKey: "bloqueio")
     intervalo = Intervalo(rawValue: UserDefaults.standard.integer(forKey: "bloqueio-intervalo")) ?? .imediatamente
   }
 
@@ -66,7 +70,7 @@ final class Bloqueio {
   func voltou() {
     defer { saiuEm = nil }
     guard exigir, disponivel, let saiuEm else { return }
-    if Date.now.timeIntervalSince(saiuEm) >= Double(intervalo.rawValue) { bloqueado = true }
+    if intervalo.venceu(desde: saiuEm, ate: .now) { bloqueado = true }
   }
 
   func desbloquear() async {
@@ -156,6 +160,10 @@ struct BloqueioView: View {
           Picker("Pedir de novo", selection: Bindable(bloqueio).intervalo) {
             ForEach(Bloqueio.Intervalo.allCases) { Text($0.nome).tag($0) }
           }
+          .pickerStyle(.inline)
+          .labelsHidden()
+        } header: {
+          Text("Pedir de novo")
         } footer: {
           Text("Quanto tempo o Auri pode ficar em segundo plano antes de pedir o \(metodo) de novo.")
         }

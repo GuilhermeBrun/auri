@@ -81,8 +81,13 @@ final class Agenda {
   func atualizarResumo() {
     let hoje = DataLocal.inicioDoDia(.now)
     let dias = [hoje, DataLocal.somar(.day, 1, a: hoje)]
-    let nomes = Self.nomesNosWidgets
-    let itens = dias.flatMap { eventos(em: $0) }.map { evento in
+    let itens = Self.itensDoResumo(dias.flatMap { eventos(em: $0) }, nomes: Self.nomesNosWidgets)
+    try? Resumo(itens: itens, atualizado: .now).gravar()
+    WidgetCenter.shared.reloadAllTimelines()
+  }
+
+  nonisolated static func itensDoResumo(_ eventos: [Evento], nomes: Bool) -> [Resumo.Item] {
+    eventos.map { evento in
       let titulo: String
       let etiqueta: String
       switch evento.origem {
@@ -95,8 +100,6 @@ final class Agenda {
       }
       return Resumo.Item(inicio: evento.inicio, fim: evento.fim, cor: evento.cor, titulo: titulo, etiqueta: etiqueta)
     }
-    try? Resumo(itens: itens, atualizado: .now).gravar()
-    WidgetCenter.shared.reloadAllTimelines()
   }
 
   func atualizarEmSegundoPlano() async {

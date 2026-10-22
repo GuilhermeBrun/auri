@@ -100,8 +100,19 @@ export function criarNucleo(opcoes: { enviar: (saida: Saida) => void; bootstrap?
         code: convite.codigo
       })
     )
+    const inalcancavel = (motivo: string): boolean =>
+      motivo.startsWith('Não foi possível conectar a ')
+    const recusaDoComputador = tentativas.map((tentativa) =>
+      tentativa.then(
+        () => new Promise<never>(() => {}),
+        (error: Error) => (inalcancavel(error.message) ? new Promise<never>(() => {}) : error)
+      )
+    )
     try {
-      const pareado = await Promise.any(tentativas)
+      const pareado = await Promise.race([
+        Promise.any(tentativas),
+        ...recusaDoComputador.map((recusa) => recusa.then((error) => Promise.reject(error)))
+      ])
       if (pareado.publicKey !== convite.chave) {
         return responder(id, {
           ok: false,
@@ -114,10 +125,11 @@ export function criarNucleo(opcoes: { enviar: (saida: Saida) => void; bootstrap?
         data: { chave: pareado.publicKey, nome: pareado.name, enderecos: convite.enderecos }
       })
     } catch (error) {
-      const motivos = (error as AggregateError).errors.map((e: Error) => e.message)
-      const doComputador = motivos.find(
-        (motivo) => !motivo.startsWith('Não foi possível conectar a ')
-      )
+      const motivos =
+        error instanceof AggregateError
+          ? error.errors.map((e: Error) => e.message)
+          : [(error as Error).message]
+      const doComputador = motivos.find((motivo) => !inalcancavel(motivo))
       responder(id, {
         ok: false,
         error:

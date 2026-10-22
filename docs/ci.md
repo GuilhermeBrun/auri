@@ -19,7 +19,11 @@ o minuto inteiro.
 
 Os passos do app rodam em `desktop/`, os do site em `web/` e os do iPhone em `ios/`: formato, lint
 e tipos do worklet e o teste da conexão (o cliente do iPhone no runtime Bare contra as operações do
-desktop, numa DHT local), que pega quando uma mudança no desktop quebra o celular.
+desktop, numa DHT local), que pega quando uma mudança no desktop quebra o celular. Esse teste também
+confere as respostas do desktop com `ios/Tests/Contrato/contrato.json`, o mesmo arquivo que os testes
+em Swift decodificam nos modelos do app: um campo que o desktop renomeia ou tira reprova no Linux,
+sem precisar do Mac. Quando a mudança é de propósito, `npm run contrato` (em `ios/`) grava o arquivo
+de novo.
 
 Os passos rodam mesmo depois de um erro, para o PR mostrar todos de uma vez. O `Check` é o único
 check exigido pela proteção do `main`, que também exige o PR **atualizado com o `main`**: o que
@@ -81,10 +85,13 @@ o do Linux. Rodar antes de cada estável e em mudanças que mexem no Mac:
 npm run ci:mac
 ```
 
-O app do iPhone também só compila no Mac. Rodar quando o PR mexe em `ios/` ou no código que ele usa
-do desktop (`desktop/src/main/net/`, `desktop/src/shared/`, `operations.ts`): projeto do Xcode,
-formato do Swift, testes em Swift e os testes de interface no simulador, com as capturas em
-`ios/build/telas/`.
+O app do iPhone também só compila no Mac. No `git push` feito no Mac, o `npm run ci:local` gera o
+projeto do Xcode e roda os testes em Swift quando a branch mexe em `ios/` ou no código que ele usa do
+desktop (`desktop/src/main/net/`, `db/`, `operations.ts`, `desktop/src/shared/`). Antes do PR, rodar
+também o `ci:ios`, que soma o formato do Swift e os testes de interface no simulador, com as capturas
+em `ios/build/telas/`. Cada tela passa pela auditoria de acessibilidade do Xcode (rótulos, área de
+toque, texto cortado, traços); contraste e tamanho do texto ficam com a captura em letra grande, porque
+a auditoria reprova cores e vidro do próprio sistema.
 
 ```bash
 npm run ci:ios

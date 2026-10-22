@@ -63,7 +63,7 @@ struct AuriApp: App {
         case "agenda":
           let texto = URLComponents(url: url, resolvingAgainstBaseURL: false)?
             .queryItems?.first { $0.name == "data" }?.value
-          destino.data = texto.flatMap(DataLocal.data) ?? .now
+          destino.abrir(texto.flatMap(DataLocal.data) ?? .now)
         case "nova-sessao":
           destino.novaSessao = true
         default:

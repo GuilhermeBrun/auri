@@ -104,7 +104,68 @@ struct Evento: Identifiable, Hashable, Sendable {
   }
 }
 
+extension Array where Element == Evento {
+  func emColunas() -> [(evento: Evento, coluna: Int, total: Int)] {
+    var grupos: [[Evento]] = []
+    var fimDoGrupo = Date.distantPast
+    for evento in sorted(by: { $0.inicio < $1.inicio }) {
+      if evento.inicio >= fimDoGrupo || grupos.isEmpty {
+        grupos.append([evento])
+      } else {
+        grupos[grupos.count - 1].append(evento)
+      }
+      fimDoGrupo = Swift.max(fimDoGrupo, evento.fim)
+    }
+    return grupos.flatMap { grupo in
+      var fins: [Date] = []
+      var lugares: [(Evento, Int)] = []
+      for evento in grupo {
+        if let livre = fins.firstIndex(where: { $0 <= evento.inicio }) {
+          fins[livre] = evento.fim
+          lugares.append((evento, livre))
+        } else {
+          fins.append(evento.fim)
+          lugares.append((evento, fins.count - 1))
+        }
+      }
+      return lugares.map { (evento: $0.0, coluna: $0.1, total: fins.count) }
+    }
+  }
+}
+
 extension Paciente {
+  static func filtrar(_ lista: [Paciente], busca: String) -> [Paciente] {
+    let termo = busca.trimmingCharacters(in: .whitespaces)
+    guard !termo.isEmpty else { return lista }
+    return lista.filter { $0.nome.range(of: termo, options: [.caseInsensitive, .diacriticInsensitive]) != nil }
+  }
+
+  static func secoes(_ lista: [Paciente]) -> [(letra: String, pacientes: [Paciente])] {
+    let local = Locale(identifier: "pt_BR")
+    let porLetra = Dictionary(grouping: lista) { paciente in
+      let primeira = paciente.nome.trimmingCharacters(in: .whitespaces)
+        .folding(options: [.diacriticInsensitive, .caseInsensitive], locale: local)
+        .uppercased()
+        .first
+      return primeira.map { $0.isLetter ? String($0) : "#" } ?? "#"
+    }
+    return porLetra.keys.sorted { a, b in a == "#" ? false : b == "#" ? true : a < b }.map { letra in
+      (
+        letra,
+        porLetra[letra, default: []].sorted {
+          $0.nome.compare($1.nome, options: [.caseInsensitive, .diacriticInsensitive], locale: local)
+            == .orderedAscending
+        }
+      )
+    }
+  }
+
+  static func iniciais(_ nome: String) -> String {
+    let partes = nome.split(separator: " ").filter { $0.count > 2 || $0 == $0.uppercased() }
+    let letras = [partes.first, partes.count > 1 ? partes.last : nil].compactMap { $0?.first }
+    return String(letras).uppercased()
+  }
+
   var responsavel: (nome: String, celular: String)? {
     switch respTipo {
     case "mae": return (maeNome ?? "", maeCelular ?? "")

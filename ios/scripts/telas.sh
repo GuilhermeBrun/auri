@@ -26,7 +26,7 @@ xcrun simctl spawn "$APARELHO" notifyutil -s com.apple.BiometricKit.enrollmentCh
 xcrun simctl spawn "$APARELHO" notifyutil -p com.apple.BiometricKit.enrollmentChanged
 rm -rf build/resultado.xcresult "$SAIDA"
 (
-  until grep -q "testWidgetsNaTelaInicial\]' started" build/teste.log 2>/dev/null; do sleep 1; done
+  until grep -q "rosto: ligar" build/teste.log 2>/dev/null; do sleep 1; done
   while true; do
     xcrun simctl spawn "$APARELHO" notifyutil -p com.apple.BiometricKit_Sim.pearl.match > /dev/null 2>&1
     sleep 2
@@ -35,7 +35,7 @@ rm -rf build/resultado.xcresult "$SAIDA"
 ROSTO=$!
 TEST_RUNNER_AURI_QR="$CONVITE" xcodebuild test -project Auri.xcodeproj -scheme Auri \
   -destination "$DESTINO" -derivedDataPath build/xcode -resultBundlePath build/resultado.xcresult \
-  -only-testing:AuriUITests -collect-test-diagnostics never > build/teste.log 2>&1 || STATUS=$?
+  ${SO_TESTES:--only-testing:AuriUITests} -collect-test-diagnostics never ${COBERTURA:+-enableCodeCoverage YES} > build/teste.log 2>&1 || STATUS=$?
 grep -E "error:|passed|failed|skipped" build/teste.log || true
 xcrun xcresulttool export attachments --path build/resultado.xcresult --output-path "$SAIDA" > /dev/null
 SAIDA="$SAIDA" node -e '

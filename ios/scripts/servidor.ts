@@ -131,7 +131,7 @@ const codes = createPairingCodes()
 const server = createSyncServer({
   keyPair,
   name: () => NOME,
-  schemaVersion: SCHEMA_VERSION,
+  schemaVersion: Number(process.env.AURI_VERSAO ?? SCHEMA_VERSION),
   isPaired: (chave) => pareados.has(chave),
   codes,
   onPaired: ({ publicKey, name }) => {
@@ -141,6 +141,11 @@ const server = createSyncServer({
   onPresence: (chave, online) => console.log(`${chave.slice(0, 8)}… ${online ? 'entrou' : 'saiu'}`),
   handle: (canal, args, peer) => {
     console.log(`pedido: ${canal}`)
+    if (canal === 'teste:derrubar' || canal === 'teste:remover') {
+      if (canal === 'teste:remover') pareados.delete(peer)
+      setTimeout(() => server.disconnect(peer), 100)
+      return { ok: true, data: null }
+    }
     const resultado = runOperation(db, canal, args, (topics, aviso) =>
       server.broadcast(topics, aviso ? { ...aviso, autor: 'iPhone' } : undefined, peer)
     )

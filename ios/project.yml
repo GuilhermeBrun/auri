@@ -98,6 +98,10 @@ targets:
         BUNDLE_LOADER: $(TEST_HOST)
     sources:
       - path: Tests
+        excludes:
+          - Contrato
+      - path: Tests/Contrato
+        buildPhase: resources
     dependencies:
       - target: Auri
   AuriUITests:

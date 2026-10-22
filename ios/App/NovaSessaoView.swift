@@ -155,9 +155,8 @@ struct NovaSessaoView: View {
     }
   }
 
-  private static func horarioSugerido(_ dia: Date?) -> Date {
+  static func horarioSugerido(_ dia: Date?, agora: Date = .now) -> Date {
     let calendario = DataLocal.calendario
-    let agora = Date.now
     let base = dia ?? agora
     if calendario.isDate(base, inSameDayAs: agora) {
       let proxima = calendario.date(byAdding: .hour, value: 1, to: agora) ?? agora

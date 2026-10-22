@@ -4,7 +4,31 @@ import { resolve } from 'node:path'
 
 const installed = (cwd) => {
   const modified = (file) => statSync(resolve(cwd, file), { throwIfNoEntry: false })?.mtimeMs
-  return (modified('node_modules/.package-lock.json') ?? 0) > (modified('package-lock.json') ?? 0)
+  return (
+    (modified('node_modules/.package-lock.json') ?? 0) > (modified('package-lock.json') ?? 0) &&
+    'já em dia'
+  )
+}
+
+const usadoPeloIPhone = [
+  'ios/',
+  'desktop/src/main/net/',
+  'desktop/src/main/db/',
+  'desktop/src/main/operations',
+  'desktop/src/shared/'
+]
+const semMudancaNoIPhone = () => {
+  if (process.platform !== 'darwin') return 'só no Mac'
+  const base = git('merge-base', 'HEAD', 'origin/main')
+  if (!base) return false
+  const mudou = [
+    ...git('diff', '--name-only', base).split('\n'),
+    ...git('-C', '..', 'ls-files', '--others', '--exclude-standard').split('\n')
+  ]
+  const tocou = mudou.some((arquivo) =>
+    usadoPeloIPhone.some((caminho) => arquivo.startsWith(caminho))
+  )
+  return !tocou && 'sem mudança no iPhone'
 }
 
 const iphone = [
@@ -12,6 +36,18 @@ const iphone = [
   { name: 'iPhone: formato, lint e tipos', command: 'npm', args: ['run', 'check'], cwd: '../ios' },
   { name: 'iPhone: conexão no Bare', command: 'npm', args: ['run', 'teste'], cwd: '../ios' }
 ]
+const xcode = {
+  name: 'iPhone: projeto do Xcode',
+  command: 'npm',
+  args: ['run', 'preparar'],
+  cwd: '../ios'
+}
+const testesSwift = {
+  name: 'iPhone: testes em Swift',
+  command: 'npm',
+  args: ['run', 'testes:swift'],
+  cwd: '../ios'
+}
 
 const profiles = {
   local: [
@@ -24,7 +60,9 @@ const profiles = {
     { name: 'Site: formato, lint e tipos', cached: 'check', cwd: '../web' },
     { name: 'Site: testes', cached: 'test', cwd: '../web' },
     { name: 'Site: build', cached: 'build:exemplo', cwd: '../web' },
-    ...iphone
+    ...iphone,
+    { ...xcode, skip: semMudancaNoIPhone },
+    { ...testesSwift, skip: semMudancaNoIPhone }
   ],
   mac: [
     {
@@ -49,19 +87,14 @@ const profiles = {
   ],
   ios: [
     ...iphone,
-    { name: 'iPhone: projeto do Xcode', command: 'npm', args: ['run', 'preparar'], cwd: '../ios' },
+    xcode,
     {
       name: 'iPhone: formato do Swift',
       command: 'npm',
       args: ['run', 'formato:swift'],
       cwd: '../ios'
     },
-    {
-      name: 'iPhone: testes em Swift',
-      command: 'npm',
-      args: ['run', 'testes:swift'],
-      cwd: '../ios'
-    },
+    testesSwift,
     {
       name: 'iPhone: interface no simulador',
       command: 'npm',
@@ -95,9 +128,10 @@ const vitePlusRun = (cwd = '.', script) => ({
 
 for (const step of steps) {
   const { name, env, cwd } = step
-  if (step.skip?.(cwd)) {
-    console.log(`\n▶ ${name}: já em dia`)
-    results.push(`✓ ${name} (já em dia)`)
+  const pulo = step.skip?.(cwd)
+  if (pulo) {
+    console.log(`\n▶ ${name}: ${pulo}`)
+    results.push(`✓ ${name} (${pulo})`)
     continue
   }
   const { command, args } = step.cached ? vitePlusRun(cwd, step.cached) : step

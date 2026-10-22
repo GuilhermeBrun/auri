@@ -21,6 +21,16 @@ struct Resumo: Codable, Sendable {
       .appendingPathComponent("resumo.json")
   }
 
+  func restantes(em data: Date, calendario: Calendar = .current) -> [Item] {
+    itens.filter { calendario.isDate($0.inicio, inSameDayAs: data) && $0.fim > data }
+      .sorted { $0.inicio < $1.inicio }
+  }
+
+  func doDiaSeguinte(a data: Date, calendario: Calendar = .current) -> [Item] {
+    guard let dia = calendario.date(byAdding: .day, value: 1, to: data) else { return [] }
+    return itens.filter { calendario.isDate($0.inicio, inSameDayAs: dia) }.sorted { $0.inicio < $1.inicio }
+  }
+
   static func ler() -> Resumo? {
     guard let arquivo, let dados = try? Data(contentsOf: arquivo) else { return nil }
     let decodificador = JSONDecoder()

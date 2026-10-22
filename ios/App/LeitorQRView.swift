@@ -49,17 +49,16 @@ struct LeitorQRView: View {
         Label("Sem acesso à câmera", systemImage: "camera")
       } description: {
         Text("Para ler o QR code do computador, permita que o Auri use a câmera.")
+          .fixedSize(horizontal: false, vertical: true)
       } actions: {
-        Button("Abrir Ajustes") {
+        Button {
           if let ajustes = URL(string: UIApplication.openSettingsURLString) { openURL(ajustes) }
+        } label: {
+          Text("Abrir Ajustes").frame(minHeight: 44).contentShape(.rect)
         }
       }
     } else if acesso == .authorized && !DataScannerViewController.isSupported {
-      ContentUnavailableView(
-        "Câmera indisponível",
-        systemImage: "camera",
-        description: Text("Este aparelho não consegue ler QR codes.")
-      )
+      Indisponivel("Câmera indisponível", icone: "camera", descricao: "Este aparelho não consegue ler QR codes.")
     } else if acesso == .authorized {
       LeitorDeCodigo(ativo: etapa == .lendo, aoLer: ler)
         .ignoresSafeArea()

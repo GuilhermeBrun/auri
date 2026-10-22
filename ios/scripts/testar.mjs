@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process'
+import { writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import createTestnet from 'hyperdht/testnet.js'
 
@@ -28,20 +29,41 @@ function subir(porta, env) {
 
 let status = 1
 try {
-  const [recepcao, outro] = await Promise.all([
+  const [recepcao, outro, antigo] = await Promise.all([
     subir(47491, { AURI_AVISO: '1' }),
-    subir(47492, { AURI_VAZIO: '1', AURI_NOME: 'Outro computador' })
+    subir(47492, { AURI_VAZIO: '1', AURI_NOME: 'Outro computador' }),
+    subir(47493, { AURI_VAZIO: '1', AURI_NOME: 'Computador antigo', AURI_VERSAO: '1' })
   ])
+  const gravar = process.argv.includes('--gravar')
   status = await new Promise((resolve) => {
-    const bare = spawn(
-      `${raiz}node_modules/.bin/bare`,
-      ['build/nucleo.test.cjs', recepcao, outro, bootstrap],
-      {
-        cwd: raiz,
-        stdio: 'inherit'
+    const argumentos = [
+      'build/nucleo.test.cjs',
+      recepcao,
+      outro,
+      bootstrap,
+      gravar ? 'gravar' : 'conferir',
+      antigo
+    ]
+    const bare = spawn(`${raiz}node_modules/.bin/bare`, argumentos, {
+      cwd: raiz,
+      stdio: ['inherit', 'pipe', 'inherit']
+    })
+    let saida = ''
+    bare.stdout.on('data', (dados) => {
+      saida += dados
+      process.stdout.write(dados)
+    })
+    bare.on('exit', (codigo) => {
+      const contrato = saida.match(/^CONTRATO (.+)$/m)
+      if (gravar && contrato) {
+        writeFileSync(
+          `${raiz}Tests/Contrato/contrato.json`,
+          JSON.stringify(JSON.parse(contrato[1]), null, 2) + '\n'
+        )
+        console.log('Tests/Contrato/contrato.json gravado.')
       }
-    )
-    bare.on('exit', (codigo) => resolve(codigo ?? 1))
+      resolve(codigo ?? 1)
+    })
   })
 } finally {
   for (const servidor of servidores) {

@@ -30,47 +30,28 @@ struct ConexaoView: View {
         NavigationLink {
           AcessoPelaInternetView(conexao: conexao)
         } label: {
-          Label {
-            Text("Acesso pela internet")
-          } icon: {
-            IconeDeAjuste(nome: "internet", cor: .blue)
-          }
+          LinhaDeAjuste(Text("Acesso pela internet"), icone: "internet", cor: .blue)
         }
         NavigationLink {
           AvisosView(avisos: avisos)
         } label: {
-          Label {
-            Text("Avisos")
-          } icon: {
-            IconeDeAjuste(nome: "avisos", cor: .red)
-          }
+          LinhaDeAjuste(Text("Avisos"), icone: "avisos", cor: .red)
         }
         NavigationLink {
           WidgetsView(agenda: agenda)
         } label: {
-          Label {
-            Text("Widgets")
-          } icon: {
-            IconeDeAjuste(nome: "widgets", cor: .indigo)
-          }
+          LinhaDeAjuste(Text("Widgets"), icone: "widgets", cor: .indigo)
         }
         NavigationLink {
           BloqueioView(bloqueio: bloqueio)
         } label: {
-          Label {
-            Text(bloqueio.metodo == "código do iPhone" ? "Bloqueio" : bloqueio.metodo)
-          } icon: {
-            IconeDeAjuste(nome: "bloqueio", cor: .green)
-          }
+          LinhaDeAjuste(
+            Text(bloqueio.metodo == "código do iPhone" ? "Bloqueio" : bloqueio.metodo), icone: "bloqueio", cor: .green)
         }
         NavigationLink {
           EsteIPhoneView()
         } label: {
-          Label {
-            Text("Este iPhone")
-          } icon: {
-            IconeDeAjuste(nome: "iphone", cor: .gray)
-          }
+          LinhaDeAjuste(Text("Este iPhone"), icone: "iphone", cor: .gray)
         }
       }
     }
@@ -262,18 +243,39 @@ private struct EsteIPhoneView: View {
   }
 }
 
+struct LinhaDeAjuste: View {
+  let titulo: Text
+  let icone: String
+  let cor: Color
+
+  init(_ titulo: Text, icone: String, cor: Color) {
+    self.titulo = titulo
+    self.icone = icone
+    self.cor = cor
+  }
+
+  var body: some View {
+    HStack(spacing: 16) {
+      IconeDeAjuste(nome: icone, cor: cor)
+      titulo
+    }
+  }
+}
+
 struct IconeDeAjuste: View {
   let nome: String
   let cor: Color
+
+  @ScaledMetric(relativeTo: .body) private var lado = 30
 
   var body: some View {
     Image(nome)
       .resizable()
       .scaledToFit()
-      .frame(width: 18, height: 18)
+      .frame(width: lado * 0.6, height: lado * 0.6)
       .foregroundStyle(.white)
-      .frame(width: 30, height: 30)
-      .background(cor.gradient, in: .rect(cornerRadius: 8))
+      .frame(width: lado, height: lado)
+      .background(cor.gradient, in: .rect(cornerRadius: lado * 0.27))
       .accessibilityHidden(true)
   }
 }

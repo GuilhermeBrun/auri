@@ -11,8 +11,14 @@ struct Aviso: Sendable {
 @MainActor
 @Observable
 final class Destino {
-  var data: Date?
+  private(set) var data: Date?
+  private(set) var pedido = 0
   var novaSessao = false
+
+  func abrir(_ data: Date) {
+    self.data = data
+    pedido += 1
+  }
 }
 
 @MainActor
@@ -83,6 +89,8 @@ final class Avisos: NSObject, UNUserNotificationCenterDelegate {
     didReceive response: UNNotificationResponse
   ) async {
     let inicio = response.notification.request.content.userInfo["inicio"] as? String
-    await MainActor.run { destino.data = inicio.flatMap(DataLocal.data) }
+    await MainActor.run {
+      if let data = inicio.flatMap(DataLocal.data) { destino.abrir(data) }
+    }
   }
 }

@@ -33,8 +33,8 @@ struct PrincipalView: View {
         }
       }
     }
-    .onChange(of: destino.data, initial: true) { _, data in
-      if data != nil { aba = .agenda }
+    .onChange(of: destino.pedido, initial: true) { _, pedido in
+      if pedido > 0 { aba = .agenda }
     }
     .onChange(of: destino.novaSessao, initial: true) { _, pedida in
       guard pedida else { return }

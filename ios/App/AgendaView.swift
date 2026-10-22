@@ -18,6 +18,7 @@ struct AgendaView: View {
   ]
   @State private var novaSessao: NovaSessao?
   @State private var buscando = false
+  @State private var atendido = 0
 
   var body: some View {
     NavigationStack(path: $caminho) {
@@ -28,9 +29,11 @@ struct AgendaView: View {
         switch rota {
         case .mes(let mes):
           MesView(agenda: agenda, inicial: mes) { caminho.append(.dia($0)) }
+            .id(mes)
             .toolbar { acoes(dia: nil) }
         case .dia(let dia):
           DiaView(agenda: agenda, inicial: dia) { caminho.append(.evento($0)) }
+            .id(dia)
             .toolbar { acoes(dia: dia) }
         case .evento(let evento):
           EventoView(evento: evento) { caminho.append(.paciente($0)) }
@@ -52,10 +55,10 @@ struct AgendaView: View {
       guard conexao.conectado else { return }
       await agenda.carregar()
     }
-    .onChange(of: destino.data, initial: true) { _, data in
-      guard let data else { return }
+    .onChange(of: destino.pedido, initial: true) { _, pedido in
+      guard pedido > atendido, let data = destino.data else { return }
+      atendido = pedido
       caminho = [.mes(DataLocal.inicioDoMes(data)), .dia(data)]
-      destino.data = nil
     }
   }
 
