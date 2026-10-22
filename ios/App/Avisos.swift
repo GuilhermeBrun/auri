@@ -12,6 +12,7 @@ struct Aviso: Sendable {
 @Observable
 final class Destino {
   var data: Date?
+  var novaSessao = false
 }
 
 @MainActor

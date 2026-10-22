@@ -1,3 +1,4 @@
+import AppIntents
 import SwiftUI
 import WidgetKit
 
@@ -5,6 +6,33 @@ import WidgetKit
 struct AuriWidgets: WidgetBundle {
   var body: some Widget {
     ProximasSessoes()
+    ControleNovaSessao()
+  }
+}
+
+struct ControleNovaSessao: ControlWidget {
+  var body: some ControlWidgetConfiguration {
+    StaticControlConfiguration(kind: "com.auri.ios.nova-sessao") {
+      ControlWidgetButton(action: AbrirNovaSessao()) {
+        Label("Nova sessão", systemImage: "calendar.badge.plus")
+      }
+    }
+    .displayName("Nova sessão")
+    .description("Abre o Auri para marcar uma sessão.")
+  }
+}
+
+private struct BotaoNovaSessao: View {
+  var body: some View {
+    Button(intent: AbrirNovaSessao()) {
+      Image(systemName: "plus")
+        .font(.system(size: 15, weight: .bold))
+        .foregroundStyle(.white)
+        .frame(width: 28, height: 28)
+        .background(Color.accentColor, in: .circle)
+    }
+    .buttonStyle(.plain)
+    .accessibilityLabel("Marcar sessão")
   }
 }
 
@@ -52,16 +80,21 @@ struct Fornecedor: TimelineProvider {
 private extension Resumo {
   static var exemplo: Resumo {
     let hoje = Calendar.current.startOfDay(for: .now)
-    let item = { (hora: Int, titulo: String, cor: String) in
+    let item = { (hora: Int, titulo: String, etiqueta: String, cor: String) in
       Resumo.Item(
         inicio: hoje.addingTimeInterval(TimeInterval(hora * 3600)),
         fim: hoje.addingTimeInterval(TimeInterval(hora * 3600 + 2700)),
         cor: cor,
-        titulo: titulo
+        titulo: titulo,
+        etiqueta: etiqueta
       )
     }
     return Resumo(
-      itens: [item(14, "Sessão", "#7c3aed"), item(15, "Avaliação", "#2563eb"), item(16, "Sessão", "#ea580c")],
+      itens: [
+        item(14, "Ana Beatriz", "Linguagem", "#7c3aed"),
+        item(15, "Bruno Exemplo", "Avaliação", "#2563eb"),
+        item(16, "Carla Fictícia", "Motricidade", "#ea580c")
+      ],
       atualizado: .now
     )
   }
@@ -148,7 +181,11 @@ struct VisaoDoWidget: View {
 
   private var pequeno: some View {
     VStack(alignment: .leading, spacing: 6) {
-      Cabecalho(data: entrada.date, compacto: true)
+      HStack(alignment: .top) {
+        Cabecalho(data: entrada.date, compacto: true)
+        Spacer(minLength: 0)
+        BotaoNovaSessao()
+      }
       Spacer(minLength: 0)
       if let proxima = hoje.first {
         LinhaDoWidget(item: proxima)
@@ -183,16 +220,21 @@ struct VisaoDoWidget: View {
         Spacer(minLength: 0)
       }
       .frame(maxWidth: .infinity, alignment: .leading)
+      BotaoNovaSessao()
     }
   }
 
   private var grande: some View {
     VStack(alignment: .leading, spacing: 10) {
-      Cabecalho(data: entrada.date, compacto: false)
+      HStack(alignment: .top) {
+        Cabecalho(data: entrada.date, compacto: false)
+        Spacer(minLength: 0)
+        BotaoNovaSessao()
+      }
       if hoje.isEmpty {
         Vazio(amanha: amanha.first)
       } else {
-        ForEach(hoje.prefix(7), id: \.self) { LinhaDoWidget(item: $0) }
+        ForEach(hoje.prefix(8), id: \.self) { LinhaDoWidget(item: $0) }
       }
       Spacer(minLength: 0)
     }
@@ -232,9 +274,10 @@ private struct LinhaDoWidget: View {
           .font(.caption.weight(.semibold))
           .lineLimit(1)
           .privacySensitive()
-        Text(VisaoDoWidget.horario(item))
+        Text(item.titulo == item.etiqueta ? VisaoDoWidget.horario(item) : "\(VisaoDoWidget.horario(item)) · \(item.etiqueta)")
           .font(.caption2)
           .foregroundStyle(.secondary)
+          .lineLimit(1)
       }
     }
     .fixedSize(horizontal: false, vertical: true)

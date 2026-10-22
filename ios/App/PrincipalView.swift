@@ -36,6 +36,11 @@ struct PrincipalView: View {
     .onChange(of: destino.data, initial: true) { _, data in
       if data != nil { aba = .agenda }
     }
+    .onChange(of: destino.novaSessao, initial: true) { _, pedida in
+      guard pedida else { return }
+      destino.novaSessao = false
+      novaSessao = NovaSessao(dia: .now)
+    }
     .task { await avisos.pedirSeNecessario() }
     .sheet(item: $novaSessao) { nova in
       NovaSessaoView(agenda: agenda, cadastro: cadastro, nova: nova)

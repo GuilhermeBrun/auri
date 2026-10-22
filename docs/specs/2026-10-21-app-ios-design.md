@@ -191,8 +191,14 @@ Regras:
 - O widget não conecta ao computador: o app grava um resumo de hoje e amanhã no App Group
   (`group.com.auri.ios`, gravação atômica, proteção até o primeiro desbloqueio) sempre que a agenda
   carrega, e o iOS acorda o app de tempos em tempos (`BGAppRefreshTask`) para atualizar.
-- Sem nomes por padrão: horário e etiqueta. Conexão › Widgets liga o nome curto do paciente
-  (`shortName`), marcado como privado, então nunca aparece com o iPhone bloqueado.
+- Mostra o nome curto do paciente (`shortName`), o horário e a etiqueta. Conexão › Widgets esconde
+  os nomes. O nome é marcado como privado, então nunca aparece com o iPhone bloqueado.
+- "+" no canto, como no Lembretes: abre o Auri em "Nova sessão" (`AbrirNovaSessao`, que abre o app
+  antes de rodar). O mesmo botão existe para a Central de Controle e o botão de Ação.
+- Widget não aceita digitação: marcar sem abrir o app é pela Siri, pelo Spotlight ou pelos Atalhos
+  ("Marcar sessão no Auri", `MarcarSessao` com App Intents). Pede o Face ID, conecta ao computador
+  em segundo plano, pergunta paciente e horário e respeita as regras do desktop (horário de
+  funcionamento, sobreposição).
 - Esquecer o computador apaga o resumo.
 
 **Estados:** conectando; conectado pela rede da clínica ou pela internet; sem conexão (computador
@@ -297,7 +303,9 @@ do iOS 27 (Liquid Glass), com componentes do sistema como vêm. Onde a HIG e
   ou 15 minutos. Ligar ou desligar pede o Face ID antes. A HIG prefere o "Exigir Face ID" do próprio
   iOS; o ajuste no app ficou a pedido, por serem dados de saúde.
 - Dados de pacientes só em memória: nada em log, e a tela fica coberta na miniatura do alternador de
-  apps. A exceção é o resumo de hoje e amanhã para os widgets (abaixo), sem nomes por padrão.
+  apps. A exceção é o resumo de hoje e amanhã para os widgets (abaixo).
+- O bloqueio e a capa ficam numa janela própria acima de tudo, para nenhuma folha aberta aparecer
+  por cima deles.
 - Chave do aparelho no Keychain, só neste aparelho e fora do backup do iCloud
   (`kSecAttrAccessibleWhenUnlockedThisDeviceOnly`).
 - A mensagem de confirmação vai para o WhatsApp do iPhone pelo esquema do próprio app, sem passar

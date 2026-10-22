@@ -74,7 +74,7 @@ final class Agenda {
   }
 
   static var nomesNosWidgets: Bool {
-    get { UserDefaults.standard.bool(forKey: "widgets-nomes") }
+    get { UserDefaults.standard.object(forKey: "widgets-nomes") as? Bool ?? true }
     set { UserDefaults.standard.set(newValue, forKey: "widgets-nomes") }
   }
 
@@ -84,11 +84,16 @@ final class Agenda {
     let nomes = Self.nomesNosWidgets
     let itens = dias.flatMap { eventos(em: $0) }.map { evento in
       let titulo: String
+      let etiqueta: String
       switch evento.origem {
-      case .sessao(let sessao): titulo = nomes ? Resumo.nomeCurto(sessao.patientNome) : sessao.tipoNome
-      case .compromisso: titulo = evento.titulo
+      case .sessao(let sessao):
+        titulo = nomes ? Resumo.nomeCurto(sessao.patientNome) : sessao.tipoNome
+        etiqueta = sessao.tipoNome
+      case .compromisso(let compromisso):
+        titulo = evento.titulo
+        etiqueta = compromisso.etiquetaNome
       }
-      return Resumo.Item(inicio: evento.inicio, fim: evento.fim, cor: evento.cor, titulo: titulo)
+      return Resumo.Item(inicio: evento.inicio, fim: evento.fim, cor: evento.cor, titulo: titulo, etiqueta: etiqueta)
     }
     try? Resumo(itens: itens, atualizado: .now).gravar()
     WidgetCenter.shared.reloadAllTimelines()
@@ -96,13 +101,8 @@ final class Agenda {
 
   func atualizarEmSegundoPlano() async {
     Self.agendarAtualizacao()
-    guard conexao.servidor != nil else { return }
-    conexao.iniciar()
-    conexao.retomar()
-    for _ in 0..<40 where !conexao.conectado {
-      try? await Task.sleep(for: .milliseconds(500))
-    }
-    if conexao.conectado { await carregar() }
+    guard (try? await conexao.garantirConexao()) != nil else { return }
+    await carregar()
   }
 
   static func agendarAtualizacao() {

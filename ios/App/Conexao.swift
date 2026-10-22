@@ -97,6 +97,18 @@ final class Conexao {
     worklet?.suspend()
   }
 
+  func garantirConexao() async throws {
+    guard servidor != nil else {
+      throw ErroDoAuri(mensagem: "Abra o Auri e conecte ao computador da clínica.")
+    }
+    iniciar()
+    retomar()
+    for _ in 0..<40 where !conectado {
+      try await Task.sleep(for: .milliseconds(500))
+    }
+    guard conectado else { throw ErroDoAuri(mensagem: descricao) }
+  }
+
   func retomar() {
     worklet?.resume()
   }

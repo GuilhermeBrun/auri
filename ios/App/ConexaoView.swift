@@ -226,7 +226,7 @@ private struct WidgetsView: View {
         Toggle("Mostrar nomes dos pacientes", isOn: $nomes)
       } footer: {
         Text(
-          "Desligado, os widgets mostram só o horário e a etiqueta de cada sessão. Ligado, mostram o nome curto do paciente na tela inicial; na tela bloqueada, os nomes ficam sempre escondidos."
+          "Ligado, os widgets mostram o nome curto do paciente, o horário e a etiqueta. Desligado, só o horário e a etiqueta. Com o iPhone bloqueado, os nomes ficam sempre escondidos."
         )
       }
       Section {

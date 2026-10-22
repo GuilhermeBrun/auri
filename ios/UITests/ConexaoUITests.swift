@@ -124,19 +124,97 @@ final class ConexaoUITests: XCTestCase {
     try XCTSkipIf(ProcessInfo.processInfo.environment["AURI_VAZIO"] != nil, "Precisa dos dados de exemplo")
     XCUIDevice.shared.press(.home)
     sleep(1)
-    for tamanho in ["Medium", "Small"] {
+    for tamanho in ["Small", "Medium", "Large"] {
       adicionarWidget(tamanho)
     }
     sleep(2)
     anexar(XCUIScreen.main.screenshot(), "19-widgets")
+    springboard.swipeLeft()
+    sleep(1)
+    anexar(XCUIScreen.main.screenshot(), "19-widgets-2")
+    springboard.swipeRight()
+    sleep(1)
+
+    springboard.buttons["Marcar sessão"].firstMatch.tap()
+    let app = XCUIApplication()
+    XCTAssertTrue(app.navigationBars["Nova sessão"].waitForExistence(timeout: 30))
+    sleep(1)
+    anexar(app, "20-mais-do-widget")
+    app.navigationBars["Nova sessão"].buttons.firstMatch.tap()
+
+    let atalhos = XCUIApplication(bundleIdentifier: "com.apple.shortcuts")
+    atalhos.launch()
+    sleep(3)
+    for rotulo in ["Continue", "Not Now"] where atalhos.buttons[rotulo].exists {
+      atalhos.buttons[rotulo].tap()
+      sleep(1)
+    }
+    if atalhos.navigationBars.buttons.firstMatch.exists { atalhos.navigationBars.buttons.firstMatch.tap() }
+    sleep(2)
+    anexar(atalhos.screenshot(), "21-atalhos")
+    let estrutura = XCTAttachment(string: atalhos.debugDescription)
+    estrutura.name = "21-atalhos-estrutura"
+    estrutura.lifetime = .keepAlways
+    add(estrutura)
+    let auri = atalhos.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", "Auri")).firstMatch
+    XCTAssertTrue(auri.waitForExistence(timeout: 10))
+    auri.tap()
+    sleep(2)
+    anexar(atalhos.screenshot(), "22-atalhos-auri")
+    let marcar = atalhos.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", "Marcar sessão")).firstMatch
+    XCTAssertTrue(marcar.waitForExistence(timeout: 10))
+    marcar.tap()
+    let ana = springboard.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", "Ana Beatriz")).firstMatch
+    let anaNoApp = atalhos.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", "Ana Beatriz")).firstMatch
+    let apareceu = ana.waitForExistence(timeout: 30) || anaNoApp.waitForExistence(timeout: 5)
+    anexar(XCUIScreen.main.screenshot(), "23-atalho-paciente")
+    XCTAssertTrue(apareceu)
+    (ana.exists ? ana : anaNoApp).tap()
+    sleep(2)
+    let proximoMes = springboard.buttons["Next Month"].exists ? springboard.buttons["Next Month"] : atalhos.buttons["Next Month"]
+    if proximoMes.exists {
+      proximoMes.tap()
+      sleep(1)
+      let calendario = Calendar(identifier: .gregorian)
+      let mes = calendario.date(byAdding: .month, value: 1, to: .now)!
+      let quarta = (10...16).first { dia in
+        var partes = calendario.dateComponents([.year, .month], from: mes)
+        partes.day = dia
+        return calendario.component(.weekday, from: calendario.date(from: partes)!) == 4
+      }!
+      let rotulo = String(quarta)
+      let dia = springboard.staticTexts[rotulo].exists ? springboard.staticTexts[rotulo] : atalhos.staticTexts[rotulo]
+      if dia.exists { dia.tap() }
+    }
+    sleep(1)
+    anexar(XCUIScreen.main.screenshot(), "24-atalho-inicio")
+    for rotulo in ["Done", "Concluído", "OK"] {
+      let botao = springboard.buttons[rotulo].exists ? springboard.buttons[rotulo] : atalhos.buttons[rotulo]
+      if botao.exists {
+        botao.tap()
+        break
+      }
+    }
+    let marcada = springboard.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", "marcada para")).firstMatch
+    let marcadaNoApp = atalhos.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", "marcada para")).firstMatch
+    sleep(2)
+    anexar(XCUIScreen.main.screenshot(), "25a-atalho-depois")
+    let terminou = marcada.waitForExistence(timeout: 40) || marcadaNoApp.waitForExistence(timeout: 5)
+    anexar(XCUIScreen.main.screenshot(), "25-atalho-marcou")
+    XCTAssertTrue(terminou)
   }
 
   private func adicionarWidget(_ tamanho: String) {
-    springboard.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.62)).press(forDuration: 1.5)
-    let editar = springboard.buttons["Edit"]
-    if editar.waitForExistence(timeout: 5) { editar.tap() }
     let adicionar = springboard.buttons["Add Widget"]
-    XCTAssertTrue(adicionar.waitForExistence(timeout: 5))
+    for ponto in [0.72, 0.62, 0.78] where !adicionar.exists {
+      XCUIDevice.shared.press(.home)
+      sleep(1)
+      springboard.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: ponto)).press(forDuration: 1.5)
+      let editar = springboard.buttons["Edit"]
+      if editar.waitForExistence(timeout: 3) { editar.tap() }
+      _ = adicionar.waitForExistence(timeout: 3)
+    }
+    XCTAssertTrue(adicionar.exists)
     adicionar.tap()
     let busca = springboard.searchFields.firstMatch
     XCTAssertTrue(busca.waitForExistence(timeout: 5))
@@ -146,7 +224,10 @@ final class ConexaoUITests: XCTestCase {
     XCTAssertTrue(resultado.waitForExistence(timeout: 5))
     resultado.tap()
     sleep(1)
-    if tamanho == "Medium" { springboard.swipeLeft() }
+    for _ in 0..<(["Small": 0, "Medium": 1, "Large": 2][tamanho] ?? 0) {
+      springboard.swipeLeft()
+      sleep(1)
+    }
     sleep(1)
     anexar(XCUIScreen.main.screenshot(), "19-galeria-\(tamanho)")
     let confirmar = springboard.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Add Widget")).firstMatch

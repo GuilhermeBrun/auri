@@ -6,6 +6,7 @@ struct Resumo: Codable, Sendable {
     let fim: Date
     let cor: String
     let titulo: String
+    let etiqueta: String
   }
 
   var itens: [Item]

@@ -1,3 +1,4 @@
+import AppIntents
 import SwiftUI
 
 @main
@@ -8,17 +9,27 @@ struct AuriApp: App {
   @State private var destino: Destino
   @State private var avisos: Avisos
   @State private var bloqueio = Bloqueio()
+  @State private var protecao = Protecao()
   @Environment(\.scenePhase) private var fase
 
   init() {
     UIDatePicker.appearance().minuteInterval = 5
     let conexao = Conexao()
+    let agenda = Agenda(conexao: conexao)
     let destino = Destino()
     _conexao = State(initialValue: conexao)
-    _agenda = State(initialValue: Agenda(conexao: conexao))
+    _agenda = State(initialValue: agenda)
     _cadastro = State(initialValue: Cadastro(conexao: conexao))
     _destino = State(initialValue: destino)
     _avisos = State(initialValue: Avisos(destino: destino))
+    AppDependencyManager.shared.add(dependency: conexao)
+    AppDependencyManager.shared.add(dependency: agenda)
+  }
+
+  private var estadoDaProtecao: Protecao.Estado {
+    guard conexao.servidor != nil else { return .nenhuma }
+    if bloqueio.bloqueado { return .bloqueio }
+    return fase == .active ? .nenhuma : .capa
   }
 
   var body: some Scene {
@@ -37,25 +48,27 @@ struct AuriApp: App {
           )
         }
       }
-      .overlay {
-        if conexao.servidor != nil {
-          if bloqueio.bloqueado {
-            TelaDeBloqueio(bloqueio: bloqueio)
-          } else if fase != .active {
-            CapaDePrivacidade()
-          }
-        }
+      .onChange(of: estadoDaProtecao, initial: true) { _, estado in
+        protecao.aplicar(estado, bloqueio: bloqueio)
       }
       .onAppear {
         conexao.aoAvisar = { avisos.publicar($0) }
         conexao.iniciar()
         if conexao.servidor != nil { bloqueio.abrir() }
+        if AbrirNovaSessao.pedida() { destino.novaSessao = true }
       }
       .onOpenURL { url in
-        guard url.scheme == "auri", url.host == "agenda" else { return }
-        let texto = URLComponents(url: url, resolvingAgainstBaseURL: false)?
-          .queryItems?.first { $0.name == "data" }?.value
-        destino.data = texto.flatMap(DataLocal.data) ?? .now
+        guard url.scheme == "auri" else { return }
+        switch url.host {
+        case "agenda":
+          let texto = URLComponents(url: url, resolvingAgainstBaseURL: false)?
+            .queryItems?.first { $0.name == "data" }?.value
+          destino.data = texto.flatMap(DataLocal.data) ?? .now
+        case "nova-sessao":
+          destino.novaSessao = true
+        default:
+          break
+        }
       }
       .onChange(of: conexao.servidor == nil) { _, semServidor in
         if semServidor { agenda.esquecer() }
@@ -70,6 +83,7 @@ struct AuriApp: App {
       case .active:
         conexao.retomar()
         bloqueio.voltou()
+        if AbrirNovaSessao.pedida() { destino.novaSessao = true }
         Task { await avisos.atualizar() }
       default: break
       }
