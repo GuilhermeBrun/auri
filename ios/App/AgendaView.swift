@@ -11,6 +11,7 @@ struct AgendaView: View {
   let conexao: Conexao
   let agenda: Agenda
   let cadastro: Cadastro
+  let avisos: Avisos
 
   @State private var caminho: [RotaDaAgenda] = [.mes(DataLocal.inicioDoMes(.now))]
   @State private var novaSessao: NovaSessao?
@@ -48,6 +49,11 @@ struct AgendaView: View {
     .task(id: [conexao.conectado ? 1 : 0, conexao.mudancas]) {
       guard conexao.conectado else { return }
       await agenda.carregar()
+    }
+    .onChange(of: avisos.destino, initial: true) { _, destino in
+      guard let destino else { return }
+      caminho = [.mes(DataLocal.inicioDoMes(destino)), .dia(destino)]
+      avisos.destino = nil
     }
   }
 

@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ConexaoView: View {
   let conexao: Conexao
+  let avisos: Avisos
 
   var body: some View {
     List {
@@ -31,6 +32,15 @@ struct ConexaoView: View {
             Text("Acesso pela internet")
           } icon: {
             IconeDeAjuste(nome: "internet", cor: .blue)
+          }
+        }
+        NavigationLink {
+          AvisosView(avisos: avisos)
+        } label: {
+          Label {
+            Text("Avisos")
+          } icon: {
+            IconeDeAjuste(nome: "avisos", cor: .red)
           }
         }
         NavigationLink {
@@ -148,6 +158,40 @@ private struct AcessoPelaInternetView: View {
       }
       testando = false
     }
+  }
+}
+
+private struct AvisosView: View {
+  @Bindable var avisos: Avisos
+
+  @Environment(\.openURL) private var openURL
+
+  var body: some View {
+    List {
+      Section {
+        Toggle("Avisar quando a agenda mudar", isOn: $avisos.ligados)
+          .disabled(avisos.negados)
+      } footer: {
+        Text(
+          "Mostra um aviso quando alguém marca, remarca, desmarca ou registra a chegada em outro aparelho, como no computador. Os avisos chegam com o Auri aberto; com o app fechado, o iPhone não recebe."
+        )
+      }
+      if avisos.negados {
+        Section {
+          Button("Abrir Ajustes do iPhone") {
+            if let ajustes = URL(string: UIApplication.openNotificationSettingsURLString) { openURL(ajustes) }
+          }
+        } footer: {
+          Text("As notificações do Auri estão desligadas nos Ajustes do iPhone.")
+        }
+      }
+    }
+    .navigationTitle("Avisos")
+    .navigationBarTitleDisplayMode(.inline)
+    .onChange(of: avisos.ligados) { _, ligados in
+      if ligados { Task { await avisos.pedirSeNecessario() } }
+    }
+    .task { await avisos.atualizar() }
   }
 }
 

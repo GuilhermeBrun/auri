@@ -14,6 +14,7 @@ final class ConexaoUITests: XCTestCase {
 
     app.buttons["Continuar"].tap()
     XCTAssertTrue(app.tabBars.buttons["Pacientes"].waitForExistence(timeout: 30))
+    permitirNotificacoes()
     sleep(3)
     anexar(app, "02-mes")
 
@@ -60,6 +61,17 @@ final class ConexaoUITests: XCTestCase {
     app.navigationBars["Nova sessão"].buttons.element(boundBy: 1).tap()
     XCTAssertTrue(app.navigationBars["Nova sessão"].waitForNonExistence(timeout: 15))
 
+    let aviso = springboard.descendants(matching: .any)
+      .matching(NSPredicate(format: "label CONTAINS %@", "Recepção marcou")).firstMatch
+    XCTAssertTrue(aviso.waitForExistence(timeout: 30))
+    anexar(XCUIScreen.main.screenshot(), "14-aviso")
+    aviso.tap()
+    let amanha = Calendar.current.date(byAdding: .day, value: 1, to: .now)!
+      .formatted(.dateTime.weekday(.wide).day().month(.wide).year().locale(Locale(identifier: "pt_BR")))
+    XCTAssertTrue(app.staticTexts[amanha].waitForExistence(timeout: 15))
+    sleep(1)
+    anexar(app, "15-aviso-aberto")
+
     app.tabBars.buttons["Conexão"].tap()
     XCTAssertTrue(app.navigationBars["Conexão"].waitForExistence(timeout: 10))
     anexar(app, "10-conexao")
@@ -73,6 +85,11 @@ final class ConexaoUITests: XCTestCase {
     app.buttons["Testar agora"].tap()
     XCTAssertTrue(app.staticTexts["Resposta"].waitForExistence(timeout: 60))
     anexar(app, "13-internet")
+    app.navigationBars.buttons.firstMatch.tap()
+
+    elemento(app, contendo: "Avisos").tap()
+    XCTAssertTrue(app.switches.firstMatch.waitForExistence(timeout: 10))
+    anexar(app, "16-avisos")
   }
 
   func testPacientesVazio() throws {
@@ -98,8 +115,23 @@ final class ConexaoUITests: XCTestCase {
     app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", texto)).firstMatch
   }
 
+  private let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+
+  private func permitirNotificacoes() {
+    let alerta = springboard.alerts.firstMatch
+    guard alerta.waitForExistence(timeout: 10) else { return }
+    for rotulo in ["Allow", "Permitir"] where alerta.buttons[rotulo].exists {
+      alerta.buttons[rotulo].tap()
+      return
+    }
+  }
+
   private func anexar(_ app: XCUIApplication, _ nome: String) {
-    let anexo = XCTAttachment(screenshot: app.screenshot())
+    anexar(app.screenshot(), nome)
+  }
+
+  private func anexar(_ tela: XCUIScreenshot, _ nome: String) {
+    let anexo = XCTAttachment(screenshot: tela)
     anexo.name = nome
     anexo.lifetime = .keepAlways
     add(anexo)

@@ -9,6 +9,7 @@ import {
   type ClientStatus
 } from '../../desktop/src/main/net/client'
 import { createRemoteDialer, type Bootstrap } from '../../desktop/src/main/net/remote'
+import { noticeText } from '../../desktop/src/shared/agenda-notice'
 import { lerConvite } from './convite'
 
 const hex = z
@@ -48,6 +49,7 @@ export type Saida =
   | { t: 'pronto'; chave: string }
   | { t: 'estado'; status: ClientStatus; via: LinkVia | null }
   | { t: 'evento'; topics: DataTopic[] }
+  | { t: 'aviso'; titulo: string; corpo: string; inicio: string }
   | { t: 'resposta'; id: number; result: IpcResult<unknown> }
   | { t: 'falha'; mensagem: string }
 
@@ -128,7 +130,12 @@ export function criarNucleo(opcoes: {
       addresses: async () => alvo.enderecos,
       dialRemote: () => discar().dial(alvo.chave),
       onStatus: (status) => enviar({ t: 'estado', status, via: cliente.via() }),
-      onEvent: (topics) => enviar({ t: 'evento', topics })
+      onEvent: (topics, aviso) => {
+        enviar({ t: 'evento', topics })
+        if (!aviso) return
+        const { title, body } = noticeText(aviso)
+        enviar({ t: 'aviso', titulo: title, corpo: body, inicio: aviso.inicio })
+      }
     })
     atual = { cliente, servidor: alvo }
   }

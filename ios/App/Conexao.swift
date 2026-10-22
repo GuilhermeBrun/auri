@@ -46,6 +46,7 @@ final class Conexao {
   private(set) var situacao: Situacao = .conectando
   private(set) var servidor: Servidor?
   private(set) var mudancas = 0
+  var aoAvisar: ((Aviso) -> Void)?
 
   private var worklet: Worklet?
   private var canal: Canal?
@@ -184,6 +185,12 @@ final class Conexao {
       atualizar(status: mensagem["status"]?.texto, via: mensagem["via"]?.texto)
     case "evento":
       mudancas += 1
+    case "aviso":
+      if let titulo = mensagem["titulo"]?.texto, let corpo = mensagem["corpo"]?.texto,
+        let inicio = mensagem["inicio"]?.texto
+      {
+        aoAvisar?(Aviso(titulo: titulo, corpo: corpo, inicio: inicio))
+      }
     case "resposta":
       guard let id = mensagem["id"]?.numero.map(Int.init),
         let continuacao = esperando.removeValue(forKey: id)

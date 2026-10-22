@@ -5,11 +5,14 @@ struct DiaView: View {
   let abrirEvento: (Evento) -> Void
 
   @State private var dia: Date
+  private let foco: Int?
 
   init(agenda: Agenda, inicial: Date, abrirEvento: @escaping (Evento) -> Void) {
     self.agenda = agenda
     self.abrirEvento = abrirEvento
     _dia = State(initialValue: DataLocal.inicioDoDia(inicial))
+    let hora = DataLocal.calendario.component(.hour, from: inicial)
+    foco = hora > 0 ? hora : nil
   }
 
   var body: some View {
@@ -20,7 +23,7 @@ struct DiaView: View {
         .padding(.vertical, 8)
         .frame(maxWidth: .infinity)
         .overlay(alignment: .bottom) { Rectangle().fill(.separator).frame(height: 0.5) }
-      LinhaDoTempo(dia: dia, eventos: agenda.eventos(em: dia), abrirEvento: abrirEvento)
+      LinhaDoTempo(dia: dia, foco: foco, eventos: agenda.eventos(em: dia), abrirEvento: abrirEvento)
         .id(dia)
         .simultaneousGesture(
           DragGesture(minimumDistance: 40).onEnded { gesto in
@@ -83,6 +86,7 @@ private struct FaixaDaSemana: View {
 
 private struct LinhaDoTempo: View {
   let dia: Date
+  let foco: Int?
   let eventos: [Evento]
   let abrirEvento: (Evento) -> Void
 
@@ -131,8 +135,8 @@ private struct LinhaDoTempo: View {
       }
       .onAppear {
         let primeira = eventos.first.map { DataLocal.calendario.component(.hour, from: $0.inicio) }
-        let alvo = DataLocal.calendario.isDateInToday(dia)
-          ? DataLocal.calendario.component(.hour, from: .now) : (primeira ?? 8)
+        let alvo = foco ?? (DataLocal.calendario.isDateInToday(dia)
+          ? DataLocal.calendario.component(.hour, from: .now) : (primeira ?? 8))
         leitor.scrollTo(max(alvo - 1, 0), anchor: .top)
       }
     }

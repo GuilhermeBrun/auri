@@ -2,33 +2,46 @@ import SwiftUI
 
 struct PrincipalView: View {
   let conexao: Conexao
+  let avisos: Avisos
 
+  @State private var aba = Aba.agenda
   @State private var agenda: Agenda
   @State private var cadastro: Cadastro
   @State private var novaSessao: NovaSessao?
 
-  init(conexao: Conexao) {
+  enum Aba: Hashable {
+    case agenda
+    case pacientes
+    case conexao
+  }
+
+  init(conexao: Conexao, avisos: Avisos) {
     self.conexao = conexao
+    self.avisos = avisos
     _agenda = State(initialValue: Agenda(conexao: conexao))
     _cadastro = State(initialValue: Cadastro(conexao: conexao))
   }
 
   var body: some View {
-    TabView {
-      Tab("Agenda", image: "agenda") {
-        AgendaView(conexao: conexao, agenda: agenda, cadastro: cadastro)
+    TabView(selection: $aba) {
+      Tab("Agenda", image: "agenda", value: Aba.agenda) {
+        AgendaView(conexao: conexao, agenda: agenda, cadastro: cadastro, avisos: avisos)
       }
-      Tab("Pacientes", image: "pacientes") {
+      Tab("Pacientes", image: "pacientes", value: Aba.pacientes) {
         NavigationStack {
           PacientesView(conexao: conexao, cadastro: cadastro) { novaSessao = NovaSessao(paciente: $0) }
         }
       }
-      Tab("Conexão", image: "conexao") {
+      Tab("Conexão", image: "conexao", value: Aba.conexao) {
         NavigationStack {
-          ConexaoView(conexao: conexao)
+          ConexaoView(conexao: conexao, avisos: avisos)
         }
       }
     }
+    .onChange(of: avisos.destino) { _, destino in
+      if destino != nil { aba = .agenda }
+    }
+    .task { await avisos.pedirSeNecessario() }
     .sheet(item: $novaSessao) { nova in
       NovaSessaoView(agenda: agenda, cadastro: cadastro, nova: nova)
     }

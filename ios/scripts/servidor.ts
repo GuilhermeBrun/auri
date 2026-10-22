@@ -131,11 +131,34 @@ const server = createSyncServer({
   onPresence: (chave, online) => console.log(`${chave.slice(0, 8)}… ${online ? 'entrou' : 'saiu'}`),
   handle: (canal, args, peer) => {
     console.log(`pedido: ${canal}`)
-    return runOperation(db, canal, args, (topics, aviso) =>
+    const resultado = runOperation(db, canal, args, (topics, aviso) =>
       server.broadcast(topics, aviso ? { ...aviso, autor: 'iPhone' } : undefined, peer)
     )
+    if (process.env.AURI_AVISO && canal === 'appointments:create' && resultado.ok) {
+      setTimeout(mudarPelaRecepcao, 5_000)
+    }
+    return resultado
   }
 })
+
+function mudarPelaRecepcao(): void {
+  const amanha = dia(new Date(), 1)
+  runOperation(
+    db,
+    'appointments:create',
+    [
+      {
+        patient_id: pacientes[1].id,
+        inicio: local(amanha, 18),
+        fim: local(amanha, 18, 45),
+        observacao: '',
+        tipo_id: deSessao[1].id
+      }
+    ],
+    (topics, aviso) => server.broadcast(topics, aviso ? { ...aviso, autor: 'Recepção' } : undefined)
+  )
+  console.log('a recepção marcou uma sessão para amanhã às 18:00')
+}
 
 function enderecosDaRede(porta: number): { host: string; port: number }[] {
   const daRede = Object.values(networkInterfaces())

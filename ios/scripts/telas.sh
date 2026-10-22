@@ -5,7 +5,7 @@ DESTINO=${1:-platform=iOS Simulator,name=iPhone 18 Pro}
 VAZIO=${2:-}
 SAIDA=build/telas${VAZIO:+-vazio}
 pkill -f build/servidor.cjs || true
-if [ -n "$VAZIO" ]; then export AURI_VAZIO=1 TEST_RUNNER_AURI_VAZIO=1; fi
+if [ -n "$VAZIO" ]; then export AURI_VAZIO=1 TEST_RUNNER_AURI_VAZIO=1; else export AURI_AVISO=1; fi
 node scripts/servidor.mjs 47391 > build/servidor.log 2>&1 &
 SERVIDOR=$!
 trap 'kill $SERVIDOR 2>/dev/null || true' EXIT

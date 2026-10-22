@@ -3,6 +3,7 @@ import SwiftUI
 @main
 struct AuriApp: App {
   @State private var conexao = Conexao()
+  @State private var avisos = Avisos()
   @Environment(\.scenePhase) private var fase
 
   init() {
@@ -15,15 +16,20 @@ struct AuriApp: App {
         if conexao.servidor == nil {
           BoasVindasView(conexao: conexao)
         } else {
-          PrincipalView(conexao: conexao)
+          PrincipalView(conexao: conexao, avisos: avisos)
         }
       }
-      .onAppear { conexao.iniciar() }
+      .onAppear {
+        conexao.aoAvisar = { avisos.publicar($0) }
+        conexao.iniciar()
+      }
     }
     .onChange(of: fase) { _, nova in
       switch nova {
       case .background: conexao.suspender()
-      case .active: conexao.retomar()
+      case .active:
+        conexao.retomar()
+        Task { await avisos.atualizar() }
       default: break
       }
     }

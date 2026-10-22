@@ -170,6 +170,17 @@ Regras:
   data), as duas últimas só no nível Fono. Daqui também dá para marcar uma sessão.
 - Sem criar ou editar paciente, anamnese ou evolução.
 
+**Avisos**
+
+- Como no computador: quando outro aparelho marca, remarca, desmarca, registra falta ou chegada, o
+  iPhone mostra uma notificação com o mesmo texto do desktop (`noticeText` de
+  `shared/agenda-notice.ts`, calculado no worklet). Tocar abre a agenda no dia e na hora.
+- Notificação local, sem servidor: só chega com o Auri aberto ou recém-fechado. Com o app fechado
+  de vez, só por push da Apple, que precisa de um servidor nosso repassando dado cifrado (decisão à
+  parte).
+- A permissão é pedida ao entrar no app depois de conectar; Conexão › Avisos liga e desliga. Com as
+  prévias escondidas na tela bloqueada, aparece só "Mudança na agenda".
+
 **Estados:** conectando; conectado pela rede da clínica ou pela internet; sem conexão (computador
 desligado, sem internet ou rede restritiva), com "Tentar de novo"; acesso removido; versão
 incompatível. Os textos seguem os do consultório.
@@ -324,5 +335,5 @@ do iOS 27 (Liquid Glass), com componentes do sistema como vêm. Onde a HIG e
 ## Fora do escopo
 
 Criar ou editar paciente, anamnese e evolução; termos; financeiro fora da sessão; relatórios e
-PDFs; Configurações da clínica no celular; notificações; uso sem conexão; iPad e Android (o mesmo
+PDFs; Configurações da clínica no celular; avisos com o app fechado (push); uso sem conexão; iPad e Android (o mesmo
 worklet serve o Android depois).
