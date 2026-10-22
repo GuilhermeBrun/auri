@@ -29,6 +29,9 @@ do app).
   `/recebido`, `/confirmar`, `/resposta`) e as funções `api/erros.ts` (relatórios de erro) e
   `api/links.ts` (links curtos). Publicado pela Vercel; os instaladores ficam nas releases do
   GitHub (ver [docs/ci.md](docs/ci.md)).
+- `ios/`: o app do iPhone (SwiftUI), em construção. A rede roda no runtime Bare com o mesmo código
+  de conexão do desktop (`desktop/src/main/net/`). Desenho em
+  [docs/specs/2026-10-21-app-ios-design.md](docs/specs/2026-10-21-app-ios-design.md).
 - `docs/`: documentação para quem desenvolve (pessoas e agentes): [CI e releases](docs/ci.md),
   [identidade visual](docs/identidade-visual.md), [relatórios de erro](docs/relatorios-de-erro.md),
   [links curtos](docs/links-curtos.md) e, em `docs/specs/`, o desenho de cada funcionalidade maior.
@@ -48,6 +51,22 @@ npm run build:exemplo   # build pré-renderizado com as releases de exemplo
 
 O `npm run build` lê as releases publicadas no GitHub e grava em `dist/` o feed de atualização
 (`latest.yml`, `alpha.yml`…) e o `releases.json`; `AURI_RELEASES` aceita um arquivo ou url no lugar.
+
+### iPhone (`ios/`)
+
+Precisa do Xcode e do XcodeGen (`brew install xcodegen`).
+
+```bash
+cd ios
+npm install
+npm run preparar   # empacota o worklet, liga os addons nativos, baixa o BareKit e gera o Auri.xcodeproj
+npm run servidor   # computador de teste com pacientes fictícios: mostra a porta e o código de pareamento
+npm run teste -- 127.0.0.1 47391 <código> internet   # o cliente do iPhone no runtime Bare, sem o app
+```
+
+Depois do `preparar`, abrir `ios/Auri.xcodeproj` no Xcode ou rodar
+`xcodebuild -project ios/Auri.xcodeproj -scheme Auri -sdk iphonesimulator build`. Rodar o `preparar`
+de novo quando mudar o worklet ou o código de conexão do desktop.
 
 ### App (`desktop/`)
 

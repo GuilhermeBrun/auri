@@ -1,0 +1,39 @@
+name: Auri
+options:
+  deploymentTarget:
+    iOS: '26.0'
+include:
+  - App/addons/addons.yml
+packages:
+  BareKit:
+    url: https://github.com/holepunchto/bare-kit-swift
+    revision: ef26bbde9bb47eaebeb4e50944306b4ff23934ce
+targets:
+  Auri:
+    type: application
+    platform: iOS
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.auri.ios
+        PRODUCT_NAME: Auri
+        MARKETING_VERSION: 0.0.1
+        CURRENT_PROJECT_VERSION: 1
+        SWIFT_VERSION: '6.0'
+        TARGETED_DEVICE_FAMILY: '1'
+    info:
+      path: App/Info.plist
+      properties:
+        CFBundleDisplayName: Auri
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        NSLocalNetworkUsageDescription: O Auri procura o computador da clínica nesta rede para conectar mais rápido.
+    dependencies:
+      - framework: App/frameworks/BareKit.xcframework
+      - package: BareKit
+    sources:
+      - path: App
+        includes:
+          - '*.swift'
+      - path: App/app.bundle
+        buildPhase: resources

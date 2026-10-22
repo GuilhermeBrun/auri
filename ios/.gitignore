@@ -1,0 +1,6 @@
+build/
+App/addons/
+App/frameworks/
+App/app.bundle
+App/Info.plist
+*.xcodeproj
