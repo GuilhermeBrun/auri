@@ -135,7 +135,7 @@ function AtalhoRow({ atalho }: { atalho: Atalho }): React.JSX.Element {
             setErro(null)
           }}
           className={cn(
-            'flex h-8 min-w-28 items-center justify-end rounded-control px-2 text-xs transition-colors focus-visible:outline-2 focus-visible:outline-accent',
+            'flex h-8 items-center rounded-control px-2 text-xs transition-colors focus-visible:outline-2 focus-visible:outline-accent',
             gravando ? 'bg-fill-hover text-ink' : 'text-ink-faint hover:bg-fill'
           )}
         >

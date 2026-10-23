@@ -117,15 +117,6 @@ function RolePicker({ role }: { role: ConnectionRole }): React.JSX.Element {
   )
 }
 
-const LEVELS: { nivel: PhoneLevel; label: string; description: string }[] = [
-  { nivel: 'fono', label: 'Fono', description: 'Vê a anamnese e as evoluções.' },
-  {
-    nivel: 'recepcao',
-    label: 'Recepção',
-    description: 'Sem anamnese e evoluções, como o computador da recepção.'
-  }
-]
-
 function deviceKind(device: { tipo: PairedDevice['tipo']; nivel?: PairedDevice['nivel'] }): string {
   if (device.tipo === 'computador') return 'Computador'
   return device.nivel === 'fono' ? 'Celular da fono' : 'Celular da recepção'
@@ -179,26 +170,26 @@ function PhoneLevelPicker({
   onPick: (nivel: PhoneLevel) => void
   onCancel: () => void
 }): React.JSX.Element {
+  const [recepcao, setRecepcao] = useState(true)
   return (
     <div className="mt-4 animate-fade-in">
-      <p className="text-[13px] font-medium">Quem vai usar o celular?</p>
-      <fieldset disabled={pending} className="mt-3 grid grid-cols-2 gap-3">
-        <legend className="sr-only">Quem vai usar o celular</legend>
-        {LEVELS.map(({ nivel, label, description }) => (
-          <button
-            key={nivel}
-            type="button"
-            onClick={() => onPick(nivel)}
-            className="flex flex-col rounded-card bg-fill p-4 text-left transition-colors hover:bg-fill-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-60"
-          >
-            <span className="text-[13px] font-medium">{label}</span>
-            <span className="mt-1 text-xs text-ink-soft">{description}</span>
-          </button>
-        ))}
-      </fieldset>
-      <div className="mt-3 flex justify-end">
+      <SwitchField
+        label="Celular da recepção"
+        description={
+          recepcao
+            ? 'Sem anamnese e evoluções, como o computador da recepção.'
+            : 'Celular da fono: vê a anamnese e as evoluções.'
+        }
+        checked={recepcao}
+        disabled={pending}
+        onCheckedChange={setRecepcao}
+      />
+      <div className="mt-4 flex justify-end gap-2">
         <Button variant="secondary" onClick={onCancel}>
           Cancelar
+        </Button>
+        <Button loading={pending} onClick={() => onPick(recepcao ? 'recepcao' : 'fono')}>
+          Gerar QR code
         </Button>
       </div>
     </div>
