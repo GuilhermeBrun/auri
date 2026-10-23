@@ -1,7 +1,8 @@
 # App do iPhone — design
 
-Data: 21/10/2026. Estado: etapa 1 (prova de conceito) feita no simulador; falta o teste num iPhone
-de verdade pelo 4G.
+Data: 21/10/2026. Estado (23/10): etapa 1 feita no simulador, com as telas do app adiantadas (PR #68);
+falta o teste num iPhone de verdade pelo 4G. O desktop ainda não gera o convite do celular (etapas 2
+e 3), então o app só pareia com o computador de teste (`ios/scripts/servidor.ts`).
 
 ## Objetivo
 
@@ -340,6 +341,12 @@ do iOS 27 (Liquid Glass), com componentes do sistema como vêm. Onde a HIG e
 2. **Desktop: pareamento por QR**, com código preso a tipo e nível, pareamento pela DHT com código
    ativo e tipo na lista de aparelhos. Já serve o consultório de fora.
 3. **Desktop: contrato do celular**, com `api`, lista de canais, adaptadores, níveis e fixtures.
+
+   As etapas 2 e 3 chegam juntas ao `main`: o botão "Conectar celular" não pode existir sem a lista
+   de canais, os níveis e a faixa de `api` no servidor. Sem a etapa 3, o servidor repassa qualquer
+   canal ao `runOperation`, e o celular da recepção leria anamnese e evolução (P0). Também não pode
+   existir com a versão do banco no `hello`, senão toda migração nova recusa os iPhones já instalados
+   até a App Store atualizar o app. O app do iPhone troca `schemaVersion` por `api` no mesmo PR.
 4. **iOS: pareamento, bloqueio e Agenda** (ver dia e semana).
 5. **iOS: sessões e compromissos** (marcar, repetir, remarcar, arrastar, desmarcar, reserva).
 6. **iOS: presença, falta e financeiro da sessão.**
