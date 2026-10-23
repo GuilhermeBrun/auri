@@ -1,0 +1,38 @@
+{
+  "name": "auri-ios",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "npm run formato && npm run lint && npm run tipos",
+    "contrato": "node scripts/construir.mjs && node scripts/testar.mjs --gravar",
+    "formato": "oxfmt --check worklet scripts",
+    "formato:swift": "xcrun swift-format lint --recursive --strict App Widget Compartilhado Tests UITests",
+    "lint": "oxlint --deny-warnings worklet scripts",
+    "preparar": "node scripts/preparar.mjs",
+    "servidor": "node scripts/construir.mjs && node scripts/servidor.mjs",
+    "telas": "sh scripts/telas.sh",
+    "teste": "node scripts/construir.mjs && node scripts/testar.mjs",
+    "testes:swift": "sh scripts/testes-swift.sh",
+    "tipos": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@hyperswarm/secret-stream": "6.9.2",
+    "bare-crypto": "1.15.4",
+    "bare-net": "2.3.3",
+    "hyperdht": "6.34.1",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2",
+    "@types/qrcode": "^1.5.6",
+    "bare": "1.36.0",
+    "bare-link": "4.0.1",
+    "bare-pack": "3.0.2",
+    "brittle": "^4.5.0",
+    "esbuild": "0.28.2",
+    "oxfmt": "^0.73.0",
+    "oxlint": "^1.88.0",
+    "qrcode": "^1.5.4",
+    "typescript": "^7.0.2"
+  }
+}

@@ -4,10 +4,13 @@ O PR é validado rápido, o uso real vem do alpha e a estável promove um alpha 
 
 ## Pull requests
 
-O workflow **CI** roda num job só, o **Check**, uma vez por PR, em ~3 min numa máquina Ubuntu.
+O workflow **CI** roda o **Check**, uma vez por PR, em ~3 min numa máquina Ubuntu.
 O Linux não faz parte do produto: é só a máquina mais barata do Actions para estas verificações.
 Um job só porque cada job paga de novo checkout, Node e cache, e o Actions arredonda cada um para
-o minuto inteiro.
+o minuto inteiro. Ao lado dele roda o **iPhone no Mac** (imagem `xcode-27`, Xcode 27.1 e XcodeGen
+fixos), que gera o projeto do Xcode, confere o formato do Swift e roda os testes em Swift. Como o
+repositório é público, as máquinas padrão do Actions, Mac inclusive, não são cobradas; as `-xlarge`
+seriam.
 
 | Passo         | O que confere                                                                            |
 | ------------- | ---------------------------------------------------------------------------------------- |
@@ -17,7 +20,15 @@ o minuto inteiro.
 | Release Smoke | `node --test scripts/release/*.test.mjs` (versões e tradução da pilha de erros)          |
 | Site          | `npm run check`, `npm test` e `npm run build:exemplo`                                    |
 
-Os passos do app rodam em `desktop/` e os do site em `web/`.
+Os passos do app rodam em `desktop/`, os do site em `web/` e os do iPhone em `ios/`: formato, lint
+e tipos do worklet e o teste da conexão (o cliente do iPhone no runtime Bare contra as operações do
+desktop, numa DHT local), que pega quando uma mudança no desktop quebra o celular. As respostas que o
+celular recebe passam pelos formatos de `desktop/src/main/net/celular.ts`, um por versão do contrato
+(`api`), e o Vitest do desktop confere cada versão aceita (de `API_MINIMA` a `API_ATUAL`) com
+`ios/Tests/Contrato/contrato-vN.json`, o mesmo arquivo que os testes em Swift decodificam nos modelos
+do app: um campo que o desktop renomeia ou tira reprova no Linux, sem precisar do Mac. O arquivo de
+uma versão já publicada não muda; a mudança vai num adaptador ou numa versão nova. Enquanto a versão
+do app não foi publicada, `npm run contrato` (em `ios/`) grava o arquivo dela de novo.
 
 Os passos rodam mesmo depois de um erro, para o PR mostrar todos de uma vez. O `Check` é o único
 check exigido pela proteção do `main`, que também exige o PR **atualizado com o `main`**: o que
@@ -77,6 +88,18 @@ o do Linux. Rodar antes de cada estável e em mudanças que mexem no Mac:
 
 ```bash
 npm run ci:mac
+```
+
+O app do iPhone só compila no Mac. No `git push` feito no Mac, o `npm run ci:local` gera o projeto
+do Xcode e roda os testes em Swift quando a branch mexe em `ios/` ou no código que ele usa do desktop
+(`desktop/src/main/net/`, `db/`, `operations.ts`, `desktop/src/shared/`); o job **iPhone no Mac** repete
+isso no PR. Os testes de interface no simulador ficam só no `ci:ios`, antes do PR, com as capturas em
+`ios/build/telas/`: dependem do springboard, de Face ID simulado e de uma DHT local, e levam ~6 min. Cada tela passa pela auditoria de acessibilidade do Xcode (rótulos, área de
+toque, texto cortado, traços); contraste e tamanho do texto ficam com a captura em letra grande, porque
+a auditoria reprova cores e vidro do próprio sistema.
+
+```bash
+npm run ci:ios
 ```
 
 Mudanças visuais: `gh workflow run referencias-visuais.yml --ref <branch>` (capturas do Windows) e

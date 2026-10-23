@@ -244,7 +244,7 @@ describe('confirmação', () => {
       ...at('2025-09-08T14:00', '2025-09-08T14:30'),
       evolucao: 'Respondeu bem.'
     })
-    expect(() => removeAppointment(db, a.id, true)).toThrow('computador da recepção')
+    expect(() => removeAppointment(db, a.id, true)).toThrow('computador do consultório')
     const b = createAppointment(db, at('2025-09-09T14:00', '2025-09-09T14:30'))
     removeAppointment(db, b.id, true)
     removeAppointment(db, a.id)

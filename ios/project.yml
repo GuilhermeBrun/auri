@@ -1,0 +1,126 @@
+name: Auri
+options:
+  deploymentTarget:
+    iOS: '26.0'
+settings:
+  base:
+    MARKETING_VERSION: 0.0.1
+    CURRENT_PROJECT_VERSION: 1
+    SWIFT_VERSION: '6.0'
+    TARGETED_DEVICE_FAMILY: '1'
+include:
+  - App/addons/addons.yml
+packages:
+  BareKit:
+    url: https://github.com/holepunchto/bare-kit-swift
+    revision: ef26bbde9bb47eaebeb4e50944306b4ff23934ce
+targets:
+  Auri:
+    type: application
+    platform: iOS
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.auri.ios
+        PRODUCT_NAME: Auri
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+    info:
+      path: App/Info.plist
+      properties:
+        CFBundleDisplayName: Auri
+        CFBundleDevelopmentRegion: pt-BR
+        CFBundleLocalizations:
+          - pt-BR
+        CFBundleURLTypes:
+          - CFBundleURLName: com.auri.ios
+            CFBundleURLSchemes:
+              - auri
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        UIBackgroundModes:
+          - fetch
+        BGTaskSchedulerPermittedIdentifiers:
+          - com.auri.ios.resumo
+        NSLocalNetworkUsageDescription: O Auri procura o computador da clínica nesta rede para conectar mais rápido.
+        NSCameraUsageDescription: O Auri usa a câmera para ler o QR code mostrado no computador da clínica.
+        NSFaceIDUsageDescription: O Auri usa o Face ID para proteger os dados dos pacientes.
+    entitlements:
+      path: App/Auri.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.auri.ios
+    dependencies:
+      - framework: App/frameworks/BareKit.xcframework
+      - package: BareKit
+      - target: AuriWidgets
+    sources:
+      - path: App
+        includes:
+          - '*.swift'
+      - path: Compartilhado
+      - path: App/Assets.xcassets
+      - path: App/app.bundle
+        buildPhase: resources
+  AuriWidgets:
+    type: app-extension
+    platform: iOS
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.auri.ios.widgets
+        PRODUCT_NAME: AuriWidgets
+    info:
+      path: Widget/Info.plist
+      properties:
+        CFBundleDisplayName: Auri
+        CFBundleDevelopmentRegion: pt-BR
+        CFBundleLocalizations:
+          - pt-BR
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    entitlements:
+      path: Widget/AuriWidgets.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.auri.ios
+    sources:
+      - path: Widget
+        includes:
+          - '*.swift'
+      - path: Compartilhado
+  AuriTests:
+    type: bundle.unit-test
+    platform: iOS
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.auri.ios.tests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_HOST: $(BUILT_PRODUCTS_DIR)/Auri.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Auri
+        BUNDLE_LOADER: $(TEST_HOST)
+    sources:
+      - path: Tests
+        excludes:
+          - Contrato
+      - path: Tests/Contrato
+        buildPhase: resources
+    dependencies:
+      - target: Auri
+  AuriUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.auri.ios.uitests
+        GENERATE_INFOPLIST_FILE: YES
+    sources:
+      - path: UITests
+    dependencies:
+      - target: Auri
+schemes:
+  Auri:
+    build:
+      targets:
+        Auri: all
+    test:
+      targets:
+        - AuriTests
+        - AuriUITests

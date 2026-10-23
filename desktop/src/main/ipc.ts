@@ -1,6 +1,6 @@
 import { app, clipboard, ipcMain, shell } from 'electron'
 import { z } from 'zod'
-import type { AuriTransfer, IpcResult } from '../shared/api'
+import { PHONE_LEVELS, type AuriTransfer, type IpcResult } from '../shared/api'
 import type {
   AnamneseDocument,
   AttendanceReport,
@@ -58,6 +58,11 @@ const passwordSchema = z.string().max(200)
 const secretSchema = z.union([
   z.object({ password: passwordSchema }),
   z.object({ recoveryCode: z.string().max(100) })
+])
+
+const grantSchema = z.discriminatedUnion('tipo', [
+  z.object({ tipo: z.literal('computador') }),
+  z.object({ tipo: z.literal('celular'), nivel: z.enum(PHONE_LEVELS) })
 ])
 
 const ENCURTAR = new Set(['terms:send', 'terms:link', 'confirmacoes:enviar'])
@@ -130,7 +135,9 @@ export function registerIpc({
   handle('connection:setRemoteAccess', (on: unknown) => connection.setRemoteAccess(bool.parse(on)))
   handle('connection:setNotices', (on: unknown) => connection.setNotices(bool.parse(on)))
   handle('connection:testRemote', () => connection.testRemote())
-  handle('connection:createCode', () => connection.createCode())
+  handle('connection:createCode', (grant: unknown) =>
+    connection.createCode(grantSchema.parse(grant))
+  )
   handle('connection:cancelCode', () => connection.cancelCode())
   handle('connection:removeDevice', (key: unknown) =>
     connection.removeDevice(

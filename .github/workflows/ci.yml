@@ -58,3 +58,53 @@ jobs:
         if: ${{ !cancelled() && steps.deps-web.outcome == 'success' }}
         working-directory: web
         run: npm run build:exemplo
+      - id: deps-ios
+        if: ${{ !cancelled() }}
+        uses: ./.github/actions/setup-deps
+        with:
+          directory: ios
+      - name: 'iPhone: formato, lint e tipos'
+        if: ${{ !cancelled() && steps.deps-ios.outcome == 'success' }}
+        working-directory: ios
+        run: npm run check
+      - name: 'iPhone: conexão no Bare'
+        if: ${{ !cancelled() && steps.deps-ios.outcome == 'success' && steps.deps.outcome == 'success' }}
+        working-directory: ios
+        run: npm run teste
+
+  iphone:
+    name: iPhone no Mac
+    if: ${{ !github.event.pull_request.draft }}
+    runs-on: xcode-27
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: ios
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-deps
+      - uses: ./.github/actions/setup-deps
+        with:
+          directory: ios
+      - name: Xcode 27.1 e XcodeGen 2.46.0
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          sudo xcode-select -s /Applications/Xcode_27.1.app
+          gh release download 2.46.0 --repo yonaskolb/XcodeGen --pattern xcodegen.zip --dir "$RUNNER_TEMP"
+          echo "4d9e34b62172d645eed6457cac13fc222569974098ef4ee9c3368bedf0196806  $RUNNER_TEMP/xcodegen.zip" | shasum -a 256 -c -
+          unzip -q "$RUNNER_TEMP/xcodegen.zip" -d "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/xcodegen/bin" >> "$GITHUB_PATH"
+      - id: preparar
+        name: 'iPhone: projeto do Xcode'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: npm run preparar
+      - name: 'iPhone: formato do Swift'
+        if: ${{ !cancelled() }}
+        run: npm run formato:swift
+      - name: 'iPhone: testes em Swift'
+        if: ${{ !cancelled() && steps.preparar.outcome == 'success' }}
+        run: npm run testes:swift

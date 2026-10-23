@@ -1,0 +1,119 @@
+{
+  "patients:list": [
+    {
+      "id": 1,
+      "nome": "Ana Beatriz Teste",
+      "data_nascimento": "2019-03-14",
+      "ativo": true,
+      "celular": "",
+      "email": "",
+      "escola": "Escola Municipal Exemplo",
+      "serie": "",
+      "professora": "",
+      "mae_nome": "Mariana Teste",
+      "mae_celular": "(11) 98000-0000",
+      "pai_nome": "",
+      "pai_celular": "",
+      "resp_tipo": "mae",
+      "resp_nome": "",
+      "resp_parentesco": "",
+      "resp_celular": "",
+      "updated_at": "2026-10-23T14:39:38.222Z"
+    }
+  ],
+  "patients:get": {
+    "id": 1,
+    "nome": "Ana Beatriz Teste",
+    "data_nascimento": "2019-03-14",
+    "ativo": true,
+    "celular": "",
+    "email": "",
+    "escola": "Escola Municipal Exemplo",
+    "serie": "",
+    "professora": "",
+    "mae_nome": "Mariana Teste",
+    "mae_celular": "(11) 98000-0000",
+    "pai_nome": "",
+    "pai_celular": "",
+    "resp_tipo": "mae",
+    "resp_nome": "",
+    "resp_parentesco": "",
+    "resp_celular": "",
+    "updated_at": "2026-10-23T14:39:38.222Z"
+  },
+  "appointments:listRange": [
+    {
+      "id": 1,
+      "patient_id": 7,
+      "patient_nome": "Gabriela Amostra",
+      "inicio": "2026-10-02T08:00",
+      "fim": "2026-10-02T09:00",
+      "observacao": "",
+      "tipo_id": 2,
+      "tipo_nome": "Avaliação",
+      "tipo_cor": "#2563eb",
+      "categoria": "avaliacao",
+      "presenca": "",
+      "evolucao": "Jogo de memória com sons do ambiente. Melhorou a atenção auditiva.",
+      "confirmado_em": null,
+      "assinatura": null,
+      "updated_at": "2026-10-23T14:39:38.229Z"
+    }
+  ],
+  "appointments:listByPatient": [
+    {
+      "id": 180,
+      "patient_id": 1,
+      "patient_nome": "Ana Beatriz Teste",
+      "inicio": "2026-12-04T08:00",
+      "fim": "2026-12-04T09:00",
+      "observacao": "",
+      "tipo_id": 2,
+      "tipo_nome": "Avaliação",
+      "tipo_cor": "#2563eb",
+      "categoria": "avaliacao",
+      "presenca": "",
+      "evolucao": "",
+      "confirmado_em": null,
+      "assinatura": null,
+      "updated_at": "2026-10-23T14:39:38.266Z"
+    }
+  ],
+  "commitments:listRange": [
+    {
+      "id": 1,
+      "etiqueta_id": 4,
+      "etiqueta_nome": "Palestra",
+      "cor": "#ea580c",
+      "reserva": false,
+      "titulo": "Reunião de equipe",
+      "inicio": "2026-10-02T17:00",
+      "fim": "2026-10-02T18:00",
+      "observacao": "",
+      "updated_at": "2026-10-23T14:39:38.231Z"
+    }
+  ],
+  "tipos:list": [
+    {
+      "id": 1,
+      "nome": "Sessão",
+      "categoria": "sessao",
+      "cor": "#6b7280",
+      "duracao": 30,
+      "sistema": null
+    }
+  ],
+  "anamneses:get": {
+    "data": "2026-03-02",
+    "queixa": "Troca de sons na fala (r por l) e dificuldade para contar histórias.",
+    "gestacao": "Sem intercorrências.",
+    "alimentacao": "Come de tudo, mastigação adequada.",
+    "sono": "Dorme bem, cerca de 10 horas por noite.",
+    "desenvolvimento": "Primeiras palavras com 1 ano e 2 meses.",
+    "saude": "Otites de repetição até os 3 anos.",
+    "rotina": "Escola pela manhã, natação às quartas.",
+    "terapias": "Nenhuma antes.",
+    "observacoes": "Família muito participativa.",
+    "updated_at": "2026-10-23T14:39:38.267Z"
+  }
+}

@@ -4,7 +4,49 @@ import { resolve } from 'node:path'
 
 const installed = (cwd) => {
   const modified = (file) => statSync(resolve(cwd, file), { throwIfNoEntry: false })?.mtimeMs
-  return (modified('node_modules/.package-lock.json') ?? 0) > (modified('package-lock.json') ?? 0)
+  return (
+    (modified('node_modules/.package-lock.json') ?? 0) > (modified('package-lock.json') ?? 0) &&
+    'já em dia'
+  )
+}
+
+const usadoPeloIPhone = [
+  'ios/',
+  'desktop/src/main/net/',
+  'desktop/src/main/db/',
+  'desktop/src/main/operations',
+  'desktop/src/shared/'
+]
+const semMudancaNoIPhone = () => {
+  if (process.platform !== 'darwin') return 'só no Mac'
+  const base = git('merge-base', 'HEAD', 'origin/main')
+  if (!base) return false
+  const mudou = [
+    ...git('diff', '--name-only', base).split('\n'),
+    ...git('-C', '..', 'ls-files', '--others', '--exclude-standard').split('\n')
+  ]
+  const tocou = mudou.some((arquivo) =>
+    usadoPeloIPhone.some((caminho) => arquivo.startsWith(caminho))
+  )
+  return !tocou && 'sem mudança no iPhone'
+}
+
+const iphone = [
+  { name: 'iPhone: dependências', command: 'npm', args: ['ci'], cwd: '../ios', skip: installed },
+  { name: 'iPhone: formato, lint e tipos', command: 'npm', args: ['run', 'check'], cwd: '../ios' },
+  { name: 'iPhone: conexão no Bare', command: 'npm', args: ['run', 'teste'], cwd: '../ios' }
+]
+const xcode = {
+  name: 'iPhone: projeto do Xcode',
+  command: 'npm',
+  args: ['run', 'preparar'],
+  cwd: '../ios'
+}
+const testesSwift = {
+  name: 'iPhone: testes em Swift',
+  command: 'npm',
+  args: ['run', 'testes:swift'],
+  cwd: '../ios'
 }
 
 const profiles = {
@@ -17,7 +59,10 @@ const profiles = {
     { name: 'Site: dependências', command: 'npm', args: ['ci'], cwd: '../web', skip: installed },
     { name: 'Site: formato, lint e tipos', cached: 'check', cwd: '../web' },
     { name: 'Site: testes', cached: 'test', cwd: '../web' },
-    { name: 'Site: build', cached: 'build:exemplo', cwd: '../web' }
+    { name: 'Site: build', cached: 'build:exemplo', cwd: '../web' },
+    ...iphone,
+    { ...xcode, skip: semMudancaNoIPhone },
+    { ...testesSwift, skip: semMudancaNoIPhone }
   ],
   mac: [
     {
@@ -39,14 +84,31 @@ const profiles = {
     { name: 'Pacote: conferência', command: 'npm', args: ['run', 'test:package'] },
     { name: 'Instalador', command: 'npm', args: ['run', 'build:mac'] },
     { name: 'Instalador: conferência', command: 'npm', args: ['run', 'test:installer'] }
+  ],
+  ios: [
+    ...iphone,
+    xcode,
+    {
+      name: 'iPhone: formato do Swift',
+      command: 'npm',
+      args: ['run', 'formato:swift'],
+      cwd: '../ios'
+    },
+    testesSwift,
+    {
+      name: 'iPhone: interface no simulador',
+      command: 'npm',
+      args: ['run', 'telas'],
+      cwd: '../ios'
+    }
   ]
 }
 
 const profile = process.argv[2] ?? 'local'
 const steps = profiles[profile]
 if (!steps) throw new Error(`Perfil desconhecido: ${profile}`)
-if (profile === 'mac' && process.platform !== 'darwin') {
-  console.error('O `npm run ci:mac` testa o Auri no Mac: rode num Mac.')
+if ((profile === 'mac' || profile === 'ios') && process.platform !== 'darwin') {
+  console.error(`O \`npm run ci:${profile}\` precisa de um Mac.`)
   process.exit(1)
 }
 
@@ -66,9 +128,10 @@ const vitePlusRun = (cwd = '.', script) => ({
 
 for (const step of steps) {
   const { name, env, cwd } = step
-  if (step.skip?.(cwd)) {
-    console.log(`\n▶ ${name}: já em dia`)
-    results.push(`✓ ${name} (já em dia)`)
+  const pulo = step.skip?.(cwd)
+  if (pulo) {
+    console.log(`\n▶ ${name}: ${pulo}`)
+    results.push(`✓ ${name} (${pulo})`)
     continue
   }
   const { command, args } = step.cached ? vitePlusRun(cwd, step.cached) : step
@@ -90,7 +153,7 @@ if (results.at(-1).startsWith('✗')) {
   console.error(
     profile === 'local'
       ? '\nCI local reprovou. Corrija antes do push, ou use `git push --no-verify`.'
-      : '\nCI do Mac reprovou.'
+      : `\nCI ${profile} reprovou.`
   )
   process.exit(1)
 }

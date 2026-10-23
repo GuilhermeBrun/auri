@@ -6,9 +6,12 @@ import { pairingProof, proofMatches } from './pairing'
 import {
   decode,
   encode,
+  helloVersion,
   PROTOCOL_VERSION,
   serverMessage,
+  type ApiRange,
   type ClientMessage,
+  type HelloVersion,
   type ServerMessage
 } from './protocol'
 import type { KeyPair } from './server'
@@ -29,7 +32,7 @@ export type ClientStatus = 'connecting' | 'connected' | 'offline' | 'version' | 
 export type ClientHooks = {
   keyPair: KeyPair
   name: () => string
-  schemaVersion: number
+  version: HelloVersion
   serverKey: string
   serverName: string
   addresses: () => Promise<Address[]>
@@ -76,10 +79,12 @@ export function createSyncClient(hooks: ClientHooks): {
   request(channel: string, args: unknown[]): Promise<IpcResult<unknown>>
   status(): ClientStatus
   via(): LinkVia | null
+  accepted(): ApiRange | null
   retry(): void
   close(): void
 } {
   let status: ClientStatus = 'connecting'
+  let accepted: ApiRange | null = null
   let stream: SecretStream | null = null
   let route: Route | null = null
   let looping = false
@@ -186,7 +191,7 @@ export function createSyncClient(hooks: ClientHooks): {
         const hello: ClientMessage = {
           t: 'hello',
           protocol: PROTOCOL_VERSION,
-          schema: hooks.schemaVersion,
+          ...helloVersion(hooks.version),
           name: hooks.name()
         }
         secret.write(encode(hello))
@@ -202,6 +207,7 @@ export function createSyncClient(hooks: ClientHooks): {
           adopt(secret, through)
           finish('ok')
         } else if (message.t === 'reject') {
+          if (message.reason === 'version') accepted = message.api ?? null
           finish(message.reason === 'version' ? 'version' : 'revoked')
         } else finish('fail')
       })
@@ -295,6 +301,7 @@ export function createSyncClient(hooks: ClientHooks): {
     },
     status: () => status,
     via: () => route?.via ?? null,
+    accepted: () => accepted,
     retry() {
       if (closed || stream) return
       clearTimeout(retryTimer)
@@ -315,8 +322,29 @@ export function createSyncClient(hooks: ClientHooks): {
 }
 
 const PAIR_TIMEOUT_MS = 8_000
+const REMOTE_PAIR_TIMEOUT_MS = 25_000
 
-const PAIR_ERRORS: Record<Extract<ServerMessage, { t: 'reject' }>['reason'], string> = {
+type RejectReason = Extract<ServerMessage, { t: 'reject' }>['reason']
+
+export type PairingFailure =
+  | RejectReason
+  | 'unreachable'
+  | 'other-server'
+  | 'identity'
+  | 'unexpected'
+
+export class PairingError extends Error {
+  readonly reason: PairingFailure
+  readonly accepted: ApiRange | null
+
+  constructor(reason: PairingFailure, message: string, accepted: ApiRange | null = null) {
+    super(message)
+    this.reason = reason
+    this.accepted = accepted
+  }
+}
+
+const PAIR_ERRORS: Record<RejectReason, string> = {
   version:
     'Os dois computadores estão com versões diferentes do Auri. Atualize os dois para a mesma versão.',
   unpaired: 'O outro computador recusou a conexão.',
@@ -326,38 +354,62 @@ const PAIR_ERRORS: Record<Extract<ServerMessage, { t: 'reject' }>['reason'], str
   'code-wrong': 'Código incorreto. Confira e digite de novo.'
 }
 
-export function pairWithServer(options: {
-  keyPair: KeyPair
-  name: string
-  schemaVersion: number
-  address: Address
-  code: string
-}): Promise<{ publicKey: string; name: string }> {
-  const { address, code } = options
+export type PairingRoute =
+  | { address: Address }
+  | { open: () => SecretStream; serverKey: string; unreachable: string }
+
+export function pairWithServer(
+  options: {
+    keyPair: KeyPair
+    name: string
+    version: HelloVersion
+    code: string
+    serverKey?: string
+  } & PairingRoute
+): Promise<{ publicKey: string; name: string }> {
+  const { code, serverKey } = options
+  const unreachable =
+    'open' in options
+      ? options.unreachable
+      : `Não foi possível conectar a ${options.address.host}. Confira se o Auri está aberto lá, com o ` +
+        'compartilhamento ligado, e se os dois computadores estão na mesma rede.'
   return new Promise((resolve, reject) => {
-    const secret = tcpStream(options.keyPair, address)
+    let secret: SecretStream
+    try {
+      secret = 'open' in options ? options.open() : tcpStream(options.keyPair, options.address)
+    } catch {
+      return reject(new PairingError('unreachable', unreachable))
+    }
     let settled = false
-    const finish = (error: string | null, result?: { publicKey: string; name: string }): void => {
+    const finish = (
+      error: PairingError | null,
+      result?: { publicKey: string; name: string }
+    ): void => {
       if (settled) return
       settled = true
       clearTimeout(timer)
       secret.end()
       setTimeout(() => secret.destroy(), 500)
-      if (error) reject(new Error(error))
+      if (error) reject(error)
       else resolve(result!)
     }
-    const unreachable =
-      `Não foi possível conectar a ${address.host}. Confira se o Auri está aberto lá, com o ` +
-      'compartilhamento ligado, e se os dois computadores estão na mesma rede.'
-    const timer = setTimeout(() => finish(unreachable), PAIR_TIMEOUT_MS)
+    const timer = setTimeout(
+      () => finish(new PairingError('unreachable', unreachable)),
+      'open' in options ? REMOTE_PAIR_TIMEOUT_MS : PAIR_TIMEOUT_MS
+    )
 
     secret.on('error', () => {})
     secret.on('connect', () => {
+      if (serverKey && secret.remotePublicKey?.toString('hex') !== serverKey) {
+        return finish(
+          new PairingError('other-server', 'Outro computador respondeu nesse endereço.')
+        )
+      }
       const proof = pairingProof(code, 'client', secret.handshakeHash!).toString('hex')
       const hello: ClientMessage = {
         t: 'hello',
         protocol: PROTOCOL_VERSION,
-        schema: options.schemaVersion,
+        ...helloVersion(options.version),
         name: options.name,
         proof
       }
@@ -365,15 +417,26 @@ export function pairWithServer(options: {
     })
     secret.on('data', (data: Buffer) => {
       const message = decode(serverMessage, data)
-      if (message?.t === 'reject') return finish(PAIR_ERRORS[message.reason])
-      if (message?.t !== 'welcome') return finish('Resposta inesperada do outro computador.')
+      if (message?.t === 'reject') {
+        return finish(
+          new PairingError(message.reason, PAIR_ERRORS[message.reason], message.api ?? null)
+        )
+      }
+      if (message?.t !== 'welcome') {
+        return finish(new PairingError('unexpected', 'Resposta inesperada do outro computador.'))
+      }
       const expected = pairingProof(code, 'server', secret.handshakeHash!)
       if (!message.proof || !proofMatches(expected, Buffer.from(message.proof, 'hex'))) {
-        return finish('Não foi possível confirmar a identidade do outro computador.')
+        return finish(
+          new PairingError(
+            'identity',
+            'Não foi possível confirmar a identidade do outro computador.'
+          )
+        )
       }
       finish(null, { publicKey: secret.remotePublicKey!.toString('hex'), name: message.name })
     })
-    secret.on('close', () => finish(unreachable))
+    secret.on('close', () => finish(new PairingError('unreachable', unreachable)))
   })
 }
 
@@ -384,7 +447,7 @@ export function probeServer(options: {
   serverKey: string
   serverName: string
   name: string
-  schemaVersion: number
+  version: HelloVersion
 }): Promise<RemoteProbe> {
   const started = Date.now()
   const server = options.serverName
@@ -417,7 +480,7 @@ export function probeServer(options: {
       const hello: ClientMessage = {
         t: 'hello',
         protocol: PROTOCOL_VERSION,
-        schema: options.schemaVersion,
+        ...helloVersion(options.version),
         name: options.name
       }
       secret.write(encode(hello))

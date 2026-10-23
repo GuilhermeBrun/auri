@@ -29,6 +29,9 @@ do app).
   `/recebido`, `/confirmar`, `/resposta`) e as funções `api/erros.ts` (relatórios de erro) e
   `api/links.ts` (links curtos). Publicado pela Vercel; os instaladores ficam nas releases do
   GitHub (ver [docs/ci.md](docs/ci.md)).
+- `ios/`: o app do iPhone (SwiftUI), em construção. A rede roda no runtime Bare com o mesmo código
+  de conexão do desktop (`desktop/src/main/net/`). Desenho em
+  [docs/specs/2026-10-21-app-ios-design.md](docs/specs/2026-10-21-app-ios-design.md).
 - `docs/`: documentação para quem desenvolve (pessoas e agentes): [CI e releases](docs/ci.md),
   [identidade visual](docs/identidade-visual.md), [relatórios de erro](docs/relatorios-de-erro.md),
   [links curtos](docs/links-curtos.md) e, em `docs/specs/`, o desenho de cada funcionalidade maior.
@@ -48,6 +51,41 @@ npm run build:exemplo   # build pré-renderizado com as releases de exemplo
 
 O `npm run build` lê as releases publicadas no GitHub e grava em `dist/` o feed de atualização
 (`latest.yml`, `alpha.yml`…) e o `releases.json`; `AURI_RELEASES` aceita um arquivo ou url no lugar.
+
+### iPhone (`ios/`)
+
+Precisa do Xcode e do XcodeGen (`brew install xcodegen`).
+
+```bash
+cd ios
+npm install
+npm run preparar   # empacota o worklet, liga os addons nativos, baixa o BareKit e gera o Auri.xcodeproj
+npm run servidor   # computador de teste: as operações e o pareamento do desktop num banco em memória com pacientes e sessões fictícios; mostra o QR code de celular da fono (e grava build/qrcode.png) e o convite em texto
+npm run check      # formato, lint e tipos do worklet (oxfmt e oxlint com a configuração do desktop)
+npm run teste      # o cliente do iPhone no runtime Bare contra computadores de teste numa DHT local: pareamento pela rede e pela internet, nível Recepção, regras da agenda, avisos, queda, versões, aparelho removido e o contrato
+npm run contrato   # grava de novo Tests/Contrato/contrato-vN.json da versão do app (API em worklet/nucleo.ts); só enquanto essa versão não foi publicada
+npm run testes:swift   # testes em Swift (modelos, contrato, regras da agenda, resumo dos widgets sem nomes)
+npm run formato:swift  # swift-format com a configuração de ios/.swift-format
+npm run telas      # testes de interface no simulador, com auditoria de acessibilidade; capturas em build/telas/
+```
+
+Depois do `preparar`, abrir `ios/Auri.xcodeproj` no Xcode ou rodar
+`xcodebuild -project ios/Auri.xcodeproj -scheme Auri -sdk iphonesimulator build`. Rodar o `preparar`
+de novo quando mudar o worklet ou o código de conexão do desktop.
+
+O simulador não tem câmera. No teste de interface, o app em Debug recebe o convite pela variável
+`AURI_QR` no lugar da leitura e a DHT local por `AURI_BOOTSTRAP`. O `npm run telas` sobe a DHT e o
+computador de teste, escolhe o simulador, percorre as telas, os avisos, o Face ID, os widgets na tela
+inicial, o "Marcar sessão" pelos Atalhos e as telas em letra grande, e grava as capturas em
+`build/telas/`. Para o caso sem pacientes: `sh scripts/telas.sh "$(node scripts/simulador.mjs)" vazio`.
+Para rodar só alguns testes, `SO_TESTES="-only-testing:AuriUITests/ConexaoUITests/test02Agenda"`; para
+medir a cobertura, `COBERTURA=1`.
+
+O ícone do app e os ícones das abas (os mesmos da barra lateral do desktop) saem de
+`node scripts/icones.mjs`, que gera `App/Assets.xcassets` a partir da marca e do `lucide-react` do
+`desktop/`.
+
+O `npm run servidor` usa o Electron e o `better-sqlite3` do `desktop/` (rodar `npm install` lá antes).
 
 ### App (`desktop/`)
 
@@ -82,11 +120,12 @@ A identidade visual (cores, tipografia, componentes) está em
 ## Antes de abrir um PR
 
 O CI do GitHub roda só quando o PR sai do rascunho e confere formato, lint, tipos, build e
-testes do app e do site (o job `Check`). O resto é testado aqui, no Mac, antes do PR:
+testes do app, do site e do worklet do iPhone (o job `Check`), mais o projeto do Xcode e os testes
+em Swift (o job `iPhone no Mac`). O resto é testado aqui, no Mac, antes do PR:
 
 1. **Sempre:** `npm run ci:local` (em `desktop/`), os mesmos passos do `Check`, inclusive os do
-   site. Também roda sozinho antes de cada `git push`, com o cache do Vite+ nos passos que não
-   mudaram.
+   site e a conexão do iPhone. Também roda sozinho antes de cada `git push`, com o cache do Vite+ nos passos que não
+   mudaram. No Mac, se a branch mexe no iPhone, também compila o app e roda os testes em Swift.
 2. **Conforme o que mudou:**
 
 | Mudou                                                              | Rodar                                                  |
@@ -96,6 +135,7 @@ testes do app e do site (o job `Check`). O resto é testado aqui, no Mac, antes 
 | Processo main, IPC, banco, cópia de segurança, conexão, importação | `npm run build && npm run test:e2e`                    |
 | Empacotamento, `electron-builder.yml`, atualização, dependências   | `npm run ci:mac`                                       |
 | Algo só do Windows (caminhos, instaladores das nuvens, instalador) | `gh workflow run windows.yml --ref <branch>`           |
+| `ios/` ou o que ele usa do desktop (`net/`, `shared/`, operações)  | `npm run ci:ios`                                       |
 
 O `npm run ci:mac` cobre todas as linhas do Mac de uma vez e também roda antes de cada versão
 estável.
