@@ -4,12 +4,10 @@ options:
   deploymentTarget:
     iOS: '26.0'
 configFiles:
-  Debug: Assinatura.xcconfig
-  Release: Assinatura.xcconfig
+  Debug: Projeto.xcconfig
+  Release: Projeto.xcconfig
 settings:
   base:
-    MARKETING_VERSION: 0.0.1
-    CURRENT_PROJECT_VERSION: 1
     SWIFT_VERSION: '6.0'
     TARGETED_DEVICE_FAMILY: '1'
 include:
@@ -32,6 +30,9 @@ targets:
       path: App/Info.plist
       properties:
         CFBundleDisplayName: Auri
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        AuriVersao: $(AURI_VERSAO)
         CFBundleDevelopmentRegion: pt-BR
         CFBundleLocalizations:
           - pt-BR
@@ -78,6 +79,8 @@ targets:
       path: Widget/Info.plist
       properties:
         CFBundleDisplayName: Auri
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         CFBundleDevelopmentRegion: pt-BR
         CFBundleLocalizations:
           - pt-BR

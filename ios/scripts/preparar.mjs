@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process'
-import { readdirSync, rmSync, writeFileSync } from 'node:fs'
+import { readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 
 const raiz = fileURLToPath(new URL('..', import.meta.url))
@@ -34,6 +34,32 @@ rodar(bin('bare-pack'), [
   'App/app.bundle',
   'build/worklet.cjs'
 ])
+
+function versao() {
+  const doDesktop = JSON.parse(readFileSync(`${raiz}../desktop/package.json`, 'utf8')).version
+  let descrita = ''
+  try {
+    descrita = execFileSync('git', ['describe', '--tags', '--match', 'v*', '--abbrev=7'], {
+      cwd: raiz,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore']
+    }).trim()
+  } catch {}
+  const [, tag = doDesktop, frente, sha] = /^v(.+?)(?:-(\d+)-g([0-9a-f]+))?$/.exec(descrita) ?? []
+  const [base, alpha] = tag.split('-alpha.')
+  const numerica = /^\d+(\.\d+){0,2}$/.test(base) ? base : '0.0.1'
+  return {
+    marketing: numerica,
+    build: [alpha ?? '1', frente].filter(Boolean).join('.'),
+    completa: frente ? `${tag}+${frente}.${sha}` : tag
+  }
+}
+
+const { marketing, build, completa } = versao()
+writeFileSync(
+  `${raiz}Versao.xcconfig`,
+  `MARKETING_VERSION = ${marketing}\nCURRENT_PROJECT_VERSION = ${build}\nAURI_VERSAO = ${completa}\n`
+)
 
 rodar('sh', ['scripts/barekit.sh'])
 rodar('xcodegen', ['generate', '--quiet'])

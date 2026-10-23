@@ -1,1 +1,2 @@
+#include? "Versao.xcconfig"
 #include? "Assinatura.local.xcconfig"

@@ -7,3 +7,4 @@ Widget/Info.plist
 *.entitlements
 *.xcodeproj
 Assinatura.local.xcconfig
+Versao.xcconfig
