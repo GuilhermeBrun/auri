@@ -170,7 +170,7 @@ function PhoneLevelPicker({
   onPick: (nivel: PhoneLevel) => void
   onCancel: () => void
 }): React.JSX.Element {
-  const [recepcao, setRecepcao] = useState(true)
+  const [recepcao, setRecepcao] = useState(false)
   return (
     <div className="mt-4 animate-fade-in">
       <SwitchField

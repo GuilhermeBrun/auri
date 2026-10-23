@@ -73,9 +73,9 @@ describe('Conectar celular', () => {
 
     await user.click(screen.getByRole('button', { name: 'Conectar celular' }))
     expect(connection.createCode).not.toHaveBeenCalled()
-    expect(
-      screen.getByRole('switch', { name: 'Celular da recepção' }).getAttribute('aria-checked')
-    ).toBe('true')
+    const recepcao = screen.getByRole('switch', { name: 'Celular da recepção' })
+    expect(recepcao.getAttribute('aria-checked')).toBe('false')
+    await user.click(recepcao)
     await user.click(screen.getByRole('button', { name: 'Gerar QR code' }))
     expect(connection.createCode).toHaveBeenCalledWith({ tipo: 'celular', nivel: 'recepcao' })
 
@@ -91,11 +91,10 @@ describe('Conectar celular', () => {
     expect(connection.cancelCode).toHaveBeenCalled()
   })
 
-  it('a recepção vem ligada, e desligar gera o código da fono', async () => {
+  it('o celular vem como da fono', async () => {
     const user = userEvent.setup()
     renderRoute('/', '/', <ConnectionSection />)
     await user.click(await screen.findByRole('button', { name: 'Conectar celular' }))
-    await user.click(screen.getByRole('switch', { name: 'Celular da recepção' }))
     expect(screen.getByText('Celular da fono: vê a anamnese e as evoluções.')).toBeTruthy()
     await user.click(screen.getByRole('button', { name: 'Gerar QR code' }))
     expect(connection.createCode).toHaveBeenCalledWith({ tipo: 'celular', nivel: 'fono' })
