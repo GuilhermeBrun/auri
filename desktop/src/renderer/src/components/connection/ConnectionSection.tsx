@@ -1,5 +1,5 @@
 import { useMutation } from '@tanstack/react-query'
-import { Check, HardDrive, Laptop, Plus, RotateCw, Smartphone } from 'lucide-react'
+import { Check, HardDrive, Laptop, RotateCw, Smartphone } from 'lucide-react'
 import QRCode from 'qrcode'
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react'
 import { Button } from '@renderer/components/ui/button'
@@ -14,7 +14,7 @@ import {
   SettingsGroup,
   StatusDot
 } from '@renderer/components/ui/section'
-import { Sensitive } from '@renderer/components/ui/sensitive'
+import { Sensitive, SensitiveHint } from '@renderer/components/ui/sensitive'
 import { SwitchField } from '@renderer/components/ui/switch'
 import { useConnection } from '@renderer/lib/connection'
 import { isMac } from '@renderer/lib/platform'
@@ -126,7 +126,7 @@ const LEVELS: { nivel: PhoneLevel; label: string; description: string }[] = [
   }
 ]
 
-function deviceKind(device: Pick<PairedDevice, 'tipo' | 'nivel'>): string {
+function deviceKind(device: { tipo: PairedDevice['tipo']; nivel?: PairedDevice['nivel'] }): string {
   if (device.tipo === 'computador') return 'Computador'
   return device.nivel === 'fono' ? 'Celular da fono' : 'Celular da recepção'
 }
@@ -144,31 +144,29 @@ function QrCode({ text }: { text: string }): React.JSX.Element {
     return { size: modules.size, path }
   }, [text])
   return (
-    <button
-      type="button"
-      onClick={() => setShown((current) => !current)}
-      aria-pressed={shown}
-      aria-label={
-        shown ? 'QR code para o celular' : 'QR code para o celular: oculto. Clique para mostrar'
-      }
-      className="relative mt-3 block cursor-pointer overflow-hidden rounded-card bg-white p-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-    >
-      <svg
-        viewBox={`-2 -2 ${qr.size + 4} ${qr.size + 4}`}
-        shapeRendering="crispEdges"
-        aria-hidden="true"
-        className={cn('block size-44 transition-[filter] duration-150', !shown && 'blur-md')}
+    <SensitiveHint shown={shown} what="o QR code">
+      <button
+        type="button"
+        onClick={() => setShown((current) => !current)}
+        aria-pressed={shown}
+        aria-label={
+          shown ? 'QR code para o celular' : 'QR code para o celular: oculto. Clique para mostrar'
+        }
+        className={cn(
+          'block shrink-0 cursor-pointer overflow-hidden rounded-card p-2 transition-[background-color] duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
+          shown ? 'bg-white' : 'bg-fill select-none hover:bg-fill-hover'
+        )}
       >
-        <path d={qr.path} className="fill-black" />
-      </svg>
-      {!shown && (
-        <span className="absolute inset-0 grid place-items-center">
-          <span className="rounded-full bg-solid px-3 py-1.5 text-[13px] font-medium text-on-solid">
-            Clique para mostrar
-          </span>
-        </span>
-      )}
-    </button>
+        <svg
+          viewBox={`-2 -2 ${qr.size + 4} ${qr.size + 4}`}
+          shapeRendering="crispEdges"
+          aria-hidden="true"
+          className={cn('block size-40 transition-[filter] duration-150', !shown && 'blur-[6px]')}
+        >
+          <path d={qr.path} className={shown ? 'fill-black' : 'fill-ink-soft'} />
+        </svg>
+      </button>
+    </SensitiveHint>
   )
 }
 
@@ -182,7 +180,7 @@ function PhoneLevelPicker({
   onCancel: () => void
 }): React.JSX.Element {
   return (
-    <div className="mt-4 animate-fade-in rounded-card bg-fill p-5">
+    <div className="mt-4 animate-fade-in">
       <p className="text-[13px] font-medium">Quem vai usar o celular?</p>
       <fieldset disabled={pending} className="mt-3 grid grid-cols-2 gap-3">
         <legend className="sr-only">Quem vai usar o celular</legend>
@@ -191,7 +189,7 @@ function PhoneLevelPicker({
             key={nivel}
             type="button"
             onClick={() => onPick(nivel)}
-            className="flex flex-col rounded-card bg-surface p-4 text-left transition-colors hover:bg-fill-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-60"
+            className="flex flex-col rounded-card bg-fill p-4 text-left transition-colors hover:bg-fill-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-60"
           >
             <span className="text-[13px] font-medium">{label}</span>
             <span className="mt-1 text-xs text-ink-soft">{description}</span>
@@ -294,7 +292,7 @@ function PairingPanel({
             loading={create.isPending}
             onClick={() => create.mutate({ tipo: 'computador' })}
           >
-            <Plus /> Conectar computador
+            <Laptop /> Conectar computador
           </Button>
           <Button variant="secondary" onClick={() => setChoosing(true)}>
             <Smartphone /> Conectar celular
@@ -309,34 +307,39 @@ function PairingPanel({
   const seconds = String(remaining % 60).padStart(2, '0')
   const { code, grant } = active
   return (
-    <div className="mt-4 animate-fade-in rounded-card bg-fill p-5">
+    <div className="mt-4 animate-fade-in">
+      <p className="text-[13px] font-medium">{deviceKind(grant)}</p>
       {grant.tipo === 'celular' && code.convite ? (
         <>
-          <p className="text-xs text-ink-soft">
-            {deviceKind(grant)}: no iPhone, abra o Auri e leia o QR code.
+          <p className="mt-1 text-xs text-ink-soft">
+            No iPhone, abra o Auri e leia este QR code com a câmera.
           </p>
-          <QrCode text={code.convite} />
           {!remoteAccess && (
-            <p className="mt-3 text-xs text-ink-soft">
+            <p className="mt-1 text-xs text-ink-soft">
               Fora da clínica, o celular só conecta com “Permitir acesso de fora da clínica” ligado.
             </p>
           )}
+          <div className="mt-4 flex justify-center">
+            <QrCode text={code.convite} />
+          </div>
         </>
       ) : (
         <>
-          <p className="text-xs text-ink-soft">
+          <p className="mt-1 text-xs text-ink-soft">
             No outro computador, em Armazenamento, escolha “Usar os dados de outro computador”.
           </p>
-          <Sensitive
-            label="Código de conexão"
-            what="o código"
-            className="mt-3 font-mono text-2xl font-semibold tracking-[0.12em]"
-          >
-            {code.code}
-          </Sensitive>
+          <div className="mt-4 flex justify-center">
+            <Sensitive
+              label="Código de conexão"
+              what="o código"
+              className="font-mono text-2xl font-semibold tracking-[0.12em]"
+            >
+              {code.code}
+            </Sensitive>
+          </div>
         </>
       )}
-      <div className="mt-3 flex items-center justify-between gap-4">
+      <div className="mt-4 flex items-center justify-between gap-4">
         <span className="text-xs text-ink-soft tabular-nums">
           Vale por {minutes}:{seconds} e uma vez só.
         </span>
@@ -579,7 +582,7 @@ function LinkedServer({
           )}
         </div>
         {confirming && (
-          <div className="mt-4 animate-fade-in rounded-card bg-fill p-4">
+          <div className="mt-4 animate-fade-in">
             <p className="text-xs text-ink-soft">
               Para voltar, precisa de um código novo de {server.name}.
             </p>

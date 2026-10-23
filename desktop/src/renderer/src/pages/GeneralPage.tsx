@@ -202,7 +202,7 @@ function Transfer(): React.JSX.Element {
             <SettingRow title="Importar configurações">
               {!importing.preview && <ImportButton state={importing} label="Importar…" />}
             </SettingRow>
-            <ImportPreview state={importing} className="mt-4 bg-surface" />
+            <ImportPreview state={importing} className="mt-4 bg-transparent p-0" />
           </div>
         )}
         {exportFile.error && <ErrorText>{exportFile.error.message}</ErrorText>}
