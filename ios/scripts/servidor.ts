@@ -158,21 +158,22 @@ const server = createSyncServer({
 
 function mudarPelaRecepcao(): void {
   const amanha = dia(new Date(), 1)
+  const aberto = amanha.getDay() === 0 ? dia(amanha, 1) : amanha
   runOperation(
     db,
     'appointments:create',
     [
       {
         patient_id: pacientes[1].id,
-        inicio: local(amanha, 18),
-        fim: local(amanha, 18, 45),
+        inicio: local(aberto, 11),
+        fim: local(aberto, 11, 45),
         observacao: '',
         tipo_id: deSessao[1].id
       }
     ],
     (topics, aviso) => server.broadcast(topics, aviso ? { ...aviso, autor: 'Recepção' } : undefined)
   )
-  console.log('a recepção marcou uma sessão para amanhã às 18:00')
+  console.log(`a recepção marcou uma sessão para ${local(aberto, 11)}`)
 }
 
 function enderecosDaRede(porta: number): { host: string; port: number }[] {

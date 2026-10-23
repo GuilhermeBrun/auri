@@ -29,6 +29,8 @@ final class ConexaoUITests: XCTestCase {
     XCTAssertTrue(app.staticTexts[hoje].waitForExistence(timeout: 15))
     sleep(2)
     anexar(app, "02-dia")
+    app.scrollViews.firstMatch.swipeUp(velocity: .fast)
+    app.scrollViews.firstMatch.swipeUp(velocity: .fast)
     try auditar(app)
 
     tocar(elemento(app, contendo: " – "), "sessão na linha do tempo")
@@ -87,8 +89,12 @@ final class ConexaoUITests: XCTestCase {
     anexar(XCUIScreen.main.screenshot(), "14-aviso")
     aviso.tap()
     let amanha = Calendar.current.date(byAdding: .day, value: 1, to: .now)!
-      .formatted(.dateTime.weekday(.wide).day().month(.wide).year().locale(Locale(identifier: "pt_BR")))
-    XCTAssertTrue(app.staticTexts[amanha].waitForExistence(timeout: 15))
+    let aberto =
+      Calendar.current.component(.weekday, from: amanha) == 1
+      ? Calendar.current.date(byAdding: .day, value: 1, to: amanha)! : amanha
+    let dia = aberto.formatted(
+      .dateTime.weekday(.wide).day().month(.wide).year().locale(Locale(identifier: "pt_BR")))
+    XCTAssertTrue(app.staticTexts[dia].waitForExistence(timeout: 15))
     sleep(1)
     anexar(app, "15-aviso-aberto")
   }

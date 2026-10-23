@@ -142,6 +142,8 @@ private struct LinhaDoTempo: View {
                   .font(.caption2)
                   .foregroundStyle(.secondary)
                   .frame(width: margem - 8, height: topo * 2, alignment: .trailing)
+                  .opacity(pertoDeAgora(hora) ? 0 : 1)
+                  .accessibilityHidden(pertoDeAgora(hora))
                 Rectangle().fill(.separator).frame(height: 0.5)
               }
               .frame(height: alturaDaHora, alignment: .top)
@@ -185,6 +187,13 @@ private struct LinhaDoTempo: View {
         leitor.scrollTo(max(alvo - 1, 0), anchor: .top)
       }
     }
+  }
+
+  private func pertoDeAgora(_ hora: Int) -> Bool {
+    guard DataLocal.calendario.isDateInToday(dia) else { return false }
+    let partes = DataLocal.calendario.dateComponents([.hour, .minute], from: .now)
+    let minutos = (partes.hour ?? 0) * 60 + (partes.minute ?? 0)
+    return abs(minutos - hora * 60) < 15
   }
 
   private func posicao(de data: Date) -> CGFloat {

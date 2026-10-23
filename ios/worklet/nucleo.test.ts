@@ -69,6 +69,12 @@ const dois = (n: number): string => String(n).padStart(2, '0')
 const local = (data: Date, hora: number): string =>
   `${data.getFullYear()}-${dois(data.getMonth() + 1)}-${dois(data.getDate())}T${dois(hora)}:00`
 
+function proximoDia(dias: number): Date {
+  const data = new Date()
+  data.setDate(data.getDate() + dias)
+  return data
+}
+
 function proximo(diaDaSemana: number): Date {
   const data = new Date()
   data.setDate(data.getDate() + 7 + ((diaDaSemana - data.getDay() + 7) % 7))
@@ -206,7 +212,10 @@ test('marca, recusa horário ocupado e recebe o aviso da recepção', async (t) 
 
   const aviso = (await iphone.esperar((s) => s.t === 'aviso')) as Extract<Saida, { t: 'aviso' }>
   t.ok(aviso.titulo.startsWith('Recepção marcou a sessão de'))
-  t.ok(aviso.corpo.startsWith('Amanhã às 18:00'))
+  const amanha = proximoDia(1)
+  const aberto = amanha.getDay() === 0 ? proximoDia(2) : amanha
+  t.is(aviso.inicio, local(aberto, 11))
+  t.ok(aviso.corpo.endsWith('às 11:00'))
   await iphone.esperar((s) => s.t === 'evento')
 })
 
