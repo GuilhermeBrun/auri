@@ -206,7 +206,7 @@ Regras:
   grande (o resto do dia) na tela inicial; na tela bloqueada, linha, retângulo e círculo, só com
   horários e contagem. Tocar abre a agenda no horário.
 - O widget não conecta ao computador: o app grava um resumo de hoje e amanhã no App Group
-  (`group.com.auri.ios`, gravação atômica, proteção até o primeiro desbloqueio) sempre que a agenda
+  (`group.br.dev.auri`, gravação atômica, proteção até o primeiro desbloqueio) sempre que a agenda
   carrega, e o iOS acorda o app de tempos em tempos (`BGAppRefreshTask`) para atualizar.
 - Mostra o nome curto do paciente (`shortName`), o horário e a etiqueta. Conexão › Widgets esconde
   os nomes. O nome é marcado como privado, então nunca aparece com o iPhone bloqueado.

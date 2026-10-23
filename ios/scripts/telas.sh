@@ -21,7 +21,7 @@ trap 'kill $SERVIDOR $DHT ${ROSTO:-} 2>/dev/null || true; pkill -f build/servido
 until grep -q '^convite ' build/servidor.log 2>/dev/null; do sleep 1; done
 CONVITE=$(grep '^convite ' build/servidor.log | sed 's/^convite //')
 
-xcrun simctl uninstall "$APARELHO" com.auri.ios 2>/dev/null || true
+xcrun simctl uninstall "$APARELHO" br.dev.auri 2>/dev/null || true
 xcrun simctl spawn "$APARELHO" notifyutil -s com.apple.BiometricKit.enrollmentChanged 1
 xcrun simctl spawn "$APARELHO" notifyutil -p com.apple.BiometricKit.enrollmentChanged
 rm -rf build/resultado.xcresult "$SAIDA"

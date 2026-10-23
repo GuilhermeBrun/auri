@@ -12,7 +12,7 @@ struct AuriWidgets: WidgetBundle {
 
 struct ControleNovaSessao: ControlWidget {
   var body: some ControlWidgetConfiguration {
-    StaticControlConfiguration(kind: "com.auri.ios.nova-sessao") {
+    StaticControlConfiguration(kind: "br.dev.auri.nova-sessao") {
       ControlWidgetButton(action: AbrirNovaSessao()) {
         Label("Nova sessão", systemImage: "calendar.badge.plus")
       }

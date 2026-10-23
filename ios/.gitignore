@@ -6,3 +6,4 @@ App/Info.plist
 Widget/Info.plist
 *.entitlements
 *.xcodeproj
+Assinatura.local.xcconfig
