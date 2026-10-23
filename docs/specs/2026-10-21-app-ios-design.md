@@ -1,8 +1,9 @@
 # App do iPhone — design
 
 Data: 21/10/2026. Estado (23/10): etapa 1 feita no simulador, com as telas do app adiantadas (PR #68);
-falta o teste num iPhone de verdade pelo 4G. O desktop ainda não gera o convite do celular (etapas 2
-e 3), então o app só pareia com o computador de teste (`ios/scripts/servidor.ts`).
+falta o teste num iPhone de verdade pelo 4G. Etapas 2 e 3 juntas num PR à parte: o desktop gera o
+convite do celular, pareia pela DHT com código ativo e atende o celular só pela lista de canais, com
+nível e `api`. O "Conectar computador" por QR, para o consultório de fora, ainda não existe.
 
 ## Objetivo
 
@@ -77,13 +78,17 @@ pareadas antes da conexão (`desktop/src/main/connection.ts`, `isPaired` do `fir
 cliente só descobre a chave da recepção ao parear pela rede local.
 
 - Configurações › Armazenamento › Conexão, no computador que guarda os dados: "Conectar
-  computador" e "Conectar celular". Cada um mostra um QR e o mesmo conteúdo em texto
-  (`AURI1:<chave pública do servidor>:<código>`), borrado até clicar (`ui/sensitive.tsx`). Só a
-  chave e o código, nenhum dado de paciente.
-- O celular lê o QR com a câmera, dentro do app. O consultório cola o texto. Os dois pareiam de
-  qualquer rede.
-- Enquanto houver um código válido (5 minutos, uso único, 5 tentativas), o servidor aceita pela DHT
-  uma chave ainda não pareada, só para o `hello` com a prova HMAC. Fora disso, o `firewall` continua
+  computador" e "Conectar celular". O celular pergunta antes quem vai usar (Fono ou Recepção) e
+  mostra um QR, borrado até clicar, com o convite de `desktop/src/main/net/convite.ts`: a chave
+  pública do servidor, o código e os endereços na rede da clínica, nenhum dado de paciente. O
+  computador continua com o código digitado na rede da clínica; o QR ou texto para o consultório de
+  fora fica para depois, e só então o código de computador passa a abrir a DHT.
+- O celular lê o QR com a câmera, dentro do app, e pareia de qualquer rede: tenta os endereços da
+  rede da clínica e, 1,5 s depois (ou logo, se nenhum responder), a DHT pela chave do QR.
+- Enquanto houver um código de celular válido (5 minutos, uso único, 5 tentativas), o servidor aceita
+  pela DHT uma chave ainda não pareada, só para o `hello` com a prova HMAC. A versão só é conferida
+  depois da prova, então quem não tem o código não fica sabendo que há um código nem qual versão
+  vale. Fora disso, o `firewall` continua
   barrando. Achar o servidor pela DHT exige a chave dele, que só está no QR.
 - **Tipo e nível ficam presos ao código**, decididos no computador ao gerá-lo. O aparelho
   não declara o próprio tipo, então não consegue se promover.
@@ -109,7 +114,11 @@ disponível no celular".
 Regras:
 
 - Nas gravações da agenda, o campo de evolução é descartado (mesma regra de `withoutEvolution` em
-  `desktop/src/main/reception.ts`), então o celular nunca escreve evolução, em nenhum nível.
+  `desktop/src/main/reception.ts`), então o celular nunca escreve evolução, em nenhum nível. Pelo
+  mesmo motivo, sessão com evolução não é excluída pelo celular.
+- Os canais de confirmação não passam pelo link curto de `ipc.ts` (`links-curtos.ts`): a mensagem
+  sai sem link curto, como o desenho pede, mas a resposta colada com código curto precisa ser
+  expandida antes de `confirmacoes:receber`. Fica para a etapa 7.
 - No nível Recepção, as respostas passam por `redactEvolution` e `anamneses:get` é recusado, com a
   mesma regra que o computador da recepção já tem.
 - `computador` (quem fez) é preenchido pelo servidor com o nome do aparelho pareado, não pelo que o
@@ -120,14 +129,21 @@ Regras:
 ## Contrato e versões
 
 - O `hello` do desktop exige protocolo e versão do banco iguais, o que funciona porque os
-  computadores atualizam juntos. O celular manda `api: N`, e o servidor aceita de `API_MINIMA` até
-  `API_ATUAL`.
+  computadores atualizam juntos. O celular manda `api: N` e `schema: 0`, e o servidor aceita de
+  `API_MINIMA` até `API_ATUAL` (`desktop/src/main/net/celular.ts`). Quem decide qual regra vale é o
+  tipo gravado (ou o do código, ao parear), não o que o aparelho manda.
+- A recusa por versão leva a faixa aceita, e o app diz quem precisa atualizar: o app, se a versão
+  dele está abaixo da faixa; o computador, se está acima ou se a recusa veio sem faixa.
 - O celular não recebe as linhas do banco: recebe formatos do contrato. Adaptadores em
   `celular.ts` montam esses formatos, então uma migração no desktop não quebra o app instalado.
 - Fixtures por versão do contrato (como em `web/contrato/`) e teste que falha se um formato
   aceito mudar.
-- Servidor mais antigo que o app: o servidor velho ignora `api`, recusa pela versão do banco, e o
-  app mostra "Atualize o Auri do computador que guarda os dados".
+- Servidor mais antigo que o app: o servidor velho ignora `api`, recusa pelo `schema: 0`, e o app
+  mostra "Atualize o Auri do computador que guarda os dados". Por isso o celular nunca manda a versão
+  do banco: um desktop antigo trataria o celular como computador.
+- Os canais de leitura que o app usa hoje e as gravações de sessão e compromisso têm formato fixo na
+  versão 1; os demais canais da lista passam como estão até a etapa do iOS que os usar fixar o
+  formato, antes do primeiro build no TestFlight.
 - Entra nas Code Review Rules como P1, junto do feed de atualização: o desktop não pode deixar de
   aceitar uma versão do app do iPhone ainda em uso.
 

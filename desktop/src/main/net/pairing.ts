@@ -1,4 +1,5 @@
 import { createHmac, randomInt, timingSafeEqual } from 'node:crypto'
+import type { DeviceGrant } from '../../shared/api'
 
 const ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXYZ'
 
@@ -41,24 +42,36 @@ export function proofMatches(expected: Buffer, received: Buffer): boolean {
 }
 
 export type PairingCheck =
-  | { ok: true; code: string }
+  | { ok: true; code: string; grant: DeviceGrant }
   | { ok: false; reason: 'none' | 'expired' | 'wrong' }
+  | { ok: false; reason: 'refused'; grant: DeviceGrant }
 
-export function createPairingCodes(now: () => number = Date.now): {
-  issue(): { code: string; expiresAt: number }
+export type PairingCodes = {
+  issue(grant: DeviceGrant): { code: string; expiresAt: number }
   cancel(): void
-  check(proof: Buffer, handshakeHash: Buffer): PairingCheck
-} {
-  let current: { code: string; expiresAt: number; attempts: number } | null = null
+  active(): DeviceGrant | null
+  check(
+    proof: Buffer,
+    handshakeHash: Buffer,
+    accepts?: (grant: DeviceGrant) => boolean
+  ): PairingCheck
+}
+
+export function createPairingCodes(now: () => number = Date.now): PairingCodes {
+  let current: { code: string; expiresAt: number; attempts: number; grant: DeviceGrant } | null =
+    null
   return {
-    issue() {
-      current = { code: generateCode(), expiresAt: now() + CODE_TTL_MS, attempts: 0 }
+    issue(grant) {
+      current = { code: generateCode(), expiresAt: now() + CODE_TTL_MS, attempts: 0, grant }
       return { code: current.code, expiresAt: current.expiresAt }
     },
     cancel() {
       current = null
     },
-    check(proof, handshakeHash) {
+    active() {
+      return current && now() <= current.expiresAt ? current.grant : null
+    },
+    check(proof, handshakeHash, accepts = () => true) {
       if (!current) return { ok: false, reason: 'none' }
       if (now() > current.expiresAt) {
         current = null
@@ -69,9 +82,10 @@ export function createPairingCodes(now: () => number = Date.now): {
         if (current.attempts >= MAX_ATTEMPTS) current = null
         return { ok: false, reason: 'wrong' }
       }
-      const { code } = current
+      if (!accepts(current.grant)) return { ok: false, reason: 'refused', grant: current.grant }
+      const { code, grant } = current
       current = null
-      return { ok: true, code }
+      return { ok: true, code, grant }
     }
   }
 }

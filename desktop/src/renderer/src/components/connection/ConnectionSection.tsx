@@ -1,6 +1,7 @@
 import { useMutation } from '@tanstack/react-query'
-import { Check, HardDrive, Laptop, Plus, RotateCw } from 'lucide-react'
-import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
+import { Check, HardDrive, Laptop, Plus, RotateCw, Smartphone } from 'lucide-react'
+import QRCode from 'qrcode'
+import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react'
 import { Button } from '@renderer/components/ui/button'
 import { ConfirmAction } from '@renderer/components/ui/confirm-action'
 import { Field, Input } from '@renderer/components/ui/input'
@@ -22,10 +23,12 @@ import { cn } from '@renderer/lib/utils'
 import type {
   ConnectionInfo,
   ConnectionRole,
+  DeviceGrant,
   FoundServer,
   LinkStatus,
   PairedDevice,
   PairingCode,
+  PhoneLevel,
   RemoteReach
 } from '@shared/api'
 
@@ -114,29 +117,147 @@ function RolePicker({ role }: { role: ConnectionRole }): React.JSX.Element {
   )
 }
 
-function PairingPanel({ devices }: { devices: PairedDevice[] }): React.JSX.Element {
-  const [shown, setShown] = useState<{ code: PairingCode; known: string[] } | null>(null)
+const LEVELS: { nivel: PhoneLevel; label: string; description: string }[] = [
+  { nivel: 'fono', label: 'Fono', description: 'Vê a anamnese e as evoluções.' },
+  {
+    nivel: 'recepcao',
+    label: 'Recepção',
+    description: 'Sem anamnese e evoluções, como o computador da recepção.'
+  }
+]
+
+function deviceKind(device: Pick<PairedDevice, 'tipo' | 'nivel'>): string {
+  if (device.tipo === 'computador') return 'Computador'
+  return device.nivel === 'fono' ? 'Celular da fono' : 'Celular da recepção'
+}
+
+function QrCode({ text }: { text: string }): React.JSX.Element {
+  const [shown, setShown] = useState(false)
+  const qr = useMemo(() => {
+    const { modules } = QRCode.create(text, { errorCorrectionLevel: 'M' })
+    let path = ''
+    for (let row = 0; row < modules.size; row++) {
+      for (let col = 0; col < modules.size; col++) {
+        if (modules.get(row, col)) path += `M${col} ${row}h1v1h-1z`
+      }
+    }
+    return { size: modules.size, path }
+  }, [text])
+  return (
+    <button
+      type="button"
+      onClick={() => setShown((current) => !current)}
+      aria-pressed={shown}
+      aria-label={
+        shown ? 'QR code para o celular' : 'QR code para o celular: oculto. Clique para mostrar'
+      }
+      className="relative mt-3 block cursor-pointer overflow-hidden rounded-card bg-white p-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+    >
+      <svg
+        viewBox={`-2 -2 ${qr.size + 4} ${qr.size + 4}`}
+        shapeRendering="crispEdges"
+        aria-hidden="true"
+        className={cn('block size-44 transition-[filter] duration-150', !shown && 'blur-md')}
+      >
+        <path d={qr.path} className="fill-black" />
+      </svg>
+      {!shown && (
+        <span className="absolute inset-0 grid place-items-center">
+          <span className="rounded-full bg-solid px-3 py-1.5 text-[13px] font-medium text-on-solid">
+            Clique para mostrar
+          </span>
+        </span>
+      )}
+    </button>
+  )
+}
+
+function PhoneLevelPicker({
+  pending,
+  onPick,
+  onCancel
+}: {
+  pending: boolean
+  onPick: (nivel: PhoneLevel) => void
+  onCancel: () => void
+}): React.JSX.Element {
+  return (
+    <div className="mt-4 animate-fade-in rounded-card bg-fill p-5">
+      <p className="text-[13px] font-medium">Quem vai usar o celular?</p>
+      <fieldset disabled={pending} className="mt-3 grid grid-cols-2 gap-3">
+        <legend className="sr-only">Quem vai usar o celular</legend>
+        {LEVELS.map(({ nivel, label, description }) => (
+          <button
+            key={nivel}
+            type="button"
+            onClick={() => onPick(nivel)}
+            className="flex flex-col rounded-card bg-surface p-4 text-left transition-colors hover:bg-fill-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-60"
+          >
+            <span className="text-[13px] font-medium">{label}</span>
+            <span className="mt-1 text-xs text-ink-soft">{description}</span>
+          </button>
+        ))}
+      </fieldset>
+      <div className="mt-3 flex justify-end">
+        <Button variant="secondary" onClick={onCancel}>
+          Cancelar
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+function PairingPanel({
+  devices,
+  remoteAccess
+}: {
+  devices: PairedDevice[]
+  remoteAccess: boolean
+}): React.JSX.Element {
+  const [choosing, setChoosing] = useState(false)
+  const [shown, setShown] = useState<{
+    code: PairingCode
+    grant: DeviceGrant
+    known: Map<string, string | null>
+    shownAt: number
+  } | null>(null)
   const toast = useToast()
   const now = useNow(shown !== null)
 
   const create = useMutation({
-    mutationFn: () => window.connection.createCode(),
-    onSuccess: (next) => setShown({ code: next, known: devices.map((d) => d.publicKey) })
+    mutationFn: (grant: DeviceGrant) => window.connection.createCode(grant),
+    onSuccess: (next, grant) => {
+      setChoosing(false)
+      setShown({
+        code: next,
+        grant,
+        known: new Map(devices.map((d) => [d.publicKey, d.pairedAt])),
+        shownAt: Date.now()
+      })
+    }
   })
 
   const cancel = (): void => {
     setShown(null)
+    setChoosing(false)
     void window.connection.cancelCode()
   }
 
-  const added = shown ? devices.find((d) => !shown.known.includes(d.publicKey)) : undefined
-  const remaining = shown ? Math.max(0, Math.ceil((shown.code.expiresAt - now) / 1000)) : 0
-  const code = shown && !added && remaining > 0 ? shown.code : null
+  const added = shown
+    ? devices.find(
+        (d) => !shown.known.has(d.publicKey) || shown.known.get(d.publicKey) !== d.pairedAt
+      )
+    : undefined
+  const remaining = shown
+    ? Math.max(0, Math.ceil((shown.code.expiresAt - Math.max(now, shown.shownAt)) / 1000))
+    : 0
+  const active = shown && !added && remaining > 0 ? shown : null
 
   const addedName = added?.name
+  const addedTitle = added?.tipo === 'celular' ? 'Celular conectado' : 'Computador conectado'
   useEffect(() => {
-    if (addedName) toast({ title: 'Computador conectado', description: addedName })
-  }, [addedName, toast])
+    if (addedName) toast({ title: addedTitle, description: addedName })
+  }, [addedName, addedTitle, toast])
 
   useEffect(() => {
     if (!shown) return
@@ -151,12 +272,34 @@ function PairingPanel({ devices }: { devices: PairedDevice[] }): React.JSX.Eleme
     []
   )
 
-  if (!code) {
+  if (!active && choosing) {
+    return (
+      <>
+        <PhoneLevelPicker
+          pending={create.isPending}
+          onPick={(nivel) => create.mutate({ tipo: 'celular', nivel })}
+          onCancel={() => setChoosing(false)}
+        />
+        {create.error && <ErrorText>{create.error.message}</ErrorText>}
+      </>
+    )
+  }
+
+  if (!active) {
     return (
       <div className="mt-4">
-        <Button variant="secondary" loading={create.isPending} onClick={() => create.mutate()}>
-          <Plus /> Conectar computador
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant="secondary"
+            loading={create.isPending}
+            onClick={() => create.mutate({ tipo: 'computador' })}
+          >
+            <Plus /> Conectar computador
+          </Button>
+          <Button variant="secondary" onClick={() => setChoosing(true)}>
+            <Smartphone /> Conectar celular
+          </Button>
+        </div>
         {create.error && <ErrorText>{create.error.message}</ErrorText>}
       </div>
     )
@@ -164,18 +307,35 @@ function PairingPanel({ devices }: { devices: PairedDevice[] }): React.JSX.Eleme
 
   const minutes = Math.floor(remaining / 60)
   const seconds = String(remaining % 60).padStart(2, '0')
+  const { code, grant } = active
   return (
     <div className="mt-4 animate-fade-in rounded-card bg-fill p-5">
-      <p className="text-xs text-ink-soft">
-        No outro computador, em Armazenamento, escolha “Usar os dados de outro computador”.
-      </p>
-      <Sensitive
-        label="Código de conexão"
-        what="o código"
-        className="mt-3 font-mono text-2xl font-semibold tracking-[0.12em]"
-      >
-        {code.code}
-      </Sensitive>
+      {grant.tipo === 'celular' && code.convite ? (
+        <>
+          <p className="text-xs text-ink-soft">
+            {deviceKind(grant)}: no iPhone, abra o Auri e leia o QR code.
+          </p>
+          <QrCode text={code.convite} />
+          {!remoteAccess && (
+            <p className="mt-3 text-xs text-ink-soft">
+              Fora da clínica, o celular só conecta com “Permitir acesso de fora da clínica” ligado.
+            </p>
+          )}
+        </>
+      ) : (
+        <>
+          <p className="text-xs text-ink-soft">
+            No outro computador, em Armazenamento, escolha “Usar os dados de outro computador”.
+          </p>
+          <Sensitive
+            label="Código de conexão"
+            what="o código"
+            className="mt-3 font-mono text-2xl font-semibold tracking-[0.12em]"
+          >
+            {code.code}
+          </Sensitive>
+        </>
+      )}
       <div className="mt-3 flex items-center justify-between gap-4">
         <span className="text-xs text-ink-soft tabular-nums">
           Vale por {minutes}:{seconds} e uma vez só.
@@ -195,11 +355,9 @@ function DeviceList({ devices }: { devices: PairedDevice[] }): React.JSX.Element
     onSuccess: () => setConfirming(null)
   })
   return (
-    <SettingsGroup label="Computadores conectados">
+    <SettingsGroup label="Aparelhos conectados">
       {devices.length === 0 && (
-        <GroupText>
-          Nenhum ainda. Use “Conectar computador” e digite o código no outro computador.
-        </GroupText>
+        <GroupText>Nenhum ainda. Use “Conectar computador” ou “Conectar celular”.</GroupText>
       )}
       {devices.length > 0 && (
         <ul className="flex flex-col gap-3">
@@ -211,6 +369,7 @@ function DeviceList({ devices }: { devices: PairedDevice[] }): React.JSX.Element
               <div className="min-w-0 flex-1">
                 <p className="truncate text-[13px] font-medium">{device.name}</p>
                 <p className="text-xs text-ink-soft">
+                  {deviceKind(device)} ·{' '}
                   {device.online
                     ? 'Conectado agora'
                     : device.lastSeen
@@ -281,7 +440,7 @@ function ServerSection({ info }: { info: ConnectionInfo }): React.JSX.Element {
               )}
               {!isMac && 'Se o Windows perguntar, permita em redes privadas.'}
             </p>
-            <PairingPanel devices={info.devices} />
+            <PairingPanel devices={info.devices} remoteAccess={info.remoteAccess} />
           </>
         )}
       </SettingsGroup>

@@ -70,7 +70,7 @@ function withoutEvolution(args: unknown[], index: number): unknown[] {
   return args.map((arg, i) => (i === index ? rest : arg))
 }
 
-function restrictArgs(channel: string, args: unknown[]): unknown[] {
+export function restrictArgs(channel: string, args: unknown[]): unknown[] {
   switch (channel) {
     case 'appointments:create':
       return withoutEvolution(args, 0)

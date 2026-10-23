@@ -44,9 +44,10 @@ precisa de comentário.
   arquivo de estado ou de configuração gravado direto, sem temporário e troca (como em
   `desktop/src/main/atomic-file.ts`), cópia de segurança que pode sair incompleta ou sem cifra,
   restauração que sobrescreve sem conferir.
-- Computador da recepção chegando à anamnese ou à evolução por qualquer caminho: IPC, conexão entre
-  computadores, PDF, exportação, busca.
-- Conexão entre computadores (`desktop/src/main/net/`) aceitando quem não foi pareado.
+- Computador ou celular da recepção chegando à anamnese ou à evolução por qualquer caminho: IPC,
+  conexão entre computadores, PDF, exportação, busca.
+- Conexão entre computadores (`desktop/src/main/net/`) aceitando quem não foi pareado, ou celular
+  passando por canal fora da lista de `desktop/src/main/net/celular.ts`.
 - Canal IPC sem validação da entrada ou sem `assertTrustedSender`.
 
 **P1**
@@ -55,6 +56,9 @@ precisa de comentário.
 - Duas sessões sobrepostas na agenda (`assertSlotFree`).
 - Site, API ou feed de atualização que deixa de aceitar versões antigas do app ainda instaladas
   (`web/contrato/`, `web/src/feed.ts`, `latest.yml`/`alpha.yml`).
+- Desktop que deixa de atender uma versão do app do iPhone ainda em uso: `API_MINIMA` subindo,
+  formato do contrato mudando sem adaptador ou canal que o app usa saindo da lista do celular
+  (`desktop/src/main/net/celular.ts`, `ios/Tests/Contrato/`).
 - Atualização ou release apontando para versão, canal ou arquivo errado (`desktop/src/main/updates.ts`,
   `desktop/scripts/release/`, `desktop/electron-builder.yml`, `.github/workflows/release.yml`).
 - Workflow com segredo exposto, `permissions` além do necessário, ação sem SHA fixado ou migração do Neon

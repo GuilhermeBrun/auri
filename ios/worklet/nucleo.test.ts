@@ -1,10 +1,10 @@
 import test from 'brittle'
 import { randomBytes } from 'node:crypto'
-import { lerConvite, escreverConvite } from './convite'
-import { criarNucleo, type Saida } from './nucleo'
-import contratoGravado from '../Tests/Contrato/contrato.json'
+import { escreverConvite, lerConvite } from '../../desktop/src/main/net/convite'
+import { API, criarNucleo, type Saida } from './nucleo'
+import contratoGravado from '../Tests/Contrato/contrato-v1.json'
 
-const [conviteDaRecepcao, conviteDoOutro, bootstrapTexto, modo, conviteDoAntigo] =
+const [conviteDaRecepcao, conviteDoOutro, bootstrapTexto, modo, conviteDoAntigo, conviteDoNovo] =
   Bare.argv.slice(2)
 const bootstrap = bootstrapTexto.split(',').map((endereco) => {
   const [host, port] = endereco.split(':')
@@ -84,6 +84,7 @@ function proximo(diaDaSemana: number): Date {
 const recepcao = lerConvite(conviteDaRecepcao)!
 const outro = lerConvite(conviteDoOutro)!
 const iphone = cliente()
+const celularDaRecepcao = cliente()
 
 test('recusa QR code que não é do Auri', async (t) => {
   const resposta = await iphone.pedir({ t: 'parear', qr: 'https://exemplo.com.br' })
@@ -93,12 +94,14 @@ test('recusa QR code que não é do Auri', async (t) => {
 test('recusa código errado', async (t) => {
   const qr = escreverConvite({ ...recepcao, codigo: 'ZZZZZZZZZZZZ' })
   const resposta = await iphone.pedir({ t: 'parear', qr })
-  t.is(resposta.ok, false)
-  t.ok(!resposta.ok && resposta.error.startsWith('Código incorreto'))
+  t.alike(resposta, {
+    ok: false,
+    error: 'Este QR code não vale mais. Gere outro no computador.'
+  })
 })
 
-test('recusa computador que não é o do QR code', async (t) => {
-  const qr = escreverConvite({ ...outro, chave: recepcao.chave })
+test('recusa computador que não é o do QR code, sem gastar o código dele', async (t) => {
+  const qr = escreverConvite({ ...outro, chave: randomBytes(32).toString('hex') })
   const resposta = await iphone.pedir({ t: 'parear', qr })
   t.is(resposta.ok, false)
   t.ok(!resposta.ok && resposta.error.includes('não é o do QR code'))
@@ -169,7 +172,7 @@ test('o desktop responde no formato que o app do iPhone lê', async (t) => {
     atual[canal] = Array.isArray(dados) ? dados.slice(0, 1) : dados
   }
   if (modo === 'gravar') {
-    console.log(`CONTRATO ${JSON.stringify(atual)}`)
+    console.log(`CONTRATO ${API} ${JSON.stringify(atual)}`)
     return
   }
   const faltas: string[] = []
@@ -230,12 +233,64 @@ test('volta sozinho quando a conexão cai', async (t) => {
   t.ok(etiquetas.ok)
 })
 
-test('recusa computador com outra versão do Auri', async (t) => {
+test('computador antigo, que não conhece o celular: pede para atualizar o computador', async (t) => {
   const outroIphone = cliente()
   const resposta = await outroIphone.pedir({ t: 'parear', qr: conviteDoAntigo })
-  t.is(resposta.ok, false)
-  t.ok(!resposta.ok && resposta.error.includes('versões diferentes'))
+  t.alike(resposta, {
+    ok: false,
+    error: 'Atualize o Auri do computador que guarda os dados.'
+  })
   await outroIphone.nucleo.fechar()
+})
+
+test('computador que não aceita mais esta versão do app: pede para atualizar o app', async (t) => {
+  const outroIphone = cliente()
+  const resposta = await outroIphone.pedir({ t: 'parear', qr: conviteDoNovo })
+  t.alike(resposta, {
+    ok: false,
+    error: 'Este app do Auri ficou desatualizado. Atualize o Auri do iPhone.'
+  })
+  await outroIphone.nucleo.fechar()
+})
+
+test('pareia pela internet, fora da rede da clínica', async (t) => {
+  const qr = escreverConvite({ ...outro, enderecos: [] })
+  const resposta = await celularDaRecepcao.pedir({ t: 'parear', qr })
+  t.ok(resposta.ok)
+  const servidor = resposta.ok ? (resposta.data as { chave: string }) : null
+  t.is(servidor?.chave, outro.chave)
+})
+
+test('o celular da recepção não abre anamnese nem evolução, e só usa a lista dele', async (t) => {
+  celularDaRecepcao.nucleo.receber({
+    t: 'conectar',
+    servidor: { chave: outro.chave, nome: 'Outro computador', enderecos: [] }
+  })
+  await celularDaRecepcao.esperar((s) => s.t === 'estado' && s.status === 'connected')
+  const anamnese = await celularDaRecepcao.pedir({
+    t: 'operacao',
+    canal: 'anamneses:get',
+    args: [1]
+  })
+  t.alike(anamnese, {
+    ok: false,
+    error: 'Este celular é da recepção: a anamnese e as evoluções não abrem nele.'
+  })
+  const sessoes = await celularDaRecepcao.pedir({
+    t: 'operacao',
+    canal: 'appointments:listRange',
+    args: ['2020-01-01T00:00', '2040-01-01T00:00']
+  })
+  const evolucoes = sessoes.ok ? (sessoes.data as { evolucao: string }[]) : []
+  t.ok(evolucoes.length > 0)
+  t.ok(evolucoes.every((sessao) => sessao.evolucao === ''))
+  const cadastro = await celularDaRecepcao.pedir({
+    t: 'operacao',
+    canal: 'patients:create',
+    args: [{ nome: 'Paciente Fictício' }]
+  })
+  t.alike(cadastro, { ok: false, error: 'Não disponível no celular.' })
+  await celularDaRecepcao.nucleo.fechar()
 })
 
 test('iPhone removido na recepção não recebe mais nada, por nenhum caminho', async (t) => {

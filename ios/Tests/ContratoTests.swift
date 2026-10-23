@@ -4,7 +4,7 @@ import XCTest
 
 final class ContratoTests: XCTestCase {
   private func contrato() throws -> JSONValor {
-    let arquivo = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "contrato", withExtension: "json"))
+    let arquivo = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "contrato-v1", withExtension: "json"))
     return try JSONDecoder().decode(JSONValor.self, from: Data(contentsOf: arquivo))
   }
 

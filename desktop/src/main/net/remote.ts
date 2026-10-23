@@ -1,6 +1,7 @@
 import type SecretStream from '@hyperswarm/secret-stream'
 import DHT from 'hyperdht'
 import type { RemoteReach } from '../../shared/api'
+import type { PairingCodes } from './pairing'
 import type { KeyPair } from './server'
 
 export type Bootstrap = { host: string; port: number }[]
@@ -16,6 +17,7 @@ function reachOf(dht: DHT): RemoteReach {
 export function createRemoteListener(options: {
   keyPair: KeyPair
   isPaired: (publicKey: string) => boolean
+  codes: Pick<PairingCodes, 'active'>
   attach: (stream: SecretStream) => void
   onReach: (reach: RemoteReach) => void
   bootstrap?: Bootstrap
@@ -35,7 +37,10 @@ export function createRemoteListener(options: {
     const node = new DHT({ bootstrap: options.bootstrap })
     dht = node
     const server = node.createServer(
-      { firewall: (remote) => !options.isPaired(remote.toString('hex')) },
+      {
+        firewall: (remote) =>
+          !options.isPaired(remote.toString('hex')) && options.codes.active()?.tipo !== 'celular'
+      },
       (socket) => options.attach(socket)
     )
     try {

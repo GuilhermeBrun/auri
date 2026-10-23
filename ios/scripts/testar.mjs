@@ -29,10 +29,11 @@ function subir(porta, env) {
 
 let status = 1
 try {
-  const [recepcao, outro, antigo] = await Promise.all([
+  const [recepcao, outro, antigo, novo] = await Promise.all([
     subir(47491, { AURI_AVISO: '1' }),
-    subir(47492, { AURI_VAZIO: '1', AURI_NOME: 'Outro computador' }),
-    subir(47493, { AURI_VAZIO: '1', AURI_NOME: 'Computador antigo', AURI_VERSAO: '1' })
+    subir(47492, { AURI_NOME: 'Outro computador', AURI_NIVEL: 'recepcao' }),
+    subir(47493, { AURI_VAZIO: '1', AURI_NOME: 'Computador antigo', AURI_TIPO: 'computador' }),
+    subir(47494, { AURI_VAZIO: '1', AURI_NOME: 'Computador novo', AURI_API: '1000' })
   ])
   const gravar = process.argv.includes('--gravar')
   status = await new Promise((resolve) => {
@@ -42,7 +43,8 @@ try {
       outro,
       bootstrap,
       gravar ? 'gravar' : 'conferir',
-      antigo
+      antigo,
+      novo
     ]
     const bare = spawn(`${raiz}node_modules/.bin/bare`, argumentos, {
       cwd: raiz,
@@ -54,13 +56,11 @@ try {
       process.stdout.write(dados)
     })
     bare.on('exit', (codigo) => {
-      const contrato = saida.match(/^CONTRATO (.+)$/m)
+      const contrato = saida.match(/^CONTRATO (\d+) (.+)$/m)
       if (gravar && contrato) {
-        writeFileSync(
-          `${raiz}Tests/Contrato/contrato.json`,
-          JSON.stringify(JSON.parse(contrato[1]), null, 2) + '\n'
-        )
-        console.log('Tests/Contrato/contrato.json gravado.')
+        const arquivo = `Tests/Contrato/contrato-v${contrato[1]}.json`
+        writeFileSync(`${raiz}${arquivo}`, JSON.stringify(JSON.parse(contrato[2]), null, 2) + '\n')
+        console.log(`${arquivo} gravado.`)
       }
       resolve(codigo ?? 1)
     })
