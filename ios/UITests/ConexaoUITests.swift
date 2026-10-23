@@ -326,7 +326,8 @@ final class ConexaoUITests: XCTestCase {
       return adicionarWidget(tamanho)
     }
     tocar(busca, "busca de widgets")
-    busca.typeText("Auri")
+    XCTAssertTrue(springboard.keyboards.firstMatch.waitForExistence(timeout: 5), "o teclado da busca não abriu")
+    springboard.typeText("Auri")
     tocar(springboard.cells.containing(NSPredicate(format: "label CONTAINS %@", "Auri")).firstMatch, "Auri na galeria")
     sleep(1)
     for _ in 0..<(["Small": 0, "Medium": 1, "Large": 2][tamanho] ?? 0) {

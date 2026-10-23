@@ -162,11 +162,14 @@ private struct LinhaDoTempo: View {
                 )
                 .contentShape(.rect)
                 .contentShape(.accessibility, .rect)
-                .accessibilityElement(children: .combine)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(
+                  "\(item.evento.titulo), \(item.evento.inicio.hora) – \(item.evento.fim.hora)"
+                )
                 .accessibilityAddTraits(.isButton)
                 .offset(
                   x: margem + largura / CGFloat(item.total) * CGFloat(item.coluna),
-                  y: topo + posicao(de: item.evento.inicio)
+                  y: topo + posicao(de: item.evento.inicio) + 1
                 )
                 .onTapGesture { abrirEvento(item.evento) }
             }
@@ -202,31 +205,51 @@ private struct LinhaDoTempo: View {
   }
 
   private func altura(de evento: Evento) -> CGFloat {
-    CGFloat(evento.fim.timeIntervalSince(evento.inicio) / 3600) * alturaDaHora - 2
+    CGFloat(evento.fim.timeIntervalSince(evento.inicio) / 3600) * alturaDaHora - 3
   }
 }
 
 private struct BlocoDoEvento: View {
   let evento: Evento
 
+  @Environment(\.colorScheme) private var esquema
+
   var body: some View {
     let cor = Color(hex: evento.cor)
-    HStack(spacing: 0) {
-      Rectangle().fill(cor).frame(width: 4)
-      VStack(alignment: .leading, spacing: 1) {
-        Text(evento.titulo)
-          .font(.caption.weight(.semibold))
-        Text("\(evento.inicio.hora) – \(evento.fim.hora)")
-          .font(.caption2)
-          .foregroundStyle(.secondary)
+    let curta = evento.fim.timeIntervalSince(evento.inicio) < 45 * 60
+    HStack(alignment: .top, spacing: 6) {
+      Capsule()
+        .fill(cor)
+        .frame(width: 4)
+        .frame(maxHeight: .infinity)
+        .padding(.vertical, 3)
+      Group {
+        if curta {
+          HStack(spacing: 6) {
+            Text(evento.titulo)
+              .font(.subheadline.weight(.semibold))
+            Text(evento.inicio.hora)
+              .font(.caption)
+              .foregroundStyle(.secondary)
+          }
+        } else {
+          VStack(alignment: .leading, spacing: 1) {
+            Text(evento.titulo)
+              .font(.subheadline.weight(.semibold))
+            Text("\(evento.inicio.hora) – \(evento.fim.hora)")
+              .font(.caption)
+              .foregroundStyle(.secondary)
+          }
+        }
       }
       .lineLimit(1)
-      .padding(.horizontal, 6)
-      .padding(.vertical, 3)
+      .padding(.vertical, 4)
       Spacer(minLength: 0)
     }
+    .padding(.leading, 3)
+    .padding(.trailing, 6)
     .frame(maxHeight: .infinity, alignment: .top)
-    .background(cor.opacity(0.2))
+    .background(cor.opacity(esquema == .dark ? 0.3 : 0.16))
     .clipShape(.rect(cornerRadius: 6))
   }
 }
