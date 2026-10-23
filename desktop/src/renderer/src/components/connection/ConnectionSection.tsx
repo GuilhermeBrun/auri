@@ -219,6 +219,7 @@ function PairingPanel({
     code: PairingCode
     grant: DeviceGrant
     known: string[]
+    shownAt: number
   } | null>(null)
   const toast = useToast()
   const now = useNow(shown !== null)
@@ -227,7 +228,12 @@ function PairingPanel({
     mutationFn: (grant: DeviceGrant) => window.connection.createCode(grant),
     onSuccess: (next, grant) => {
       setChoosing(false)
-      setShown({ code: next, grant, known: devices.map((d) => d.publicKey) })
+      setShown({
+        code: next,
+        grant,
+        known: devices.map((d) => d.publicKey),
+        shownAt: Date.now()
+      })
     }
   })
 
@@ -238,7 +244,9 @@ function PairingPanel({
   }
 
   const added = shown ? devices.find((d) => !shown.known.includes(d.publicKey)) : undefined
-  const remaining = shown ? Math.max(0, Math.ceil((shown.code.expiresAt - now) / 1000)) : 0
+  const remaining = shown
+    ? Math.max(0, Math.ceil((shown.code.expiresAt - Math.max(now, shown.shownAt)) / 1000))
+    : 0
   const active = shown && !added && remaining > 0 ? shown : null
 
   const addedName = added?.name
