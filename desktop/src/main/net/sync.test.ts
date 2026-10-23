@@ -38,9 +38,13 @@ describe('código de pareamento', () => {
 
   it('confere a prova uma vez só', () => {
     const codes = createPairingCodes()
-    const { code } = codes.issue()
+    const { code } = codes.issue({ tipo: 'computador' })
     const hash = Buffer.alloc(32, 7)
-    expect(codes.check(pairingProof(code, 'client', hash), hash)).toEqual({ ok: true, code })
+    expect(codes.check(pairingProof(code, 'client', hash), hash)).toEqual({
+      ok: true,
+      code,
+      grant: { tipo: 'computador' }
+    })
     expect(codes.check(pairingProof(code, 'client', hash), hash)).toEqual({
       ok: false,
       reason: 'none'
@@ -49,7 +53,7 @@ describe('código de pareamento', () => {
 
   it('recusa prova de outra conexão, do lado errado ou com código errado', () => {
     const codes = createPairingCodes()
-    const { code } = codes.issue()
+    const { code } = codes.issue({ tipo: 'computador' })
     const hash = Buffer.alloc(32, 7)
     const other = Buffer.alloc(32, 8)
     expect(codes.check(pairingProof(code, 'client', other), hash).ok).toBe(false)
@@ -60,7 +64,7 @@ describe('código de pareamento', () => {
 
   it(`descarta o código depois de ${MAX_ATTEMPTS} erros`, () => {
     const codes = createPairingCodes()
-    const { code } = codes.issue()
+    const { code } = codes.issue({ tipo: 'computador' })
     const hash = Buffer.alloc(32, 7)
     for (let i = 0; i < MAX_ATTEMPTS; i++) {
       expect(codes.check(pairingProof('X', 'client', hash), hash)).toEqual({
@@ -74,7 +78,7 @@ describe('código de pareamento', () => {
   it('vence', () => {
     let now = 0
     const codes = createPairingCodes(() => now)
-    const { code } = codes.issue()
+    const { code } = codes.issue({ tipo: 'computador' })
     now = CODE_TTL_MS + 1
     const hash = Buffer.alloc(32, 7)
     expect(codes.check(pairingProof(code, 'client', hash), hash)).toEqual({
@@ -104,7 +108,8 @@ describe('servidor e cliente', () => {
       keyPair: serverKeys,
       name: () => 'Recepção',
       schemaVersion: SCHEMA_VERSION,
-      isPaired: (key) => paired.has(key),
+      api: { min: 1, max: 1 },
+      device: (key) => (paired.has(key) ? { tipo: 'computador' } : null),
       codes,
       onPaired: ({ publicKey, name }) => paired.set(publicKey, name),
       onPresence: (key, online) => presence.push(`${online ? '+' : '-'}${paired.get(key)}`),
@@ -112,8 +117,8 @@ describe('servidor e cliente', () => {
         runOperation(db, channel, args, (topics, draft) =>
           server.broadcast(
             topics,
-            draft ? { ...draft, autor: paired.get(peer) ?? 'Outro' } : undefined,
-            peer
+            draft ? { ...draft, autor: paired.get(peer.publicKey) ?? 'Outro' } : undefined,
+            peer.publicKey
           )
         )
     })
@@ -130,7 +135,7 @@ describe('servidor e cliente', () => {
     return pairWithServer({
       keyPair,
       name: 'Consultório',
-      schemaVersion: SCHEMA_VERSION,
+      version: { schema: SCHEMA_VERSION },
       address: { host: '127.0.0.1', port },
       code
     })
@@ -148,7 +153,7 @@ describe('servidor e cliente', () => {
     const client = createSyncClient({
       keyPair: options.keyPair ?? clientKeys,
       name: () => 'Consultório',
-      schemaVersion: options.schemaVersion ?? SCHEMA_VERSION,
+      version: { schema: options.schemaVersion ?? SCHEMA_VERSION },
       serverKey: serverKeys.publicKey.toString('hex'),
       serverName: 'Recepção',
       addresses: async () => [{ host: '127.0.0.1', port }],
@@ -163,7 +168,7 @@ describe('servidor e cliente', () => {
   }
 
   it('pareia com o código e depois usa os dados do servidor', async () => {
-    const { code } = codes.issue()
+    const { code } = codes.issue({ tipo: 'computador' })
     const result = await pair(formatCode(code).toLowerCase())
     expect(result).toEqual({ publicKey: serverKeys.publicKey.toString('hex'), name: 'Recepção' })
     expect(paired.get(clientKeys.publicKey.toString('hex'))).toBe('Consultório')
@@ -213,7 +218,7 @@ describe('servidor e cliente', () => {
   })
 
   it('recusa código errado e computador não pareado', async () => {
-    codes.issue()
+    codes.issue({ tipo: 'computador' })
     await expect(pair('0000 0000 0000')).rejects.toThrow('Código incorreto')
 
     const { client, statuses } = connect()
@@ -290,7 +295,7 @@ describe('servidor e cliente', () => {
     const client = createSyncClient({
       keyPair: clientKeys,
       name: () => 'Consultório',
-      schemaVersion: SCHEMA_VERSION,
+      version: { schema: SCHEMA_VERSION },
       serverKey: impostor.publicKey.toString('hex'),
       serverName: 'Recepção',
       addresses: async () => [{ host: '127.0.0.1', port }],

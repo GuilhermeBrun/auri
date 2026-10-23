@@ -248,7 +248,7 @@ export function removeAppointment(db: Db, id: number, protegerEvolucao = false):
       | undefined
     if (row?.evolucao) {
       throw new Error(
-        'Esta sessão tem evolução registrada e não pode ser excluída no computador da recepção.'
+        'Esta sessão tem evolução registrada e só pode ser excluída no computador do consultório.'
       )
     }
   }

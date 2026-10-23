@@ -60,10 +60,10 @@ Precisa do Xcode e do XcodeGen (`brew install xcodegen`).
 cd ios
 npm install
 npm run preparar   # empacota o worklet, liga os addons nativos, baixa o BareKit e gera o Auri.xcodeproj
-npm run servidor   # computador de teste: as operações do desktop num banco em memória com pacientes e sessões fictícios; mostra o QR code (e grava build/qrcode.png) e o convite em texto
+npm run servidor   # computador de teste: as operações e o pareamento do desktop num banco em memória com pacientes e sessões fictícios; mostra o QR code de celular da fono (e grava build/qrcode.png) e o convite em texto
 npm run check      # formato, lint e tipos do worklet (oxfmt e oxlint com a configuração do desktop)
-npm run teste      # o cliente do iPhone no runtime Bare contra computadores de teste numa DHT local: pareamento, regras da agenda, avisos, queda, versão diferente, aparelho removido e o contrato
-npm run contrato   # grava de novo Tests/Contrato/contrato.json quando a resposta do desktop muda de propósito
+npm run teste      # o cliente do iPhone no runtime Bare contra computadores de teste numa DHT local: pareamento pela rede e pela internet, nível Recepção, regras da agenda, avisos, queda, versões, aparelho removido e o contrato
+npm run contrato   # grava de novo Tests/Contrato/contrato-vN.json da versão do app (API em worklet/nucleo.ts); só enquanto essa versão não foi publicada
 npm run testes:swift   # testes em Swift (modelos, contrato, regras da agenda, resumo dos widgets sem nomes)
 npm run formato:swift  # swift-format com a configuração de ios/.swift-format
 npm run telas      # testes de interface no simulador, com auditoria de acessibilidade; capturas em build/telas/

@@ -35,6 +35,7 @@ describe('acesso de fora da clínica', () => {
   const strangerKeys = SecretStream.keyPair()
   const paired = new Set([clientKeys.publicKey.toString('hex')])
   const dialers: ReturnType<typeof createRemoteDialer>[] = []
+  const codes = createPairingCodes()
 
   beforeAll(async () => {
     testnet = await createTestnet(3)
@@ -44,8 +45,9 @@ describe('acesso de fora da clínica', () => {
       keyPair: serverKeys,
       name: () => 'Recepção',
       schemaVersion: SCHEMA_VERSION,
-      isPaired: (key) => paired.has(key),
-      codes: createPairingCodes(),
+      api: { min: 1, max: 1 },
+      device: (key) => (paired.has(key) ? { tipo: 'computador' } : null),
+      codes,
       onPaired: () => {},
       onPresence: () => {},
       handle: (channel, args) =>
@@ -54,6 +56,7 @@ describe('acesso de fora da clínica', () => {
     listener = createRemoteListener({
       keyPair: serverKeys,
       isPaired: (key) => paired.has(key),
+      codes,
       attach: server.attach,
       onReach: (r) => reach.push(r),
       bootstrap
@@ -86,7 +89,7 @@ describe('acesso de fora da clínica', () => {
     const client = createSyncClient({
       keyPair: clientKeys,
       name: () => 'Consultório',
-      schemaVersion: SCHEMA_VERSION,
+      version: { schema: SCHEMA_VERSION },
       serverKey: serverKeys.publicKey.toString('hex'),
       serverName: 'Recepção',
       addresses: async () => [],
@@ -115,7 +118,7 @@ describe('acesso de fora da clínica', () => {
       serverKey: serverKeys.publicKey.toString('hex'),
       serverName: 'Recepção',
       name: 'Consultório',
-      schemaVersion: SCHEMA_VERSION
+      version: { schema: SCHEMA_VERSION }
     })
     expect(result).toMatchObject({ ok: true })
   }, 30_000)
@@ -127,7 +130,7 @@ describe('acesso de fora da clínica', () => {
       serverKey: serverKeys.publicKey.toString('hex'),
       serverName: 'Recepção',
       name: 'Estranho',
-      schemaVersion: SCHEMA_VERSION
+      version: { schema: SCHEMA_VERSION }
     })
     expect(result.ok).toBe(false)
   }, 40_000)

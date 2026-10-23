@@ -1,17 +1,31 @@
 import { networkInterfaces } from 'node:os'
 import SecretStream from '@hyperswarm/secret-stream'
 import QRCode from 'qrcode'
+import type { DeviceGrant, IpcResult } from '../../desktop/src/shared/api'
 import { emptyPatientInput } from '../../desktop/src/shared/schemas'
 import { openDatabase } from '../../desktop/src/main/db/connection'
 import { SCHEMA_VERSION } from '../../desktop/src/main/db/migrations'
+import {
+  API_ATUAL,
+  API_MINIMA,
+  callAsDevice,
+  type DeviceRecord
+} from '../../desktop/src/main/net/celular'
+import { escreverConvite } from '../../desktop/src/main/net/convite'
 import { createPairingCodes } from '../../desktop/src/main/net/pairing'
 import { createRemoteListener } from '../../desktop/src/main/net/remote'
 import { createSyncServer } from '../../desktop/src/main/net/server'
 import { runOperation } from '../../desktop/src/main/operations'
-import { escreverConvite } from '../worklet/convite'
 
 const PORTA = Number(process.argv[2] ?? 47391)
 const NOME = process.env.AURI_NOME ?? 'Recepção de teste'
+const CODIGO: DeviceGrant =
+  process.env.AURI_TIPO === 'computador'
+    ? { tipo: 'computador' }
+    : { tipo: 'celular', nivel: process.env.AURI_NIVEL === 'recepcao' ? 'recepcao' : 'fono' }
+const API = process.env.AURI_API
+  ? { min: Number(process.env.AURI_API), max: Number(process.env.AURI_API) }
+  : { min: API_MINIMA, max: API_ATUAL }
 const BOOTSTRAP = process.env.AURI_BOOTSTRAP?.split(',').map((endereco) => {
   const [host, port] = endereco.split(':')
   return { host, port: Number(port) }
@@ -125,30 +139,38 @@ if (pacientes.length > 0)
   })
 
 const keyPair = SecretStream.keyPair()
-const pareados = new Set<string>()
+const pareados = new Map<string, DeviceRecord>()
 const codes = createPairingCodes()
 
 const server = createSyncServer({
   keyPair,
   name: () => NOME,
-  schemaVersion: Number(process.env.AURI_VERSAO ?? SCHEMA_VERSION),
-  isPaired: (chave) => pareados.has(chave),
+  schemaVersion: SCHEMA_VERSION,
+  api: API,
+  device: (chave) => pareados.get(chave) ?? null,
   codes,
-  onPaired: ({ publicKey, name }) => {
-    pareados.add(publicKey)
-    console.log(`pareado: ${name} (${publicKey.slice(0, 8)}…)`)
+  onPaired: ({ publicKey, name, ...grant }) => {
+    const nivel = grant.tipo === 'celular' ? grant.nivel : null
+    pareados.set(publicKey, { name, tipo: grant.tipo, nivel })
+    console.log(`pareado: ${name}, ${grant.tipo} ${nivel ?? ''} (${publicKey.slice(0, 8)}…)`)
   },
   onPresence: (chave, online) => console.log(`${chave.slice(0, 8)}… ${online ? 'entrou' : 'saiu'}`),
   handle: (canal, args, peer) => {
     console.log(`pedido: ${canal}`)
     if (canal === 'teste:derrubar' || canal === 'teste:remover') {
-      if (canal === 'teste:remover') pareados.delete(peer)
-      setTimeout(() => server.disconnect(peer), 100)
+      if (canal === 'teste:remover') pareados.delete(peer.publicKey)
+      setTimeout(() => server.disconnect(peer.publicKey), 100)
       return { ok: true, data: null }
     }
-    const resultado = runOperation(db, canal, args, (topics, aviso) =>
-      server.broadcast(topics, aviso ? { ...aviso, autor: 'iPhone' } : undefined, peer)
-    )
+    const operar = (c: string, a: unknown[]): IpcResult<unknown> =>
+      runOperation(db, c, a, (topics, aviso) =>
+        server.broadcast(
+          topics,
+          aviso ? { ...aviso, autor: pareados.get(peer.publicKey)?.name ?? 'iPhone' } : undefined,
+          peer.publicKey
+        )
+      )
+    const resultado = callAsDevice(operar, pareados.get(peer.publicKey), peer, canal, args)
     if (process.env.AURI_AVISO && canal === 'appointments:create' && resultado.ok) {
       setTimeout(mudarPelaRecepcao, 5_000)
     }
@@ -190,12 +212,13 @@ async function main(): Promise<void> {
   createRemoteListener({
     keyPair,
     isPaired: (chave) => pareados.has(chave),
+    codes,
     attach: server.attach,
     onReach: (alcance) => console.log(`pela internet: ${alcance}`),
     bootstrap: BOOTSTRAP
   })
 
-  const { code } = codes.issue()
+  const { code } = codes.issue(CODIGO)
   const convite = escreverConvite({
     chave: keyPair.publicKey.toString('hex'),
     codigo: code,
@@ -203,7 +226,9 @@ async function main(): Promise<void> {
   })
   console.log(await QRCode.toString(convite, { type: 'terminal', small: true }))
   await QRCode.toFile('build/qrcode.png', convite, { width: 480 })
-  console.log(`porta ${porta}, versão do banco ${SCHEMA_VERSION}, QR code válido por 5 minutos`)
+  const nivel = CODIGO.tipo === 'celular' ? ` (${CODIGO.nivel})` : ''
+  console.log(`porta ${porta}, código de ${CODIGO.tipo}${nivel}, api ${API.min} a ${API.max}`)
+  console.log('QR code válido por 5 minutos')
   console.log(`${pacientes.length} pacientes fictícios`)
   console.log(`convite ${convite}`)
 }

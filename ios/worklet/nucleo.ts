@@ -1,16 +1,105 @@
 import SecretStream from '@hyperswarm/secret-stream'
 import { z } from 'zod'
 import type { DataTopic, IpcResult, LinkVia, RemoteProbe } from '../../desktop/src/shared/api'
-import { SCHEMA_VERSION } from '../../desktop/src/main/db/migrations'
 import {
   createSyncClient,
   pairWithServer,
+  PairingError,
   probeServer,
   type ClientStatus
 } from '../../desktop/src/main/net/client'
+import { lerConvite } from '../../desktop/src/main/net/convite'
+import type { ApiRange } from '../../desktop/src/main/net/protocol'
 import { createRemoteDialer, type Bootstrap } from '../../desktop/src/main/net/remote'
 import { noticeText } from '../../desktop/src/shared/agenda-notice'
-import { lerConvite } from './convite'
+
+export const API = 1
+
+const VERSAO = { api: API }
+
+const ESPERA_DA_INTERNET_MS = 1_500
+
+type Atualizar = 'app' | 'computador'
+
+function quemAtualiza(aceita: ApiRange | null): Atualizar {
+  return aceita && API < aceita.min ? 'app' : 'computador'
+}
+
+const ATUALIZE: Record<Atualizar, string> = {
+  app: 'Este app do Auri ficou desatualizado. Atualize o Auri do iPhone.',
+  computador: 'Atualize o Auri do computador que guarda os dados.'
+}
+
+const SEM_CAMINHO =
+  'Não foi possível chegar ao computador. Confira se o Auri está aberto nele, com o ' +
+  'compartilhamento e o acesso de fora da clínica ligados.'
+
+const OUTRO_COMPUTADOR =
+  'O computador que respondeu não é o do QR code. Gere outro QR code e tente de novo.'
+
+function motivoDoPareamento(erro: unknown): string {
+  if (!(erro instanceof PairingError)) return SEM_CAMINHO
+  switch (erro.reason) {
+    case 'version':
+      return ATUALIZE[quemAtualiza(erro.accepted)]
+    case 'code-none':
+    case 'code-wrong':
+      return 'Este QR code não vale mais. Gere outro no computador.'
+    case 'code-expired':
+      return 'O QR code venceu. Gere outro no computador.'
+    case 'other-server':
+      return OUTRO_COMPUTADOR
+    case 'unreachable':
+      return SEM_CAMINHO
+    default:
+      return 'O computador recusou a conexão. Gere outro QR code e tente de novo.'
+  }
+}
+
+const decisivo = (erro: unknown): boolean =>
+  erro instanceof PairingError && erro.reason !== 'unreachable' && erro.reason !== 'other-server'
+
+function primeiroQueResponde<T>(
+  locais: (() => Promise<T>)[],
+  internet: () => Promise<T>
+): Promise<T> {
+  return new Promise((resolve, reject) => {
+    let decidido = false
+    let pendentes = locais.length + 1
+    let internetComecou = false
+    let ultimo: unknown = null
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const decidir = (fim: () => void): void => {
+      decidido = true
+      clearTimeout(timer)
+      fim()
+    }
+    const seguir = (tentativa: Promise<T>): void => {
+      tentativa.then(
+        (valor) => {
+          if (!decidido) decidir(() => resolve(valor))
+        },
+        (erro: unknown) => {
+          if (decidido) return
+          if (decisivo(erro)) return decidir(() => reject(erro))
+          if (!(ultimo instanceof PairingError && ultimo.reason === 'other-server')) ultimo = erro
+          pendentes--
+          if (pendentes === 0) return decidir(() => reject(ultimo))
+          if (pendentes === 1) comecarInternet()
+        }
+      )
+    }
+    const comecarInternet = (): void => {
+      if (internetComecou || decidido) return
+      internetComecou = true
+      clearTimeout(timer)
+      seguir(internet())
+    }
+    for (const local of locais) seguir(local())
+    if (locais.length === 0) comecarInternet()
+    else timer = setTimeout(comecarInternet, ESPERA_DA_INTERNET_MS)
+  })
+}
 
 const hex = z
   .string()
@@ -52,7 +141,7 @@ export type Servidor = z.infer<typeof servidor>
 
 export type Saida =
   | { t: 'pronto'; chave: string }
-  | { t: 'estado'; status: ClientStatus; via: LinkVia | null }
+  | { t: 'estado'; status: ClientStatus; via: LinkVia | null; atualizar?: Atualizar }
   | { t: 'evento'; topics: DataTopic[] }
   | { t: 'aviso'; titulo: string; corpo: string; inicio: string }
   | { t: 'resposta'; id: number; result: IpcResult<unknown> }
@@ -91,52 +180,29 @@ export function criarNucleo(opcoes: { enviar: (saida: Saida) => void; bootstrap?
   async function parear(id: number, qr: string): Promise<void> {
     const convite = lerConvite(qr)
     if (!convite) return responder(id, { ok: false, error: 'Este QR code não é do Auri.' })
-    const tentativas = convite.enderecos.map((alvo) =>
-      pairWithServer({
-        keyPair: minhasChaves(),
-        name: meuNome,
-        schemaVersion: SCHEMA_VERSION,
-        address: alvo,
-        code: convite.codigo
-      })
-    )
-    const inalcancavel = (motivo: string): boolean =>
-      motivo.startsWith('Não foi possível conectar a ')
-    const recusaDoComputador = tentativas.map((tentativa) =>
-      tentativa.then(
-        () => new Promise<never>(() => {}),
-        (error: Error) => (inalcancavel(error.message) ? new Promise<never>(() => {}) : error)
-      )
-    )
+    const comum = {
+      keyPair: minhasChaves(),
+      name: meuNome,
+      version: VERSAO,
+      code: convite.codigo,
+      serverKey: convite.chave
+    }
     try {
-      const pareado = await Promise.race([
-        Promise.any(tentativas),
-        ...recusaDoComputador.map((recusa) => recusa.then((error) => Promise.reject(error)))
-      ])
-      if (pareado.publicKey !== convite.chave) {
-        return responder(id, {
-          ok: false,
-          error:
-            'O computador que respondeu não é o do QR code. Gere outro QR code e tente de novo.'
-        })
-      }
+      const pareado = await primeiroQueResponde(
+        convite.enderecos.map((address) => () => pairWithServer({ ...comum, address })),
+        () =>
+          pairWithServer({
+            ...comum,
+            open: () => discar().dial(convite.chave),
+            unreachable: SEM_CAMINHO
+          })
+      )
       responder(id, {
         ok: true,
         data: { chave: pareado.publicKey, nome: pareado.name, enderecos: convite.enderecos }
       })
     } catch (error) {
-      const motivos =
-        error instanceof AggregateError
-          ? error.errors.map((e: Error) => e.message)
-          : [(error as Error).message]
-      const doComputador = motivos.find((motivo) => !inalcancavel(motivo))
-      responder(id, {
-        ok: false,
-        error:
-          doComputador ??
-          'Não foi possível chegar ao computador. Na primeira conexão, o iPhone precisa estar no ' +
-            'mesmo Wi-Fi que ele, com o Auri aberto.'
-      })
+      responder(id, { ok: false, error: motivoDoPareamento(error) })
     }
   }
 
@@ -145,12 +211,18 @@ export function criarNucleo(opcoes: { enviar: (saida: Saida) => void; bootstrap?
     const cliente = createSyncClient({
       keyPair: minhasChaves(),
       name: () => meuNome,
-      schemaVersion: SCHEMA_VERSION,
+      version: VERSAO,
       serverKey: alvo.chave,
       serverName: alvo.nome,
       addresses: async () => alvo.enderecos,
       dialRemote: () => discar().dial(alvo.chave),
-      onStatus: (status) => enviar({ t: 'estado', status, via: cliente.via() }),
+      onStatus: (status) =>
+        enviar({
+          t: 'estado',
+          status,
+          via: cliente.via(),
+          atualizar: status === 'version' ? quemAtualiza(cliente.accepted()) : undefined
+        }),
       onEvent: (topics, aviso) => {
         enviar({ t: 'evento', topics })
         if (!aviso) return
@@ -174,7 +246,7 @@ export function criarNucleo(opcoes: { enviar: (saida: Saida) => void; bootstrap?
       serverKey: alvo.chave,
       serverName: alvo.nome,
       name: meuNome,
-      schemaVersion: SCHEMA_VERSION
+      version: VERSAO
     })
     responder(id, resultado.ok ? { ok: true, data: resultado } : resultado)
   }

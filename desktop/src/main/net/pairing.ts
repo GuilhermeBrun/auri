@@ -1,4 +1,5 @@
 import { createHmac, randomInt, timingSafeEqual } from 'node:crypto'
+import type { DeviceGrant } from '../../shared/api'
 
 const ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXYZ'
 
@@ -41,22 +42,29 @@ export function proofMatches(expected: Buffer, received: Buffer): boolean {
 }
 
 export type PairingCheck =
-  | { ok: true; code: string }
+  | { ok: true; code: string; grant: DeviceGrant }
   | { ok: false; reason: 'none' | 'expired' | 'wrong' }
 
-export function createPairingCodes(now: () => number = Date.now): {
-  issue(): { code: string; expiresAt: number }
+export type PairingCodes = {
+  issue(grant: DeviceGrant): { code: string; expiresAt: number }
   cancel(): void
+  active(): DeviceGrant | null
   check(proof: Buffer, handshakeHash: Buffer): PairingCheck
-} {
-  let current: { code: string; expiresAt: number; attempts: number } | null = null
+}
+
+export function createPairingCodes(now: () => number = Date.now): PairingCodes {
+  let current: { code: string; expiresAt: number; attempts: number; grant: DeviceGrant } | null =
+    null
   return {
-    issue() {
-      current = { code: generateCode(), expiresAt: now() + CODE_TTL_MS, attempts: 0 }
+    issue(grant) {
+      current = { code: generateCode(), expiresAt: now() + CODE_TTL_MS, attempts: 0, grant }
       return { code: current.code, expiresAt: current.expiresAt }
     },
     cancel() {
       current = null
+    },
+    active() {
+      return current && now() <= current.expiresAt ? current.grant : null
     },
     check(proof, handshakeHash) {
       if (!current) return { ok: false, reason: 'none' }
@@ -69,9 +77,9 @@ export function createPairingCodes(now: () => number = Date.now): {
         if (current.attempts >= MAX_ATTEMPTS) current = null
         return { ok: false, reason: 'wrong' }
       }
-      const { code } = current
+      const { code, grant } = current
       current = null
-      return { ok: true, code }
+      return { ok: true, code, grant }
     }
   }
 }

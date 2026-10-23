@@ -22,11 +22,13 @@ seriam.
 
 Os passos do app rodam em `desktop/`, os do site em `web/` e os do iPhone em `ios/`: formato, lint
 e tipos do worklet e o teste da conexão (o cliente do iPhone no runtime Bare contra as operações do
-desktop, numa DHT local), que pega quando uma mudança no desktop quebra o celular. Esse teste também
-confere as respostas do desktop com `ios/Tests/Contrato/contrato.json`, o mesmo arquivo que os testes
-em Swift decodificam nos modelos do app: um campo que o desktop renomeia ou tira reprova no Linux,
-sem precisar do Mac. Quando a mudança é de propósito, `npm run contrato` (em `ios/`) grava o arquivo
-de novo.
+desktop, numa DHT local), que pega quando uma mudança no desktop quebra o celular. As respostas que o
+celular recebe passam pelos formatos de `desktop/src/main/net/celular.ts`, um por versão do contrato
+(`api`), e o Vitest do desktop confere cada versão aceita (de `API_MINIMA` a `API_ATUAL`) com
+`ios/Tests/Contrato/contrato-vN.json`, o mesmo arquivo que os testes em Swift decodificam nos modelos
+do app: um campo que o desktop renomeia ou tira reprova no Linux, sem precisar do Mac. O arquivo de
+uma versão já publicada não muda; a mudança vai num adaptador ou numa versão nova. Enquanto a versão
+do app não foi publicada, `npm run contrato` (em `ios/`) grava o arquivo dela de novo.
 
 Os passos rodam mesmo depois de um erro, para o PR mostrar todos de uma vez. O `Check` é o único
 check exigido pela proteção do `main`, que também exige o PR **atualizado com o `main`**: o que

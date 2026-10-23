@@ -1,8 +1,8 @@
 import net from 'node:net'
 import SecretStream from '@hyperswarm/secret-stream'
 import type { AgendaNotice } from '../../shared/agenda-notice'
-import type { DataTopic, IpcResult } from '../../shared/api'
-import { pairingProof, type createPairingCodes } from './pairing'
+import type { DataTopic, DeviceGrant, DeviceKind, IpcResult } from '../../shared/api'
+import { pairingProof, type PairingCodes } from './pairing'
 import {
   clientMessage,
   decode,
@@ -10,21 +10,28 @@ import {
   encode,
   MAX_REQUEST_BYTES,
   PROTOCOL_VERSION,
+  type ApiRange,
+  type ClientMessage,
   type ServerMessage
 } from './protocol'
 
 export type KeyPair = { publicKey: Buffer; secretKey: Buffer }
 
+export type Peer = { publicKey: string; api: number | null }
+
 export type ServerHooks = {
   keyPair: KeyPair
   name: () => string
   schemaVersion: number
-  isPaired: (publicKey: string) => boolean
-  codes: ReturnType<typeof createPairingCodes>
-  onPaired: (device: { publicKey: string; name: string }) => void
+  api: ApiRange
+  device: (publicKey: string) => { tipo: DeviceKind } | null
+  codes: PairingCodes
+  onPaired: (device: { publicKey: string; name: string } & DeviceGrant) => void
   onPresence: (publicKey: string, online: boolean) => void
-  handle: (channel: string, args: unknown[], peer: string) => IpcResult<unknown>
+  handle: (channel: string, args: unknown[], peer: Peer) => IpcResult<unknown>
 }
+
+type Hello = Extract<ClientMessage, { t: 'hello' }>
 
 const HELLO_TIMEOUT_MS = 10_000
 const IDLE_TIMEOUT_MS = 45_000
@@ -37,7 +44,7 @@ export function createSyncServer(hooks: ServerHooks): {
   online(): Set<string>
   close(): Promise<void>
 } {
-  const sessions = new Map<SecretStream, string | null>()
+  const sessions = new Map<SecretStream, Peer | null>()
   let server: net.Server | null = null
 
   const send = (stream: SecretStream, message: ServerMessage): void => {
@@ -45,42 +52,51 @@ export function createSyncServer(hooks: ServerHooks): {
   }
 
   const online = (): Set<string> =>
-    new Set([...sessions.values()].filter((key): key is string => key !== null))
+    new Set([...sessions.values()].flatMap((peer) => (peer === null ? [] : [peer.publicKey])))
 
   function reject(
     stream: SecretStream,
-    reason: Extract<ServerMessage, { t: 'reject' }>['reason']
+    reason: Extract<ServerMessage, { t: 'reject' }>['reason'],
+    api?: ApiRange
   ): void {
-    send(stream, { t: 'reject', reason })
+    send(stream, { t: 'reject', reason, api })
     stream.end()
   }
 
-  function hello(
-    stream: SecretStream,
-    name: string,
-    protocol: number,
-    schema: number,
-    proof?: string
-  ): void {
+  function speaks(tipo: DeviceKind, message: Hello): boolean {
+    if (tipo === 'computador') return message.schema === hooks.schemaVersion
+    return message.api !== undefined && message.api >= hooks.api.min && message.api <= hooks.api.max
+  }
+
+  function refuseVersion(stream: SecretStream, tipo: DeviceKind): void {
+    reject(stream, 'version', tipo === 'celular' ? hooks.api : undefined)
+  }
+
+  function hello(stream: SecretStream, message: Hello): void {
     const remote = stream.remotePublicKey?.toString('hex')
     const hash = stream.handshakeHash
     if (!remote || !hash) return stream.destroy()
-    if (protocol !== PROTOCOL_VERSION || schema !== hooks.schemaVersion) {
-      return reject(stream, 'version')
-    }
+    if (message.protocol !== PROTOCOL_VERSION) return reject(stream, 'version')
 
     let serverProof: string | undefined
-    if (proof !== undefined) {
-      const check = hooks.codes.check(Buffer.from(proof, 'hex'), hash)
+    let tipo: DeviceKind
+    if (message.proof !== undefined) {
+      const offered = hooks.codes.active()
+      if (offered && !speaks(offered.tipo, message)) return refuseVersion(stream, offered.tipo)
+      const check = hooks.codes.check(Buffer.from(message.proof, 'hex'), hash)
       if (!check.ok) return reject(stream, `code-${check.reason}`)
-      hooks.onPaired({ publicKey: remote, name })
+      hooks.onPaired({ publicKey: remote, name: message.name, ...check.grant })
       serverProof = pairingProof(check.code, 'server', hash).toString('hex')
-    } else if (!hooks.isPaired(remote)) {
-      return reject(stream, 'unpaired')
+      tipo = check.grant.tipo
+    } else {
+      const device = hooks.device(remote)
+      if (!device) return reject(stream, 'unpaired')
+      if (!speaks(device.tipo, message)) return refuseVersion(stream, device.tipo)
+      tipo = device.tipo
     }
 
     const wasOnline = online().has(remote)
-    sessions.set(stream, remote)
+    sessions.set(stream, { publicKey: remote, api: tipo === 'celular' ? message.api! : null })
     send(stream, { t: 'welcome', name: hooks.name(), proof: serverProof })
     if (!wasOnline) hooks.onPresence(remote, true)
   }
@@ -101,7 +117,7 @@ export function createSyncServer(hooks: ServerHooks): {
 
       if (message.t === 'hello') {
         if (peer !== null) return stream.destroy()
-        hello(stream, message.name, message.protocol, message.schema, message.proof)
+        hello(stream, message)
         if (sessions.get(stream)) touch()
         return
       }
@@ -121,7 +137,7 @@ export function createSyncServer(hooks: ServerHooks): {
       clearTimeout(timer)
       const peer = sessions.get(stream)
       sessions.delete(stream)
-      if (peer && !online().has(peer)) hooks.onPresence(peer, false)
+      if (peer && !online().has(peer.publicKey)) hooks.onPresence(peer.publicKey, false)
     })
   }
 
@@ -149,11 +165,13 @@ export function createSyncServer(hooks: ServerHooks): {
     attach,
     broadcast(topics, notice, from) {
       for (const [stream, peer] of sessions) {
-        if (peer) send(stream, { t: 'event', topics, notice: peer === from ? undefined : notice })
+        if (peer) {
+          send(stream, { t: 'event', topics, notice: peer.publicKey === from ? undefined : notice })
+        }
       }
     },
     disconnect(publicKey) {
-      for (const [stream, peer] of sessions) if (peer === publicKey) stream.destroy()
+      for (const [stream, peer] of sessions) if (peer?.publicKey === publicKey) stream.destroy()
     },
     online,
     close() {

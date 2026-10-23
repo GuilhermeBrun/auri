@@ -8,6 +8,7 @@ import {
   type ConnectionInfo,
   type ConnectionRole,
   type DataTopic,
+  type DeviceGrant,
   type FoundServer,
   type IpcResult,
   type LinkStatus,
@@ -19,7 +20,9 @@ import { createConnectionStore, type ConnectionStore } from './connection-store'
 import { openDatabase, type Db } from './db/connection'
 import { SCHEMA_VERSION } from './db/migrations'
 import { restoreDatabase } from './db/recovery'
+import { API_ATUAL, API_MINIMA, callAsDevice } from './net/celular'
 import { createSyncClient, pairWithServer, probeServer, type Address } from './net/client'
+import { escreverConvite } from './net/convite'
 import { createDiscovery, localAddresses } from './net/discovery'
 import { createPairingCodes, formatCode } from './net/pairing'
 import { DEFAULT_PORT } from './net/protocol'
@@ -43,7 +46,7 @@ export type Connection = {
   setRemoteAccess(on: boolean): Promise<ConnectionInfo>
   setNotices(on: boolean): Promise<ConnectionInfo>
   testRemote(): Promise<RemoteProbe>
-  createCode(): Promise<PairingCode>
+  createCode(grant: DeviceGrant): Promise<PairingCode>
   cancelCode(): Promise<void>
   removeDevice(publicKey: string): Promise<ConnectionInfo>
   discover(): Promise<FoundServer[]>
@@ -95,6 +98,9 @@ export function createConnection(options: {
   let blocker: number | null = null
 
   const name = (): string => store.get().name || systemName()
+  const deviceOf = (publicKey: string): ConnectionStore['devices'][number] | undefined =>
+    store.get().devices.find((d) => d.publicKey === publicKey)
+  const isPaired = (publicKey: string): boolean => deviceOf(publicKey) !== undefined
 
   function keyPair(): KeyPair {
     const saved = store.get().keys
@@ -196,7 +202,8 @@ export function createConnection(options: {
     remoteReach = 'starting'
     remote = createRemoteListener({
       keyPair: getKeys(),
-      isPaired: (key) => store.get().devices.some((d) => d.publicKey === key),
+      isPaired,
+      codes,
       attach: server.attach,
       onReach: (reach) => {
         remoteReach = reach
@@ -218,29 +225,44 @@ export function createConnection(options: {
       keyPair: getKeys(),
       name,
       schemaVersion: SCHEMA_VERSION,
-      isPaired: (key) => store.get().devices.some((d) => d.publicKey === key),
+      api: { min: API_MINIMA, max: API_ATUAL },
+      device: (key) => deviceOf(key) ?? null,
       codes,
-      onPaired: ({ publicKey, name: deviceName }) => {
+      onPaired: ({ publicKey, name: deviceName, ...grant }) => {
         const others = store.get().devices.filter((d) => d.publicKey !== publicKey)
-        store.update({ devices: [...others, { publicKey, name: deviceName, lastSeen: null }] })
+        const nivel = grant.tipo === 'celular' ? grant.nivel : null
+        store.update({
+          devices: [
+            ...others,
+            { publicKey, name: deviceName, tipo: grant.tipo, nivel, lastSeen: null }
+          ]
+        })
         changed()
       },
       onPresence: (publicKey, online) => {
         updateDevice(publicKey, { lastSeen: new Date().toISOString() })
         syncPowerBlocker()
         changed()
-        if (online) console.log('[conexão] computador conectado')
+        if (online) console.log(`[conexão] ${deviceOf(publicKey)?.tipo ?? 'aparelho'} conectado`)
       },
-      handle: (channel, args, peer) =>
-        db
-          ? runOperation(
-              db,
-              channel,
-              args,
-              (topics, draft) => dataChanged(topics, draft, peer),
-              options.onFailure
-            )
-          : { ok: false, error: 'Os dados estão sendo restaurados. Tente de novo em instantes.' }
+      handle: (channel, args, peer) => {
+        const current = db
+        if (!current) {
+          return {
+            ok: false,
+            error: 'Os dados estão sendo restaurados. Tente de novo em instantes.'
+          }
+        }
+        const run = (c: string, a: unknown[]): IpcResult<unknown> =>
+          runOperation(
+            current,
+            c,
+            a,
+            (topics, draft) => dataChanged(topics, draft, peer.publicKey),
+            options.onFailure
+          )
+        return callAsDevice(run, deviceOf(peer.publicKey), peer, channel, args)
+      }
     })
     try {
       port = await next.listen()
@@ -303,7 +325,7 @@ export function createConnection(options: {
     client = createSyncClient({
       keyPair: getKeys(),
       name,
-      schemaVersion: SCHEMA_VERSION,
+      version: { schema: SCHEMA_VERSION },
       serverKey: target.publicKey,
       serverName: target.name,
       addresses: () => serverAddresses(target.publicKey),
@@ -444,14 +466,28 @@ export function createConnection(options: {
         serverKey: target.publicKey,
         serverName: target.name,
         name: name(),
-        schemaVersion: SCHEMA_VERSION
+        version: { schema: SCHEMA_VERSION }
       })
     },
 
-    async createCode(): Promise<PairingCode> {
-      if (!server) throw new Error('Ligue o compartilhamento antes de conectar um computador.')
-      const { code, expiresAt } = codes.issue()
-      return { code: formatCode(code), expiresAt }
+    async createCode(grant: DeviceGrant): Promise<PairingCode> {
+      const listening = port
+      if (!server || listening === null) {
+        const aparelho = grant.tipo === 'celular' ? 'um celular' : 'um computador'
+        throw new Error(`Ligue o compartilhamento antes de conectar ${aparelho}.`)
+      }
+      const { code, expiresAt } = codes.issue(grant)
+      const convite =
+        grant.tipo === 'celular'
+          ? escreverConvite({
+              chave: getKeys().publicKey.toString('hex'),
+              codigo: code,
+              enderecos: localAddresses()
+                .slice(0, 8)
+                .map((host) => ({ host, port: listening }))
+            })
+          : null
+      return { code: formatCode(code), expiresAt, convite }
     },
 
     async cancelCode(): Promise<void> {
@@ -477,7 +513,7 @@ export function createConnection(options: {
       const result = await pairWithServer({
         keyPair: getKeys(),
         name: name(),
-        schemaVersion: SCHEMA_VERSION,
+        version: { schema: SCHEMA_VERSION },
         address: target,
         code
       })

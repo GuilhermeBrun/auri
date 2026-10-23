@@ -33,6 +33,7 @@ export const clientMessage = z.discriminatedUnion('t', [
     t: z.literal('hello'),
     protocol: z.number().int(),
     schema: z.number().int(),
+    api: z.number().int().positive().max(10_000).optional(),
     name,
     proof: hex.optional()
   }),
@@ -47,6 +48,14 @@ export const clientMessage = z.discriminatedUnion('t', [
 
 export type ClientMessage = z.infer<typeof clientMessage>
 
+export type ApiRange = { min: number; max: number }
+
+export type HelloVersion = { schema: number } | { api: number }
+
+export function helloVersion(version: HelloVersion): { schema: number; api?: number } {
+  return 'api' in version ? { schema: 0, api: version.api } : { schema: version.schema }
+}
+
 export const REJECT_REASONS = [
   'version',
   'unpaired',
@@ -57,7 +66,11 @@ export const REJECT_REASONS = [
 
 export const serverMessage = z.discriminatedUnion('t', [
   z.object({ t: z.literal('welcome'), name, proof: hex.optional() }),
-  z.object({ t: z.literal('reject'), reason: z.enum(REJECT_REASONS) }),
+  z.object({
+    t: z.literal('reject'),
+    reason: z.enum(REJECT_REASONS),
+    api: z.object({ min: z.number().int(), max: z.number().int() }).optional()
+  }),
   z.object({
     t: z.literal('res'),
     id: z.number().int().nonnegative(),

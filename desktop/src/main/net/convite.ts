@@ -1,15 +1,12 @@
 import { z } from 'zod'
 
-export const VERSAO_DO_CONVITE = 1
+const VERSAO_DO_CONVITE = 1
 
 const convite = z.object({
   v: z.literal(VERSAO_DO_CONVITE),
   k: z.string().regex(/^[0-9a-f]{64}$/),
   c: z.string().min(12).max(20),
-  a: z
-    .array(z.tuple([z.string().min(1).max(255), z.number().int().min(1).max(65535)]))
-    .min(1)
-    .max(8)
+  a: z.array(z.tuple([z.string().min(1).max(255), z.number().int().min(1).max(65535)])).max(8)
 })
 
 export type Convite = { chave: string; codigo: string; enderecos: { host: string; port: number }[] }

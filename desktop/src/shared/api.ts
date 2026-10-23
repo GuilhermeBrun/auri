@@ -251,9 +251,21 @@ export type LinkStatus =
   | 'version'
   | 'revoked'
 
+export const DEVICE_KINDS = ['computador', 'celular'] as const
+
+export type DeviceKind = (typeof DEVICE_KINDS)[number]
+
+export const PHONE_LEVELS = ['fono', 'recepcao'] as const
+
+export type PhoneLevel = (typeof PHONE_LEVELS)[number]
+
+export type DeviceGrant = { tipo: 'computador' } | { tipo: 'celular'; nivel: PhoneLevel }
+
 export type PairedDevice = {
   publicKey: string
   name: string
+  tipo: DeviceKind
+  nivel: PhoneLevel | null
   online: boolean
   lastSeen: string | null
 }
@@ -283,7 +295,7 @@ export type ConnectionInfo = {
   via: LinkVia | null
 }
 
-export type PairingCode = { code: string; expiresAt: number }
+export type PairingCode = { code: string; expiresAt: number; convite: string | null }
 
 export interface AuriConnection {
   info(): Promise<ConnectionInfo>
@@ -296,7 +308,7 @@ export interface AuriConnection {
   setRemoteAccess(on: boolean): Promise<ConnectionInfo>
   setNotices(on: boolean): Promise<ConnectionInfo>
   testRemote(): Promise<RemoteProbe>
-  createCode(): Promise<PairingCode>
+  createCode(grant: DeviceGrant): Promise<PairingCode>
   cancelCode(): Promise<void>
   removeDevice(publicKey: string): Promise<ConnectionInfo>
   discover(): Promise<FoundServer[]>

@@ -1,5 +1,7 @@
-import { readFileSync, renameSync, writeFileSync } from 'fs'
+import { readFileSync } from 'fs'
 import { z } from 'zod'
+import { DEVICE_KINDS, PHONE_LEVELS } from '../shared/api'
+import { writeAtomicJson } from './atomic-file'
 
 const hex = z.string().regex(/^[0-9a-f]+$/)
 
@@ -24,6 +26,8 @@ const storeSchema = z.object({
       z.object({
         publicKey: hex,
         name: z.string(),
+        tipo: z.enum(DEVICE_KINDS).default('computador'),
+        nivel: z.enum(PHONE_LEVELS).nullable().default(null),
         lastSeen: z.string().nullable()
       })
     )
@@ -49,9 +53,9 @@ export function createConnectionStore(file: string): {
   return {
     get: () => store,
     update(change) {
-      store = { ...store, ...change }
-      writeFileSync(`${file}.tmp`, JSON.stringify(store, null, 2))
-      renameSync(`${file}.tmp`, file)
+      const next = { ...store, ...change }
+      writeAtomicJson(file, next)
+      store = next
       return store
     }
   }

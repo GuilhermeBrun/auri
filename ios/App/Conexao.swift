@@ -18,7 +18,7 @@ enum Situacao: Equatable {
   case conectando
   case conectado(pelaInternet: Bool)
   case semConexao
-  case versao
+  case versao(atualizarOApp: Bool)
   case removido
   case falha(String)
 }
@@ -162,7 +162,8 @@ final class Conexao {
     case .conectado(let pelaInternet):
       return pelaInternet ? "Conectado pela internet" : "Conectado pela rede da clínica"
     case .semConexao: return "Sem conexão com \(nome)"
-    case .versao: return "\(nome) usa outra versão do Auri"
+    case .versao(let atualizarOApp):
+      return atualizarOApp ? "Atualize o Auri do iPhone" : "Atualize o Auri do computador que guarda os dados"
     case .removido: return "Este iPhone foi desconectado de \(nome)"
     case .falha(let mensagem): return mensagem
     }
@@ -212,7 +213,9 @@ final class Conexao {
   private func tratar(_ mensagem: JSONValor) {
     switch mensagem["t"]?.texto {
     case "estado":
-      atualizar(status: mensagem["status"]?.texto, via: mensagem["via"]?.texto)
+      atualizar(
+        status: mensagem["status"]?.texto, via: mensagem["via"]?.texto,
+        atualizarOApp: mensagem["atualizar"]?.texto == "app")
     case "evento":
       mudancas += 1
     case "aviso":
@@ -238,12 +241,12 @@ final class Conexao {
     }
   }
 
-  private func atualizar(status: String?, via: String?) {
+  private func atualizar(status: String?, via: String?, atualizarOApp: Bool) {
     switch status {
     case "connecting": situacao = .conectando
     case "connected": situacao = .conectado(pelaInternet: via == "internet")
     case "offline": situacao = .semConexao
-    case "version": situacao = .versao
+    case "version": situacao = .versao(atualizarOApp: atualizarOApp)
     case "revoked": situacao = .removido
     default: return
     }
