@@ -322,6 +322,7 @@ export function createSyncClient(hooks: ClientHooks): {
 }
 
 const PAIR_TIMEOUT_MS = 8_000
+const REMOTE_PAIR_TIMEOUT_MS = 25_000
 
 type RejectReason = Extract<ServerMessage, { t: 'reject' }>['reason']
 
@@ -394,7 +395,7 @@ export function pairWithServer(
     }
     const timer = setTimeout(
       () => finish(new PairingError('unreachable', unreachable)),
-      PAIR_TIMEOUT_MS
+      'open' in options ? REMOTE_PAIR_TIMEOUT_MS : PAIR_TIMEOUT_MS
     )
 
     secret.on('error', () => {})

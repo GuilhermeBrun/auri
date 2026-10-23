@@ -56,8 +56,19 @@ function motivoDoPareamento(erro: unknown): string {
   }
 }
 
-const decisivo = (erro: unknown): boolean =>
-  erro instanceof PairingError && erro.reason !== 'unreachable' && erro.reason !== 'other-server'
+function peso(erro: unknown): number {
+  if (!(erro instanceof PairingError)) return 0
+  switch (erro.reason) {
+    case 'unreachable':
+      return 0
+    case 'other-server':
+      return 1
+    case 'code-none':
+      return 2
+    default:
+      return 3
+  }
+}
 
 function primeiroQueResponde<T>(
   locais: (() => Promise<T>)[],
@@ -65,35 +76,46 @@ function primeiroQueResponde<T>(
 ): Promise<T> {
   return new Promise((resolve, reject) => {
     let decidido = false
-    let pendentes = locais.length + 1
+    let pendentes = 0
     let internetComecou = false
-    let ultimo: unknown = null
+    let semCodigo = false
+    let pior: unknown = null
     let timer: ReturnType<typeof setTimeout> | undefined
     const decidir = (fim: () => void): void => {
       decidido = true
       clearTimeout(timer)
       fim()
     }
-    const seguir = (tentativa: Promise<T>): void => {
-      tentativa.then(
-        (valor) => {
-          if (!decidido) decidir(() => resolve(valor))
-        },
-        (erro: unknown) => {
-          if (decidido) return
-          if (decisivo(erro)) return decidir(() => reject(erro))
-          if (!(ultimo instanceof PairingError && ultimo.reason === 'other-server')) ultimo = erro
-          pendentes--
-          if (pendentes === 0) return decidir(() => reject(ultimo))
-          if (pendentes === 1) comecarInternet()
-        }
-      )
-    }
     const comecarInternet = (): void => {
-      if (internetComecou || decidido) return
+      if (internetComecou || decidido || semCodigo) return
       internetComecou = true
       clearTimeout(timer)
       seguir(internet())
+    }
+    const falhou = (erro: unknown): void => {
+      if (decidido) return
+      if (peso(erro) === 3) return decidir(() => reject(erro))
+      if (pior === null || peso(erro) > peso(pior)) pior = erro
+      if (peso(erro) === 2) {
+        semCodigo = true
+        clearTimeout(timer)
+      }
+      if (pendentes > 0) return
+      if (!internetComecou && !semCodigo) return comecarInternet()
+      decidir(() => reject(pior))
+    }
+    const seguir = (tentativa: Promise<T>): void => {
+      pendentes++
+      tentativa.then(
+        (valor) => {
+          pendentes--
+          if (!decidido) decidir(() => resolve(valor))
+        },
+        (erro: unknown) => {
+          pendentes--
+          falhou(erro)
+        }
+      )
     }
     for (const local of locais) seguir(local())
     if (locais.length === 0) comecarInternet()

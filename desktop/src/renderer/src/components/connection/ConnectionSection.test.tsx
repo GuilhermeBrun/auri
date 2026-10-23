@@ -24,6 +24,7 @@ const { connection } = vi.hoisted(() => {
         name: 'Consultório',
         tipo: 'computador',
         nivel: null,
+        pairedAt: null,
         online: true,
         lastSeen: null
       },
@@ -32,6 +33,7 @@ const { connection } = vi.hoisted(() => {
         name: 'iPhone Fictício',
         tipo: 'celular',
         nivel: 'recepcao',
+        pairedAt: '2026-10-22T12:00:00.000Z',
         online: false,
         lastSeen: null
       }

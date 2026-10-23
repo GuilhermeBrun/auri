@@ -28,6 +28,7 @@ const storeSchema = z.object({
         name: z.string(),
         tipo: z.enum(DEVICE_KINDS).default('computador'),
         nivel: z.enum(PHONE_LEVELS).nullable().default(null),
+        pairedAt: z.string().nullable().default(null),
         lastSeen: z.string().nullable()
       })
     )

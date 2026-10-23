@@ -6,7 +6,7 @@ import { emptyPatientInput } from '../../shared/schemas'
 import { openDatabase, type Db } from '../db/connection'
 import { SCHEMA_VERSION } from '../db/migrations'
 import { runOperation } from '../operations'
-import { createSyncClient, pairWithServer, type ClientStatus } from './client'
+import { createSyncClient, pairWithServer, PairingError, type ClientStatus } from './client'
 import {
   createPairingCodes,
   formatCode,
@@ -73,6 +73,21 @@ describe('código de pareamento', () => {
       })
     }
     expect(codes.check(pairingProof(code, 'client', hash), hash).ok).toBe(false)
+  })
+
+  it('código de outro tipo de aparelho é recusado sem gastar o código nem uma tentativa', () => {
+    const codes = createPairingCodes()
+    const { code } = codes.issue({ tipo: 'computador' })
+    const hash = Buffer.alloc(32, 7)
+    const soCelular = (grant: { tipo: string }): boolean => grant.tipo === 'celular'
+    for (let i = 0; i < MAX_ATTEMPTS + 1; i++) {
+      expect(codes.check(pairingProof(code, 'client', hash), hash, soCelular)).toEqual({
+        ok: false,
+        reason: 'refused',
+        grant: { tipo: 'computador' }
+      })
+    }
+    expect(codes.check(pairingProof(code, 'client', hash), hash).ok).toBe(true)
   })
 
   it('vence', () => {
@@ -227,6 +242,34 @@ describe('servidor e cliente', () => {
       ok: false,
       error: 'Este computador foi desconectado de Recepção.'
     })
+  })
+
+  it('celular com código de computador é recusado pela versão, sem gastar o código', async () => {
+    const { code } = codes.issue({ tipo: 'computador' })
+    const telefone = SecretStream.keyPair()
+    const erro = await pairWithServer({
+      keyPair: telefone,
+      name: 'iPhone',
+      version: { api: 1 },
+      address: { host: '127.0.0.1', port },
+      code
+    }).catch((error: unknown) => error)
+    expect(erro).toBeInstanceOf(PairingError)
+    expect(erro).toMatchObject({ reason: 'version', accepted: null })
+    expect(paired.has(telefone.publicKey.toString('hex'))).toBe(false)
+    expect(await pair(code)).toMatchObject({ name: 'Recepção' })
+  })
+
+  it('quem não tem o código não descobre que há um código de celular nem a versão aceita', async () => {
+    codes.issue({ tipo: 'celular', nivel: 'fono' })
+    const erro = await pairWithServer({
+      keyPair: SecretStream.keyPair(),
+      name: 'Estranho',
+      version: { api: 9999 },
+      address: { host: '127.0.0.1', port },
+      code: '0000 0000 0000'
+    }).catch((error: unknown) => error)
+    expect(erro).toMatchObject({ reason: 'code-wrong', accepted: null })
   })
 
   it('recusa versão diferente antes de qualquer leitura', async () => {

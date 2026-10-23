@@ -44,12 +44,17 @@ export function proofMatches(expected: Buffer, received: Buffer): boolean {
 export type PairingCheck =
   | { ok: true; code: string; grant: DeviceGrant }
   | { ok: false; reason: 'none' | 'expired' | 'wrong' }
+  | { ok: false; reason: 'refused'; grant: DeviceGrant }
 
 export type PairingCodes = {
   issue(grant: DeviceGrant): { code: string; expiresAt: number }
   cancel(): void
   active(): DeviceGrant | null
-  check(proof: Buffer, handshakeHash: Buffer): PairingCheck
+  check(
+    proof: Buffer,
+    handshakeHash: Buffer,
+    accepts?: (grant: DeviceGrant) => boolean
+  ): PairingCheck
 }
 
 export function createPairingCodes(now: () => number = Date.now): PairingCodes {
@@ -66,7 +71,7 @@ export function createPairingCodes(now: () => number = Date.now): PairingCodes {
     active() {
       return current && now() <= current.expiresAt ? current.grant : null
     },
-    check(proof, handshakeHash) {
+    check(proof, handshakeHash, accepts = () => true) {
       if (!current) return { ok: false, reason: 'none' }
       if (now() > current.expiresAt) {
         current = null
@@ -77,6 +82,7 @@ export function createPairingCodes(now: () => number = Date.now): PairingCodes {
         if (current.attempts >= MAX_ATTEMPTS) current = null
         return { ok: false, reason: 'wrong' }
       }
+      if (!accepts(current.grant)) return { ok: false, reason: 'refused', grant: current.grant }
       const { code, grant } = current
       current = null
       return { ok: true, code, grant }

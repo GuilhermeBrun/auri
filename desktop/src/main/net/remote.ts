@@ -39,7 +39,7 @@ export function createRemoteListener(options: {
     const server = node.createServer(
       {
         firewall: (remote) =>
-          !options.isPaired(remote.toString('hex')) && options.codes.active() === null
+          !options.isPaired(remote.toString('hex')) && options.codes.active()?.tipo !== 'celular'
       },
       (socket) => options.attach(socket)
     )

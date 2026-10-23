@@ -81,9 +81,10 @@ export function createSyncServer(hooks: ServerHooks): {
     let serverProof: string | undefined
     let tipo: DeviceKind
     if (message.proof !== undefined) {
-      const offered = hooks.codes.active()
-      if (offered && !speaks(offered.tipo, message)) return refuseVersion(stream, offered.tipo)
-      const check = hooks.codes.check(Buffer.from(message.proof, 'hex'), hash)
+      const check = hooks.codes.check(Buffer.from(message.proof, 'hex'), hash, (grant) =>
+        speaks(grant.tipo, message)
+      )
+      if (!check.ok && check.reason === 'refused') return refuseVersion(stream, check.grant.tipo)
       if (!check.ok) return reject(stream, `code-${check.reason}`)
       hooks.onPaired({ publicKey: remote, name: message.name, ...check.grant })
       serverProof = pairingProof(check.code, 'server', hash).toString('hex')

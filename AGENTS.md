@@ -57,7 +57,7 @@ precisa de comentário.
 - Site, API ou feed de atualização que deixa de aceitar versões antigas do app ainda instaladas
   (`web/contrato/`, `web/src/feed.ts`, `latest.yml`/`alpha.yml`).
 - Desktop que deixa de atender uma versão do app do iPhone ainda em uso: `API_MINIMA` subindo,
-  formato do contrato mudando sem adaptador ou canal saindo da lista do celular
+  formato do contrato mudando sem adaptador ou canal que o app usa saindo da lista do celular
   (`desktop/src/main/net/celular.ts`, `ios/Tests/Contrato/`).
 - Atualização ou release apontando para versão, canal ou arquivo errado (`desktop/src/main/updates.ts`,
   `desktop/scripts/release/`, `desktop/electron-builder.yml`, `.github/workflows/release.yml`).

@@ -24,20 +24,29 @@ describe('conexao.json', () => {
       })
     )
     expect(createConnectionStore(file).get().devices).toEqual([
-      { publicKey: 'ab12', name: 'Consultório', tipo: 'computador', nivel: null, lastSeen: null }
+      {
+        publicKey: 'ab12',
+        name: 'Consultório',
+        tipo: 'computador',
+        nivel: null,
+        pairedAt: null,
+        lastSeen: null
+      }
     ])
   })
 
   it('grava o tipo e o nível e não deixa arquivo temporário', () => {
     const store = createConnectionStore(file)
-    store.update({
-      devices: [
-        { publicKey: 'cd34', name: 'iPhone', tipo: 'celular', nivel: 'recepcao', lastSeen: null }
-      ]
-    })
-    expect(JSON.parse(readFileSync(file, 'utf8')).devices).toEqual([
-      { publicKey: 'cd34', name: 'iPhone', tipo: 'celular', nivel: 'recepcao', lastSeen: null }
-    ])
+    const device = {
+      publicKey: 'cd34',
+      name: 'iPhone',
+      tipo: 'celular' as const,
+      nivel: 'recepcao' as const,
+      pairedAt: '2026-10-23T12:00:00.000Z',
+      lastSeen: null
+    }
+    store.update({ devices: [device] })
+    expect(JSON.parse(readFileSync(file, 'utf8')).devices).toEqual([device])
     expect(readdirSync(folder)).toEqual(['conexao.json'])
     expect(createConnectionStore(file).get().devices[0]).toMatchObject({ nivel: 'recepcao' })
   })

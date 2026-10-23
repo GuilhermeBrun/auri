@@ -9,6 +9,7 @@ import {
   API_ATUAL,
   API_MINIMA,
   callAsDevice,
+  deviceRecord,
   type DeviceRecord
 } from '../../desktop/src/main/net/celular'
 import { escreverConvite } from '../../desktop/src/main/net/convite'
@@ -150,9 +151,9 @@ const server = createSyncServer({
   device: (chave) => pareados.get(chave) ?? null,
   codes,
   onPaired: ({ publicKey, name, ...grant }) => {
-    const nivel = grant.tipo === 'celular' ? grant.nivel : null
-    pareados.set(publicKey, { name, tipo: grant.tipo, nivel })
-    console.log(`pareado: ${name}, ${grant.tipo} ${nivel ?? ''} (${publicKey.slice(0, 8)}…)`)
+    const aparelho = deviceRecord(name, grant)
+    pareados.set(publicKey, aparelho)
+    console.log(`pareado: ${name}, ${aparelho.tipo} ${aparelho.nivel ?? ''}`)
   },
   onPresence: (chave, online) => console.log(`${chave.slice(0, 8)}… ${online ? 'entrou' : 'saiu'}`),
   handle: (canal, args, peer) => {

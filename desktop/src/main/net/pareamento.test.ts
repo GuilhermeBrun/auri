@@ -10,6 +10,7 @@ import { runOperation } from '../operations'
 import {
   API_ATUAL,
   callAsDevice,
+  deviceRecord,
   NOT_ON_PHONE,
   PHONE_RECEPTION_BLOCKED,
   type DeviceRecord
@@ -73,11 +74,7 @@ describe('pareamento pela internet com código preso a tipo e nível', () => {
       device: (key) => devices.get(key) ?? null,
       codes,
       onPaired: ({ publicKey, name, ...grant }) =>
-        devices.set(publicKey, {
-          name,
-          tipo: grant.tipo,
-          nivel: grant.tipo === 'celular' ? grant.nivel : null
-        }),
+        devices.set(publicKey, deviceRecord(name, grant)),
       onPresence: () => {},
       handle: (channel, args, peer) =>
         callAsDevice(
@@ -155,17 +152,16 @@ describe('pareamento pela internet com código preso a tipo e nível', () => {
     const erro = await falha(parear(estranho, { api: API_ATUAL }, 'ZZZZZZZZZZZZ'))
     expect(erro.reason).toBe('unreachable')
     expect(devices.has(estranho.key)).toBe(false)
-  }, 30_000)
+  }, 40_000)
 
-  it('código de computador recusa o celular, sem gastar o código', async () => {
+  it('código de computador não abre a rede distribuída', async () => {
     const telefone = aparelho()
     const code = emitir({ tipo: 'computador' })
     const erro = await falha(parear(telefone, { api: API_ATUAL }, code))
-    expect(erro.reason).toBe('version')
-    expect(erro.accepted).toBeNull()
+    expect(erro.reason).toBe('unreachable')
     expect(codes.active()).toEqual({ tipo: 'computador' })
     expect(devices.has(telefone.key)).toBe(false)
-  }, 30_000)
+  }, 40_000)
 
   it('código de celular recusa o computador', async () => {
     const consultorio = aparelho()

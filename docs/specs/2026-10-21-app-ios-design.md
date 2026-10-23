@@ -82,11 +82,13 @@ cliente só descobre a chave da recepção ao parear pela rede local.
   mostra um QR, borrado até clicar, com o convite de `desktop/src/main/net/convite.ts`: a chave
   pública do servidor, o código e os endereços na rede da clínica, nenhum dado de paciente. O
   computador continua com o código digitado na rede da clínica; o QR ou texto para o consultório de
-  fora fica para depois (o servidor já aceita pela DHT qualquer código ativo).
+  fora fica para depois, e só então o código de computador passa a abrir a DHT.
 - O celular lê o QR com a câmera, dentro do app, e pareia de qualquer rede: tenta os endereços da
   rede da clínica e, 1,5 s depois (ou logo, se nenhum responder), a DHT pela chave do QR.
-- Enquanto houver um código válido (5 minutos, uso único, 5 tentativas), o servidor aceita pela DHT
-  uma chave ainda não pareada, só para o `hello` com a prova HMAC. Fora disso, o `firewall` continua
+- Enquanto houver um código de celular válido (5 minutos, uso único, 5 tentativas), o servidor aceita
+  pela DHT uma chave ainda não pareada, só para o `hello` com a prova HMAC. A versão só é conferida
+  depois da prova, então quem não tem o código não fica sabendo que há um código nem qual versão
+  vale. Fora disso, o `firewall` continua
   barrando. Achar o servidor pela DHT exige a chave dele, que só está no QR.
 - **Tipo e nível ficam presos ao código**, decididos no computador ao gerá-lo. O aparelho
   não declara o próprio tipo, então não consegue se promover.
@@ -112,7 +114,11 @@ disponível no celular".
 Regras:
 
 - Nas gravações da agenda, o campo de evolução é descartado (mesma regra de `withoutEvolution` em
-  `desktop/src/main/reception.ts`), então o celular nunca escreve evolução, em nenhum nível.
+  `desktop/src/main/reception.ts`), então o celular nunca escreve evolução, em nenhum nível. Pelo
+  mesmo motivo, sessão com evolução não é excluída pelo celular.
+- Os canais de confirmação não passam pelo link curto de `ipc.ts` (`links-curtos.ts`): a mensagem
+  sai sem link curto, como o desenho pede, mas a resposta colada com código curto precisa ser
+  expandida antes de `confirmacoes:receber`. Fica para a etapa 7.
 - No nível Recepção, as respostas passam por `redactEvolution` e `anamneses:get` é recusado, com a
   mesma regra que o computador da recepção já tem.
 - `computador` (quem fez) é preenchido pelo servidor com o nome do aparelho pareado, não pelo que o

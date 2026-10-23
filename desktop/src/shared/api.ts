@@ -266,6 +266,7 @@ export type PairedDevice = {
   name: string
   tipo: DeviceKind
   nivel: PhoneLevel | null
+  pairedAt: string | null
   online: boolean
   lastSeen: string | null
 }

@@ -20,7 +20,7 @@ import { createConnectionStore, type ConnectionStore } from './connection-store'
 import { openDatabase, type Db } from './db/connection'
 import { SCHEMA_VERSION } from './db/migrations'
 import { restoreDatabase } from './db/recovery'
-import { API_ATUAL, API_MINIMA, callAsDevice } from './net/celular'
+import { API_ATUAL, API_MINIMA, callAsDevice, deviceRecord } from './net/celular'
 import { createSyncClient, pairWithServer, probeServer, type Address } from './net/client'
 import { escreverConvite } from './net/convite'
 import { createDiscovery, localAddresses } from './net/discovery'
@@ -230,13 +230,13 @@ export function createConnection(options: {
       codes,
       onPaired: ({ publicKey, name: deviceName, ...grant }) => {
         const others = store.get().devices.filter((d) => d.publicKey !== publicKey)
-        const nivel = grant.tipo === 'celular' ? grant.nivel : null
-        store.update({
-          devices: [
-            ...others,
-            { publicKey, name: deviceName, tipo: grant.tipo, nivel, lastSeen: null }
-          ]
-        })
+        const device = {
+          publicKey,
+          ...deviceRecord(deviceName, grant),
+          pairedAt: new Date().toISOString(),
+          lastSeen: null
+        }
+        store.update({ devices: [...others, device] })
         changed()
       },
       onPresence: (publicKey, online) => {

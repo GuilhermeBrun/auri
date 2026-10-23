@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import type { DeviceKind, IpcResult, PhoneLevel } from '../../shared/api'
+import type { DeviceGrant, DeviceKind, IpcResult, PhoneLevel } from '../../shared/api'
 import { redactEvolution, restrictArgs } from '../reception'
 import type { Peer } from './server'
 
@@ -178,6 +178,10 @@ type Run = (channel: string, args: unknown[]) => IpcResult<unknown>
 export type Phone = { name: string; nivel: PhoneLevel | null; api: number | null }
 
 export type DeviceRecord = { name: string; tipo: DeviceKind; nivel: PhoneLevel | null }
+
+export function deviceRecord(name: string, grant: DeviceGrant): DeviceRecord {
+  return { name, tipo: grant.tipo, nivel: grant.tipo === 'celular' ? grant.nivel : null }
+}
 
 function signedBy(name: string, channel: string, args: unknown[]): unknown[] {
   const index = DEVICE_NAME_ARG[channel]
