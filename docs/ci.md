@@ -4,10 +4,13 @@ O PR é validado rápido, o uso real vem do alpha e a estável promove um alpha 
 
 ## Pull requests
 
-O workflow **CI** roda num job só, o **Check**, uma vez por PR, em ~3 min numa máquina Ubuntu.
+O workflow **CI** roda o **Check**, uma vez por PR, em ~3 min numa máquina Ubuntu.
 O Linux não faz parte do produto: é só a máquina mais barata do Actions para estas verificações.
 Um job só porque cada job paga de novo checkout, Node e cache, e o Actions arredonda cada um para
-o minuto inteiro.
+o minuto inteiro. Ao lado dele roda o **iPhone no Mac** (imagem `xcode-27`, Xcode 27.1 e XcodeGen
+fixos), que gera o projeto do Xcode, confere o formato do Swift e roda os testes em Swift. Como o
+repositório é público, as máquinas padrão do Actions, Mac inclusive, não são cobradas; as `-xlarge`
+seriam.
 
 | Passo         | O que confere                                                                            |
 | ------------- | ---------------------------------------------------------------------------------------- |
@@ -85,11 +88,11 @@ o do Linux. Rodar antes de cada estável e em mudanças que mexem no Mac:
 npm run ci:mac
 ```
 
-O app do iPhone também só compila no Mac. No `git push` feito no Mac, o `npm run ci:local` gera o
-projeto do Xcode e roda os testes em Swift quando a branch mexe em `ios/` ou no código que ele usa do
-desktop (`desktop/src/main/net/`, `db/`, `operations.ts`, `desktop/src/shared/`). Antes do PR, rodar
-também o `ci:ios`, que soma o formato do Swift e os testes de interface no simulador, com as capturas
-em `ios/build/telas/`. Cada tela passa pela auditoria de acessibilidade do Xcode (rótulos, área de
+O app do iPhone só compila no Mac. No `git push` feito no Mac, o `npm run ci:local` gera o projeto
+do Xcode e roda os testes em Swift quando a branch mexe em `ios/` ou no código que ele usa do desktop
+(`desktop/src/main/net/`, `db/`, `operations.ts`, `desktop/src/shared/`); o job **iPhone no Mac** repete
+isso no PR. Os testes de interface no simulador ficam só no `ci:ios`, antes do PR, com as capturas em
+`ios/build/telas/`: dependem do springboard, de Face ID simulado e de uma DHT local, e levam ~6 min. Cada tela passa pela auditoria de acessibilidade do Xcode (rótulos, área de
 toque, texto cortado, traços); contraste e tamanho do texto ficam com a captura em letra grande, porque
 a auditoria reprova cores e vidro do próprio sistema.
 

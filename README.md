@@ -120,7 +120,8 @@ A identidade visual (cores, tipografia, componentes) está em
 ## Antes de abrir um PR
 
 O CI do GitHub roda só quando o PR sai do rascunho e confere formato, lint, tipos, build e
-testes do app e do site (o job `Check`). O resto é testado aqui, no Mac, antes do PR:
+testes do app, do site e do worklet do iPhone (o job `Check`), mais o projeto do Xcode e os testes
+em Swift (o job `iPhone no Mac`). O resto é testado aqui, no Mac, antes do PR:
 
 1. **Sempre:** `npm run ci:local` (em `desktop/`), os mesmos passos do `Check`, inclusive os do
    site e a conexão do iPhone. Também roda sozinho antes de cada `git push`, com o cache do Vite+ nos passos que não

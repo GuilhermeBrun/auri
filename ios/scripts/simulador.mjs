@@ -3,9 +3,13 @@ import { execFileSync } from 'node:child_process'
 const lista = JSON.parse(
   execFileSync('xcrun', ['simctl', 'list', 'devices', 'available', '-j'], { encoding: 'utf8' })
 )
-const iphones = Object.entries(lista.devices)
-  .filter(([runtime]) => runtime.includes('iOS'))
-  .flatMap(([, aparelhos]) => aparelhos)
+const sdk = execFileSync('xcrun', ['--sdk', 'iphonesimulator', '--show-sdk-version'], {
+  encoding: 'utf8'
+}).trim()
+const runtimes = Object.keys(lista.devices).filter((runtime) => runtime.includes('iOS'))
+const doSdk = runtimes.filter((runtime) => runtime.endsWith(`iOS-${sdk.replace('.', '-')}`))
+const iphones = (doSdk.length ? doSdk : runtimes)
+  .flatMap((runtime) => lista.devices[runtime])
   .filter(({ name }) => name.startsWith('iPhone'))
 const escolhido = iphones.find(({ state }) => state === 'Booted') ?? iphones.at(-1)
 if (!escolhido) {
