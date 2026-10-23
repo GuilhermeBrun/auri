@@ -1,6 +1,7 @@
 import BackgroundTasks
 import Foundation
 import Observation
+import UIKit
 import WidgetKit
 
 @MainActor
@@ -106,6 +107,7 @@ final class Agenda {
     Self.agendarAtualizacao()
     guard (try? await conexao.garantirConexao()) != nil else { return }
     await carregar()
+    if UIApplication.shared.applicationState != .active { conexao.suspender() }
   }
 
   static func agendarAtualizacao() {

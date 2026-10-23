@@ -171,6 +171,8 @@ export type Saida =
 
 export function criarNucleo(opcoes: { enviar: (saida: Saida) => void; bootstrap?: Bootstrap }): {
   receber(mensagem: unknown): void
+  suspender(): Promise<void>
+  retomar(): void
   fechar(): Promise<void>
 } {
   const { enviar } = opcoes
@@ -179,6 +181,7 @@ export function criarNucleo(opcoes: { enviar: (saida: Saida) => void; bootstrap?
   let meuNome = 'iPhone'
   let atual: { cliente: ReturnType<typeof createSyncClient>; servidor: Servidor } | null = null
   let discador: ReturnType<typeof createRemoteDialer> | null = null
+  let pausado: Servidor | null = null
 
   function minhasChaves(): { publicKey: Buffer; secretKey: Buffer } {
     if (!chaves) throw new Error('O worklet ainda não foi iniciado.')
@@ -190,7 +193,7 @@ export function criarNucleo(opcoes: { enviar: (saida: Saida) => void; bootstrap?
   }
 
   function discar(): ReturnType<typeof createRemoteDialer> {
-    discador ??= createRemoteDialer({ keyPair: minhasChaves(), bootstrap })
+    discador ??= createRemoteDialer({ keyPair: minhasChaves(), bootstrap, ephemeral: true })
     return discador
   }
 
@@ -293,8 +296,20 @@ export function criarNucleo(opcoes: { enviar: (saida: Saida) => void; bootstrap?
         case 'testar':
           return void testar(m.id)
         case 'desconectar':
+          pausado = null
           return desconectar()
       }
+    },
+    async suspender() {
+      pausado = atual?.servidor ?? pausado
+      desconectar()
+      const fechando = discador
+      discador = null
+      await fechando?.close()
+    },
+    retomar() {
+      if (pausado && !atual) conectar(pausado)
+      pausado = null
     },
     async fechar() {
       desconectar()

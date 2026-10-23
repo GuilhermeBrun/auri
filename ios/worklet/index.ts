@@ -27,6 +27,12 @@ IPC.on('data', (dados: Buffer) => {
   }
 })
 
+Bare.on('suspend', () => {
+  void nucleo.suspender()
+})
+
+Bare.on('resume', () => nucleo.retomar())
+
 Bare.on('uncaughtException', (error: Error) => {
   enviar({ t: 'falha', mensagem: error.name })
 })
