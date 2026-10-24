@@ -159,7 +159,11 @@ struct NovaSessaoView: View {
     let calendario = DataLocal.calendario
     let base = dia ?? agora
     guard calendario.isDate(base, inSameDayAs: agora) else {
-      return calendario.date(bySettingHour: 9, minute: 0, second: 0, of: base) ?? base
+      guard let horario = clinica?.horario(em: base) else {
+        return calendario.date(bySettingHour: 9, minute: 0, second: 0, of: base) ?? base
+      }
+      let comeco = max(9 * 60, horario.abre) + minutos <= horario.fecha ? max(9 * 60, horario.abre) : horario.abre
+      return DataLocal.inicioDoDia(base).addingTimeInterval(TimeInterval(comeco * 60))
     }
     let proxima = calendario.date(byAdding: .hour, value: 1, to: agora) ?? agora
     let cheia =

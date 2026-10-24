@@ -291,6 +291,16 @@ final class ConexaoUITests: XCTestCase {
     anexar(app, "30-dia-deslizado")
     tocar(app.buttons["Hoje"], "Hoje")
     XCTAssertTrue(cabecalho(0).waitForExistence(timeout: 5))
+    let ateDomingo = 8 - Calendar.current.component(.weekday, from: .now)
+    for _ in 0..<ateDomingo { linhaDoTempo(app).swipeLeft() }
+    XCTAssertTrue(cabecalho(ateDomingo).waitForExistence(timeout: 5), "não chegou ao domingo")
+    let domingo = Calendar.current.date(byAdding: .day, value: ateDomingo, to: .now)!
+    let naFaixa = app.buttons[
+      domingo.formatted(.dateTime.weekday(.wide).day().month(.wide).locale(Locale(identifier: "pt_BR")))]
+    XCTAssertTrue(
+      app.frame.contains(CGPoint(x: naFaixa.frame.midX, y: naFaixa.frame.midY)), "a faixa não foi para a semana do dia")
+    tocar(app.buttons["Hoje"], "Hoje")
+    XCTAssertTrue(cabecalho(0).waitForExistence(timeout: 5))
     deslizarFaixa(app, paraEsquerda: true)
     XCTAssertTrue(cabecalho(7).waitForExistence(timeout: 5), "a faixa da semana não foi para a semana seguinte")
     anexar(app, "31-semana-seguinte")

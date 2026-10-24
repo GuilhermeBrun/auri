@@ -113,6 +113,12 @@ final class RegrasTests: XCTestCase {
     XCTAssertEqual(
       DataLocal.texto(NovaSessaoView.horarioSugerido(nil, agora: hora("05:10"), clinica: clinica)),
       "2026-10-22T07:00")
+    XCTAssertEqual(
+      DataLocal.texto(NovaSessaoView.horarioSugerido(amanha, agora: agora, clinica: clinica)), "2026-10-23T09:00")
+    let tarde = try! decodificador.decode(
+      Clinica.self, from: Data(#"{"nome":"","funcionamento":{"5":{"abre":"13:00","fecha":"19:00"}}}"#.utf8))
+    XCTAssertEqual(
+      DataLocal.texto(NovaSessaoView.horarioSugerido(amanha, agora: agora, clinica: tarde)), "2026-10-23T13:00")
   }
 
   func testIntervaloParaPedirOFaceIDDeNovo() {

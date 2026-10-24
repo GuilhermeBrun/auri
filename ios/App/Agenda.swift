@@ -93,7 +93,7 @@ final class Agenda {
   func atualizarResumo() {
     let hoje = DataLocal.inicioDoDia(.now)
     let dias = [hoje, DataLocal.somar(.day, 1, a: hoje)]
-    let itens = Self.itensDoResumo(dias.flatMap { eventos(em: $0) }, nomes: Self.nomesNosWidgets)
+    let itens = Self.itensDoResumo(dias.flatMap { porDia[$0] ?? [] }, nomes: Self.nomesNosWidgets)
     try? Resumo(itens: itens, atualizado: .now).gravar()
     WidgetCenter.shared.reloadAllTimelines()
   }
@@ -140,9 +140,17 @@ final class Agenda {
       "inicio": .texto(DataLocal.texto(inicio)),
       "fim": .texto(DataLocal.texto(fim)),
     ])
-    _ = try await conexao.operacao(
+    let resposta = try await conexao.operacao(
       "appointments:move", [.numero(Double(sessao.id)), vaga, sessao.updatedAt.map { .texto($0) } ?? .nulo])
-    await carregar()
+    guard let movida = try? resposta.decodificar(Sessao.self), let evento = Evento(movida) else {
+      return await carregar()
+    }
+    for (dia, lista) in porDia where lista.contains(where: { $0.id == evento.id }) {
+      porDia[dia] = lista.filter { $0.id != evento.id }
+    }
+    porDia[DataLocal.inicioDoDia(evento.inicio), default: []].append(evento)
+    porDia[DataLocal.inicioDoDia(evento.inicio)]?.sort { $0.inicio < $1.inicio }
+    atualizarResumo()
   }
 
   func marcar(paciente: Int, inicio: Date, minutos: Int, etiqueta: Int?, observacao: String) async throws {

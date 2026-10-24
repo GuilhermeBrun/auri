@@ -13,6 +13,7 @@ struct DiaView: View {
   @State private var arrastado: Evento?
   @State private var alvosSobre = 0
   @State private var ultimoSinal = Date.distantPast
+  @State private var rolou = false
   @Environment(\.dynamicTypeSize) private var tamanhoDoTexto
   private let foco: Int?
   private let primeiroDia: Date
@@ -39,9 +40,7 @@ struct DiaView: View {
       FaixaDaSemana(
         primeiroDia: primeiroDia, totalDeDias: totalDeDias, recuo: recuo, escolhido: pagina ?? 0,
         semana: $semana, escolher: ir(para:), sinal: sinalizar,
-        soltar: { outro in
-          if let arrastado { soltar(arrastado.id, noDia: outro) }
-        })
+        soltar: { id, outro in soltar(id, noDia: outro) })
       Text(dia.formatado(.dateTime.weekday(.wide).day().month(.wide).year()))
         .font(.footnote.weight(.semibold))
         .padding(.vertical, 8)
@@ -67,7 +66,11 @@ struct DiaView: View {
               }
             }
             .accessibilityIdentifier("linha-do-tempo")
-            .onAppear { leitor.scrollTo(max(horaInicial(em: dia) - 1, 0), anchor: .top) }
+            .onAppear {
+              guard !rolou else { return }
+              rolou = true
+              leitor.scrollTo(max(horaInicial(em: dia) - 1, 0), anchor: .top)
+            }
           }
         }
       }
@@ -253,7 +256,7 @@ private struct FaixaDaSemana: View {
   @Binding var semana: Int?
   let escolher: (Int) -> Void
   let sinal: (Bool) -> Void
-  let soltar: (Date) -> Void
+  let soltar: (String, Date) -> Void
 
   var body: some View {
     Paginas(total: (totalDeDias - 1 + recuo) / 7 + 1, atual: $semana) { indiceDaSemana, visivel in
@@ -300,7 +303,7 @@ private struct FaixaDaSemana: View {
     }
     .buttonStyle(.plain)
     .springLoadingBehavior(.enabled)
-    .onDrop(of: [.text], delegate: SoltarNoDia(sinal: sinal, soltar: { soltar(outro) }))
+    .onDrop(of: [.text], delegate: SoltarNoDia(sinal: sinal, soltar: { soltar($0, outro) }))
     .accessibilityElement(children: .ignore)
     .accessibilityLabel(outro.formatado(.dateTime.weekday(.wide).day().month(.wide)))
     .accessibilityAddTraits(escolhido ? [.isButton, .isSelected] : .isButton)
@@ -445,10 +448,7 @@ private struct LinhaDoTempo: View {
     .onDrop(
       of: [.text],
       delegate: SoltarNaLinha(
-        alvo: $alvo, minutos: minutos(no:), sinal: sinal,
-        soltar: {
-          if let alvo, let arrastado { soltar(arrastado.id, alvo) }
-        }))
+        alvo: $alvo, minutos: minutos(no:), sinal: sinal, soltar: soltar))
   }
 
   private func bloco(_ evento: Evento, largura: CGFloat) -> some View {
@@ -538,7 +538,7 @@ private struct SoltarNaLinha: DropDelegate {
   @Binding var alvo: Int?
   let minutos: (CGFloat) -> Int
   let sinal: (Bool) -> Void
-  let soltar: () -> Void
+  let soltar: (String, Int) -> Void
 
   func validateDrop(info: DropInfo) -> Bool {
     info.hasItemsConforming(to: [.text])
@@ -561,17 +561,17 @@ private struct SoltarNaLinha: DropDelegate {
   }
 
   func performDrop(info: DropInfo) -> Bool {
-    guard alvo != nil else { return false }
-    soltar()
+    guard let minutos = alvo else { return false }
     alvo = nil
     sinal(false)
+    idArrastado(info) { soltar($0, minutos) }
     return true
   }
 }
 
 private struct SoltarNoDia: DropDelegate {
   let sinal: (Bool) -> Void
-  let soltar: (() -> Void)?
+  let soltar: ((String) -> Void)?
 
   func validateDrop(info: DropInfo) -> Bool {
     info.hasItemsConforming(to: [.text])
@@ -592,8 +592,17 @@ private struct SoltarNoDia: DropDelegate {
   func performDrop(info: DropInfo) -> Bool {
     sinal(false)
     guard let soltar else { return false }
-    soltar()
+    idArrastado(info) { soltar($0) }
     return true
+  }
+}
+
+private func idArrastado(_ info: DropInfo, _ usar: @escaping @MainActor (String) -> Void) {
+  guard let provedor = info.itemProviders(for: [.text]).first else { return }
+  _ = provedor.loadObject(ofClass: NSString.self) { objeto, _ in
+    guard let id = objeto as? NSString else { return }
+    let texto = String(id)
+    Task { @MainActor in usar(texto) }
   }
 }
 
