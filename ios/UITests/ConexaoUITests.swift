@@ -29,15 +29,15 @@ final class ConexaoUITests: XCTestCase {
     XCTAssertTrue(app.staticTexts[hoje].waitForExistence(timeout: 15))
     sleep(2)
     anexar(app, "02-dia")
-    app.scrollViews.firstMatch.swipeDown(velocity: .slow)
+    linhaDoTempo(app).swipeDown(velocity: .slow)
     sleep(1)
     anexar(app, "02b-dia-manha")
-    app.scrollViews.firstMatch.swipeUp(velocity: .fast)
-    app.scrollViews.firstMatch.swipeUp(velocity: .fast)
-    app.scrollViews.firstMatch.swipeUp(velocity: .fast)
+    linhaDoTempo(app).swipeUp(velocity: .fast)
+    linhaDoTempo(app).swipeUp(velocity: .fast)
+    linhaDoTempo(app).swipeUp(velocity: .fast)
     try auditar(app)
 
-    tocar(elemento(app, contendo: " – "), "sessão na linha do tempo")
+    tocar(naTela(app, contendo: " – "), "sessão na linha do tempo")
     XCTAssertTrue(app.staticTexts["Etiqueta"].waitForExistence(timeout: 10))
     anexar(app, "03-sessao")
     try auditar(app)
@@ -235,7 +235,7 @@ final class ConexaoUITests: XCTestCase {
       throw XCTSkip("Sem a sessão de arrastar hoje (domingo ou sem horário livre).")
     }
     for _ in 0..<6 where !sessao.isHittable {
-      app.scrollViews.firstMatch.swipeDown()
+      linhaDoTempo(app).swipeDown()
     }
     let hora = try XCTUnwrap(sessao.label.matches(of: /(\d\d):(\d\d)/).compactMap { Int($0.output.1) }.first)
     let centro = sessao.coordinate(withNormalizedOffset: CGVector(dx: 0.3, dy: 0.5))
@@ -264,11 +264,38 @@ final class ConexaoUITests: XCTestCase {
     origem.press(
       forDuration: 1.2, thenDragTo: diaSeguinte.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)),
       withVelocity: .slow, thenHoldForDuration: 0.3)
-    XCTAssertTrue(
-      app.descendants(matching: .any).matching(rui).firstMatch.waitForNonExistence(timeout: 15),
-      "a sessão continuou hoje")
+    XCTAssertTrue(sumiu(app, rui, ate: 15), "a sessão continuou hoje")
     diaSeguinte.tap()
     XCTAssertTrue(movida.waitForExistence(timeout: 15), "a sessão não apareceu amanhã")
+  }
+
+  func test11DeslizarDias() throws {
+    let app = try abrirConectado()
+    let cabecalho = { (dias: Int) -> XCUIElement in
+      let dia = Calendar.current.date(byAdding: .day, value: dias, to: .now)!
+      return app.staticTexts[
+        dia.formatted(.dateTime.weekday(.wide).day().month(.wide).year().locale(Locale(identifier: "pt_BR")))]
+    }
+    XCTAssertTrue(cabecalho(0).waitForExistence(timeout: 15))
+    linhaDoTempo(app).swipeLeft()
+    XCTAssertTrue(cabecalho(1).waitForExistence(timeout: 5), "deslizar para a esquerda não foi para o dia seguinte")
+    linhaDoTempo(app).swipeRight()
+    XCTAssertTrue(cabecalho(0).waitForExistence(timeout: 5), "deslizar para a direita não voltou um dia")
+    linhaDoTempo(app).swipeRight()
+    XCTAssertTrue(cabecalho(-1).waitForExistence(timeout: 5), "deslizar para a direita saiu do dia")
+    let borda = app.coordinate(withNormalizedOffset: CGVector(dx: 0.01, dy: 0.6))
+    borda.press(
+      forDuration: 0.05, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.8, dy: 0.6)),
+      withVelocity: .fast, thenHoldForDuration: 0)
+    XCTAssertTrue(cabecalho(-2).waitForExistence(timeout: 5), "deslizar da borda saiu do dia")
+    anexar(app, "30-dia-deslizado")
+    tocar(app.buttons["Hoje"], "Hoje")
+    XCTAssertTrue(cabecalho(0).waitForExistence(timeout: 5))
+    deslizarFaixa(app, paraEsquerda: true)
+    XCTAssertTrue(cabecalho(7).waitForExistence(timeout: 5), "a faixa da semana não foi para a semana seguinte")
+    anexar(app, "31-semana-seguinte")
+    deslizarFaixa(app, paraEsquerda: false)
+    XCTAssertTrue(cabecalho(0).waitForExistence(timeout: 5), "a faixa da semana não voltou")
   }
 
   func test99PacientesVazio() throws {
@@ -339,6 +366,19 @@ final class ConexaoUITests: XCTestCase {
     }
   }
 
+  private func linhaDoTempo(_ app: XCUIApplication) -> XCUIElement {
+    app.scrollViews["linha-do-tempo"]
+  }
+
+  private func deslizarFaixa(_ app: XCUIApplication, paraEsquerda: Bool) {
+    let faixa = app.scrollViews["faixa-da-semana"].frame
+    let origem = app.coordinate(withNormalizedOffset: .zero)
+    let esquerda = origem.withOffset(CGVector(dx: faixa.minX + 40, dy: faixa.maxY - 25))
+    let direita = origem.withOffset(CGVector(dx: faixa.maxX - 40, dy: faixa.maxY - 25))
+    (paraEsquerda ? direita : esquerda).press(
+      forDuration: 0.05, thenDragTo: paraEsquerda ? esquerda : direita, withVelocity: .fast, thenHoldForDuration: 0)
+  }
+
   private func tocar(_ alvo: XCUIElement, _ nome: String) {
     XCTAssertTrue(alvo.waitForExistence(timeout: 15), "\(nome) não apareceu")
     alvo.tap()
@@ -402,6 +442,24 @@ final class ConexaoUITests: XCTestCase {
       partes.day = dia
       return calendario.component(.weekday, from: calendario.date(from: partes)!) == 4
     }!
+  }
+
+  private func naTela(_ app: XCUIApplication, contendo texto: String) -> XCUIElement {
+    let candidatos = app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", texto))
+    return candidatos.allElementsBoundByIndex.first { app.frame.contains(CGPoint(x: $0.frame.midX, y: $0.frame.midY)) }
+      ?? candidatos.firstMatch
+  }
+
+  private func sumiu(_ app: XCUIApplication, _ predicado: NSPredicate, ate segundos: Double) -> Bool {
+    let fim = Date.now.addingTimeInterval(segundos)
+    while Date.now < fim {
+      let naTela = app.descendants(matching: .any).matching(predicado).allElementsBoundByIndex.contains {
+        app.frame.contains(CGPoint(x: $0.frame.midX, y: $0.frame.midY))
+      }
+      if !naTela { return true }
+      sleep(1)
+    }
+    return false
   }
 
   private func elemento(_ app: XCUIApplication, contendo texto: String) -> XCUIElement {

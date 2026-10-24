@@ -1,31 +1,44 @@
 import SwiftUI
 
+private let alturaDaHora: CGFloat = 60
+
 struct DiaView: View {
   let agenda: Agenda
   let nascimentos: [Int: String]
   let abrirEvento: (Evento) -> Void
 
-  @State private var dia: Date
+  @State private var pagina: Int?
+  @State private var semana: Int?
   @State private var erroAoMover: String?
   @State private var arrastado: Evento?
   @State private var alvosSobre = 0
   @State private var ultimoSinal = Date.distantPast
   @Environment(\.dynamicTypeSize) private var tamanhoDoTexto
   private let foco: Int?
+  private let primeiroDia: Date
+  private let totalDeDias: Int
+  private let recuo: Int
 
   init(agenda: Agenda, nascimentos: [Int: String], inicial: Date, abrirEvento: @escaping (Evento) -> Void) {
     self.agenda = agenda
     self.nascimentos = nascimentos
     self.abrirEvento = abrirEvento
-    _dia = State(initialValue: DataLocal.inicioDoDia(inicial))
     let hora = DataLocal.calendario.component(.hour, from: inicial)
     foco = hora > 0 ? hora : nil
+    primeiroDia = DataLocal.inicioDoDia(agenda.primeiroMes)
+    totalDeDias = max(Self.dias(de: primeiroDia, ate: DataLocal.somar(.month, 1, a: agenda.ultimoMes)), 1)
+    recuo = (DataLocal.calendario.component(.weekday, from: primeiroDia) - DataLocal.calendario.firstWeekday + 7) % 7
+    let indice = min(max(Self.dias(de: primeiroDia, ate: inicial), 0), totalDeDias - 1)
+    _pagina = State(initialValue: indice)
+    _semana = State(initialValue: (indice + recuo) / 7)
   }
 
   var body: some View {
+    let dia = data(pagina ?? 0)
     VStack(spacing: 0) {
       FaixaDaSemana(
-        dia: $dia, sinal: sinalizar,
+        primeiroDia: primeiroDia, totalDeDias: totalDeDias, recuo: recuo, escolhido: pagina ?? 0,
+        semana: $semana, escolher: ir(para:), sinal: sinalizar,
         soltar: { outro in
           if let arrastado { soltar(arrastado.id, noDia: outro) }
         })
@@ -36,19 +49,28 @@ struct DiaView: View {
         .overlay(alignment: .bottom) { Rectangle().fill(.separator).frame(height: 0.5) }
       Group {
         if tamanhoDoTexto.isAccessibilitySize {
-          ListaDoDia(dia: dia, eventos: agenda.eventos(em: dia), nascimentos: nascimentos, abrirEvento: abrirEvento)
+          Paginas(total: totalDeDias, atual: $pagina, eixos: [.horizontal, .vertical]) { indice, visivel in
+            paginaDoDia(indice, lista: true, visivel: visivel)
+          }
         } else {
-          LinhaDoTempo(
-            dia: dia, foco: foco, eventos: agenda.eventos(em: dia), clinica: agenda.clinica,
-            nascimentos: nascimentos, arrastado: arrastado, abrirEvento: abrirEvento,
-            comecarArraste: { evento in
-              arrastado = evento
-              ultimoSinal = .now
-            },
-            sinal: sinalizar, soltar: soltar(_:noHorario:), mover: mover)
+          ScrollViewReader { leitor in
+            ScrollView {
+              ZStack(alignment: .top) {
+                VStack(spacing: 0) {
+                  ForEach(0..<24, id: \.self) { hora in
+                    Color.clear.frame(height: alturaDaHora).id(hora)
+                  }
+                }
+                Paginas(total: totalDeDias, atual: $pagina) { indice, visivel in
+                  paginaDoDia(indice, lista: false, visivel: visivel)
+                }
+              }
+            }
+            .accessibilityIdentifier("linha-do-tempo")
+            .onAppear { leitor.scrollTo(max(horaInicial(em: dia) - 1, 0), anchor: .top) }
+          }
         }
       }
-      .id(dia)
       .overlay {
         if arrastado != nil {
           HStack {
@@ -60,19 +82,23 @@ struct DiaView: View {
         }
       }
       .animation(.snappy, value: arrastado == nil)
-      .simultaneousGesture(
-        DragGesture(minimumDistance: 40).onEnded { gesto in
-          guard abs(gesto.translation.width) > abs(gesto.translation.height) * 2 else { return }
-          withAnimation { dia = DataLocal.somar(.day, gesto.translation.width < 0 ? 1 : -1, a: dia) }
-        }
-      )
+    }
+    .background(SemVoltarPorGesto())
+    .sensoryFeedback(.selection, trigger: pagina)
+    .onChange(of: pagina) { _, nova in
+      guard let nova, (nova + recuo) / 7 != semana else { return }
+      withAnimation(.snappy) { semana = (nova + recuo) / 7 }
+    }
+    .onChange(of: semana) { _, nova in
+      guard let nova, let atual = pagina, (atual + recuo) / 7 != nova else { return }
+      pagina = min(max(nova * 7 - recuo + (atual + recuo) % 7, 0), totalDeDias - 1)
     }
     .navigationTitle(dia.formatado(.dateTime.day().month(.abbreviated)))
     .navigationBarTitleDisplayMode(.inline)
     .toolbar {
       ToolbarItem(placement: .principal) { Text("") }
       ToolbarItem(placement: .topBarLeading) {
-        Button("Hoje") { withAnimation { dia = DataLocal.inicioDoDia(.now) } }
+        Button("Hoje") { ir(para: Self.dias(de: primeiroDia, ate: .now)) }
       }
     }
     .task(id: arrastado?.id) {
@@ -91,9 +117,45 @@ struct DiaView: View {
     }
   }
 
+  private func data(_ indice: Int) -> Date {
+    DataLocal.somar(.day, indice, a: primeiroDia)
+  }
+
+  private func paginaDoDia(_ indice: Int, lista: Bool, visivel: Bool) -> some View {
+    let dia = data(indice)
+    return PaginaDoDia(
+      agenda: agenda, dia: dia, nascimentos: nascimentos, lista: lista, visivel: visivel, arrastado: arrastado,
+      abrirEvento: abrirEvento,
+      comecarArraste: { evento in
+        arrastado = evento
+        ultimoSinal = .now
+      },
+      sinal: sinalizar, soltar: { id, minutos in soltar(id, noHorario: minutos, em: dia) }, mover: mover)
+  }
+
+  private func ir(para alvo: Int) {
+    let alvo = min(max(alvo, 0), totalDeDias - 1)
+    guard let atual = pagina, alvo != atual else { return }
+    if abs(alvo - atual) == 1 {
+      withAnimation(.snappy) { pagina = alvo }
+    } else {
+      pagina = alvo
+    }
+  }
+
+  private func horaInicial(em dia: Date) -> Int {
+    if let foco { return foco }
+    if DataLocal.calendario.isDateInToday(dia) { return DataLocal.calendario.component(.hour, from: .now) }
+    return agenda.eventos(em: dia).first.map { DataLocal.calendario.component(.hour, from: $0.inicio) } ?? 8
+  }
+
+  private static func dias(de inicio: Date, ate fim: Date) -> Int {
+    DataLocal.calendario.dateComponents([.day], from: inicio, to: DataLocal.inicioDoDia(fim)).day ?? 0
+  }
+
   private func outroDia(_ dias: Int) -> some View {
     Button {
-      withAnimation { dia = DataLocal.somar(.day, dias, a: dia) }
+      ir(para: (pagina ?? 0) + dias)
     } label: {
       Image(systemName: dias < 0 ? "chevron.left" : "chevron.right")
         .font(.body.weight(.semibold))
@@ -112,7 +174,7 @@ struct DiaView: View {
     ultimoSinal = .now
   }
 
-  private func soltar(_ id: String, noHorario minutos: Int) {
+  private func soltar(_ id: String, noHorario minutos: Int, em dia: Date) {
     soltar(id) { _ in DataLocal.inicioDoDia(dia).addingTimeInterval(TimeInterval(minutos * 60)) }
   }
 
@@ -184,59 +246,138 @@ private struct ListaDoDia: View {
 }
 
 private struct FaixaDaSemana: View {
-  @Binding var dia: Date
+  let primeiroDia: Date
+  let totalDeDias: Int
+  let recuo: Int
+  let escolhido: Int
+  @Binding var semana: Int?
+  let escolher: (Int) -> Void
   let sinal: (Bool) -> Void
   let soltar: (Date) -> Void
 
   var body: some View {
-    let calendario = DataLocal.calendario
-    let recuo = (calendario.component(.weekday, from: dia) - calendario.firstWeekday + 7) % 7
-    let inicio = DataLocal.somar(.day, -recuo, a: dia)
-    let dias = (0..<7).map { DataLocal.somar(.day, $0, a: inicio) }
-    HStack(spacing: 0) {
-      ForEach(Array(dias.enumerated()), id: \.offset) { indice, outro in
-        let escolhido = calendario.isDate(outro, inSameDayAs: dia)
-        let hoje = calendario.isDateInToday(outro)
-        Button {
-          withAnimation { dia = outro }
-        } label: {
-          VStack(spacing: 4) {
-            Text(calendario.veryShortStandaloneWeekdaySymbols[indice].uppercased())
-              .font(.caption2.weight(.semibold))
-              .foregroundStyle(indice == 0 || indice == 6 ? .secondary : .primary)
-            Text(outro.formatado(.dateTime.day()))
-              .font(.title3.weight(escolhido ? .semibold : .regular))
-              .foregroundStyle(escolhido ? Color(.systemBackground) : hoje ? Color.red : Color.primary)
-              .frame(width: 36, height: 36)
-              .background {
-                if escolhido { Circle().fill(hoje ? Color.red : Color.primary) }
-              }
+    Paginas(total: (totalDeDias - 1 + recuo) / 7 + 1, atual: $semana) { indiceDaSemana, visivel in
+      HStack(spacing: 0) {
+        ForEach(0..<7, id: \.self) { coluna in
+          let indice = indiceDaSemana * 7 - recuo + coluna
+          if (0..<totalDeDias).contains(indice) {
+            botao(indice, coluna: coluna)
+          } else {
+            Color.clear.frame(maxWidth: .infinity)
           }
-          .frame(maxWidth: .infinity)
-          .contentShape(.rect)
         }
-        .buttonStyle(.plain)
-        .springLoadingBehavior(.enabled)
-        .onDrop(of: [.text], delegate: SoltarNoDia(sinal: sinal, soltar: { soltar(outro) }))
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(outro.formatado(.dateTime.weekday(.wide).day().month(.wide)))
-        .accessibilityAddTraits(escolhido ? [.isButton, .isSelected] : .isButton)
       }
+      .padding(.vertical, 6)
+      .accessibilityHidden(!visivel)
     }
-    .padding(.vertical, 6)
+    .fixedSize(horizontal: false, vertical: true)
+    .accessibilityIdentifier("faixa-da-semana")
     .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
-    .gesture(
-      DragGesture(minimumDistance: 30).onEnded { gesto in
-        withAnimation { dia = DataLocal.somar(.day, gesto.translation.width < 0 ? 7 : -7, a: dia) }
-      }
-    )
   }
 
+  private func botao(_ indice: Int, coluna: Int) -> some View {
+    let calendario = DataLocal.calendario
+    let outro = DataLocal.somar(.day, indice, a: primeiroDia)
+    let escolhido = indice == self.escolhido
+    let hoje = calendario.isDateInToday(outro)
+    return Button {
+      escolher(indice)
+    } label: {
+      VStack(spacing: 4) {
+        Text(calendario.veryShortStandaloneWeekdaySymbols[coluna].uppercased())
+          .font(.caption2.weight(.semibold))
+          .foregroundStyle(coluna == 0 || coluna == 6 ? .secondary : .primary)
+        Text(outro.formatado(.dateTime.day()))
+          .font(.title3.weight(escolhido ? .semibold : .regular))
+          .foregroundStyle(escolhido ? Color(.systemBackground) : hoje ? Color.red : Color.primary)
+          .frame(width: 36, height: 36)
+          .background {
+            if escolhido { Circle().fill(hoje ? Color.red : Color.primary) }
+          }
+      }
+      .frame(maxWidth: .infinity)
+      .contentShape(.rect)
+    }
+    .buttonStyle(.plain)
+    .springLoadingBehavior(.enabled)
+    .onDrop(of: [.text], delegate: SoltarNoDia(sinal: sinal, soltar: { soltar(outro) }))
+    .accessibilityElement(children: .ignore)
+    .accessibilityLabel(outro.formatado(.dateTime.weekday(.wide).day().month(.wide)))
+    .accessibilityAddTraits(escolhido ? [.isButton, .isSelected] : .isButton)
+  }
+}
+
+private struct PaginaDoDia: View {
+  let agenda: Agenda
+  let dia: Date
+  let nascimentos: [Int: String]
+  let lista: Bool
+  let visivel: Bool
+  let arrastado: Evento?
+  let abrirEvento: (Evento) -> Void
+  let comecarArraste: (Evento) -> Void
+  let sinal: (Bool) -> Void
+  let soltar: (String, Int) -> Void
+  let mover: (Evento, Date) async -> Void
+
+  var body: some View {
+    if lista {
+      ListaDoDia(dia: dia, eventos: agenda.eventos(em: dia), nascimentos: nascimentos, abrirEvento: abrirEvento)
+        .accessibilityHidden(!visivel)
+    } else {
+      LinhaDoTempo(
+        dia: dia, eventos: agenda.eventos(em: dia), clinica: agenda.clinica, nascimentos: nascimentos,
+        arrastado: arrastado, abrirEvento: abrirEvento, comecarArraste: comecarArraste, sinal: sinal,
+        soltar: soltar, mover: mover, visivel: visivel)
+    }
+  }
+}
+
+private struct Paginas<Pagina: View>: View {
+  let total: Int
+  @Binding var atual: Int?
+  var eixos: Axis.Set = .horizontal
+  @ViewBuilder let pagina: (Int, Bool) -> Pagina
+
+  var body: some View {
+    ScrollView(.horizontal) {
+      LazyHStack(spacing: 0) {
+        ForEach(0..<total, id: \.self) { indice in
+          pagina(indice, indice == atual).containerRelativeFrame(eixos)
+        }
+      }
+      .scrollTargetLayout()
+    }
+    .scrollTargetBehavior(.paging)
+    .scrollPosition(id: $atual, anchor: .center)
+    .scrollIndicators(.hidden)
+  }
+}
+
+private struct SemVoltarPorGesto: UIViewControllerRepresentable {
+  func makeUIViewController(context: Context) -> Controlador { Controlador() }
+  func updateUIViewController(_ controlador: Controlador, context: Context) {}
+
+  final class Controlador: UIViewController {
+    override func viewDidAppear(_ animated: Bool) {
+      super.viewDidAppear(animated)
+      permitir(false)
+    }
+
+    override func viewWillDisappear(_ animated: Bool) {
+      super.viewWillDisappear(animated)
+      permitir(true)
+    }
+
+    private func permitir(_ permitido: Bool) {
+      navigationController?.interactivePopGestureRecognizer?.isEnabled = permitido
+      navigationController?.interactiveContentPopGestureRecognizer?.isEnabled = permitido
+    }
+  }
 }
 
 private struct LinhaDoTempo: View {
   let dia: Date
-  let foco: Int?
   let eventos: [Evento]
   let clinica: Clinica?
   let nascimentos: [Int: String]
@@ -246,80 +387,68 @@ private struct LinhaDoTempo: View {
   let sinal: (Bool) -> Void
   let soltar: (String, Int) -> Void
   let mover: (Evento, Date) async -> Void
+  let visivel: Bool
 
   @State private var alvo: Int?
 
-  private let alturaDaHora: CGFloat = 60
   private let margem: CGFloat = 56
   private let topo: CGFloat = 8
 
   var body: some View {
-    ScrollViewReader { leitor in
-      ScrollView {
-        ZStack(alignment: .topLeading) {
-          ForEach(Array(faixasFechadas.enumerated()), id: \.offset) { _, faixa in
-            Rectangle()
-              .fill(Color(.systemGray6))
-              .frame(height: CGFloat(faixa.fim - faixa.inicio) / 60 * alturaDaHora)
-              .padding(.leading, margem)
-              .offset(y: topo + CGFloat(faixa.inicio) / 60 * alturaDaHora)
-              .accessibilityHidden(true)
-          }
-          VStack(spacing: 0) {
-            ForEach(0..<24, id: \.self) { hora in
-              HStack(alignment: .center, spacing: 8) {
-                Text(String(format: "%02d:00", hora))
-                  .font(.caption2)
-                  .foregroundStyle(.secondary)
-                  .frame(width: margem - 8, height: topo * 2, alignment: .trailing)
-                  .opacity(pertoDeAgora(hora) ? 0 : 1)
-                  .accessibilityHidden(pertoDeAgora(hora))
-                Rectangle().fill(.separator).frame(height: 0.5)
-              }
-              .frame(height: alturaDaHora, alignment: .top)
-              .id(hora)
-            }
-          }
-          GeometryReader { espaco in
-            let largura = espaco.size.width - margem - 4
-            ForEach(eventos.emColunas(), id: \.evento.id) { item in
-              bloco(item.evento, largura: largura / CGFloat(item.total) - 2)
-                .offset(
-                  x: margem + largura / CGFloat(item.total) * CGFloat(item.coluna),
-                  y: topo + posicao(de: item.evento.inicio) + 1
-                )
-            }
-            if let alvo, let arrastado {
-              LugarDeSoltar(inicio: alvo, duracao: arrastado.fim.timeIntervalSince(arrastado.inicio))
-                .frame(width: largura, height: altura(duracao: arrastado.fim.timeIntervalSince(arrastado.inicio)))
-                .offset(x: margem, y: topo + CGFloat(alvo) / 60 * alturaDaHora + 1)
-                .allowsHitTesting(false)
-                .accessibilityHidden(true)
-            }
-            if DataLocal.calendario.isDateInToday(dia) {
-              Agora(margem: margem)
-                .offset(y: topo + posicao(de: .now) - 22)
-            }
-          }
-        }
-        .frame(height: alturaDaHora * 24)
-        .onDrop(
-          of: [.text],
-          delegate: SoltarNaLinha(
-            alvo: $alvo, minutos: minutos(no:), sinal: sinal,
-            soltar: {
-              if let alvo, let arrastado { soltar(arrastado.id, alvo) }
-            }))
+    ZStack(alignment: .topLeading) {
+      ForEach(Array(faixasFechadas.enumerated()), id: \.offset) { _, faixa in
+        Rectangle()
+          .fill(Color(.systemGray6))
+          .frame(height: CGFloat(faixa.fim - faixa.inicio) / 60 * alturaDaHora)
+          .padding(.leading, margem)
+          .offset(y: topo + CGFloat(faixa.inicio) / 60 * alturaDaHora)
+          .accessibilityHidden(true)
       }
-      .onAppear {
-        let primeira = eventos.first.map { DataLocal.calendario.component(.hour, from: $0.inicio) }
-        let alvo =
-          foco
-          ?? (DataLocal.calendario.isDateInToday(dia)
-            ? DataLocal.calendario.component(.hour, from: .now) : (primeira ?? 8))
-        leitor.scrollTo(max(alvo - 1, 0), anchor: .top)
+      VStack(spacing: 0) {
+        ForEach(0..<24, id: \.self) { hora in
+          HStack(alignment: .center, spacing: 8) {
+            Text(String(format: "%02d:00", hora))
+              .font(.caption2)
+              .foregroundStyle(.secondary)
+              .frame(width: margem - 8, height: topo * 2, alignment: .trailing)
+              .opacity(pertoDeAgora(hora) ? 0 : 1)
+              .accessibilityHidden(pertoDeAgora(hora) || !visivel)
+            Rectangle().fill(.separator).frame(height: 0.5)
+          }
+          .frame(height: alturaDaHora, alignment: .top)
+        }
+      }
+      GeometryReader { espaco in
+        let largura = espaco.size.width - margem - 4
+        ForEach(eventos.emColunas(), id: \.evento.id) { item in
+          bloco(item.evento, largura: largura / CGFloat(item.total) - 2)
+            .offset(
+              x: margem + largura / CGFloat(item.total) * CGFloat(item.coluna),
+              y: topo + posicao(de: item.evento.inicio) + 1
+            )
+        }
+        if let alvo, let arrastado {
+          LugarDeSoltar(inicio: alvo, duracao: arrastado.fim.timeIntervalSince(arrastado.inicio))
+            .frame(width: largura, height: altura(duracao: arrastado.fim.timeIntervalSince(arrastado.inicio)))
+            .offset(x: margem, y: topo + CGFloat(alvo) / 60 * alturaDaHora + 1)
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
+        }
+        if DataLocal.calendario.isDateInToday(dia) {
+          Agora(margem: margem)
+            .accessibilityHidden(!visivel)
+            .offset(y: topo + posicao(de: .now) - 22)
+        }
       }
     }
+    .frame(height: alturaDaHora * 24)
+    .onDrop(
+      of: [.text],
+      delegate: SoltarNaLinha(
+        alvo: $alvo, minutos: minutos(no:), sinal: sinal,
+        soltar: {
+          if let alvo, let arrastado { soltar(arrastado.id, alvo) }
+        }))
   }
 
   private func bloco(_ evento: Evento, largura: CGFloat) -> some View {
@@ -350,7 +479,9 @@ private struct LinhaDoTempo: View {
       .modifier(
         Arrastavel(ativo: evento.sessao != nil, id: evento.id, comecar: { comecarArraste(evento) }) {
           cartao.frame(width: largura, height: max(altura(duracao: duracao), 22))
-        })
+        }
+      )
+      .accessibilityHidden(!visivel)
   }
 
   private func minutos(no y: CGFloat) -> Int {
