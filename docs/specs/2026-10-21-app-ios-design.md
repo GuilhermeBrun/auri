@@ -40,6 +40,13 @@ colhe a assinatura de chegada no iPhone. O app mostra as etiquetas da clínica.
 - **Contrato próprio do celular**, com versão própria: o iPhone atualiza depois do desktop (revisão
   da Apple, usuário que não atualiza), então ele não pode depender da versão do banco.
 - **Dois canais, como no desktop:** TestFlight faz o papel do alpha e a App Store o da estável.
+- **Paridade com o desktop em Agenda e Pacientes (23/10):** o celular faz o que o computador do
+  mesmo nível faz. O celular da fono escreve anamnese e evoluções, como o computador da fono; o da
+  recepção não vê nem escreve, como o computador da recepção. Os PDFs (ficha, anamnese, evoluções,
+  presença, termo) são montados no iPhone e saem pela folha de compartilhar.
+- **Contrato v1 cresce até o primeiro TestFlight:** enquanto nenhum app estiver instalado fora do
+  simulador, campos novos entram na v1 e o `contrato-v1.json` é gravado de novo. A partir do
+  primeiro TestFlight, mudança que quebra o app instalado vira `api` nova.
 - **Modelos da Apple:** a Agenda segue o app Calendário (ano, mês com marcadores, dia com a linha
   do tempo, detalhe, busca e "+"), e Pacientes segue o app Contatos (lista por letra com índice
   lateral, ficha com avatar e ações rápidas). Conexão é a terceira aba. Nas telas de paciente, a
@@ -369,6 +376,24 @@ do iOS 27 (Liquid Glass), com componentes do sistema como vêm. Onde a HIG e
 7. **iOS: confirmação, lista de espera e encaixe.**
 8. **iOS: Pacientes** (ficha, sessões, anamnese, evoluções).
 9. **Distribuição:** TestFlight como alpha e modo demonstração para a App Store.
+
+## Paridade com o desktop (um PR cada)
+
+- **A. Agenda que mostra tudo:** cards com etiqueta, marcas (chegada assinada, confirmada,
+  aguardando resposta, sem resposta), aniversário, falta e desmarcou, compromissos listrados;
+  filtro por etiqueta; horário fechado da clínica; arrastar a sessão no dia e para outro dia
+  (faixa da semana e bordas); visão Semana.
+- **B. Agenda que edita:** sessão (paciente, data, hora, duração, etiqueta, observação), falta e
+  desmarcou, confirmado, excluir com desfazer, remarcar com sugestões, redimensionar, compromissos
+  e horário reservado, evolução na sessão (fono).
+- **C.** Chegada assinada no iPhone (assinar, ver, anular) e financeiro da sessão.
+- **D.** Confirmações (pedir pelo WhatsApp, colar a resposta, avisos), lista de espera, encaixe e
+  aniversariantes.
+- **E. Pacientes:** inativos, busca por família e CPF, cadastrar, editar e inativar, lista de
+  espera no cabeçalho.
+- **F.** Anamnese e evoluções escritas no celular da fono; sessões com presença e pagamento.
+- **G.** Termos e financeiro do paciente.
+- **H.** PDFs no iPhone.
 
 ## Testes
 
