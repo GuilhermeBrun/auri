@@ -67,13 +67,17 @@ final class Agenda {
   func carregar() async {
     let de = JSONValor.texto(DataLocal.texto(primeiroMes))
     let ate = JSONValor.texto(DataLocal.texto(DataLocal.somar(.month, 1, a: ultimoMes)))
+    async let pedidoDeSessoes = conexao.operacao("appointments:listRange", [de, ate])
+    async let pedidoDeCompromissos = conexao.operacao("commitments:listRange", [de, ate])
+    async let pedidoDeEtiquetas = conexao.operacao("tipos:list")
+    async let pedidoDaClinica: JSONValor? = try? conexao.operacao("clinic:get")
     do {
-      let sessoes = try await conexao.operacao("appointments:listRange", [de, ate])
-        .decodificar([Sessao].self)
-      let compromissos = try await conexao.operacao("commitments:listRange", [de, ate])
-        .decodificar([Compromisso].self)
-      etiquetas = try await conexao.operacao("tipos:list").decodificar([Etiqueta].self)
-      clinica = try? await conexao.operacao("clinic:get").decodificar(Clinica.self)
+      let sessoes = try await pedidoDeSessoes.decodificar([Sessao].self)
+      let compromissos = try await pedidoDeCompromissos.decodificar([Compromisso].self)
+      etiquetas = try await pedidoDeEtiquetas.decodificar([Etiqueta].self)
+      clinica = try? await pedidoDaClinica?.decodificar(Clinica.self)
+      let existentes = Set(etiquetas.map(\.id))
+      if !ocultas.isSubset(of: existentes) { ocultas.formIntersection(existentes) }
       let eventos = sessoes.compactMap { Evento($0) } + compromissos.compactMap { Evento($0) }
       porDia = Dictionary(grouping: eventos) { DataLocal.inicioDoDia($0.inicio) }
         .mapValues { $0.sorted { $0.inicio < $1.inicio } }
@@ -116,9 +120,11 @@ final class Agenda {
 
   func atualizarEmSegundoPlano() async {
     Self.agendarAtualizacao()
+    defer {
+      if UIApplication.shared.applicationState != .active { conexao.suspender() }
+    }
     guard (try? await conexao.garantirConexao()) != nil else { return }
     await carregar()
-    if UIApplication.shared.applicationState != .active { conexao.suspender() }
   }
 
   static func agendarAtualizacao() {
@@ -129,6 +135,7 @@ final class Agenda {
 
   func esquecer() {
     porDia = [:]
+    ocultas = []
     Resumo.apagar()
     WidgetCenter.shared.reloadAllTimelines()
   }

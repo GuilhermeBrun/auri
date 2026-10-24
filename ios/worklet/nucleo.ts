@@ -18,6 +18,7 @@ export const API = 1
 const VERSAO = { api: API }
 
 const ESPERA_DA_INTERNET_MS = 1_500
+const ESPERA_AO_SUSPENDER_MS = 2_000
 
 type Atualizar = 'app' | 'computador'
 
@@ -181,6 +182,7 @@ export function criarNucleo(opcoes: { enviar: (saida: Saida) => void; bootstrap?
   let meuNome = 'iPhone'
   let atual: { cliente: ReturnType<typeof createSyncClient>; servidor: Servidor } | null = null
   let discador: ReturnType<typeof createRemoteDialer> | null = null
+  let espera: { cancelar(): void } | null = null
   let pausado: Servidor | null = null
 
   function minhasChaves(): { publicKey: Buffer; secretKey: Buffer } {
@@ -301,13 +303,27 @@ export function criarNucleo(opcoes: { enviar: (saida: Saida) => void; bootstrap?
       }
     },
     async suspender() {
+      espera?.cancelar()
+      const continuar = await new Promise<boolean>((resolve) => {
+        const tempo = setTimeout(() => resolve(true), ESPERA_AO_SUSPENDER_MS)
+        espera = {
+          cancelar() {
+            clearTimeout(tempo)
+            resolve(false)
+          }
+        }
+      })
+      espera = null
+      if (!continuar) return
       pausado = atual?.servidor ?? pausado
+      if (atual) enviar({ t: 'estado', status: 'offline', via: null })
       desconectar()
       const fechando = discador
       discador = null
       await fechando?.close()
     },
     retomar() {
+      espera?.cancelar()
       if (pausado && !atual) conectar(pausado)
       pausado = null
     },

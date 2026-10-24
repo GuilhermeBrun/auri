@@ -38,6 +38,21 @@ final class RegrasTests: XCTestCase {
       "Ana Beatriz Teste, 09:00 – 09:45, Linguagem, Faltou, Confirmado, Faz 7 anos neste dia")
   }
 
+  func testSoArrastaSessaoFuturaESemAssinatura() {
+    let antes = hora("08:00")
+    XCTAssertTrue(sessao(1, "09:00", "09:45").podeArrastar(agora: antes))
+    XCTAssertFalse(sessao(1, "09:00", "09:45").podeArrastar(agora: hora("09:00")))
+    XCTAssertFalse(sessao(1, "09:00", "09:45").podeArrastar(agora: hora("10:00")))
+    XCTAssertFalse(
+      sessao(1, "09:00", "09:45", assinatura: Assinatura(signerNome: "Mãe")).podeArrastar(agora: antes))
+    let compromisso = Evento(
+      Compromisso(
+        id: 9, etiquetaNome: "Palestra", titulo: "Reunião", cor: "#0d9488", inicio: "2026-10-22T17:00",
+        fim: "2026-10-22T18:00", observacao: nil))!
+    XCTAssertFalse(compromisso.podeArrastar(agora: antes))
+    XCTAssertEqual(sessao(1, "09:00", "09:45").horario, "09:00 – 09:45")
+  }
+
   func testAniversarioNoDiaDaSessao() {
     XCTAssertEqual(Paciente.idadeQueCompleta("2019-10-22", em: hora("09:00")), 7)
     XCTAssertNil(Paciente.idadeQueCompleta("2019-10-23", em: hora("09:00")))

@@ -228,7 +228,8 @@ private struct WidgetsView: View {
 private struct EsteIPhoneView: View {
   var body: some View {
     let info = Bundle.main.infoDictionary
-    let versao = info?["AuriVersao"] as? String ?? info?["CFBundleShortVersionString"] as? String ?? ""
+    let completa = (info?["AuriVersao"] as? String).flatMap { $0.isEmpty ? nil : $0 }
+    let versao = completa ?? info?["CFBundleShortVersionString"] as? String ?? ""
     List {
       Section {
         LabeledContent("Versão do Auri", value: versao)

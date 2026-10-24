@@ -168,6 +168,17 @@ extension Evento {
     if case .sessao(let sessao) = origem { sessao } else { nil }
   }
 
+  static let horarioPassado = "Esse horário já passou."
+
+  var horario: String {
+    "\(inicio.hora) – \(fim.hora)"
+  }
+
+  func podeArrastar(agora: Date = .now) -> Bool {
+    guard let sessao else { return false }
+    return sessao.assinatura == nil && inicio > agora
+  }
+
   var faltou: Bool {
     sessao.map { $0.presenca == "falta" || $0.presenca == "desmarcou" } ?? false
   }
@@ -186,7 +197,7 @@ extension Evento {
     let confirmada = sessao.assinatura == nil && sessao.confirmadoEm != nil
     if confirmada { lista.append(.confirmada) }
     if !confirmada, let pedido = sessao.pedido, pedido.estado == "aguardando" {
-      lista.append(.aguardando(ate: DataLocal.data(pedido.prazo)?.hora ?? pedido.prazo))
+      lista.append(.aguardando(ate: DataLocal.instante(pedido.prazo)?.hora ?? pedido.prazo))
     }
     if sessao.pedido?.estado == "sem_resposta" { lista.append(.semResposta) }
     return lista
@@ -325,6 +336,17 @@ enum DataLocal {
     formato.dateFormat = "yyyy-MM-dd"
     return formato
   }()
+
+  static func instante(_ texto: String) -> Date? {
+    if texto.hasSuffix("Z") || texto.contains("+") {
+      let leitor = ISO8601DateFormatter()
+      leitor.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+      if let lida = leitor.date(from: texto) { return lida }
+      leitor.formatOptions = [.withInternetDateTime]
+      if let lida = leitor.date(from: texto) { return lida }
+    }
+    return data(texto)
+  }
 
   static func data(_ texto: String) -> Date? {
     formato.date(from: String(texto.prefix(16)))

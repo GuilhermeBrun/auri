@@ -229,11 +229,21 @@ final class ConexaoUITests: XCTestCase {
 
   func test10ArrastarSessao() throws {
     let app = try abrirConectado()
+    let calendario = Calendar.current
+    let pt = Locale(identifier: "pt_BR")
+    var diaDoRui = calendario.date(byAdding: .day, value: 1, to: .now)!
+    if calendario.component(.weekday, from: diaDoRui) == 1 {
+      diaDoRui = calendario.date(byAdding: .day, value: 1, to: diaDoRui)!
+    }
+    let cabecalho = diaDoRui.formatted(.dateTime.weekday(.wide).day().month(.wide).year().locale(pt))
+    for _ in 0..<4 where !app.staticTexts[cabecalho].exists {
+      linhaDoTempo(app).swipeLeft()
+      sleep(1)
+    }
+    XCTAssertTrue(app.staticTexts[cabecalho].waitForExistence(timeout: 5), "não chegou ao dia do Rui")
     let rui = NSPredicate(format: "label BEGINSWITH %@", "Rui Arrastável,")
     let sessao = app.descendants(matching: .any).matching(rui).firstMatch
-    guard sessao.waitForExistence(timeout: 15) else {
-      throw XCTSkip("Sem a sessão de arrastar hoje (domingo ou sem horário livre).")
-    }
+    XCTAssertTrue(sessao.waitForExistence(timeout: 15), "sem a sessão de arrastar")
     for _ in 0..<6 where !sessao.isHittable {
       linhaDoTempo(app).swipeDown()
     }
@@ -253,20 +263,20 @@ final class ConexaoUITests: XCTestCase {
     XCTAssertTrue(movida.waitForExistence(timeout: 15), "a sessão não saiu de \(antes)")
     anexar(app, "29-arrastada")
 
-    let amanha = Calendar.current.date(byAdding: .day, value: 1, to: .now)!
-    guard Calendar.current.component(.weekday, from: amanha) != 1,
-      Calendar.current.isDate(amanha, equalTo: .now, toGranularity: .weekOfYear)
+    let seguinte = calendario.date(byAdding: .day, value: 1, to: diaDoRui)!
+    guard (2...6).contains(calendario.component(.weekday, from: seguinte)),
+      calendario.isDate(seguinte, equalTo: diaDoRui, toGranularity: .weekOfYear)
     else { return }
-    let rotulo = amanha.formatted(.dateTime.weekday(.wide).day().month(.wide).locale(Locale(identifier: "pt_BR")))
+    let rotulo = seguinte.formatted(.dateTime.weekday(.wide).day().month(.wide).locale(pt))
     let diaSeguinte = app.buttons[rotulo]
     XCTAssertTrue(diaSeguinte.waitForExistence(timeout: 5))
     let origem = movida.coordinate(withNormalizedOffset: CGVector(dx: 0.3, dy: 0.5))
     origem.press(
       forDuration: 1.2, thenDragTo: diaSeguinte.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)),
       withVelocity: .slow, thenHoldForDuration: 0.3)
-    XCTAssertTrue(sumiu(app, rui, ate: 15), "a sessão continuou hoje")
+    XCTAssertTrue(sumiu(app, rui, ate: 15), "a sessão continuou no mesmo dia")
     diaSeguinte.tap()
-    XCTAssertTrue(movida.waitForExistence(timeout: 15), "a sessão não apareceu amanhã")
+    XCTAssertTrue(movida.waitForExistence(timeout: 15), "a sessão não apareceu no dia seguinte")
   }
 
   func test11DeslizarDias() throws {

@@ -5,14 +5,15 @@ private let alturaDaHora: CGFloat = 60
 struct DiaView: View {
   let agenda: Agenda
   let nascimentos: [Int: String]
+  let aoMostrar: (Date) -> Void
   let abrirEvento: (Evento) -> Void
 
   @State private var pagina: Int?
   @State private var semana: Int?
   @State private var erroAoMover: String?
   @State private var arrastado: Evento?
-  @State private var alvosSobre = 0
-  @State private var ultimoSinal = Date.distantPast
+  @State private var emMaos: Evento?
+  @State private var sinais = Sinais()
   @State private var rolou = false
   @Environment(\.dynamicTypeSize) private var tamanhoDoTexto
   private let foco: Int?
@@ -20,9 +21,13 @@ struct DiaView: View {
   private let totalDeDias: Int
   private let recuo: Int
 
-  init(agenda: Agenda, nascimentos: [Int: String], inicial: Date, abrirEvento: @escaping (Evento) -> Void) {
+  init(
+    agenda: Agenda, nascimentos: [Int: String], inicial: Date, aoMostrar: @escaping (Date) -> Void = { _ in },
+    abrirEvento: @escaping (Evento) -> Void
+  ) {
     self.agenda = agenda
     self.nascimentos = nascimentos
+    self.aoMostrar = aoMostrar
     self.abrirEvento = abrirEvento
     let hora = DataLocal.calendario.component(.hour, from: inicial)
     foco = hora > 0 ? hora : nil
@@ -88,7 +93,8 @@ struct DiaView: View {
     }
     .background(SemVoltarPorGesto())
     .sensoryFeedback(.selection, trigger: pagina)
-    .onChange(of: pagina) { _, nova in
+    .onChange(of: pagina, initial: true) { _, nova in
+      aoMostrar(data(nova ?? 0))
       guard let nova, (nova + recuo) / 7 != semana else { return }
       withAnimation(.snappy) { semana = (nova + recuo) / 7 }
     }
@@ -107,7 +113,7 @@ struct DiaView: View {
     .task(id: arrastado?.id) {
       while arrastado != nil, !Task.isCancelled {
         try? await Task.sleep(for: .seconds(1))
-        if alvosSobre == 0, Date.now.timeIntervalSince(ultimoSinal) > 3 { arrastado = nil }
+        if sinais.sobre == 0, Date.now.timeIntervalSince(sinais.ultimo) > 3 { arrastado = nil }
       }
     }
     .alert(
@@ -128,10 +134,11 @@ struct DiaView: View {
     let dia = data(indice)
     return PaginaDoDia(
       agenda: agenda, dia: dia, nascimentos: nascimentos, lista: lista, visivel: visivel, arrastado: arrastado,
-      abrirEvento: abrirEvento,
+      emMaos: emMaos, abrirEvento: abrirEvento,
       comecarArraste: { evento in
         arrastado = evento
-        ultimoSinal = .now
+        emMaos = evento
+        sinais.ultimo = .now
       },
       sinal: sinalizar, soltar: { id, minutos in soltar(id, noHorario: minutos, em: dia) }, mover: mover)
   }
@@ -173,8 +180,8 @@ struct DiaView: View {
   }
 
   private func sinalizar(_ dentro: Bool) {
-    alvosSobre = max(0, alvosSobre + (dentro ? 1 : -1))
-    ultimoSinal = .now
+    sinais.sobre = max(0, sinais.sobre + (dentro ? 1 : -1))
+    sinais.ultimo = .now
   }
 
   private func soltar(_ id: String, noHorario minutos: Int, em dia: Date) {
@@ -191,21 +198,31 @@ struct DiaView: View {
 
   private func soltar(_ id: String, inicio: (Evento) -> Date) {
     arrastado = nil
-    alvosSobre = 0
-    guard let evento = agenda.evento(id), evento.sessao != nil else { return }
+    emMaos = nil
+    sinais.sobre = 0
+    guard let evento = agenda.evento(id), evento.podeArrastar() else { return }
     let novo = inicio(evento)
     guard novo != evento.inicio else { return }
     Task { await mover(evento, para: novo) }
   }
 
   private func mover(_ evento: Evento, para inicio: Date) async {
-    guard let sessao = evento.sessao else { return }
+    guard let sessao = evento.sessao, evento.podeArrastar() else { return }
+    guard inicio > .now else {
+      erroAoMover = Evento.horarioPassado
+      return
+    }
     do {
       try await agenda.mover(sessao, para: inicio)
     } catch {
       erroAoMover = error.localizedDescription
     }
   }
+}
+
+private final class Sinais {
+  var sobre = 0
+  var ultimo = Date.distantPast
 }
 
 private struct ListaDoDia: View {
@@ -224,7 +241,7 @@ private struct ListaDoDia: View {
           VStack(alignment: .leading, spacing: 2) {
             TituloDoEvento(evento: evento, idade: idade(de: evento), comEtiqueta: false)
               .font(.headline)
-            Text(evento.sessao == nil ? horario(evento) : "\(evento.etiqueta) · \(horario(evento))")
+            Text(evento.sessao == nil ? evento.horario : "\(evento.etiqueta) · \(evento.horario)")
               .foregroundStyle(.secondary)
           }
         }
@@ -237,10 +254,6 @@ private struct ListaDoDia: View {
         ContentUnavailableView("Nenhuma sessão neste dia", systemImage: "calendar")
       }
     }
-  }
-
-  private func horario(_ evento: Evento) -> String {
-    "\(evento.inicio.hora) – \(evento.fim.hora)"
   }
 
   private func idade(de evento: Evento) -> Int? {
@@ -317,6 +330,7 @@ private struct PaginaDoDia: View {
   let lista: Bool
   let visivel: Bool
   let arrastado: Evento?
+  let emMaos: Evento?
   let abrirEvento: (Evento) -> Void
   let comecarArraste: (Evento) -> Void
   let sinal: (Bool) -> Void
@@ -330,7 +344,8 @@ private struct PaginaDoDia: View {
     } else {
       LinhaDoTempo(
         dia: dia, eventos: agenda.eventos(em: dia), clinica: agenda.clinica, nascimentos: nascimentos,
-        arrastado: arrastado, abrirEvento: abrirEvento, comecarArraste: comecarArraste, sinal: sinal,
+        arrastado: arrastado, emMaos: emMaos, abrirEvento: abrirEvento, comecarArraste: comecarArraste,
+        sinal: sinal,
         soltar: soltar, mover: mover, visivel: visivel)
     }
   }
@@ -385,6 +400,7 @@ private struct LinhaDoTempo: View {
   let clinica: Clinica?
   let nascimentos: [Int: String]
   let arrastado: Evento?
+  let emMaos: Evento?
   let abrirEvento: (Evento) -> Void
   let comecarArraste: (Evento) -> Void
   let sinal: (Bool) -> Void
@@ -430,9 +446,9 @@ private struct LinhaDoTempo: View {
               y: topo + posicao(de: item.evento.inicio) + 1
             )
         }
-        if let alvo, let arrastado {
-          LugarDeSoltar(inicio: alvo, duracao: arrastado.fim.timeIntervalSince(arrastado.inicio))
-            .frame(width: largura, height: altura(duracao: arrastado.fim.timeIntervalSince(arrastado.inicio)))
+        if let alvo, let emMaos {
+          LugarDeSoltar(inicio: alvo, duracao: emMaos.fim.timeIntervalSince(emMaos.inicio))
+            .frame(width: largura, height: altura(duracao: emMaos.fim.timeIntervalSince(emMaos.inicio)))
             .offset(x: margem, y: topo + CGFloat(alvo) / 60 * alturaDaHora + 1)
             .allowsHitTesting(false)
             .accessibilityHidden(true)
@@ -467,7 +483,7 @@ private struct LinhaDoTempo: View {
       .accessibilityLabel(evento.descricao(idade: idade))
       .accessibilityAddTraits(.isButton)
       .accessibilityActions {
-        if evento.sessao != nil {
+        if evento.podeArrastar() {
           Button("Adiantar 15 minutos") { Task { await mover(evento, evento.inicio.addingTimeInterval(-15 * 60)) } }
           Button("Atrasar 15 minutos") { Task { await mover(evento, evento.inicio.addingTimeInterval(15 * 60)) } }
           Button("Passar para o dia seguinte") {
@@ -477,7 +493,7 @@ private struct LinhaDoTempo: View {
       }
       .onTapGesture { abrirEvento(evento) }
       .modifier(
-        Arrastavel(ativo: evento.sessao != nil, id: evento.id, comecar: { comecarArraste(evento) }) {
+        Arrastavel(ativo: evento.podeArrastar(), id: evento.id, comecar: { comecarArraste(evento) }) {
           cartao.frame(width: largura, height: max(altura(duracao: duracao), 22))
         }
       )
@@ -485,7 +501,7 @@ private struct LinhaDoTempo: View {
   }
 
   private func minutos(no y: CGFloat) -> Int {
-    let duracao = Int((arrastado.map { $0.fim.timeIntervalSince($0.inicio) } ?? 45 * 60) / 60)
+    let duracao = Int((emMaos.map { $0.fim.timeIntervalSince($0.inicio) } ?? 45 * 60) / 60)
     let comeco = Double((y - topo) / alturaDaHora * 60) - Double(duracao) / 2
     let arredondado = Int((comeco / 15).rounded()) * 15
     return min(max(arredondado, 0), 24 * 60 - duracao)

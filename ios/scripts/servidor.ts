@@ -125,22 +125,22 @@ for (let d = -21; d <= 42 && pacientes.length > 0; d++) {
   }
 }
 
-if (pacientes.length > 0 && hoje.getDay() !== 0) {
+if (pacientes.length > 0) {
   const arrastavel = op<{ id: number }>('patients:create', {
     ...emptyPatientInput(),
     nome: 'Rui Arrastável',
     data_nascimento: '2018-06-15'
   })
-  const sabado = hoje.getDay() === 6 || dia(hoje, 1).getDay() === 6
-  const hora = (sabado ? [11] : [12, 13]).find((h) => !livresParaOTeste.has(h))
-  if (hora !== undefined)
-    op('appointments:create', {
-      patient_id: arrastavel.id,
-      inicio: local(hoje, hora),
-      fim: local(hoje, hora, 30),
-      observacao: '',
-      tipo_id: deSessao[0].id
-    })
+  const amanha = dia(hoje, 1)
+  const diaDoRui = amanha.getDay() === 0 ? dia(amanha, 1) : amanha
+  const hora = diaDoRui.getDay() === 6 ? 11 : 12
+  op('appointments:create', {
+    patient_id: arrastavel.id,
+    inicio: local(diaDoRui, hora),
+    fim: local(diaDoRui, hora, 30),
+    observacao: '',
+    tipo_id: deSessao[0].id
+  })
 }
 
 op('clinic:save', {

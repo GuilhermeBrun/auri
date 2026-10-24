@@ -18,6 +18,7 @@ struct AgendaView: View {
   ]
   @State private var novaSessao: NovaSessao?
   @State private var buscando = false
+  @State private var diaNaTela: Date?
   @State private var atendido = 0
 
   var body: some View {
@@ -32,9 +33,11 @@ struct AgendaView: View {
             .id(mes)
             .toolbar { acoes(dia: nil) }
         case .dia(let dia):
-          DiaView(agenda: agenda, nascimentos: cadastro.nascimentos, inicial: dia) { caminho.append(.evento($0)) }
-            .id(dia)
-            .toolbar { acoes(dia: dia) }
+          DiaView(
+            agenda: agenda, nascimentos: cadastro.nascimentos, inicial: dia, aoMostrar: { diaNaTela = $0 }
+          ) { caminho.append(.evento($0)) }
+          .id(dia)
+          .toolbar { acoes(dia: diaNaTela ?? dia) }
         case .evento(let evento):
           EventoView(evento: evento) { caminho.append(.paciente($0)) }
         case .paciente(let id):

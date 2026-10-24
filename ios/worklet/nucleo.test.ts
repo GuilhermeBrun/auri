@@ -224,12 +224,23 @@ test('marca, recusa horário ocupado e recebe o aviso da recepção', async (t) 
 })
 
 test('fecha a conexão ao suspender e volta ao retomar', async (t) => {
+  iphone.esquecer()
   await iphone.nucleo.suspender()
+  await iphone.esperar((s) => s.t === 'estado' && s.status === 'offline')
   const parado = await iphone.pedir({ t: 'operacao', canal: 'tipos:list', args: [] })
   t.is(parado.ok, false)
   iphone.esquecer()
   iphone.nucleo.retomar()
   await iphone.esperar((s) => s.t === 'estado' && s.status === 'connected')
+  const etiquetas = await iphone.pedir({ t: 'operacao', canal: 'tipos:list', args: [] })
+  t.ok(etiquetas.ok)
+})
+
+test('não suspende se o app volta logo', async (t) => {
+  iphone.esquecer()
+  const suspensao = iphone.nucleo.suspender()
+  iphone.nucleo.retomar()
+  await suspensao
   const etiquetas = await iphone.pedir({ t: 'operacao', canal: 'tipos:list', args: [] })
   t.ok(etiquetas.ok)
 })
