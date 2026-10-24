@@ -12,9 +12,9 @@ struct Resumo: Codable, Sendable {
   var itens: [Item]
   var atualizado: Date
 
-  static let grupo = "group.com.auri.ios"
-  static let tarefa = "com.auri.ios.resumo"
-  static let widget = "com.auri.ios.proximas"
+  static let grupo = "group.br.dev.auri"
+  static let tarefa = "br.dev.auri.resumo"
+  static let widget = "br.dev.auri.proximas"
 
   private static var arquivo: URL? {
     FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: grupo)?

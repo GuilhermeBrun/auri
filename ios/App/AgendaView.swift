@@ -18,6 +18,7 @@ struct AgendaView: View {
   ]
   @State private var novaSessao: NovaSessao?
   @State private var buscando = false
+  @State private var diaNaTela: Date?
   @State private var atendido = 0
 
   var body: some View {
@@ -32,9 +33,11 @@ struct AgendaView: View {
             .id(mes)
             .toolbar { acoes(dia: nil) }
         case .dia(let dia):
-          DiaView(agenda: agenda, inicial: dia) { caminho.append(.evento($0)) }
-            .id(dia)
-            .toolbar { acoes(dia: dia) }
+          DiaView(
+            agenda: agenda, nascimentos: cadastro.nascimentos, inicial: dia, aoMostrar: { diaNaTela = $0 }
+          ) { caminho.append(.evento($0)) }
+          .id(dia)
+          .toolbar { acoes(dia: diaNaTela ?? dia) }
         case .evento(let evento):
           EventoView(evento: evento) { caminho.append(.paciente($0)) }
         case .paciente(let id):
@@ -65,6 +68,33 @@ struct AgendaView: View {
   @ToolbarContentBuilder
   private func acoes(dia: Date?) -> some ToolbarContent {
     ToolbarItemGroup(placement: .topBarTrailing) {
+      if !agenda.etiquetasDeSessao.isEmpty {
+        Menu {
+          ForEach(agenda.etiquetasDeSessao) { etiqueta in
+            Toggle(
+              isOn: Binding(
+                get: { !agenda.ocultas.contains(etiqueta.id) },
+                set: { mostrar in
+                  if mostrar { agenda.ocultas.remove(etiqueta.id) } else { agenda.ocultas.insert(etiqueta.id) }
+                })
+            ) {
+              Label {
+                Text(etiqueta.nome)
+              } icon: {
+                Image(uiImage: NovaSessaoView.ponto(etiqueta.cor))
+              }
+            }
+          }
+          if !agenda.ocultas.isEmpty {
+            Button("Mostrar todas") { agenda.ocultas = [] }
+          }
+        } label: {
+          Image(
+            systemName: agenda.ocultas.isEmpty
+              ? "line.3.horizontal.decrease.circle" : "line.3.horizontal.decrease.circle.fill")
+        }
+        .accessibilityLabel(agenda.ocultas.isEmpty ? "Etiquetas" : "Etiquetas, com filtro")
+      }
       Button {
         buscando = true
       } label: {

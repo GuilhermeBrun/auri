@@ -71,7 +71,14 @@ npm run telas      # testes de interface no simulador, com auditoria de acessibi
 
 Depois do `preparar`, abrir `ios/Auri.xcodeproj` no Xcode ou rodar
 `xcodebuild -project ios/Auri.xcodeproj -scheme Auri -sdk iphonesimulator build`. Rodar o `preparar`
-de novo quando mudar o worklet ou o código de conexão do desktop.
+de novo quando mudar o worklet ou o código de conexão do desktop (depois de um `git pull`, por
+exemplo): o app leva o worklet empacotado, e um worklet antigo é recusado pelo desktop.
+
+O projeto é gerado, então não guarde ajustes nele. Para rodar num iPhone de verdade, crie
+`ios/Assinatura.local.xcconfig` (fora do git) com `DEVELOPMENT_TEAM = <id da sua equipe>` e rode o
+`preparar`. A versão segue a do desktop: o `preparar` grava em `ios/Versao.xcconfig` o que o
+`git describe` dá (`0.0.3-alpha.20261023.1` vira a versão `0.0.3` e o build `20261023.1`), e
+Conexão › Este iPhone mostra a versão inteira, como no desktop. O identificador é `br.dev.auri`, e o grupo dos widgets, `group.br.dev.auri`.
 
 O simulador não tem câmera. No teste de interface, o app em Debug recebe o convite pela variável
 `AURI_QR` no lugar da leitura e a DHT local por `AURI_BOOTSTRAP`. O `npm run telas` sobe a DHT e o

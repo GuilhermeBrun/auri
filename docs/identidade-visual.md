@@ -47,7 +47,7 @@ O escuro **não é o claro invertido**: o conteúdo é um grafite quase preto, a
 
 **Aumentar contraste** (`prefers-contrast: more`) troca, nos dois temas, `ink-soft`, `ink-faint`, `line`, `line-strong`, `control`, `danger` e `warning` por versões mais fortes.
 
-Não há cores decorativas, nem verde, nem cor de sucesso: o que deu certo é dito em texto ou num aviso. O gráfico de frequência fica em grafite (`ink`, `line-strong`, hachura e tracejado): os tipos se distinguem pela forma, não pela cor. Exceções à regra de "só tokens": a cor das etiquetas, as amostras e a roda de cor (`ui/cor.tsx`, `ui/roda-de-cor.tsx`, com contorno e ✓ brancos sobre a cor) e as miniaturas da Aparência, que mostram cada tema independente do atual.
+Não há cores decorativas, nem verde, nem cor de sucesso: o que deu certo é dito em texto ou num aviso. O gráfico de frequência fica em grafite (`ink`, `line-strong`, hachura e tracejado): os tipos se distinguem pela forma, não pela cor. Exceções à regra de "só tokens": a cor das etiquetas, as amostras e a roda de cor (`ui/cor.tsx`, `ui/roda-de-cor.tsx`, com contorno e ✓ brancos sobre a cor) as miniaturas da Aparência, que mostram cada tema independente do atual, e o QR code do celular, preto sobre branco quando mostrado, nos dois temas, para a câmera ler.
 
 ### Etiquetas
 
@@ -232,7 +232,7 @@ Trilhos (**‹ Hoje ›**, Dia/Semana/Mês, Estável/Beta) ficam em `fill`, com 
 - `toast.tsx`: `ToastProvider` (já no `Layout`); `useToast()` em `lib/toast.ts`, com `action` para "Desfazer" ou "Resolver".
 - `confirm-action.tsx`: confirmação em dois passos no lugar, onde há espaço na linha.
 - `search-field.tsx`: busca do cabeçalho (`fill`, lupa, limpar próprio; Esc limpa). Pacientes: "Nome, família ou CPF".
-- `sensitive.tsx`: valor borrado sobre `fill` até um clique (código de recuperação, endereço da conexão).
+- `sensitive.tsx`: valor borrado sobre `fill` até um clique (código de recuperação, endereço da conexão), com a dica "Clique para mostrar…" só ao passar o mouse ou no foco. `SensitiveHint` dá a mesma dica a outro conteúdo, como o QR code do celular.
 - `cor.tsx` + `roda-de-cor.tsx`: `CorPonto`, `CorEscolha` (12 amostras, "Outra cor" com a roda HSV e o código hex) e `RodaDeCor` (teclado: setas, Shift pula 10, Home/End).
 - `avatar.tsx`: monograma em `accent-soft` (acompanha o destaque da clínica), raio 6px até o médio e 12px no grande.
 - `empty.tsx` (`EmptyState`), `error.tsx` (`ErrorState`: ícone, título, texto técnico em cinza e "Tentar de novo"; nunca promete que os dados estão salvos), `loading.tsx`, `kbd.tsx` (use `MOD_KEY` de `lib/platform.ts`), `brand.tsx`.
@@ -276,7 +276,7 @@ Coluna de 720px, um `PageSection` por assunto (título de 15px; descrição de 1
 - **Atalhos:** um assunto por grupo (Geral, Ir para, Agenda, Pacientes) e "Fixos", só leitura. Cada atalho é uma `SettingRow` com um botão de 32px que mostra as teclas (`Kbd`) ou "Pressione as teclas…" enquanto grava, e ↺ para voltar ao padrão.
 - **Armazenamento:** Conexão e Cópia de segurança numa página só, rolando.
 
-Dentro de cada assunto, as partes (`SettingsGroup`) e as opções (`SettingRow`: título e descrição à esquerda, controle à direita, centralizado na altura do texto) seguem "Espaço como divisor". O rótulo de 12px em cima de uma parte só aparece quando ela junta várias opções (Rede, Acesso dos outros computadores). Painéis passageiros dentro de uma parte (código de pareamento, troca de pasta, resumo de importação) usam `fill`, com confirmar e cancelar à direita; ações soltas ficam à esquerda, alinhadas ao texto (um `ghost` compensa o próprio respiro com `-ml-3.5`). Todo botão da página tem 32px e um seletor ao lado de botões usa a versão compacta, para a linha ter uma altura só. O passo a passo de ligar a cópia também usa partes ("Passo 1 de 3 · Onde guardar as cópias").
+Dentro de cada assunto, as partes (`SettingsGroup`) e as opções (`SettingRow`: título e descrição à esquerda, controle à direita, centralizado na altura do texto) seguem "Espaço como divisor". O rótulo de 12px em cima de uma parte só aparece quando ela junta várias opções (Rede, Acesso dos outros computadores). Painéis passageiros dentro de uma parte (código de pareamento, troca de pasta, resumo de importação, confirmação de desligar) não têm fundo: ficam na própria parte, alinhados ao texto, com confirmar e cancelar à direita (código e QR code no centro); ações soltas ficam à esquerda, alinhadas ao texto (um `ghost` compensa o próprio respiro com `-ml-3.5`). Todo botão da página tem 32px e um seletor ao lado de botões usa a versão compacta, para a linha ter uma altura só. O passo a passo de ligar a cópia também usa partes ("Passo 1 de 3 · Onde guardar as cópias").
 
 ## Acessibilidade
 

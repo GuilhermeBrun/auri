@@ -23,5 +23,22 @@ final class ContratoTests: XCTestCase {
     XCTAssertFalse(etiquetas.isEmpty)
     let anamnese = try XCTUnwrap(respostas["anamneses:get"]).decodificar(Anamnese.self)
     XCTAssertNotNil(anamnese.queixa)
+    let clinica = try XCTUnwrap(respostas["clinic:get"]).decodificar(Clinica.self)
+    XCTAssertFalse(clinica.funcionamento.isEmpty)
+  }
+
+  func testPedidoEAssinaturaNoFormatoDoDesktop() throws {
+    let json = Data(
+      #"""
+      {"id":7,"patient_id":1,"patient_nome":"Ana Beatriz Teste","inicio":"2026-10-23T15:00","fim":"2026-10-23T15:45",
+      "observacao":"","tipo_id":2,"tipo_nome":"Linguagem","tipo_cor":"#7c3aed","categoria":"sessao","presenca":"",
+      "evolucao":"","confirmado_em":null,"assinatura":null,
+      "pedido":{"estado":"aguardando","prazo":"2026-10-23T17:00:00.000Z"},"updated_at":"2026-10-23T14:00:00.000Z"}
+      """#.utf8)
+    let sessao = try JSONDecoder().decode(JSONValor.self, from: json).decodificar(Sessao.self)
+    let evento = try XCTUnwrap(Evento(sessao))
+    let prazo = try XCTUnwrap(ISO8601DateFormatter().date(from: "2026-10-23T17:00:00Z"))
+    XCTAssertEqual(evento.marcas, [.aguardando(ate: prazo.hora)])
+    XCTAssertEqual(sessao.updatedAt, "2026-10-23T14:00:00.000Z")
   }
 }

@@ -10,7 +10,14 @@ pkill -f build/servidor.cjs || true
 
 node scripts/dht.mjs > build/dht.log 2>&1 &
 DHT=$!
-until grep -q '^bootstrap ' build/dht.log 2>/dev/null; do sleep 1; done
+until grep -q '^bootstrap ' build/dht.log 2>/dev/null; do
+  if ! kill -0 "$DHT" 2>/dev/null; then
+    echo "A DHT de teste parou:" >&2
+    tail -20 build/dht.log >&2
+    exit 1
+  fi
+  sleep 1
+done
 BOOTSTRAP=$(sed -n 's/^bootstrap //p' build/dht.log)
 export AURI_BOOTSTRAP="$BOOTSTRAP" TEST_RUNNER_AURI_BOOTSTRAP="$BOOTSTRAP"
 
@@ -18,10 +25,17 @@ if [ -n "$VAZIO" ]; then export AURI_VAZIO=1 TEST_RUNNER_AURI_VAZIO=1; else expo
 node scripts/servidor.mjs 47391 > build/servidor.log 2>&1 &
 SERVIDOR=$!
 trap 'kill $SERVIDOR $DHT ${ROSTO:-} 2>/dev/null || true; pkill -f build/servidor.cjs || true' EXIT
-until grep -q '^convite ' build/servidor.log 2>/dev/null; do sleep 1; done
+until grep -q '^convite ' build/servidor.log 2>/dev/null; do
+  if ! kill -0 "$SERVIDOR" 2>/dev/null; then
+    echo "O computador de teste parou antes de mostrar o convite:" >&2
+    tail -20 build/servidor.log >&2
+    exit 1
+  fi
+  sleep 1
+done
 CONVITE=$(grep '^convite ' build/servidor.log | sed 's/^convite //')
 
-xcrun simctl uninstall "$APARELHO" com.auri.ios 2>/dev/null || true
+for app in br.dev.auri com.auri.ios; do xcrun simctl uninstall "$APARELHO" "$app" 2>/dev/null || true; done
 xcrun simctl spawn "$APARELHO" notifyutil -s com.apple.BiometricKit.enrollmentChanged 1
 xcrun simctl spawn "$APARELHO" notifyutil -p com.apple.BiometricKit.enrollmentChanged
 rm -rf build/resultado.xcresult "$SAIDA"

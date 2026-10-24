@@ -54,7 +54,7 @@ final class Conexao {
   private var proximo = 1
   private var esperando: [Int: CheckedContinuation<JSONValor, Error>] = [:]
   private var resto = Data()
-  private let registro = Logger(subsystem: "com.auri.ios", category: "conexao")
+  private let registro = Logger(subsystem: "br.dev.auri", category: "conexao")
 
   private static let chaveDoServidor = "servidor"
 

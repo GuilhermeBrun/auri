@@ -11,7 +11,12 @@ declare module 'hyperdht' {
   }
 
   class DHT extends EventEmitter {
-    constructor(options?: { bootstrap?: Bootstrap; keyPair?: KeyPair; host?: string })
+    constructor(options?: {
+      bootstrap?: Bootstrap
+      keyPair?: KeyPair
+      host?: string
+      ephemeral?: boolean
+    })
     static keyPair(seed?: Buffer): KeyPair
     readonly firewalled: boolean
     readonly randomized: boolean

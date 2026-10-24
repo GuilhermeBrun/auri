@@ -1,6 +1,7 @@
 import BackgroundTasks
 import Foundation
 import Observation
+import UIKit
 import WidgetKit
 
 @MainActor
@@ -9,6 +10,10 @@ final class Agenda {
   private let conexao: Conexao
   private(set) var porDia: [Date: [Evento]] = [:]
   private(set) var etiquetas: [Etiqueta] = []
+  private(set) var clinica: Clinica?
+  var ocultas: Set<Int> = Set(UserDefaults.standard.array(forKey: "agenda-etiquetas-ocultas") as? [Int] ?? []) {
+    didSet { UserDefaults.standard.set(Array(ocultas), forKey: "agenda-etiquetas-ocultas") }
+  }
   private(set) var carregada = false
   private(set) var erro: String?
 
@@ -36,12 +41,18 @@ final class Agenda {
     porDia.values.flatMap { $0 }.sorted { $0.inicio < $1.inicio }
   }
 
+  func evento(_ id: String) -> Evento? {
+    porDia.values.lazy.flatMap { $0 }.first { $0.id == id }
+  }
+
   var etiquetasDeSessao: [Etiqueta] {
     etiquetas.filter { $0.categoria != "compromisso" }
   }
 
   func eventos(em dia: Date) -> [Evento] {
-    porDia[DataLocal.inicioDoDia(dia)] ?? []
+    (porDia[DataLocal.inicioDoDia(dia)] ?? []).filter { evento in
+      evento.sessao.map { !ocultas.contains($0.tipoId) } ?? true
+    }
   }
 
   func cores(em dia: Date) -> [String] {
@@ -56,12 +67,17 @@ final class Agenda {
   func carregar() async {
     let de = JSONValor.texto(DataLocal.texto(primeiroMes))
     let ate = JSONValor.texto(DataLocal.texto(DataLocal.somar(.month, 1, a: ultimoMes)))
+    async let pedidoDeSessoes = conexao.operacao("appointments:listRange", [de, ate])
+    async let pedidoDeCompromissos = conexao.operacao("commitments:listRange", [de, ate])
+    async let pedidoDeEtiquetas = conexao.operacao("tipos:list")
+    async let pedidoDaClinica: JSONValor? = try? conexao.operacao("clinic:get")
     do {
-      let sessoes = try await conexao.operacao("appointments:listRange", [de, ate])
-        .decodificar([Sessao].self)
-      let compromissos = try await conexao.operacao("commitments:listRange", [de, ate])
-        .decodificar([Compromisso].self)
-      etiquetas = try await conexao.operacao("tipos:list").decodificar([Etiqueta].self)
+      let sessoes = try await pedidoDeSessoes.decodificar([Sessao].self)
+      let compromissos = try await pedidoDeCompromissos.decodificar([Compromisso].self)
+      etiquetas = try await pedidoDeEtiquetas.decodificar([Etiqueta].self)
+      clinica = try? await pedidoDaClinica?.decodificar(Clinica.self)
+      let existentes = Set(etiquetas.map(\.id))
+      if !ocultas.isSubset(of: existentes) { ocultas.formIntersection(existentes) }
       let eventos = sessoes.compactMap { Evento($0) } + compromissos.compactMap { Evento($0) }
       porDia = Dictionary(grouping: eventos) { DataLocal.inicioDoDia($0.inicio) }
         .mapValues { $0.sorted { $0.inicio < $1.inicio } }
@@ -81,7 +97,7 @@ final class Agenda {
   func atualizarResumo() {
     let hoje = DataLocal.inicioDoDia(.now)
     let dias = [hoje, DataLocal.somar(.day, 1, a: hoje)]
-    let itens = Self.itensDoResumo(dias.flatMap { eventos(em: $0) }, nomes: Self.nomesNosWidgets)
+    let itens = Self.itensDoResumo(dias.flatMap { porDia[$0] ?? [] }, nomes: Self.nomesNosWidgets)
     try? Resumo(itens: itens, atualizado: .now).gravar()
     WidgetCenter.shared.reloadAllTimelines()
   }
@@ -104,6 +120,9 @@ final class Agenda {
 
   func atualizarEmSegundoPlano() async {
     Self.agendarAtualizacao()
+    defer {
+      if UIApplication.shared.applicationState != .active { conexao.suspender() }
+    }
     guard (try? await conexao.garantirConexao()) != nil else { return }
     await carregar()
   }
@@ -116,8 +135,29 @@ final class Agenda {
 
   func esquecer() {
     porDia = [:]
+    ocultas = []
     Resumo.apagar()
     WidgetCenter.shared.reloadAllTimelines()
+  }
+
+  func mover(_ sessao: Sessao, para inicio: Date) async throws {
+    guard let antes = DataLocal.data(sessao.inicio), let fimAntes = DataLocal.data(sessao.fim) else { return }
+    let fim = inicio.addingTimeInterval(fimAntes.timeIntervalSince(antes))
+    let vaga = JSONValor.objeto([
+      "inicio": .texto(DataLocal.texto(inicio)),
+      "fim": .texto(DataLocal.texto(fim)),
+    ])
+    let resposta = try await conexao.operacao(
+      "appointments:move", [.numero(Double(sessao.id)), vaga, sessao.updatedAt.map { .texto($0) } ?? .nulo])
+    guard let movida = try? resposta.decodificar(Sessao.self), let evento = Evento(movida) else {
+      return await carregar()
+    }
+    for (dia, lista) in porDia where lista.contains(where: { $0.id == evento.id }) {
+      porDia[dia] = lista.filter { $0.id != evento.id }
+    }
+    porDia[DataLocal.inicioDoDia(evento.inicio), default: []].append(evento)
+    porDia[DataLocal.inicioDoDia(evento.inicio)]?.sort { $0.inicio < $1.inicio }
+    atualizarResumo()
   }
 
   func marcar(paciente: Int, inicio: Date, minutos: Int, etiqueta: Int?, observacao: String) async throws {

@@ -228,11 +228,11 @@ private struct WidgetsView: View {
 private struct EsteIPhoneView: View {
   var body: some View {
     let info = Bundle.main.infoDictionary
-    let versao = info?["CFBundleShortVersionString"] as? String ?? ""
-    let build = info?["CFBundleVersion"] as? String ?? ""
+    let completa = (info?["AuriVersao"] as? String).flatMap { $0.isEmpty ? nil : $0 }
+    let versao = completa ?? info?["CFBundleShortVersionString"] as? String ?? ""
     List {
       Section {
-        LabeledContent("Versão do Auri", value: "\(versao) (\(build))")
+        LabeledContent("Versão do Auri", value: versao)
       } footer: {
         Text(
           "A chave que identifica este iPhone fica guardada só nele, no Chaveiro, e não vai para o backup do iCloud.")

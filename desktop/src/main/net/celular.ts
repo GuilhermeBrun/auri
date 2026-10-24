@@ -96,6 +96,11 @@ const paciente = z.object({
   updated_at: texto
 })
 
+const pedido = z.object({
+  estado: z.enum(['aguardando', 'confirmado', 'desmarcado', 'sem_resposta']),
+  prazo: texto
+})
+
 const sessao = z.object({
   id,
   patient_id: id,
@@ -113,6 +118,7 @@ const sessao = z.object({
   assinatura: z
     .object({ id, signer_nome: texto, signer_parentesco: texto, assinado_em: texto })
     .nullable(),
+  pedido: pedido.nullable(),
   updated_at: texto
 })
 
@@ -136,6 +142,11 @@ const etiqueta = z.object({
   cor: texto,
   duracao: z.number().int(),
   sistema: texto.nullable()
+})
+
+const clinica = z.object({
+  nome: texto,
+  funcionamento: z.record(z.string(), z.object({ abre: texto, fecha: texto }))
 })
 
 const anamnese = z.object({
@@ -166,7 +177,8 @@ const CONTRATO_V1: Readonly<Record<string, z.ZodType>> = {
   'commitments:create': compromisso,
   'commitments:update': compromisso,
   'tipos:list': z.array(etiqueta),
-  'anamneses:get': anamnese
+  'anamneses:get': anamnese,
+  'clinic:get': clinica
 }
 
 export const CONTRATOS: Readonly<Record<number, Readonly<Record<string, z.ZodType>>>> = {

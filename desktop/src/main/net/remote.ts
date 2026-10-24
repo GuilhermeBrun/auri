@@ -77,14 +77,18 @@ export function createRemoteListener(options: {
   }
 }
 
-export function createRemoteDialer(options: { keyPair: KeyPair; bootstrap?: Bootstrap }): {
+export function createRemoteDialer(options: {
+  keyPair: KeyPair
+  bootstrap?: Bootstrap
+  ephemeral?: boolean
+}): {
   dial(serverKey: string): SecretStream
   close(): Promise<void>
 } {
   let dht: DHT | null = null
   return {
     dial(serverKey) {
-      dht ??= new DHT({ bootstrap: options.bootstrap })
+      dht ??= new DHT({ bootstrap: options.bootstrap, ephemeral: options.ephemeral })
       return dht.connect(Buffer.from(serverKey, 'hex'), { keyPair: options.keyPair })
     },
     async close() {

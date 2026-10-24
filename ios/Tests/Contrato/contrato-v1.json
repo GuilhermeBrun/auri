@@ -18,7 +18,7 @@
       "resp_nome": "",
       "resp_parentesco": "",
       "resp_celular": "",
-      "updated_at": "2026-10-23T14:39:38.222Z"
+      "updated_at": "2026-10-23T22:32:56.847Z"
     }
   ],
   "patients:get": {
@@ -39,7 +39,7 @@
     "resp_nome": "",
     "resp_parentesco": "",
     "resp_celular": "",
-    "updated_at": "2026-10-23T14:39:38.222Z"
+    "updated_at": "2026-10-23T22:32:56.847Z"
   },
   "appointments:listRange": [
     {
@@ -57,12 +57,13 @@
       "evolucao": "Jogo de memória com sons do ambiente. Melhorou a atenção auditiva.",
       "confirmado_em": null,
       "assinatura": null,
-      "updated_at": "2026-10-23T14:39:38.229Z"
+      "pedido": null,
+      "updated_at": "2026-10-23T22:32:56.853Z"
     }
   ],
   "appointments:listByPatient": [
     {
-      "id": 180,
+      "id": 217,
       "patient_id": 1,
       "patient_nome": "Ana Beatriz Teste",
       "inicio": "2026-12-04T08:00",
@@ -76,7 +77,8 @@
       "evolucao": "",
       "confirmado_em": null,
       "assinatura": null,
-      "updated_at": "2026-10-23T14:39:38.266Z"
+      "pedido": null,
+      "updated_at": "2026-10-23T22:32:56.903Z"
     }
   ],
   "commitments:listRange": [
@@ -90,7 +92,7 @@
       "inicio": "2026-10-02T17:00",
       "fim": "2026-10-02T18:00",
       "observacao": "",
-      "updated_at": "2026-10-23T14:39:38.231Z"
+      "updated_at": "2026-10-23T22:32:56.856Z"
     }
   ],
   "tipos:list": [
@@ -114,6 +116,35 @@
     "rotina": "Escola pela manhã, natação às quartas.",
     "terapias": "Nenhuma antes.",
     "observacoes": "Família muito participativa.",
-    "updated_at": "2026-10-23T14:39:38.267Z"
+    "updated_at": "2026-10-23T22:32:56.904Z"
+  },
+  "clinic:get": {
+    "nome": "",
+    "funcionamento": {
+      "1": {
+        "abre": "07:00",
+        "fecha": "20:00"
+      },
+      "2": {
+        "abre": "07:00",
+        "fecha": "20:00"
+      },
+      "3": {
+        "abre": "07:00",
+        "fecha": "20:00"
+      },
+      "4": {
+        "abre": "07:00",
+        "fecha": "20:00"
+      },
+      "5": {
+        "abre": "07:00",
+        "fecha": "20:00"
+      },
+      "6": {
+        "abre": "07:00",
+        "fecha": "12:00"
+      }
+    }
   }
 }

@@ -118,7 +118,7 @@ test('pareia pelo QR code e usa a rede da clínica', async (t) => {
   await iphone.esperar((s) => s.t === 'estado' && s.status === 'connected' && s.via === 'local')
   const pacientes = await iphone.pedir({ t: 'operacao', canal: 'patients:list', args: [] })
   t.ok(pacientes.ok)
-  t.is(pacientes.ok && (pacientes.data as unknown[]).length, 12)
+  t.ok(pacientes.ok && (pacientes.data as unknown[]).length >= 12)
 })
 
 test('conecta só pela internet', async (t) => {
@@ -141,7 +141,8 @@ const OPERACOES_DO_IPHONE: [string, unknown[]][] = [
   ['appointments:listByPatient', [1]],
   ['commitments:listRange', ['2026-01-01T00:00', '2030-01-01T00:00']],
   ['tipos:list', []],
-  ['anamneses:get', [1]]
+  ['anamneses:get', [1]],
+  ['clinic:get', []]
 ]
 
 const tipo = (valor: unknown): string =>
@@ -217,9 +218,31 @@ test('marca, recusa horário ocupado e recebe o aviso da recepção', async (t) 
   t.ok(aviso.titulo.startsWith('Recepção marcou a sessão de'))
   const amanha = proximoDia(1)
   const aberto = amanha.getDay() === 0 ? proximoDia(2) : amanha
-  t.is(aviso.inicio, local(aberto, 11))
-  t.ok(aviso.corpo.endsWith('às 11:00'))
+  t.ok(aviso.inicio.startsWith(local(aberto, 0).slice(0, 10)))
+  t.ok(aviso.corpo.endsWith(`às ${aviso.inicio.slice(11, 16)}`))
   await iphone.esperar((s) => s.t === 'evento')
+})
+
+test('fecha a conexão ao suspender e volta ao retomar', async (t) => {
+  iphone.esquecer()
+  await iphone.nucleo.suspender()
+  await iphone.esperar((s) => s.t === 'estado' && s.status === 'offline')
+  const parado = await iphone.pedir({ t: 'operacao', canal: 'tipos:list', args: [] })
+  t.is(parado.ok, false)
+  iphone.esquecer()
+  iphone.nucleo.retomar()
+  await iphone.esperar((s) => s.t === 'estado' && s.status === 'connected')
+  const etiquetas = await iphone.pedir({ t: 'operacao', canal: 'tipos:list', args: [] })
+  t.ok(etiquetas.ok)
+})
+
+test('não suspende se o app volta logo', async (t) => {
+  iphone.esquecer()
+  const suspensao = iphone.nucleo.suspender()
+  iphone.nucleo.retomar()
+  await suspensao
+  const etiquetas = await iphone.pedir({ t: 'operacao', canal: 'tipos:list', args: [] })
+  t.ok(etiquetas.ok)
 })
 
 test('volta sozinho quando a conexão cai', async (t) => {

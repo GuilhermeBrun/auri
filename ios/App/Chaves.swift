@@ -2,7 +2,7 @@ import Foundation
 import Security
 
 enum Chaves {
-  private static let servico = "com.auri.ios.conexao"
+  private static let servico = "br.dev.auri.conexao"
   private static let conta = "semente"
 
   static func semente() throws -> String {

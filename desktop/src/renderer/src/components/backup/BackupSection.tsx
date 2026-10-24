@@ -118,7 +118,7 @@ function Setup({
           ? 'A senha criada para o computador da recepção também protege as cópias.'
           : 'Sem a senha, ninguém abre as cópias, nem quem acessa a nuvem.'}
       </GroupText>
-      <div className="mt-4 flex items-center gap-3 rounded-card bg-fill px-4 py-3">
+      <div className="mt-4 flex items-center gap-3">
         <DestinationLine destination={destination} />
         <Button variant="secondary" onClick={() => setDestination(null)}>
           Trocar
@@ -177,9 +177,7 @@ function RecoveryStep({ code, onDone }: { code: string; onDone: () => void }): R
       className="animate-fade-in"
     >
       <GroupText>Sem a senha, só este código abre as cópias. Ele não aparece de novo.</GroupText>
-      <div className="mt-4">
-        <RecoveryCode code={code} />
-      </div>
+      <RecoveryCode code={code} className="mt-4 bg-transparent p-0" />
       <label className="mt-5 flex cursor-pointer items-center gap-2 text-[13px]">
         <input
           type="checkbox"
@@ -306,7 +304,7 @@ function Destination({ info }: { info: BackupInfo }): React.JSX.Element {
         </ErrorText>
       )}
       {changing && (
-        <div className="mt-4 animate-fade-in rounded-card bg-fill p-4">
+        <div className="mt-4 animate-fade-in">
           <DestinationPicker onPick={(next) => change.mutate(next)} />
           <div className="mt-3 flex justify-end">
             <Button variant="secondary" onClick={() => setChanging(false)}>
@@ -403,7 +401,7 @@ function Restore({ info }: { info: BackupInfo }): React.JSX.Element {
         </Button>
       </SettingRow>
       {info.undo && (
-        <div className="mt-4 flex animate-fade-in items-center gap-3 rounded-card bg-fill px-4 py-3">
+        <div className="mt-4 flex animate-fade-in items-center gap-3">
           <p className="min-w-0 flex-1 text-xs text-ink-soft">
             {confirming
               ? 'Voltar aos dados de antes? O que foi feito depois se perde.'
@@ -440,7 +438,7 @@ function Disable(): React.JSX.Element {
   return (
     <SettingsGroup>
       {confirming ? (
-        <div className="animate-fade-in rounded-card bg-fill p-4">
+        <div className="animate-fade-in">
           <p className="text-xs text-ink-soft">
             As cópias param e este computador esquece a senha. As já feitas ficam na pasta.
           </p>

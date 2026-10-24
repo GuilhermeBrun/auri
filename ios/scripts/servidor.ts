@@ -125,6 +125,66 @@ for (let d = -21; d <= 42 && pacientes.length > 0; d++) {
   }
 }
 
+if (pacientes.length > 0) {
+  const arrastavel = op<{ id: number }>('patients:create', {
+    ...emptyPatientInput(),
+    nome: 'Rui Arrastável',
+    data_nascimento: '2018-06-15'
+  })
+  const amanha = dia(hoje, 1)
+  const diaDoRui = amanha.getDay() === 0 ? dia(amanha, 1) : amanha
+  const hora = diaDoRui.getDay() === 6 ? 11 : 12
+  op('appointments:create', {
+    patient_id: arrastavel.id,
+    inicio: local(diaDoRui, hora),
+    fim: local(diaDoRui, hora, 30),
+    observacao: '',
+    tipo_id: deSessao[0].id
+  })
+}
+
+op('clinic:save', {
+  nome: 'Clínica de Teste',
+  documento: '',
+  endereco: '',
+  telefone: '',
+  whatsapp: '(11) 90000-0000',
+  profissional: 'Fono de Teste',
+  registro: '',
+  logo: ''
+})
+
+type Marcada = { id: number; patient_id: number; inicio: string }
+const doDia = (data: Date): Marcada[] =>
+  op<Marcada[]>('appointments:listRange', local(data, 0), local(dia(data, 1), 0))
+let comEstados = hoje
+for (let d = 1; d < 7 && doDia(comEstados).length < 3; d++) comEstados = dia(hoje, d)
+const [confirmada, faltou] = pacientes.length > 0 ? doDia(comEstados) : []
+const daquiAPouco = local(
+  new Date(hoje.getTime() + 2 * 3600_000),
+  new Date(hoje.getTime() + 2 * 3600_000).getHours()
+)
+const aguardando = Array.from({ length: 7 }, (_, d) => doDia(dia(hoje, d)))
+  .flat()
+  .find((s) => s.inicio >= daquiAPouco && s.id !== confirmada?.id && s.id !== faltou?.id)
+if (confirmada) {
+  db.prepare("UPDATE appointments SET confirmado_em = datetime('now') WHERE id = ?").run(
+    confirmada.id
+  )
+  db.prepare('UPDATE patients SET data_nascimento = ? WHERE id = ?').run(
+    `2019-${dois(comEstados.getMonth() + 1)}-${dois(comEstados.getDate())}`,
+    confirmada.patient_id
+  )
+}
+if (faltou) db.prepare("UPDATE appointments SET presenca = 'falta' WHERE id = ?").run(faltou.id)
+if (aguardando) {
+  try {
+    op('confirmacoes:enviar', aguardando.id, 'Recepção')
+  } catch (error) {
+    console.log(`sem pedido de confirmação de teste: ${(error as Error).message}`)
+  }
+}
+
 if (pacientes.length > 0)
   op('anamneses:save', pacientes[0].id, {
     data: '2026-03-02',
@@ -182,21 +242,27 @@ const server = createSyncServer({
 function mudarPelaRecepcao(): void {
   const amanha = dia(new Date(), 1)
   const aberto = amanha.getDay() === 0 ? dia(amanha, 1) : amanha
-  runOperation(
-    db,
-    'appointments:create',
-    [
-      {
-        patient_id: pacientes[1].id,
-        inicio: local(aberto, 11),
-        fim: local(aberto, 11, 45),
-        observacao: '',
-        tipo_id: deSessao[1].id
-      }
-    ],
-    (topics, aviso) => server.broadcast(topics, aviso ? { ...aviso, autor: 'Recepção' } : undefined)
-  )
-  console.log(`a recepção marcou uma sessão para ${local(aberto, 11)}`)
+  for (const hora of [8, 11, 17]) {
+    const resultado = runOperation(
+      db,
+      'appointments:create',
+      [
+        {
+          patient_id: pacientes[1].id,
+          inicio: local(aberto, hora),
+          fim: local(aberto, hora, 45),
+          observacao: '',
+          tipo_id: deSessao[1].id
+        }
+      ],
+      (topics, aviso) =>
+        server.broadcast(topics, aviso ? { ...aviso, autor: 'Recepção' } : undefined)
+    )
+    if (resultado.ok) {
+      console.log(`a recepção marcou uma sessão para ${local(aberto, hora)}`)
+      return
+    }
+  }
 }
 
 function enderecosDaRede(porta: number): { host: string; port: number }[] {

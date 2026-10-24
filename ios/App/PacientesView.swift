@@ -5,6 +5,7 @@ import SwiftUI
 final class Cadastro {
   private let conexao: Conexao
   private(set) var pacientes: [Paciente]?
+  private(set) var nascimentos: [Int: String] = [:]
   private(set) var erro: String?
 
   init(conexao: Conexao) {
@@ -13,7 +14,9 @@ final class Cadastro {
 
   func carregar() async {
     do {
-      pacientes = try await conexao.operacao("patients:list").decodificar([Paciente].self)
+      let lista = try await conexao.operacao("patients:list").decodificar([Paciente].self)
+      pacientes = lista
+      nascimentos = Dictionary(lista.compactMap { p in p.dataNascimento.map { (p.id, $0) } }) { a, _ in a }
       erro = nil
     } catch {
       erro = error.localizedDescription
