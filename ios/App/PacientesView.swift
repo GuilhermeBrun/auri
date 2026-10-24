@@ -7,6 +7,10 @@ final class Cadastro {
   private(set) var pacientes: [Paciente]?
   private(set) var erro: String?
 
+  var nascimentos: [Int: String] {
+    Dictionary((pacientes ?? []).compactMap { p in p.dataNascimento.map { (p.id, $0) } }) { a, _ in a }
+  }
+
   init(conexao: Conexao) {
     self.conexao = conexao
   }

@@ -29,6 +29,10 @@ final class ConexaoUITests: XCTestCase {
     XCTAssertTrue(app.staticTexts[hoje].waitForExistence(timeout: 15))
     sleep(2)
     anexar(app, "02-dia")
+    app.scrollViews.firstMatch.swipeDown(velocity: .slow)
+    sleep(1)
+    anexar(app, "02b-dia-manha")
+    app.scrollViews.firstMatch.swipeUp(velocity: .fast)
     app.scrollViews.firstMatch.swipeUp(velocity: .fast)
     app.scrollViews.firstMatch.swipeUp(velocity: .fast)
     try auditar(app)
@@ -163,6 +167,8 @@ final class ConexaoUITests: XCTestCase {
   }
 
   func test08MarcarPelosAtalhos() throws {
+    let hora = Calendar.current.component(.hour, from: .now)
+    try XCTSkipIf(hora < 7 || hora >= 19, "Os Atalhos sugerem a hora atual, fora do horário da clínica agora.")
     let atalhos = XCUIApplication(bundleIdentifier: "com.apple.shortcuts")
     atalhos.launch()
     sleep(2)
@@ -219,6 +225,50 @@ final class ConexaoUITests: XCTestCase {
     tocar(app.tabBars.buttons["Conexão"], "aba Conexão")
     XCTAssertTrue(app.navigationBars["Conexão"].waitForExistence(timeout: 10))
     anexar(app, "28-texto-grande-conexao")
+  }
+
+  func test10ArrastarSessao() throws {
+    let app = try abrirConectado()
+    let rui = NSPredicate(format: "label BEGINSWITH %@", "Rui Arrastável,")
+    let sessao = app.descendants(matching: .any).matching(rui).firstMatch
+    guard sessao.waitForExistence(timeout: 15) else {
+      throw XCTSkip("Sem a sessão de arrastar hoje (domingo ou sem horário livre).")
+    }
+    for _ in 0..<6 where !sessao.isHittable {
+      app.scrollViews.firstMatch.swipeDown()
+    }
+    let hora = try XCTUnwrap(sessao.label.matches(of: /(\d\d):(\d\d)/).compactMap { Int($0.output.1) }.first)
+    let centro = sessao.coordinate(withNormalizedOffset: CGVector(dx: 0.3, dy: 0.5))
+    centro.press(
+      forDuration: 1.2, thenDragTo: centro.withOffset(CGVector(dx: 0, dy: 15)), withVelocity: .slow,
+      thenHoldForDuration: 0.8)
+    let antes = String(format: "%02d:00 – %02d:30", hora, hora)
+    let movida = app.descendants(matching: .any)
+      .matching(
+        NSPredicate(
+          format: "label BEGINSWITH %@ AND NOT (label CONTAINS %@) AND (label CONTAINS %@ OR label CONTAINS %@)",
+          "Rui Arrastável,", antes, String(format: "%02d:15", hora), String(format: "%02d:30", hora))
+      )
+      .firstMatch
+    XCTAssertTrue(movida.waitForExistence(timeout: 15), "a sessão não saiu de \(antes)")
+    anexar(app, "29-arrastada")
+
+    let amanha = Calendar.current.date(byAdding: .day, value: 1, to: .now)!
+    guard Calendar.current.component(.weekday, from: amanha) != 1,
+      Calendar.current.isDate(amanha, equalTo: .now, toGranularity: .weekOfYear)
+    else { return }
+    let rotulo = amanha.formatted(.dateTime.weekday(.wide).day().month(.wide).locale(Locale(identifier: "pt_BR")))
+    let diaSeguinte = app.buttons[rotulo]
+    XCTAssertTrue(diaSeguinte.waitForExistence(timeout: 5))
+    let origem = movida.coordinate(withNormalizedOffset: CGVector(dx: 0.3, dy: 0.5))
+    origem.press(
+      forDuration: 1.2, thenDragTo: diaSeguinte.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)),
+      withVelocity: .slow, thenHoldForDuration: 0.3)
+    XCTAssertTrue(
+      app.descendants(matching: .any).matching(rui).firstMatch.waitForNonExistence(timeout: 15),
+      "a sessão continuou hoje")
+    diaSeguinte.tap()
+    XCTAssertTrue(movida.waitForExistence(timeout: 15), "a sessão não apareceu amanhã")
   }
 
   func test99PacientesVazio() throws {

@@ -10,6 +10,10 @@ final class Agenda {
   private let conexao: Conexao
   private(set) var porDia: [Date: [Evento]] = [:]
   private(set) var etiquetas: [Etiqueta] = []
+  private(set) var clinica: Clinica?
+  var ocultas: Set<Int> = Set(UserDefaults.standard.array(forKey: "agenda-etiquetas-ocultas") as? [Int] ?? []) {
+    didSet { UserDefaults.standard.set(Array(ocultas), forKey: "agenda-etiquetas-ocultas") }
+  }
   private(set) var carregada = false
   private(set) var erro: String?
 
@@ -37,12 +41,18 @@ final class Agenda {
     porDia.values.flatMap { $0 }.sorted { $0.inicio < $1.inicio }
   }
 
+  func evento(_ id: String) -> Evento? {
+    porDia.values.lazy.flatMap { $0 }.first { $0.id == id }
+  }
+
   var etiquetasDeSessao: [Etiqueta] {
     etiquetas.filter { $0.categoria != "compromisso" }
   }
 
   func eventos(em dia: Date) -> [Evento] {
-    porDia[DataLocal.inicioDoDia(dia)] ?? []
+    (porDia[DataLocal.inicioDoDia(dia)] ?? []).filter { evento in
+      evento.sessao.map { !ocultas.contains($0.tipoId) } ?? true
+    }
   }
 
   func cores(em dia: Date) -> [String] {
@@ -63,6 +73,7 @@ final class Agenda {
       let compromissos = try await conexao.operacao("commitments:listRange", [de, ate])
         .decodificar([Compromisso].self)
       etiquetas = try await conexao.operacao("tipos:list").decodificar([Etiqueta].self)
+      clinica = try? await conexao.operacao("clinic:get").decodificar(Clinica.self)
       let eventos = sessoes.compactMap { Evento($0) } + compromissos.compactMap { Evento($0) }
       porDia = Dictionary(grouping: eventos) { DataLocal.inicioDoDia($0.inicio) }
         .mapValues { $0.sorted { $0.inicio < $1.inicio } }
@@ -120,6 +131,18 @@ final class Agenda {
     porDia = [:]
     Resumo.apagar()
     WidgetCenter.shared.reloadAllTimelines()
+  }
+
+  func mover(_ sessao: Sessao, para inicio: Date) async throws {
+    guard let antes = DataLocal.data(sessao.inicio), let fimAntes = DataLocal.data(sessao.fim) else { return }
+    let fim = inicio.addingTimeInterval(fimAntes.timeIntervalSince(antes))
+    let vaga = JSONValor.objeto([
+      "inicio": .texto(DataLocal.texto(inicio)),
+      "fim": .texto(DataLocal.texto(fim)),
+    ])
+    _ = try await conexao.operacao(
+      "appointments:move", [.numero(Double(sessao.id)), vaga, sessao.updatedAt.map { .texto($0) } ?? .nulo])
+    await carregar()
   }
 
   func marcar(paciente: Int, inicio: Date, minutos: Int, etiqueta: Int?, observacao: String) async throws {

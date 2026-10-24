@@ -20,7 +20,7 @@ struct NovaSessaoView: View {
     self.agenda = agenda
     self.cadastro = cadastro
     _paciente = State(initialValue: nova.paciente)
-    _inicio = State(initialValue: Self.horarioSugerido(nova.dia))
+    _inicio = State(initialValue: Self.horarioSugerido(nova.dia, clinica: agenda.clinica))
   }
 
   var body: some View {
@@ -129,7 +129,7 @@ struct NovaSessaoView: View {
     }
   }
 
-  private static func ponto(_ cor: String) -> UIImage {
+  static func ponto(_ cor: String) -> UIImage {
     let imagem = UIImage(systemName: "circle.fill") ?? UIImage()
     return imagem.withTintColor(UIColor(Color(hex: cor)), renderingMode: .alwaysOriginal)
   }
@@ -155,15 +155,29 @@ struct NovaSessaoView: View {
     }
   }
 
-  static func horarioSugerido(_ dia: Date?, agora: Date = .now) -> Date {
+  static func horarioSugerido(_ dia: Date?, agora: Date = .now, clinica: Clinica? = nil, minutos: Int = 45) -> Date {
     let calendario = DataLocal.calendario
     let base = dia ?? agora
-    if calendario.isDate(base, inSameDayAs: agora) {
-      let proxima = calendario.date(byAdding: .hour, value: 1, to: agora) ?? agora
-      return calendario.date(
-        bySettingHour: calendario.component(.hour, from: proxima), minute: 0, second: 0, of: proxima) ?? proxima
+    guard calendario.isDate(base, inSameDayAs: agora) else {
+      return calendario.date(bySettingHour: 9, minute: 0, second: 0, of: base) ?? base
     }
-    return calendario.date(bySettingHour: 9, minute: 0, second: 0, of: base) ?? base
+    let proxima = calendario.date(byAdding: .hour, value: 1, to: agora) ?? agora
+    let cheia =
+      calendario.date(bySettingHour: calendario.component(.hour, from: proxima), minute: 0, second: 0, of: proxima)
+      ?? proxima
+    guard let clinica else { return cheia }
+    let comeco = calendario.component(.hour, from: cheia) * 60
+    if calendario.isDate(cheia, inSameDayAs: agora), let horario = clinica.horario(em: agora) {
+      if comeco < horario.abre {
+        return DataLocal.inicioDoDia(agora).addingTimeInterval(TimeInterval(horario.abre * 60))
+      }
+      if comeco + minutos <= horario.fecha { return cheia }
+    }
+    for dias in 1...7 {
+      let outro = DataLocal.somar(.day, dias, a: DataLocal.inicioDoDia(agora))
+      if let horario = clinica.horario(em: outro) { return outro.addingTimeInterval(TimeInterval(horario.abre * 60)) }
+    }
+    return cheia
   }
 }
 

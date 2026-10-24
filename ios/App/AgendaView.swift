@@ -32,7 +32,7 @@ struct AgendaView: View {
             .id(mes)
             .toolbar { acoes(dia: nil) }
         case .dia(let dia):
-          DiaView(agenda: agenda, inicial: dia) { caminho.append(.evento($0)) }
+          DiaView(agenda: agenda, nascimentos: cadastro.nascimentos, inicial: dia) { caminho.append(.evento($0)) }
             .id(dia)
             .toolbar { acoes(dia: dia) }
         case .evento(let evento):
@@ -65,6 +65,33 @@ struct AgendaView: View {
   @ToolbarContentBuilder
   private func acoes(dia: Date?) -> some ToolbarContent {
     ToolbarItemGroup(placement: .topBarTrailing) {
+      if !agenda.etiquetasDeSessao.isEmpty {
+        Menu {
+          ForEach(agenda.etiquetasDeSessao) { etiqueta in
+            Toggle(
+              isOn: Binding(
+                get: { !agenda.ocultas.contains(etiqueta.id) },
+                set: { mostrar in
+                  if mostrar { agenda.ocultas.remove(etiqueta.id) } else { agenda.ocultas.insert(etiqueta.id) }
+                })
+            ) {
+              Label {
+                Text(etiqueta.nome)
+              } icon: {
+                Image(uiImage: NovaSessaoView.ponto(etiqueta.cor))
+              }
+            }
+          }
+          if !agenda.ocultas.isEmpty {
+            Button("Mostrar todas") { agenda.ocultas = [] }
+          }
+        } label: {
+          Image(
+            systemName: agenda.ocultas.isEmpty
+              ? "line.3.horizontal.decrease.circle" : "line.3.horizontal.decrease.circle.fill")
+        }
+        .accessibilityLabel(agenda.ocultas.isEmpty ? "Etiquetas" : "Etiquetas, com filtro")
+      }
       Button {
         buscando = true
       } label: {

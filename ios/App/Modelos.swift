@@ -14,10 +14,44 @@ struct Sessao: Decodable, Identifiable, Hashable, Sendable {
   let presenca: String
   let evolucao: String?
   let confirmadoEm: String?
+  var assinatura: Assinatura? = nil
+  var pedido: Pedido? = nil
+  var updatedAt: String? = nil
+}
+
+struct Assinatura: Decodable, Hashable, Sendable {
+  let signerNome: String
+}
+
+struct Pedido: Decodable, Hashable, Sendable {
+  let estado: String
+  let prazo: String
+}
+
+struct Clinica: Decodable, Sendable {
+  struct Horario: Decodable, Sendable {
+    let abre: String
+    let fecha: String
+  }
+
+  let nome: String
+  let funcionamento: [String: Horario]
+
+  func horario(em dia: Date) -> (abre: Int, fecha: Int)? {
+    let semana = DataLocal.calendario.component(.weekday, from: dia) - 1
+    guard let horario = funcionamento[String(semana)] else { return nil }
+    return (Self.minutos(horario.abre), Self.minutos(horario.fecha))
+  }
+
+  static func minutos(_ hora: String) -> Int {
+    let partes = hora.split(separator: ":").compactMap { Int($0) }
+    return (partes.first ?? 0) * 60 + (partes.dropFirst().first ?? 0)
+  }
 }
 
 struct Compromisso: Decodable, Identifiable, Hashable, Sendable {
   let id: Int
+  var etiquetaId: Int? = nil
   let etiquetaNome: String
   let titulo: String
   let cor: String
@@ -101,6 +135,94 @@ struct Evento: Identifiable, Hashable, Sendable {
     self.fim = fim
     cor = compromisso.cor
     origem = .compromisso(compromisso)
+  }
+}
+
+enum MarcaDaSessao: Hashable, Sendable {
+  case assinada
+  case confirmada
+  case aguardando(ate: String)
+  case semResposta
+
+  var simbolo: String {
+    switch self {
+    case .assinada: "signature"
+    case .confirmada: "checkmark"
+    case .aguardando: "clock"
+    case .semResposta: "clock.badge.xmark"
+    }
+  }
+
+  var rotulo: String {
+    switch self {
+    case .assinada: "Chegada assinada"
+    case .confirmada: "Confirmado"
+    case .aguardando(let ate): "Aguardando resposta até \(ate)"
+    case .semResposta: "Sem resposta, horário liberado"
+    }
+  }
+}
+
+extension Evento {
+  var sessao: Sessao? {
+    if case .sessao(let sessao) = origem { sessao } else { nil }
+  }
+
+  var faltou: Bool {
+    sessao.map { $0.presenca == "falta" || $0.presenca == "desmarcou" } ?? false
+  }
+
+  var etiqueta: String {
+    switch origem {
+    case .sessao(let sessao): sessao.tipoNome
+    case .compromisso(let compromisso): compromisso.etiquetaNome
+    }
+  }
+
+  var marcas: [MarcaDaSessao] {
+    guard let sessao else { return [] }
+    var lista: [MarcaDaSessao] = []
+    if sessao.assinatura != nil { lista.append(.assinada) }
+    let confirmada = sessao.assinatura == nil && sessao.confirmadoEm != nil
+    if confirmada { lista.append(.confirmada) }
+    if !confirmada, let pedido = sessao.pedido, pedido.estado == "aguardando" {
+      lista.append(.aguardando(ate: DataLocal.data(pedido.prazo)?.hora ?? pedido.prazo))
+    }
+    if sessao.pedido?.estado == "sem_resposta" { lista.append(.semResposta) }
+    return lista
+  }
+}
+
+extension Evento {
+  func descricao(idade: Int?) -> String {
+    var partes = [titulo, "\(inicio.hora) – \(fim.hora)"]
+    if let sessao {
+      partes.append(etiqueta)
+      switch sessao.presenca {
+      case "falta": partes.append("Faltou")
+      case "desmarcou": partes.append("Desmarcou")
+      case "presente": partes.append("Presente")
+      default: break
+      }
+    }
+    partes += marcas.map(\.rotulo)
+    if let idade { partes.append("Faz \(idade) anos neste dia") }
+    return partes.joined(separator: ", ")
+  }
+}
+
+extension Paciente {
+  static func idadeQueCompleta(_ nascimento: String?, em dia: Date) -> Int? {
+    let partes = (nascimento ?? "").split(separator: "-").compactMap { Int($0) }
+    guard partes.count == 3 else { return nil }
+    let calendario = DataLocal.calendario
+    let ano = calendario.component(.year, from: dia)
+    let bissexto = (ano % 4 == 0 && ano % 100 != 0) || ano % 400 == 0
+    let festa = partes[1] == 2 && partes[2] == 29 && !bissexto ? 28 : partes[2]
+    guard calendario.component(.month, from: dia) == partes[1], calendario.component(.day, from: dia) == festa
+    else { return nil }
+    let idade = ano - partes[0]
+    return idade >= 1 ? idade : nil
   }
 }
 

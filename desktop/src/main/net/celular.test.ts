@@ -284,7 +284,8 @@ describe('contrato do app do iPhone', () => {
       'appointments:listByPatient': [patientId],
       'commitments:listRange': ['2025-09-01T00:00', '2025-10-01T00:00'],
       'tipos:list': [],
-      'anamneses:get': [patientId]
+      'anamneses:get': [patientId],
+      'clinic:get': []
     }
     const app = celular('fono', api)
     const faltas: string[] = []
